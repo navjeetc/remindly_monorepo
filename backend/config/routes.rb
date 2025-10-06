@@ -1,0 +1,12 @@
+Rails.application.routes.draw do
+  get  "magic/request",      to: "magic#request_link"
+  get  "magic/verify",       to: "magic#verify"
+  get  "magic/dev_exchange", to: "magic#dev_exchange"
+  resources :reminders, only: [:create] do
+    collection do
+      get :today
+    end
+  end
+  resources :acknowledgements, only: [:create]
+  get "up" => "rails/health#show", as: :rails_health_check
+end
