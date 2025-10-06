@@ -1,0 +1,91 @@
+import Foundation
+
+class APIClient {
+    static let shared = APIClient()
+    
+    // Change this to your backend URL
+    let baseURL = "http://localhost:3000"
+    
+    private var token: String?
+    
+    func setToken(_ token: String) {
+        self.token = token
+    }
+    
+    func authenticate(email: String) async throws -> String {
+        let url = URL(string: "\(baseURL)/magic/dev_exchange?email=\(email)")!
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let token = String(data: data, encoding: .utf8) ?? ""
+        self.token = token
+        return token
+    }
+    
+    func fetchTodayReminders() async throws -> [OccurrenceResponse] {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/reminders/today")!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
+        }
+        return try decoder.decode([OccurrenceResponse].self, from: data)
+    }
+    
+    func acknowledge(occurrenceId: Int, kind: String) async throws {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/acknowledgements")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["occurrence_id": occurrenceId, "kind": kind]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+}
+
+enum APIError: Error {
+    case notAuthenticated
+}
+
+struct OccurrenceResponse: Codable, Identifiable {
+    let id: Int
+    let reminderId: Int
+    let scheduledAt: Date
+    let status: String
+    let createdAt: Date
+    let updatedAt: Date
+    let reminder: ReminderInfo
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case reminderId = "reminder_id"
+        case scheduledAt = "scheduled_at"
+        case status
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case reminder
+    }
+}
+
+struct ReminderInfo: Codable {
+    let title: String
+    let notes: String?
+    let category: String?
+}
