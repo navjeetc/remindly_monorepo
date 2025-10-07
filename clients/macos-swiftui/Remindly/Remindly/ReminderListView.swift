@@ -4,6 +4,7 @@ import UserNotifications
 struct ReminderListView: View {
     @EnvironmentObject var vm: ReminderVM
     @State private var showDebugInfo = false
+    @State private var showCreateReminder = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -12,6 +13,17 @@ struct ReminderListView: View {
                 Text("Today's Reminders")
                     .font(.system(size: 36, weight: .bold))
                 Spacer()
+                
+                // Add reminder button
+                Button(action: {
+                    showCreateReminder = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .help("Create new reminder")
                 
                 // Debug button
                 Button(action: {
@@ -75,6 +87,9 @@ struct ReminderListView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .padding()
+        .sheet(isPresented: $showCreateReminder) {
+            CreateReminderView(vm: vm)
+        }
     }
 }
 

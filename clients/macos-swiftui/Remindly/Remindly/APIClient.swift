@@ -20,6 +20,32 @@ class APIClient {
         return token
     }
     
+    func createReminder(title: String, notes: String?, category: String, rrule: String, tz: String) async throws {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/reminders")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var body: [String: Any] = [
+            "title": title,
+            "category": category,
+            "rrule": rrule,
+            "tz": tz
+        ]
+        
+        if let notes = notes {
+            body["notes"] = notes
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+    
     func fetchTodayReminders() async throws -> [OccurrenceResponse] {
         guard let token = token else {
             throw APIError.notAuthenticated

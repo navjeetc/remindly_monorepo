@@ -135,6 +135,30 @@ class ReminderVM: ObservableObject {
         }
     }
     
+    func createReminder(title: String, notes: String?, category: String, rrule: String, time: Date) async throws {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await apiClient.createReminder(
+                title: title,
+                notes: notes,
+                category: category,
+                rrule: rrule,
+                tz: TimeZone.current.identifier
+            )
+            
+            // Refresh to show new reminder's occurrences
+            await refresh()
+            
+            print("✅ Reminder created: \(title)")
+        } catch {
+            errorMessage = "Failed to create reminder: \(error.localizedDescription)"
+            isLoading = false
+            throw error
+        }
+    }
+    
     nonisolated func speak(_ text: String) {
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
