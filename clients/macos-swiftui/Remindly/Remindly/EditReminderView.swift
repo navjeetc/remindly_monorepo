@@ -25,32 +25,43 @@ struct EditReminderView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         // Title Section
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Reminder Title")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.secondary)
+                                .padding(.bottom, 8)
                             TextField("e.g., Take medication", text: $title)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.plain)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .strokeBorder(Color.gray.opacity(0.3), lineWidth: 0.5)
+                                        .background(RoundedRectangle(cornerRadius: 5).fill(Color(NSColor.textBackgroundColor)))
+                                )
                                 .font(.system(size: 22))
                         }
                         
                         // Notes Section
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Notes (Optional)")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.secondary)
+                                .padding(.bottom, 8)
                             TextEditor(text: $notes)
                                 .font(.system(size: 20))
                                 .frame(height: 100)
+                                .padding(4)
                                 .border(Color.gray.opacity(0.3), width: 1)
                                 .cornerRadius(4)
                         }
                         
                         // Category Section
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Category")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.secondary)
+                                .padding(.bottom, 8)
                             Picker("Category", selection: $category) {
                                 ForEach(ReminderCategory.allCases, id: \.self) { cat in
                                     HStack {
@@ -66,10 +77,11 @@ struct EditReminderView: View {
                         }
                         
                         // Time Section
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Time")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.secondary)
+                                .padding(.bottom, 8)
                             HStack {
                                 DatePicker("", selection: $selectedTime, displayedComponents: .hourAndMinute)
                                     .labelsHidden()
@@ -80,10 +92,11 @@ struct EditReminderView: View {
                         }
                         
                         // Recurrence Section
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Repeat")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.secondary)
+                                .padding(.bottom, 8)
                             
                             HStack {
                                 Picker("Frequency", selection: $recurrenceType) {
