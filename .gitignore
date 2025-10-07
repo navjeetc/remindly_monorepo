@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Xcode
+*.xcuserstate
+*.xcuserdatad
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Rails
+backend/log/*
+backend/tmp/*
+backend/storage/*
+backend/db/*.sqlite3
+backend/db/*.sqlite3-*
+backend/.byebug_history
+backend/config/master.key
+backend/config/credentials/*.key
+
+# Node modules (if any)
+node_modules/
