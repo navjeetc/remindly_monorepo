@@ -58,6 +58,34 @@ class APIClient {
         
         let (_, _) = try await URLSession.shared.data(for: request)
     }
+    
+    func snooze(occurrenceId: Int, minutes: Int = 10) async throws -> SnoozeResponse {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/acknowledgements/snooze")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["occurrence_id": occurrenceId, "minutes": minutes]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
+        }
+        return try decoder.decode(SnoozeResponse.self, from: data)
+    }
 }
 
 enum APIError: Error {
@@ -88,4 +116,16 @@ struct ReminderInfo: Codable {
     let title: String
     let notes: String?
     let category: String?
+}
+
+struct SnoozeResponse: Codable {
+    let snoozedOccurrenceId: Int
+    let scheduledAt: Date
+    let minutes: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case snoozedOccurrenceId = "snoozed_occurrence_id"
+        case scheduledAt = "scheduled_at"
+        case minutes
+    }
 }

@@ -7,6 +7,10 @@ Rails.application.routes.draw do
       get :today
     end
   end
-  resources :acknowledgements, only: [:create]
+  resources :acknowledgements, only: [:create] do
+    collection do
+      post :snooze
+    end
+  end
   get "up" => "rails/health#show", as: :rails_health_check
 end

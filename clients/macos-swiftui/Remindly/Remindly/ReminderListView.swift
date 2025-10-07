@@ -1,7 +1,9 @@
 import SwiftUI
+import UserNotifications
 
 struct ReminderListView: View {
     @EnvironmentObject var vm: ReminderVM
+    @State private var showDebugInfo = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -10,6 +12,17 @@ struct ReminderListView: View {
                 Text("Today's Reminders")
                     .font(.system(size: 36, weight: .bold))
                 Spacer()
+                
+                // Debug button
+                Button(action: {
+                    showDebugInfo.toggle()
+                }) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 20))
+                }
+                .buttonStyle(.plain)
+                .help("Show notification debug info")
+                
                 Button(action: {
                     Task { await vm.refresh() }
                 }) {
@@ -26,6 +39,14 @@ struct ReminderListView: View {
                 Text(error)
                     .foregroundColor(.red)
                     .padding()
+            }
+            
+            // Debug info
+            if showDebugInfo {
+                DebugNotificationView()
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
             }
             
             // Loading indicator
@@ -162,5 +183,51 @@ struct BigButton: View {
                 .cornerRadius(12)
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct DebugNotificationView: View {
+    @State private var pendingCount = 0
+    @State private var notifications: [String] = []
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("🔔 Notification Debug")
+                .font(.system(size: 18, weight: .bold))
+            
+            Text("Pending notifications: \(pendingCount)")
+                .font(.system(size: 14))
+            
+            if !notifications.isEmpty {
+                Divider()
+                ForEach(notifications, id: \.self) { notification in
+                    Text(notification)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Button("Refresh") {
+                Task {
+                    await loadNotifications()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .task {
+            await loadNotifications()
+        }
+    }
+    
+    private func loadNotifications() async {
+        let pending = await NotificationManager.shared.getPendingNotifications()
+        pendingCount = pending.count
+        notifications = pending.map { request in
+            let trigger = request.trigger as? UNCalendarNotificationTrigger
+            let date = trigger?.nextTriggerDate()
+            let dateStr = date?.formatted(date: .omitted, time: .shortened) ?? "Unknown"
+            return "\(request.identifier): \(dateStr)"
+        }
     }
 }
