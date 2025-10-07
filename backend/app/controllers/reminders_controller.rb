@@ -1,10 +1,33 @@
 class RemindersController < ApplicationController
   before_action :authenticate!
+  before_action :set_reminder, only: %i[show update destroy]
+
+  def index
+    reminders = current_user.reminders.order(created_at: :desc)
+    render json: reminders
+  end
+
+  def show
+    render json: @reminder
+  end
 
   def create
     r = current_user.reminders.create!(reminder_params)
     Recurrence.expand(r)
     render json: r, status: :created
+  end
+
+  def update
+    @reminder.update!(reminder_params)
+    # Regenerate occurrences when reminder is updated
+    @reminder.occurrences.where(status: :pending).destroy_all
+    Recurrence.expand(@reminder)
+    render json: @reminder
+  end
+
+  def destroy
+    @reminder.destroy!
+    head :no_content
   end
 
   def today
@@ -17,5 +40,10 @@ class RemindersController < ApplicationController
   end
 
   private
+
+  def set_reminder
+    @reminder = current_user.reminders.find(params[:id])
+  end
+
   def reminder_params = params.permit(:title, :notes, :rrule, :tz, :category)
 end

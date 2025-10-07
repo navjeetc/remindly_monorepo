@@ -96,6 +96,8 @@ struct ReminderListView: View {
 struct ReminderCard: View {
     @EnvironmentObject var vm: ReminderVM
     let occurrence: OccurrenceResponse
+    @State private var showEditSheet = false
+    @State private var showDeleteAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -170,6 +172,32 @@ struct ReminderCard: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
         .shadow(radius: 2)
+        .contextMenu {
+            Button(action: {
+                showEditSheet = true
+            }) {
+                Label("Edit Reminder", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive, action: {
+                showDeleteAlert = true
+            }) {
+                Label("Delete Reminder", systemImage: "trash")
+            }
+        }
+        .alert("Delete Reminder?", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await vm.deleteReminder(id: occurrence.reminderId)
+                }
+            }
+        } message: {
+            Text("This will delete '\(occurrence.reminder.title)' and all its future occurrences.")
+        }
+        .sheet(isPresented: $showEditSheet) {
+            EditReminderView(vm: vm, reminderId: occurrence.reminderId)
+        }
     }
     
     func categoryColor(_ category: String) -> Color {
