@@ -10,7 +10,7 @@ class ReminderVM: ObservableObject {
     @Published var isAuthenticated = false
     
     nonisolated(unsafe) private let synthesizer = AVSpeechSynthesizer()
-    private let apiClient = APIClient.shared
+    let apiClient = APIClient.shared // Made public for EditReminderView
     private let notificationManager = NotificationManager.shared
     private var notificationObserver: NSObjectProtocol?
     
@@ -132,6 +132,72 @@ class ReminderVM: ObservableObject {
             }
         } catch {
             errorMessage = "Failed to snooze: \(error.localizedDescription)"
+        }
+    }
+    
+    func createReminder(title: String, notes: String?, category: String, rrule: String, time: Date) async throws {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await apiClient.createReminder(
+                title: title,
+                notes: notes,
+                category: category,
+                rrule: rrule,
+                tz: TimeZone.current.identifier
+            )
+            
+            // Refresh to show new reminder's occurrences
+            await refresh()
+            
+            print("✅ Reminder created: \(title)")
+        } catch {
+            errorMessage = "Failed to create reminder: \(error.localizedDescription)"
+            isLoading = false
+            throw error
+        }
+    }
+    
+    func updateReminder(id: Int, title: String, notes: String?, category: String, rrule: String) async throws {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await apiClient.updateReminder(
+                id: id,
+                title: title,
+                notes: notes,
+                category: category,
+                rrule: rrule,
+                tz: TimeZone.current.identifier
+            )
+            
+            // Refresh to show updated occurrences
+            await refresh()
+            
+            print("✅ Reminder updated: \(title)")
+        } catch {
+            errorMessage = "Failed to update reminder: \(error.localizedDescription)"
+            isLoading = false
+            throw error
+        }
+    }
+    
+    func deleteReminder(id: Int) async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await apiClient.deleteReminder(id: id)
+            
+            // Refresh to remove deleted reminder's occurrences
+            await refresh()
+            
+            print("✅ Reminder deleted")
+        } catch {
+            errorMessage = "Failed to delete reminder: \(error.localizedDescription)"
+            isLoading = false
         }
     }
     

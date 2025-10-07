@@ -20,6 +20,32 @@ class APIClient {
         return token
     }
     
+    func createReminder(title: String, notes: String?, category: String, rrule: String, tz: String) async throws {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/reminders")!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var body: [String: Any] = [
+            "title": title,
+            "category": category,
+            "rrule": rrule,
+            "tz": tz
+        ]
+        
+        if let notes = notes {
+            body["notes"] = notes
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+    
     func fetchTodayReminders() async throws -> [OccurrenceResponse] {
         guard let token = token else {
             throw APIError.notAuthenticated
@@ -86,6 +112,67 @@ class APIClient {
         }
         return try decoder.decode(SnoozeResponse.self, from: data)
     }
+    
+    func fetchReminders() async throws -> [ReminderResponse] {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/reminders")!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
+        }
+        return try decoder.decode([ReminderResponse].self, from: data)
+    }
+    
+    func updateReminder(id: Int, title: String, notes: String?, category: String, rrule: String, tz: String) async throws {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/reminders/\(id)")!)
+        request.httpMethod = "PUT"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var body: [String: Any] = [
+            "title": title,
+            "category": category,
+            "rrule": rrule,
+            "tz": tz
+        ]
+        
+        if let notes = notes {
+            body["notes"] = notes
+        }
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+    
+    func deleteReminder(id: Int) async throws {
+        guard let token = token else {
+            throw APIError.notAuthenticated
+        }
+        
+        var request = URLRequest(url: URL(string: "\(baseURL)/reminders/\(id)")!)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
 }
 
 enum APIError: Error {
@@ -127,5 +214,24 @@ struct SnoozeResponse: Codable {
         case snoozedOccurrenceId = "snoozed_occurrence_id"
         case scheduledAt = "scheduled_at"
         case minutes
+    }
+}
+
+struct ReminderResponse: Codable, Identifiable {
+    let id: Int
+    let title: String
+    let notes: String?
+    let rrule: String
+    let tz: String
+    let category: String
+    let userId: Int
+    let createdAt: Date
+    let updatedAt: Date
+    
+    enum CodingKeys: String, CodingKey {
+        case id, title, notes, rrule, tz, category
+        case userId = "user_id"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
     }
 }

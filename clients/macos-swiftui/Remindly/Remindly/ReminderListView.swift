@@ -4,6 +4,7 @@ import UserNotifications
 struct ReminderListView: View {
     @EnvironmentObject var vm: ReminderVM
     @State private var showDebugInfo = false
+    @State private var showCreateReminder = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -12,6 +13,17 @@ struct ReminderListView: View {
                 Text("Today's Reminders")
                     .font(.system(size: 36, weight: .bold))
                 Spacer()
+                
+                // Add reminder button
+                Button(action: {
+                    showCreateReminder = true
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                .help("Create new reminder")
                 
                 // Debug button
                 Button(action: {
@@ -75,12 +87,17 @@ struct ReminderListView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .padding()
+        .sheet(isPresented: $showCreateReminder) {
+            CreateReminderView(vm: vm)
+        }
     }
 }
 
 struct ReminderCard: View {
     @EnvironmentObject var vm: ReminderVM
     let occurrence: OccurrenceResponse
+    @State private var showEditSheet = false
+    @State private var showDeleteAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -155,6 +172,32 @@ struct ReminderCard: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
         .shadow(radius: 2)
+        .contextMenu {
+            Button(action: {
+                showEditSheet = true
+            }) {
+                Label("Edit Reminder", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive, action: {
+                showDeleteAlert = true
+            }) {
+                Label("Delete Reminder", systemImage: "trash")
+            }
+        }
+        .alert("Delete Reminder?", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                Task {
+                    await vm.deleteReminder(id: occurrence.reminderId)
+                }
+            }
+        } message: {
+            Text("This will delete '\(occurrence.reminder.title)' and all its future occurrences.")
+        }
+        .sheet(isPresented: $showEditSheet) {
+            EditReminderView(vm: vm, reminderId: occurrence.reminderId)
+        }
     }
     
     func categoryColor(_ category: String) -> Color {
