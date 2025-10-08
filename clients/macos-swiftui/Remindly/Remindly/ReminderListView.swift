@@ -12,6 +12,21 @@ struct ReminderListView: View {
             HStack {
                 Text("Today's Reminders")
                     .font(.system(size: 36, weight: .bold))
+                
+                // Offline indicator
+                if vm.isOffline {
+                    HStack(spacing: 4) {
+                        Image(systemName: "wifi.slash")
+                        Text("Offline")
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
                 Spacer()
                 
                 // Add reminder button
@@ -24,6 +39,17 @@ struct ReminderListView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Create new reminder")
+                
+                // Offline toggle (debug)
+                Button(action: {
+                    NetworkMonitor.shared.forceOffline.toggle()
+                }) {
+                    Image(systemName: NetworkMonitor.shared.forceOffline ? "network.slash" : "network")
+                        .font(.system(size: 20))
+                        .foregroundColor(NetworkMonitor.shared.forceOffline ? .red : .primary)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle offline mode (debug)")
                 
                 // Debug button
                 Button(action: {

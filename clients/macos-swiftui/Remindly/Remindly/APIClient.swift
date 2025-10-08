@@ -3,8 +3,7 @@ import Foundation
 class APIClient {
     static let shared = APIClient()
     
-    // Change this to your backend URL
-    let baseURL = "http://localhost:3000"
+    let baseURL = Config.baseURL
     
     private var token: String?
     
@@ -20,7 +19,7 @@ class APIClient {
         return token
     }
     
-    func createReminder(title: String, notes: String?, category: String, rrule: String, tz: String) async throws {
+    func createReminder(title: String, notes: String?, category: String, rrule: String, tz: String, startTime: Date? = nil) async throws {
         guard let token = token else {
             throw APIError.notAuthenticated
         }
@@ -39,6 +38,12 @@ class APIClient {
         
         if let notes = notes {
             body["notes"] = notes
+        }
+        
+        if let startTime = startTime {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            body["start_time"] = formatter.string(from: startTime)
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -136,7 +141,7 @@ class APIClient {
         return try decoder.decode([ReminderResponse].self, from: data)
     }
     
-    func updateReminder(id: Int, title: String, notes: String?, category: String, rrule: String, tz: String) async throws {
+    func updateReminder(id: Int, title: String, notes: String?, category: String, rrule: String, tz: String, startTime: Date? = nil) async throws {
         guard let token = token else {
             throw APIError.notAuthenticated
         }
@@ -155,6 +160,12 @@ class APIClient {
         
         if let notes = notes {
             body["notes"] = notes
+        }
+        
+        if let startTime = startTime {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            body["start_time"] = formatter.string(from: startTime)
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
