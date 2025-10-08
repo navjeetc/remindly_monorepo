@@ -5,6 +5,9 @@ struct EditReminderView: View {
     @ObservedObject var vm: ReminderVM
     let reminderId: Int
     
+    private let dataManager = DataManager.shared
+    private let networkMonitor = NetworkMonitor.shared
+    
     @State private var reminder: ReminderResponse?
     @State private var title = ""
     @State private var notes = ""
@@ -62,18 +65,31 @@ struct EditReminderView: View {
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.secondary)
                                 .padding(.bottom, 8)
-                            Picker("Category", selection: $category) {
+                            
+                            HStack(spacing: 12) {
                                 ForEach(ReminderCategory.allCases, id: \.self) { cat in
-                                    HStack {
-                                        Text(cat.icon)
-                                            .font(.system(size: 22))
-                                        Text(cat.rawValue.capitalized)
-                                            .font(.system(size: 20))
+                                    Button(action: {
+                                        category = cat
+                                        print("🔄 Category changed to: \(cat.rawValue)")
+                                    }) {
+                                        VStack(spacing: 4) {
+                                            Text(cat.icon)
+                                                .font(.system(size: 28))
+                                            Text(cat.rawValue.capitalized)
+                                                .font(.system(size: 16))
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(category == cat ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                        .cornerRadius(8)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(category == cat ? Color.blue : Color.clear, lineWidth: 2)
+                                        )
                                     }
-                                    .tag(cat)
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .pickerStyle(.segmented)
                         }
                         
                         // Time Section
@@ -160,23 +176,47 @@ struct EditReminderView: View {
     
     private func loadReminder() async {
         do {
-            let reminders = try await vm.apiClient.fetchReminders()
-            if let found = reminders.first(where: { $0.id == reminderId }) {
-                reminder = found
-                title = found.title
-                notes = found.notes ?? ""
-                category = ReminderCategory(rawValue: found.category) ?? .medication
-                // Parse RRULE to set recurrence type (simplified)
-                parseRRule(found.rrule)
+            if networkMonitor.effectivelyConnected {
+                // Online: fetch from API
+                print("📡 Loading reminder from API...")
+                let reminders = try await vm.apiClient.fetchReminders()
+                if let found = reminders.first(where: { $0.id == reminderId }) {
+                    reminder = found
+                    title = found.title
+                    notes = found.notes ?? ""
+                    print("📋 Loaded category from API: '\(found.category)'")
+                    category = ReminderCategory(rawValue: found.category) ?? .medication
+                    print("📋 Parsed category: \(category.rawValue)")
+                    parseRRule(found.rrule)
+                    print("✅ Loaded reminder from API")
+                } else {
+                    errorMessage = "Reminder not found"
+                }
+            } else {
+                // Offline: load from local cache
+                print("📱 Loading reminder from cache (offline)...")
+                let localReminders = try dataManager.fetchReminders()
+                print("📱 Found \(localReminders.count) cached reminders")
+                if let found = localReminders.first(where: { $0.id == reminderId }) {
+                    title = found.title
+                    notes = found.notes ?? ""
+                    category = ReminderCategory(rawValue: found.category) ?? .medication
+                    parseRRule(found.rrule)
+                    print("✅ Loaded reminder from cache")
+                } else {
+                    errorMessage = "Reminder not found in cache. Please go online to load it."
+                }
             }
             isLoading = false
         } catch {
+            print("❌ Error loading reminder: \(error)")
             errorMessage = "Failed to load reminder: \(error.localizedDescription)"
             isLoading = false
         }
     }
     
     private func parseRRule(_ rrule: String) {
+        // Parse recurrence type
         if rrule.contains("FREQ=DAILY") {
             recurrenceType = .daily
         } else if rrule.contains("FREQ=HOURLY") {
@@ -191,6 +231,30 @@ struct EditReminderView: View {
         } else if rrule.contains("BYDAY=SA,SU") {
             recurrenceType = .weekends
         }
+        
+        // Parse time from BYHOUR and BYMINUTE
+        var hour = 9 // Default
+        var minute = 0 // Default
+        
+        if let hourRange = rrule.range(of: "BYHOUR=(\\d+)", options: .regularExpression) {
+            let hourStr = rrule[hourRange].replacingOccurrences(of: "BYHOUR=", with: "")
+            hour = Int(hourStr) ?? 9
+        }
+        
+        if let minuteRange = rrule.range(of: "BYMINUTE=(\\d+)", options: .regularExpression) {
+            let minuteStr = rrule[minuteRange].replacingOccurrences(of: "BYMINUTE=", with: "")
+            minute = Int(minuteStr) ?? 0
+        }
+        
+        // Set the selectedTime to the parsed time
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: Date())
+        components.hour = hour
+        components.minute = minute
+        if let date = calendar.date(from: components) {
+            selectedTime = date
+            print("⏰ Parsed time from rrule: \(hour):\(minute) -> \(selectedTime)")
+        }
     }
     
     private func saveReminder() async {
@@ -204,6 +268,7 @@ struct EditReminderView: View {
         
         do {
             let rrule = generateRRule()
+            print("💾 Saving reminder with category: '\(category.rawValue)'")
             try await vm.updateReminder(
                 id: reminderId,
                 title: title,
@@ -211,6 +276,8 @@ struct EditReminderView: View {
                 category: category.rawValue,
                 rrule: rrule
             )
+            // Small delay to ensure UI updates propagate before dismissing
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
             dismiss()
         } catch {
             errorMessage = "Failed to update reminder: \(error.localizedDescription)"
@@ -227,6 +294,8 @@ struct EditReminderView: View {
         case .daily:
             return "FREQ=DAILY;BYHOUR=\(hour);BYMINUTE=\(minute)"
         case .everyNHours:
+            // For hourly intervals, just use FREQ and INTERVAL
+            // The backend will use the schedule start time
             return "FREQ=HOURLY;INTERVAL=\(customHours)"
         case .weekdays:
             return "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=\(hour);BYMINUTE=\(minute)"

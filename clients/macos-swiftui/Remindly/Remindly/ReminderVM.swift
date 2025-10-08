@@ -8,14 +8,20 @@ class ReminderVM: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var isAuthenticated = false
+    @Published var isOffline = false
     
     nonisolated(unsafe) private let synthesizer = AVSpeechSynthesizer()
     let apiClient = APIClient.shared // Made public for EditReminderView
     private let notificationManager = NotificationManager.shared
+    private let dataManager = DataManager.shared
+    private let syncManager = SyncManager.shared
+    private let networkMonitor = NetworkMonitor.shared
     private var notificationObserver: NSObjectProtocol?
+    private var networkObserver: AnyCancellable?
     
     init() {
         setupNotificationObserver()
+        setupNetworkObserver()
     }
     
     deinit {
@@ -36,7 +42,20 @@ class ReminderVM: ObservableObject {
                 // Auto-authenticate in dev mode
                 _ = try await apiClient.authenticate(email: "senior@example.com")
                 isAuthenticated = true
+                
+                // Initial fetch and cache
                 await refresh()
+                
+                // Also fetch and cache all reminders
+                if networkMonitor.effectivelyConnected {
+                    do {
+                        let reminders = try await apiClient.fetchReminders()
+                        try dataManager.saveReminders(reminders)
+                        print("✅ Cached \(reminders.count) reminders")
+                    } catch {
+                        print("⚠️ Failed to cache reminders: \(error.localizedDescription)")
+                    }
+                }
             } catch {
                 errorMessage = "Failed to authenticate: \(error.localizedDescription)"
             }
@@ -58,6 +77,26 @@ class ReminderVM: ObservableObject {
             
             Task {
                 await self.handleNotificationAction(occurrenceId: occurrenceId, action: action)
+            }
+        }
+    }
+    
+    private func setupNetworkObserver() {
+        networkObserver = Publishers.CombineLatest(
+            networkMonitor.$isConnected,
+            networkMonitor.$forceOffline
+        )
+        .map { isConnected, forceOffline in
+            return isConnected && !forceOffline
+        }
+        .sink { [weak self] effectivelyConnected in
+            self?.isOffline = !effectivelyConnected
+            if effectivelyConnected {
+                Task {
+                    // Wait for sync to complete before refreshing
+                    await self?.syncManager.syncPendingActions()
+                    await self?.refresh()
+                }
             }
         }
     }
@@ -86,20 +125,53 @@ class ReminderVM: ObservableObject {
         errorMessage = nil
         
         do {
-            occurrences = try await apiClient.fetchTodayReminders()
+            if networkMonitor.effectivelyConnected {
+                // Online: fetch from API and cache
+                print("🔄 Fetching occurrences from API...")
+                print("📊 Current occurrences count BEFORE fetch: \(occurrences.count)")
+                occurrences = try await apiClient.fetchTodayReminders()
+                print("📊 Occurrences count AFTER fetch: \(occurrences.count)")
+                try dataManager.saveOccurrences(occurrences)
+                print("✅ Fetched \(occurrences.count) occurrences from API")
+                for (index, occ) in occurrences.enumerated() {
+                    print("  [\(index)] id:\(occ.id) - '\(occ.reminder.title)' at \(occ.scheduledAt) (\(occ.status))")
+                }
+                print("📊 Final occurrences count: \(occurrences.count)")
+                
+                // Also refresh reminders cache for offline editing
+                do {
+                    let reminders = try await apiClient.fetchReminders()
+                    try dataManager.saveReminders(reminders)
+                    print("✅ Cached \(reminders.count) reminders")
+                } catch {
+                    print("⚠️ Failed to cache reminders: \(error.localizedDescription)")
+                }
+            } else {
+                // Offline: load from cache
+                let localOccurrences = try dataManager.fetchTodayOccurrences()
+                occurrences = localOccurrences.map { $0.toOccurrenceResponse() }
+                print("📱 Loaded \(occurrences.count) occurrences from cache (offline)")
+                if !occurrences.isEmpty {
+                    print("📱 First occurrence title: '\(occurrences[0].reminder.title)'")
+                }
+            }
             
             // Schedule notifications for all pending reminders
             await notificationManager.scheduleNotifications(for: occurrences)
+            print("🔔 Scheduled notifications for \(occurrences.count) occurrences")
         } catch {
+            print("❌ Refresh error: \(error.localizedDescription)")
             errorMessage = "Failed to load reminders: \(error.localizedDescription)"
         }
         
         isLoading = false
+        print("✅ Refresh complete, isLoading=false, occurrences.count=\(occurrences.count)")
     }
     
     func acknowledge(occurrence: OccurrenceResponse, kind: String) async {
         do {
-            try await apiClient.acknowledge(occurrenceId: occurrence.id, kind: kind)
+            // Queue the action (will sync immediately if online)
+            try await syncManager.queueAcknowledge(occurrenceId: occurrence.id, kind: kind)
             
             // Cancel notifications for this occurrence
             notificationManager.cancelNotification(for: occurrence.id)
@@ -115,12 +187,10 @@ class ReminderVM: ObservableObject {
             // Cancel existing notifications
             notificationManager.cancelNotification(for: occurrence.id)
             
-            // Call backend snooze endpoint
-            let response = try await apiClient.snooze(occurrenceId: occurrence.id, minutes: minutes)
+            // Queue the snooze action
+            try await syncManager.queueSnooze(occurrenceId: occurrence.id, minutes: minutes)
             
-            print("✅ Snoozed! New occurrence ID: \(response.snoozedOccurrenceId) at \(response.scheduledAt)")
-            
-            // Refresh to get updated list including new snoozed occurrence
+            // Refresh to get updated list
             await refresh()
             
             errorMessage = "⏰ Reminder snoozed for \(minutes) minutes"
@@ -140,16 +210,32 @@ class ReminderVM: ObservableObject {
         errorMessage = nil
         
         do {
-            try await apiClient.createReminder(
+            // For hourly reminders, pass the start time
+            let startTime = rrule.contains("FREQ=HOURLY") ? time : nil
+            
+            // Queue the create action
+            try await syncManager.queueCreateReminder(
                 title: title,
                 notes: notes,
                 category: category,
                 rrule: rrule,
-                tz: TimeZone.current.identifier
+                tz: TimeZone.current.identifier,
+                startTime: startTime
             )
             
             // Refresh to show new reminder's occurrences
             await refresh()
+            
+            // Also refresh reminders cache for offline editing
+            if networkMonitor.effectivelyConnected {
+                do {
+                    let reminders = try await apiClient.fetchReminders()
+                    try dataManager.saveReminders(reminders)
+                    print("✅ Cached \(reminders.count) reminders after create")
+                } catch {
+                    print("⚠️ Failed to cache reminders after create: \(error.localizedDescription)")
+                }
+            }
             
             print("✅ Reminder created: \(title)")
         } catch {
@@ -160,11 +246,14 @@ class ReminderVM: ObservableObject {
     }
     
     func updateReminder(id: Int, title: String, notes: String?, category: String, rrule: String) async throws {
+        print("🔄 Starting updateReminder for id:\(id), title:'\(title)'")
         isLoading = true
         errorMessage = nil
         
         do {
-            try await apiClient.updateReminder(
+            // Queue the update action
+            print("📝 Queueing update action...")
+            try await syncManager.queueUpdateReminder(
                 id: id,
                 title: title,
                 notes: notes,
@@ -173,11 +262,13 @@ class ReminderVM: ObservableObject {
                 tz: TimeZone.current.identifier
             )
             
+            print("🔄 Update queued, now refreshing occurrences...")
             // Refresh to show updated occurrences
             await refresh()
             
             print("✅ Reminder updated: \(title)")
         } catch {
+            print("❌ Update failed: \(error.localizedDescription)")
             errorMessage = "Failed to update reminder: \(error.localizedDescription)"
             isLoading = false
             throw error
@@ -189,7 +280,8 @@ class ReminderVM: ObservableObject {
         errorMessage = nil
         
         do {
-            try await apiClient.deleteReminder(id: id)
+            // Queue the delete action
+            try await syncManager.queueDeleteReminder(id: id)
             
             // Refresh to remove deleted reminder's occurrences
             await refresh()

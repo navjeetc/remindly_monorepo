@@ -63,11 +63,14 @@ class NotificationManager: NSObject, ObservableObject {
         center.removeAllPendingNotificationRequests()
         
         let now = Date()
+        // Allow a 5-minute grace period for recently passed occurrences
+        let gracePeriod: TimeInterval = 5 * 60 // 5 minutes
+        let earliestScheduleTime = now.addingTimeInterval(-gracePeriod)
         
         for occurrence in occurrences {
-            // Only schedule for pending occurrences in the future
+            // Only schedule for pending occurrences that are either in the future or within grace period
             guard occurrence.status == "pending",
-                  occurrence.scheduledAt > now else {
+                  occurrence.scheduledAt > earliestScheduleTime else {
                 continue
             }
             
@@ -108,8 +111,12 @@ class NotificationManager: NSObject, ObservableObject {
             "reminderId": occurrence.reminderId
         ]
         
+        // If scheduled time is in the past, trigger immediately (after 1 second)
+        let now = Date()
+        let triggerDate = occurrence.scheduledAt > now ? occurrence.scheduledAt : now.addingTimeInterval(1)
+        
         let trigger = UNCalendarNotificationTrigger(
-            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: occurrence.scheduledAt),
+            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: triggerDate),
             repeats: false
         )
         

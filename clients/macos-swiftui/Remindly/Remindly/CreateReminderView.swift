@@ -55,18 +55,31 @@ struct CreateReminderView: View {
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.secondary)
                             .padding(.bottom, 8)
-                        Picker("Category", selection: $category) {
+                        
+                        HStack(spacing: 12) {
                             ForEach(ReminderCategory.allCases, id: \.self) { cat in
-                                HStack {
-                                    Text(cat.icon)
-                                        .font(.system(size: 22))
-                                    Text(cat.rawValue.capitalized)
-                                        .font(.system(size: 20))
+                                Button(action: {
+                                    category = cat
+                                    print("🔄 Category changed to: \(cat.rawValue)")
+                                }) {
+                                    VStack(spacing: 4) {
+                                        Text(cat.icon)
+                                            .font(.system(size: 28))
+                                        Text(cat.rawValue.capitalized)
+                                            .font(.system(size: 16))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(category == cat ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(category == cat ? Color.blue : Color.clear, lineWidth: 2)
+                                    )
                                 }
-                                .tag(cat)
+                                .buttonStyle(.plain)
                             }
                         }
-                        .pickerStyle(.segmented)
                     }
 
                     // Time Section
