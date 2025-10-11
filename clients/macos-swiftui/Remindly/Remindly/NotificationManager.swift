@@ -59,6 +59,15 @@ class NotificationManager: NSObject, ObservableObject {
     // MARK: - Notification Scheduling
     
     func scheduleNotifications(for occurrences: [OccurrenceResponse]) async {
+        let settings = AppSettings.shared
+        
+        // Skip if notifications are disabled
+        guard settings.notificationsEnabled else {
+            print("🔕 Notifications disabled in settings")
+            center.removeAllPendingNotificationRequests()
+            return
+        }
+        
         // Remove all pending notifications first
         center.removeAllPendingNotificationRequests()
         
@@ -74,10 +83,16 @@ class NotificationManager: NSObject, ObservableObject {
                 continue
             }
             
+            // Skip if in quiet hours
+            if settings.isInQuietHours() {
+                print("🌙 Skipping notification during quiet hours: \(occurrence.reminder.title)")
+                continue
+            }
+            
             // Schedule main notification (with voice)
             await scheduleMainNotification(for: occurrence)
             
-            // Schedule repeat notification 5 minutes after if not acknowledged
+            // Schedule repeat notification based on settings
             await scheduleRepeatNotification(for: occurrence)
         }
         
@@ -87,6 +102,8 @@ class NotificationManager: NSObject, ObservableObject {
     }
     
     private func scheduleMainNotification(for occurrence: OccurrenceResponse) async {
+        let settings = AppSettings.shared
+        
         let content = UNMutableNotificationContent()
         content.title = occurrence.reminder.title
         
@@ -96,7 +113,13 @@ class NotificationManager: NSObject, ObservableObject {
             content.body = "Time for your \(occurrence.reminder.category ?? "reminder")"
         }
         
-        content.sound = .defaultCritical // Use critical sound for important reminders
+        // Use sound based on settings
+        if settings.notificationSoundEnabled {
+            content.sound = .defaultCritical // Use critical sound for important reminders
+        } else {
+            content.sound = nil
+        }
+        
         content.categoryIdentifier = "REMINDER"
         content.badge = 1
         
@@ -130,12 +153,21 @@ class NotificationManager: NSObject, ObservableObject {
     }
     
     private func scheduleRepeatNotification(for occurrence: OccurrenceResponse) async {
-        let repeatTime = occurrence.scheduledAt.addingTimeInterval(300) // 5 minutes after
+        let settings = AppSettings.shared
+        let repeatInterval = TimeInterval(settings.repeatInterval * 60) // Convert minutes to seconds
+        let repeatTime = occurrence.scheduledAt.addingTimeInterval(repeatInterval)
         
         let content = UNMutableNotificationContent()
         content.title = "⏰ Reminder: \(occurrence.reminder.title)"
         content.body = "You haven't acknowledged this reminder yet"
-        content.sound = .defaultCritical
+        
+        // Use sound based on settings
+        if settings.notificationSoundEnabled {
+            content.sound = .defaultCritical
+        } else {
+            content.sound = nil
+        }
+        
         content.categoryIdentifier = "REMINDER_REPEAT"
         content.badge = 1
         
@@ -207,13 +239,22 @@ class NotificationManager: NSObject, ObservableObject {
     
     // MARK: - Voice Prompts
     
-    nonisolated func playVoicePrompt(_ text: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.4 // Slower for seniors
-        utterance.volume = 1.0
-        utterance.preUtteranceDelay = 0.5
-        synthesizer.speak(utterance)
+    func playVoicePrompt(_ text: String) {
+        Task { @MainActor in
+            let settings = AppSettings.shared
+            let voiceRate = settings.voiceRate
+            let voiceVolume = settings.voiceVolume
+            
+            Task.detached { [weak self] in
+                guard let self = self else { return }
+                let utterance = AVSpeechUtterance(string: text)
+                utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+                utterance.rate = Float(voiceRate)
+                utterance.volume = Float(voiceVolume)
+                utterance.preUtteranceDelay = 0.5
+                self.synthesizer.speak(utterance)
+            }
+        }
     }
     
     // MARK: - Utility
@@ -249,11 +290,15 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         // Play voice for main reminder notifications
         if let type = userInfo["type"] as? String, 
            (type == "main" || type == "repeat") {
-            var text = notification.request.content.title
+            let title = notification.request.content.title
             // Remove emojis from voice (they sound weird)
-            text = text.replacingOccurrences(of: "⏰ Reminder: ", with: "")
-            text = text.replacingOccurrences(of: "⏰", with: "")
-            playVoicePrompt(text)
+            let cleanText = title
+                .replacingOccurrences(of: "⏰ Reminder: ", with: "")
+                .replacingOccurrences(of: "⏰", with: "")
+            
+            Task { @MainActor [weak self, cleanText] in
+                self?.playVoicePrompt(cleanText)
+            }
         }
         
         // Show notification even when app is in foreground
@@ -270,11 +315,15 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         
         // Play voice when user taps the notification (brings app to foreground)
         if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
-            var text = response.notification.request.content.title
+            let title = response.notification.request.content.title
             // Remove emojis from voice
-            text = text.replacingOccurrences(of: "⏰ Reminder: ", with: "")
-            text = text.replacingOccurrences(of: "⏰", with: "")
-            playVoicePrompt(text)
+            let cleanText = title
+                .replacingOccurrences(of: "⏰ Reminder: ", with: "")
+                .replacingOccurrences(of: "⏰", with: "")
+            
+            Task { @MainActor [weak self, cleanText] in
+                self?.playVoicePrompt(cleanText)
+            }
         }
         
         guard let occurrenceId = userInfo["occurrenceId"] as? Int else {

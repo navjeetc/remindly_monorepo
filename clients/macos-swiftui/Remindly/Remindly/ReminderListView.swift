@@ -3,8 +3,10 @@ import UserNotifications
 
 struct ReminderListView: View {
     @EnvironmentObject var vm: ReminderVM
+    @ObservedObject var settings = AppSettings.shared
     @State private var showDebugInfo = false
     @State private var showCreateReminder = false
+    @State private var showSettings = false
     
     var body: some View {
         VStack(spacing: 20) {
@@ -28,6 +30,17 @@ struct ReminderListView: View {
                 }
                 
                 Spacer()
+                
+                // Settings button
+                Button(action: {
+                    showSettings = true
+                }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
                 
                 // Add reminder button
                 Button(action: {
@@ -113,14 +126,19 @@ struct ReminderListView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .padding()
+        .preferredColorScheme(settings.preferredColorScheme)
         .sheet(isPresented: $showCreateReminder) {
             CreateReminderView(vm: vm)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 }
 
 struct ReminderCard: View {
     @EnvironmentObject var vm: ReminderVM
+    @ObservedObject var settings = AppSettings.shared
     let occurrence: OccurrenceResponse
     @State private var showEditSheet = false
     @State private var showDeleteAlert = false
@@ -131,10 +149,10 @@ struct ReminderCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(occurrence.reminder.title)
-                        .font(.system(size: 28, weight: .semibold))
+                        .font(.system(size: settings.fontSize + 4, weight: .semibold))
                     
                     Text(occurrence.scheduledAt, style: .time)
-                        .font(.system(size: 20))
+                        .font(.system(size: settings.fontSize - 4))
                         .foregroundColor(.secondary)
                     
                     if let category = occurrence.reminder.category {
@@ -163,26 +181,26 @@ struct ReminderCard: View {
             // Notes
             if let notes = occurrence.reminder.notes, !notes.isEmpty {
                 Text(notes)
-                    .font(.system(size: 20))
+                    .font(.system(size: settings.fontSize - 4))
                     .foregroundColor(.secondary)
             }
             
             // Action buttons
             if occurrence.status == "pending" {
                 HStack(spacing: 16) {
-                    BigButton(title: "✓ Taken", color: .green) {
+                    BigButton(title: "✓ Taken", color: .green, fontSize: settings.fontSize - 2) {
                         Task {
                             await vm.acknowledge(occurrence: occurrence, kind: "taken")
                         }
                     }
                     
-                    BigButton(title: "⏰ Snooze", color: .orange) {
+                    BigButton(title: "⏰ Snooze", color: .orange, fontSize: settings.fontSize - 2) {
                         Task {
                             await vm.acknowledge(occurrence: occurrence, kind: "snooze")
                         }
                     }
                     
-                    BigButton(title: "✗ Skip", color: .gray) {
+                    BigButton(title: "✗ Skip", color: .gray, fontSize: settings.fontSize - 2) {
                         Task {
                             await vm.acknowledge(occurrence: occurrence, kind: "skip")
                         }
@@ -190,14 +208,18 @@ struct ReminderCard: View {
                 }
             } else {
                 Text("Acknowledged")
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: settings.fontSize - 4, weight: .medium))
                     .foregroundColor(.green)
             }
         }
         .padding(24)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(settings.highContrastMode ? Color.white : Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
-        .shadow(radius: 2)
+        .shadow(radius: settings.highContrastMode ? 4 : 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(settings.highContrastMode ? Color.black : Color.clear, lineWidth: 2)
+        )
         .contextMenu {
             Button(action: {
                 showEditSheet = true
@@ -239,12 +261,13 @@ struct ReminderCard: View {
 struct BigButton: View {
     let title: String
     let color: Color
+    var fontSize: Double = 22
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: fontSize, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
