@@ -16,6 +16,7 @@ class ReminderVM: ObservableObject {
     private let dataManager = DataManager.shared
     private let syncManager = SyncManager.shared
     private let networkMonitor = NetworkMonitor.shared
+    private let settings = AppSettings.shared
     private var notificationObserver: NSObjectProtocol?
     private var networkObserver: AnyCancellable?
     
@@ -293,11 +294,17 @@ class ReminderVM: ObservableObject {
         }
     }
     
-    nonisolated func speak(_ text: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = 0.4 // Slower for seniors
-        utterance.volume = 1.0
-        synthesizer.speak(utterance)
+    func speak(_ text: String) {
+        let voiceRate = settings.voiceRate
+        let voiceVolume = settings.voiceVolume
+        
+        Task.detached { [weak self] in
+            guard let self = self else { return }
+            let utterance = AVSpeechUtterance(string: text)
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+            utterance.rate = Float(voiceRate)
+            utterance.volume = Float(voiceVolume)
+            self.synthesizer.speak(utterance)
+        }
     }
 }
