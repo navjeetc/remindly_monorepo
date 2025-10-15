@@ -1,0 +1,52 @@
+<div class="max-w-2xl mx-auto">
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">
+        Pairing Token Generated
+      </h3>
+      <div class="mt-2 max-w-xl text-sm text-gray-500">
+        <p>Share this token with your caregiver. They can use it to link to your account.</p>
+      </div>
+      <div class="mt-5">
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <code class="text-lg font-mono text-gray-900 break-all"><%= @pairing_token %></code>
+            <button onclick="copyToken()" class="ml-4 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Copy
+            </button>
+          </div>
+        </div>
+        <p class="mt-3 text-sm text-gray-500">
+          <strong>Expires:</strong> <%= @expires_at.strftime("%B %d, %Y at %I:%M %p") %>
+        </p>
+      </div>
+      <div class="mt-6">
+        <%= link_to "Back to Dashboard", dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4">
+    <div class="flex">
+      <div class="flex-shrink-0">
+        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      <div class="ml-3">
+        <p class="text-sm text-blue-700">
+          <strong>How to share:</strong> Send this token to your caregiver via text, email, or phone. They'll enter it in their dashboard to link to your account.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyToken() {
+  const token = '<%= @pairing_token %>';
+  navigator.clipboard.writeText(token).then(() => {
+    alert('Token copied to clipboard!');
+  });
+}
+</script>
