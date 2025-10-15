@@ -33,32 +33,28 @@ class ReminderVM: ObservableObject {
     
     func bootstrap() {
         Task {
-            do {
-                // Request notification permissions
-                let granted = await notificationManager.requestAuthorization()
-                if !granted {
-                    errorMessage = "Notification permissions denied. Please enable in System Settings."
+            // Request notification permissions
+            let granted = await notificationManager.requestAuthorization()
+            if !granted {
+                errorMessage = "Notification permissions denied. Please enable in System Settings."
+            }
+            
+            // Authentication is now handled by AuthenticationManager
+            // Token is already set in APIClient by AuthenticationManager
+            isAuthenticated = true
+            
+            // Initial fetch and cache
+            await refresh()
+            
+            // Also fetch and cache all reminders
+            if networkMonitor.effectivelyConnected {
+                do {
+                    let reminders = try await apiClient.fetchReminders()
+                    try dataManager.saveReminders(reminders)
+                    print("✅ Cached \(reminders.count) reminders")
+                } catch {
+                    print("⚠️ Failed to cache reminders: \(error.localizedDescription)")
                 }
-                
-                // Auto-authenticate in dev mode
-                _ = try await apiClient.authenticate(email: "senior@example.com")
-                isAuthenticated = true
-                
-                // Initial fetch and cache
-                await refresh()
-                
-                // Also fetch and cache all reminders
-                if networkMonitor.effectivelyConnected {
-                    do {
-                        let reminders = try await apiClient.fetchReminders()
-                        try dataManager.saveReminders(reminders)
-                        print("✅ Cached \(reminders.count) reminders")
-                    } catch {
-                        print("⚠️ Failed to cache reminders: \(error.localizedDescription)")
-                    }
-                }
-            } catch {
-                errorMessage = "Failed to authenticate: \(error.localizedDescription)"
             }
         }
     }

@@ -40,6 +40,9 @@ struct SettingsView: View {
                 SettingsTab(title: "Notifications", icon: "bell.badge", isSelected: selectedTab == 2) {
                     selectedTab = 2
                 }
+                SettingsTab(title: "Account", icon: "person.circle", isSelected: selectedTab == 3) {
+                    selectedTab = 3
+                }
             }
             .padding(.horizontal)
             .padding(.top, 8)
@@ -57,6 +60,8 @@ struct SettingsView: View {
                         VoiceSoundSettings()
                     case 2:
                         NotificationSettings()
+                    case 3:
+                        AccountSettings()
                     default:
                         EmptyView()
                     }
@@ -370,6 +375,87 @@ struct TimePickerSlider: View {
         let hours = Int(value)
         let minutes = Int((value - Double(hours)) * 60)
         return String(format: "%02d:%02d", hours, minutes)
+    }
+}
+
+// MARK: - Account Settings
+struct AccountSettings: View {
+    @ObservedObject private var authManager = AuthenticationManager.shared
+    @State private var showLogoutConfirmation = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Account")
+                .font(.system(size: 24, weight: .bold))
+            
+            // User Info
+            GroupBox {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.blue)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Signed in as")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                            
+                            Text(authManager.userEmail ?? "Unknown")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .padding(8)
+            }
+            
+            // Session Info
+            GroupBox {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "lock.shield.fill")
+                            .foregroundColor(.green)
+                        Text("Session Active")
+                            .font(.system(size: 14, weight: .medium))
+                        Spacer()
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    }
+                    
+                    Text("Your session is secure and encrypted.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .padding(8)
+            }
+            
+            Spacer()
+            
+            // Logout Button
+            Button(action: {
+                showLogoutConfirmation = true
+            }) {
+                HStack {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                    Text("Logout")
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+            .alert("Logout", isPresented: $showLogoutConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Logout", role: .destructive) {
+                    authManager.logout()
+                }
+            } message: {
+                Text("Are you sure you want to logout? You'll need to sign in again to access your reminders.")
+            }
+        }
     }
 }
 
