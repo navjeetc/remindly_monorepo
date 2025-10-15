@@ -24,8 +24,12 @@
     </div>
   <% end %>
 
+  <!-- Show linked seniors for caregivers -->
   <% if @linked_seniors.any? %>
     <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-medium text-gray-900">Seniors You're Caring For</h3>
+      </div>
       <ul class="divide-y divide-gray-200">
         <% @linked_seniors.each do |link| %>
           <li>
@@ -56,7 +60,43 @@
         <% end %>
       </ul>
     </div>
-  <% else %>
+  <% end %>
+  
+  <!-- Show linked caregivers for seniors -->
+  <% linked_caregivers = current_user.senior_links.includes(:caregiver).where.not(caregiver_id: nil) %>
+  <% if linked_caregivers.any? %>
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <h3 class="text-sm font-medium text-gray-900">Your Caregivers</h3>
+      </div>
+      <ul class="divide-y divide-gray-200">
+        <% linked_caregivers.each do |link| %>
+          <li class="px-4 py-4 sm:px-6">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <p class="text-lg font-medium text-green-600 truncate">
+                  <%= link.caregiver.email %>
+                </p>
+                <div class="mt-2 flex items-center text-sm text-gray-500">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <%= link.permission.titleize %> Access
+                  </span>
+                  <span class="ml-4">
+                    Linked <%= time_ago_in_words(link.created_at) %> ago
+                  </span>
+                </div>
+              </div>
+              <div class="ml-4 flex-shrink-0">
+                <%= button_to "Remove Access", unlink_dashboard_path(link.id), method: :delete, data: { confirm: "Remove #{link.caregiver.email}'s access?" }, class: "inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50" %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+  
+  <% if @linked_seniors.empty? && linked_caregivers.empty? %>
     <div class="text-center py-12">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
