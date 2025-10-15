@@ -61,7 +61,7 @@ curl -s -H "Authorization: Bearer ${TOKEN}" \
   "${BASE_URL}/reminders/99999" | jq '.'
 echo ""
 
-# Test 7: Bulk delete (with empty array)
+# Test 7: Bulk delete (with empty array - should succeed with 0 deletions)
 echo "8️⃣ Testing DELETE /reminders/bulk_destroy (empty array)"
 curl -s -X DELETE \
   -H "Authorization: Bearer ${TOKEN}" \

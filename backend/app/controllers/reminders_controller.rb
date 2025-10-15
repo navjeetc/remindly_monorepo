@@ -17,6 +17,9 @@ class RemindersController < ApplicationController
       reminders = reminders.where("title LIKE ? OR notes LIKE ?", search_term, search_term)
     end
     
+    # Get total count BEFORE pagination (but AFTER filters)
+    total_count = reminders.count
+    
     # Pagination
     page = params[:page]&.to_i || 1
     per_page = params[:per_page]&.to_i || 50
@@ -25,8 +28,6 @@ class RemindersController < ApplicationController
     reminders = reminders.order(created_at: :desc)
                         .limit(per_page)
                         .offset((page - 1) * per_page)
-    
-    total_count = current_user.reminders.count
     
     render json: {
       reminders: reminders,
@@ -80,8 +81,6 @@ class RemindersController < ApplicationController
 
   def bulk_destroy
     ids = params[:ids] || []
-    return render json: { error: "No IDs provided" }, status: :bad_request if ids.empty?
-    
     deleted_count = current_user.reminders.where(id: ids).destroy_all.count
     
     render json: { 

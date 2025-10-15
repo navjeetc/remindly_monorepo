@@ -222,12 +222,22 @@ Delete multiple reminders at once.
 }
 ```
 
-**Error Response (400 Bad Request):**
+**Empty Array (Valid Operation):**
 ```json
 {
-  "error": "No IDs provided"
+  "ids": []
 }
 ```
+
+**Response:**
+```json
+{
+  "message": "Successfully deleted 0 reminder(s)",
+  "deleted_count": 0
+}
+```
+
+**Note:** An empty array is a valid operation and returns a success response with zero deletions.
 
 ## Categories
 
