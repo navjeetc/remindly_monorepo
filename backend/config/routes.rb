@@ -5,6 +5,7 @@ Rails.application.routes.draw do
   resources :reminders do
     collection do
       get :today
+      delete :bulk_destroy
     end
   end
   resources :acknowledgements, only: [:create] do

@@ -1,10 +1,42 @@
 class RemindersController < ApplicationController
   before_action :authenticate!
   before_action :set_reminder, only: %i[show update destroy]
+  
+  rescue_from ActiveRecord::RecordNotFound, with: :not_found
+  rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
 
   def index
-    reminders = current_user.reminders.order(created_at: :desc)
-    render json: reminders
+    reminders = current_user.reminders
+    
+    # Filter by category
+    reminders = reminders.where(category: params[:category]) if params[:category].present?
+    
+    # Search by title or notes
+    if params[:search].present?
+      search_term = "%#{params[:search]}%"
+      reminders = reminders.where("title LIKE ? OR notes LIKE ?", search_term, search_term)
+    end
+    
+    # Pagination
+    page = params[:page]&.to_i || 1
+    per_page = params[:per_page]&.to_i || 50
+    per_page = [per_page, 100].min # Max 100 per page
+    
+    reminders = reminders.order(created_at: :desc)
+                        .limit(per_page)
+                        .offset((page - 1) * per_page)
+    
+    total_count = current_user.reminders.count
+    
+    render json: {
+      reminders: reminders,
+      pagination: {
+        page: page,
+        per_page: per_page,
+        total_count: total_count,
+        total_pages: (total_count.to_f / per_page).ceil
+      }
+    }
   end
 
   def show
@@ -18,19 +50,14 @@ class RemindersController < ApplicationController
   end
 
   def update
-    Rails.logger.info "📝 Update params: #{reminder_params.inspect}"
-    Rails.logger.info "📝 Category param: '#{params[:category]}' (class: #{params[:category].class})"
     @reminder.update!(reminder_params)
-    Rails.logger.info "📝 Reminder category after update: '#{@reminder.category}' (integer: #{@reminder.category_before_type_cast})"
+    
     # Regenerate occurrences when reminder is updated
-    # Delete all pending occurrences (past and future) to avoid duplicates
+    # Delete all pending occurrences to avoid duplicates
     # Keep only acknowledged occurrences for history
-    deleted_count = @reminder.occurrences.where(status: :pending).destroy_all.count
-    Rails.logger.info "🗑️ Deleted #{deleted_count} pending occurrences for reminder #{@reminder.id}"
+    @reminder.occurrences.where(status: :pending).destroy_all
     Recurrence.expand(@reminder)
-    new_count = @reminder.occurrences.reload.count
-    Rails.logger.info "✅ Created new occurrences, total count: #{new_count}"
-    Rails.logger.info "📋 Occurrences: #{@reminder.occurrences.inspect}"
+    
     render json: @reminder
   end
 
@@ -43,14 +70,24 @@ class RemindersController < ApplicationController
     tz  = ActiveSupport::TimeZone[current_user.tz]
     now = tz.now.beginning_of_day
     end_of_day = now.end_of_day
-    Rails.logger.info "📅 Fetching today's occurrences for user #{current_user.id}"
-    Rails.logger.info "🕐 Timezone: #{tz}, Range: #{now} to #{end_of_day}"
+    
     ocs = Occurrence.joins(:reminder)
       .where(reminders: { user_id: current_user.id }, scheduled_at: now..end_of_day)
       .order(:scheduled_at)
-    Rails.logger.info "✅ Found #{ocs.count} occurrences for today"
-    ocs.each { |oc| Rails.logger.info "  - #{oc.id}: #{oc.scheduled_at} (#{oc.status})" }
+    
     render json: ocs.as_json(include: { reminder: { only: %i[title notes category] } })
+  end
+
+  def bulk_destroy
+    ids = params[:ids] || []
+    return render json: { error: "No IDs provided" }, status: :bad_request if ids.empty?
+    
+    deleted_count = current_user.reminders.where(id: ids).destroy_all.count
+    
+    render json: { 
+      message: "Successfully deleted #{deleted_count} reminder(s)",
+      deleted_count: deleted_count 
+    }
   end
 
   private
@@ -60,4 +97,15 @@ class RemindersController < ApplicationController
   end
 
   def reminder_params = params.permit(:title, :notes, :rrule, :tz, :category, :start_time)
+  
+  def not_found
+    render json: { error: "Reminder not found" }, status: :not_found
+  end
+  
+  def unprocessable_entity(exception)
+    render json: { 
+      error: "Validation failed", 
+      details: exception.record.errors.full_messages 
+    }, status: :unprocessable_entity
+  end
 end
