@@ -1,5 +1,5 @@
 class User < ApplicationRecord
-  enum :role, { senior: 0, caregiver: 1 }, prefix: true
+  enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
   
   has_many :reminders, dependent: :destroy
   

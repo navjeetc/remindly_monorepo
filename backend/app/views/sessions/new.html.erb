@@ -13,30 +13,64 @@
             Remindly Caregiver Dashboard
           </h2>
           <p class="mt-2 text-center text-sm text-gray-600">
-            Development Mode Login
+            Sign in with your email
           </p>
         </div>
-        <div class="mt-8 space-y-6">
-          <div class="rounded-md shadow-sm space-y-4">
-            <%= link_to "Login as Caregiver", dev_login_path(email: 'caregiver@example.com'), class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
-            
-            <%= link_to "Login as Senior", dev_login_path(email: 'senior@example.com'), class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" %>
+        
+        <% if flash[:notice] %>
+          <div class="bg-green-50 border-l-4 border-green-400 p-4">
+            <p class="text-sm text-green-700"><%= flash[:notice] %></p>
           </div>
+        <% end %>
+        
+        <% if flash[:alert] %>
+          <div class="bg-red-50 border-l-4 border-red-400 p-4">
+            <p class="text-sm text-red-700"><%= flash[:alert] %></p>
+          </div>
+        <% end %>
+        
+        <div class="mt-8 space-y-6">
+          <%= form_with url: request_magic_link_path, method: :post, class: "space-y-6" do |f| %>
+            <div>
+              <%= f.label :email, "Email address", class: "block text-sm font-medium text-gray-700" %>
+              <%= f.email_field :email, required: true, autofocus: true, placeholder: "you@example.com", class: "mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+            </div>
+            
+            <div>
+              <%= f.submit "Send Magic Link", class: "group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+            </div>
+          <% end %>
           
-          <div class="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div class="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4">
             <div class="flex">
               <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                 </svg>
               </div>
               <div class="ml-3">
-                <p class="text-sm text-yellow-700">
-                  <strong>Development Mode:</strong> This is a quick login for testing. In production, use magic link authentication.
+                <p class="text-sm text-blue-700">
+                  <strong>Passwordless login:</strong> Enter your email and we'll send you a magic link to sign in. No password required!
                 </p>
               </div>
             </div>
           </div>
+          
+          <% if Rails.env.development? %>
+            <div class="relative">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300"></div>
+              </div>
+              <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-gray-50 text-gray-500">Or use dev mode</span>
+              </div>
+            </div>
+            
+            <div class="rounded-md shadow-sm space-y-2">
+              <%= link_to "Quick Login as Caregiver", dev_login_path(email: 'caregiver@example.com'), class: "group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+              <%= link_to "Quick Login as Senior", dev_login_path(email: 'senior@example.com'), class: "group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+            </div>
+          <% end %>
         </div>
       </div>
     </div>

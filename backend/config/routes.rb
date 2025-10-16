@@ -4,6 +4,8 @@ Rails.application.routes.draw do
   
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
+  post "login/magic",        to: "sessions#request_magic_link", as: :request_magic_link
+  get  "login/verify",       to: "sessions#verify_magic_link", as: :verify_magic_link
   get  "dev_login",          to: "sessions#dev_login", as: :dev_login
   delete "logout",           to: "sessions#destroy", as: :logout
   
@@ -11,6 +13,15 @@ Rails.application.routes.draw do
   get  "magic/request",      to: "magic#request_link"
   get  "magic/verify",       to: "magic#verify"
   get  "magic/dev_exchange", to: "magic#dev_exchange"
+  
+  # Admin panel
+  namespace :admin do
+    resources :users, only: [:index] do
+      member do
+        patch :update_role
+      end
+    end
+  end
   
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard

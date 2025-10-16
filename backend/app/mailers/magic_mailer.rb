@@ -1,9 +1,9 @@
 class MagicMailer < ApplicationMailer
   default from: ENV.fetch("MAILER_FROM", "noreply@remindly.app")
 
-  def magic_link_email(user, token)
+  def magic_link_email(user, token, web: false)
     @user = user
-    @magic_link = generate_magic_link(token)
+    @magic_link = generate_magic_link(token, web: web)
     
     mail(
       to: @user.email,
@@ -13,10 +13,12 @@ class MagicMailer < ApplicationMailer
 
   private
 
-  def generate_magic_link(token)
+  def generate_magic_link(token, web: false)
+    # For web dashboard, always use web URL
     # For macOS app, use custom URL scheme
-    # For web, use HTTPS URL
-    base_url = if ENV["MAGIC_LINK_SCHEME"] == "remindly"
+    base_url = if web
+      "#{ENV.fetch('APP_URL', 'http://localhost:5000')}/login/verify"
+    elsif ENV["MAGIC_LINK_SCHEME"] == "remindly"
       "remindly://magic/verify"
     else
       "#{ENV.fetch('APP_URL', 'http://localhost:5000')}/magic/verify"

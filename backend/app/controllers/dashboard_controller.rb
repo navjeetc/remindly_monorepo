@@ -1,11 +1,33 @@
 class DashboardController < WebController
   before_action :authenticate!
+  before_action :check_role!
   layout 'dashboard'
   
   # Landing page - show pairing or dashboard
   def index
-    @linked_seniors = current_user.caregiver_links.includes(:senior).where.not(caregiver_id: nil)
-    @pending_links = current_user.senior_links.where(caregiver_id: nil).where.not(pairing_token: nil)
+    # Redirect admins to admin panel
+    if current_user.role_admin?
+      redirect_to admin_users_path
+      return
+    end
+    
+    # Only show relevant data based on role
+    if current_user.role_caregiver?
+      # Caregivers only see seniors they're caring for (exclude themselves)
+      @linked_seniors = current_user.caregiver_links
+        .includes(:senior)
+        .where.not(senior_id: nil)
+        .where.not(senior_id: current_user.id)
+      @pending_links = []
+    elsif current_user.role_senior?
+      # Seniors see their caregivers and pending tokens
+      @linked_seniors = []
+      @pending_links = current_user.senior_links.where(caregiver_id: nil).where.not(pairing_token: nil)
+    else
+      # No role - will be caught by check_role!
+      @linked_seniors = []
+      @pending_links = []
+    end
   end
   
   # Show pairing form
@@ -72,5 +94,13 @@ class DashboardController < WebController
     senior_email = link.senior.email
     link.destroy!
     redirect_to dashboard_path, notice: "Unlinked from #{senior_email}"
+  end
+  
+  private
+  
+  def check_role!
+    if current_user.role.nil?
+      render 'pending_approval', layout: 'dashboard'
+    end
   end
 end
