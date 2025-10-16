@@ -176,11 +176,11 @@ class DashboardController < WebController
       rrule: rrule,
       start_time: start_time
     )
-      # Don't delete any occurrences - just update the reminder
-      # Existing occurrences will keep the old schedule
-      # New occurrences will be created with the new schedule
+      # Delete all pending occurrences and regenerate
+      # This ensures the new time/schedule applies immediately
+      @reminder.occurrences.where(status: :pending).destroy_all
       Recurrence.expand(@reminder)
-      redirect_to senior_dashboard_path(@senior), notice: "Reminder updated successfully! Changes will apply to future reminders."
+      redirect_to senior_dashboard_path(@senior), notice: "Reminder updated successfully!"
     else
       render :edit_reminder
     end
