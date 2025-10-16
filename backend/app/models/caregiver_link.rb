@@ -5,14 +5,26 @@ class CaregiverLink < ApplicationRecord
   enum :permission, { view: 0, manage: 1 }, prefix: true
   
   validates :pairing_token, uniqueness: true, allow_nil: true
+  validate :caregiver_cannot_be_senior
   
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
-    # Generate token with collision detection
+    # Generate token with collision detection and safety limit
+    max_attempts = 10
+    attempts = 0
     token = nil
-    begin
+    
+    loop do
       token = SecureRandom.urlsafe_base64(32)
-    end while exists?(pairing_token: token)
+      break unless exists?(pairing_token: token)
+      
+      attempts += 1
+      if attempts >= max_attempts
+        # Extremely unlikely - increase token size if this happens
+        token = SecureRandom.urlsafe_base64(48)
+        break
+      end
+    end
     
     create!(
       senior: senior,
@@ -37,5 +49,13 @@ class CaregiverLink < ApplicationRecord
   # Check if link is pending (waiting for caregiver)
   def pending?
     senior.present? && caregiver.nil? && pairing_token.present?
+  end
+  
+  private
+  
+  def caregiver_cannot_be_senior
+    if caregiver_id.present? && caregiver_id == senior_id
+      errors.add(:caregiver, "cannot be the same as senior")
+    end
   end
 end

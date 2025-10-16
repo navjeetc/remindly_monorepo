@@ -13,11 +13,10 @@ class DashboardController < WebController
     
     # Only show relevant data based on role
     if current_user.role_caregiver?
-      # Caregivers only see seniors they're caring for (exclude themselves)
+      # Caregivers only see seniors they're caring for
       @linked_seniors = current_user.caregiver_links
         .includes(:senior)
         .where.not(senior_id: nil)
-        .where.not(senior_id: current_user.id)
       @pending_links = []
     elsif current_user.role_senior?
       # Seniors see their caregivers and pending tokens
@@ -118,9 +117,12 @@ class DashboardController < WebController
     link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
     @senior = link.senior
     
+    # Get sanitized params
+    permitted = reminder_params
+    
     # Build rrule from form params
-    time = params[:reminder][:time] || Time.current.strftime("%H:%M")
-    frequency = params[:reminder][:frequency] || "DAILY"
+    time = permitted[:time] || Time.current.strftime("%H:%M")
+    frequency = permitted[:frequency] || "DAILY"
     
     # Parse time and create start_time in senior's timezone
     tz = ActiveSupport::TimeZone[@senior.tz]
@@ -131,9 +133,9 @@ class DashboardController < WebController
     rrule = "FREQ=#{frequency.upcase}"
     
     @reminder = @senior.reminders.build(
-      title: params[:reminder][:title],
-      notes: params[:reminder][:notes],
-      category: params[:reminder][:category] || :routine,
+      title: permitted[:title],
+      notes: permitted[:notes],
+      category: permitted[:category] || :routine,
       rrule: rrule,
       tz: @senior.tz,
       start_time: start_time
@@ -157,9 +159,12 @@ class DashboardController < WebController
     @senior = link.senior
     @reminder = @senior.reminders.find(params[:reminder_id])
     
+    # Get sanitized params
+    permitted = reminder_params
+    
     # Build rrule from form params
-    time = params[:reminder][:time] || Time.current.strftime("%H:%M")
-    frequency = params[:reminder][:frequency] || "DAILY"
+    time = permitted[:time] || Time.current.strftime("%H:%M")
+    frequency = permitted[:frequency] || "DAILY"
     
     # Parse time and create start_time in senior's timezone
     tz = ActiveSupport::TimeZone[@senior.tz]
@@ -170,9 +175,9 @@ class DashboardController < WebController
     rrule = "FREQ=#{frequency.upcase}"
     
     if @reminder.update(
-      title: params[:reminder][:title],
-      notes: params[:reminder][:notes],
-      category: params[:reminder][:category] || :routine,
+      title: permitted[:title],
+      notes: permitted[:notes],
+      category: permitted[:category] || :routine,
       rrule: rrule,
       start_time: start_time
     )
@@ -210,6 +215,6 @@ class DashboardController < WebController
   end
   
   def reminder_params
-    params.require(:reminder).permit(:title, :notes, :category, :time_of_day, :frequency, :days_of_week)
+    params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
   end
 end
