@@ -69,14 +69,14 @@ class DashboardController < WebController
     @today_occurrences = Occurrence.joins(:reminder)
       .where(reminders: { user_id: @senior.id }, scheduled_at: now..end_of_day)
       .order(:scheduled_at)
-      .includes(:reminder, :acknowledgement)
+      .includes(:reminder, :acknowledgements)
     
     # Get 7-day activity
     start_date = now - 6.days
     @activity = Occurrence.joins(:reminder)
       .where(reminders: { user_id: @senior.id }, scheduled_at: start_date..end_of_day)
       .order(scheduled_at: :desc)
-      .includes(:reminder, :acknowledgement)
+      .includes(:reminder, :acknowledgements)
     
     # Get missed count
     @missed_count = Occurrence.joins(:reminder)

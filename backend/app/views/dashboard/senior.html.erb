@@ -81,8 +81,8 @@
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= occ.status == 'pending' ? 'bg-yellow-100 text-yellow-800' : occ.status == 'acknowledged' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
                       <%= occ.status.titleize %>
                     </span>
-                    <% if occ.acknowledgement %>
-                      <span class="text-green-600">✓ <%= occ.acknowledgement.action.titleize %></span>
+                    <% if occ.acknowledgements.any? %>
+                      <span class="text-green-600">✓ <%= occ.acknowledgements.last.kind.titleize %></span>
                     <% end %>
                   </div>
                 </div>
@@ -122,8 +122,8 @@
                       <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= occ.status == 'pending' ? 'bg-yellow-100 text-yellow-800' : occ.status == 'acknowledged' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
                         <%= occ.status.titleize %>
                       </span>
-                      <% if occ.acknowledgement %>
-                        <span class="text-xs text-green-600">✓ <%= occ.acknowledgement.action.titleize %></span>
+                      <% if occ.acknowledgements.any? %>
+                        <span class="text-xs text-green-600">✓ <%= occ.acknowledgements.last.kind.titleize %></span>
                       <% end %>
                     </div>
                   </div>
