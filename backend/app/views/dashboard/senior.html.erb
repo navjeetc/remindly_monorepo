@@ -1,0 +1,148 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-3xl font-bold text-gray-900"><%= @senior.email %></h2>
+      <p class="mt-1 text-sm text-gray-500">Timezone: <%= @senior.tz %> | Permission: <%= @permission.titleize %></p>
+    </div>
+    <div class="flex space-x-4">
+      <%= link_to "Create Reminder", new_reminder_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+      <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Today's Reminders</dt>
+              <dd class="text-3xl font-semibold text-gray-900"><%= @today_occurrences.count %></dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">7-Day Activity</dt>
+              <dd class="text-3xl font-semibold text-gray-900"><%= @activity.count %></dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="p-5">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div class="ml-5 w-0 flex-1">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Missed (7 days)</dt>
+              <dd class="text-3xl font-semibold text-red-600"><%= @missed_count %></dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Reminders -->
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Today's Reminders</h3>
+      <% if @today_occurrences.any? %>
+        <div class="space-y-3">
+          <% @today_occurrences.each do |occ| %>
+            <div class="border-l-4 <%= occ.status == 'pending' ? 'border-yellow-400 bg-yellow-50' : occ.status == 'acknowledged' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50' %> p-4">
+              <div class="flex justify-between items-start">
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900"><%= occ.reminder.title %></p>
+                  <p class="text-sm text-gray-600 mt-1"><%= occ.reminder.notes %></p>
+                  <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                    <span><%= occ.scheduled_at.in_time_zone(@senior.tz).strftime("%I:%M %p") %></span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= occ.status == 'pending' ? 'bg-yellow-100 text-yellow-800' : occ.status == 'acknowledged' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                      <%= occ.status.titleize %>
+                    </span>
+                    <% if occ.acknowledgements.any? %>
+                      <span class="text-green-600">✓ <%= occ.acknowledgements.last.kind.titleize %></span>
+                    <% end %>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <%= occ.reminder.category.titleize %>
+                  </span>
+                  <% if occ.status == 'pending' %>
+                    <%= link_to "Edit", edit_reminder_dashboard_path(@senior, occ.reminder), class: "text-xs text-blue-600 hover:text-blue-800" %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500">No reminders scheduled for today.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- 7-Day Activity -->
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">7-Day Activity History</h3>
+      <% if @activity.any? %>
+        <div class="space-y-3">
+          <% @activity.group_by { |occ| occ.scheduled_at.in_time_zone(@senior.tz).to_date }.each do |date, occurrences| %>
+            <div class="border-b border-gray-200 pb-3">
+              <h4 class="text-sm font-medium text-gray-700 mb-2">
+                <%= date.strftime("%A, %B %d, %Y") %>
+                <span class="text-gray-500">(<%= occurrences.count %> reminders)</span>
+              </h4>
+              <div class="space-y-2 ml-4">
+                <% occurrences.each do |occ| %>
+                  <div class="flex items-center justify-between text-sm">
+                    <div class="flex-1">
+                      <span class="font-medium"><%= occ.scheduled_at.in_time_zone(@senior.tz).strftime("%I:%M %p") %></span>
+                      <span class="text-gray-600 ml-2"><%= occ.reminder.title %></span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= occ.status == 'pending' ? 'bg-yellow-100 text-yellow-800' : occ.status == 'acknowledged' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                        <%= occ.status.titleize %>
+                      </span>
+                      <% if occ.acknowledgements.any? %>
+                        <span class="text-xs text-green-600">✓ <%= occ.acknowledgements.last.kind.titleize %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-500">No activity in the last 7 days.</p>
+      <% end %>
+    </div>
+  </div>
+</div>

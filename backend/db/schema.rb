@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_07_220703) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_15_235844) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -22,9 +22,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_07_220703) do
 
   create_table "caregiver_links", force: :cascade do |t|
     t.integer "senior_id", null: false
-    t.integer "caregiver_id", null: false
+    t.integer "caregiver_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "permission", default: 0, null: false
+    t.string "pairing_token"
+    t.index ["pairing_token"], name: "index_caregiver_links_on_pairing_token", unique: true
     t.index ["senior_id", "caregiver_id"], name: "index_caregiver_links_on_senior_id_and_caregiver_id", unique: true
   end
 
@@ -53,7 +56,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_07_220703) do
 
   create_table "users", force: :cascade do |t|
     t.string "email", null: false
-    t.integer "role", default: 0, null: false
+    t.integer "role"
     t.string "tz", default: "America/New_York"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
