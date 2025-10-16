@@ -11,7 +11,7 @@ class CaregiverDashboardController < ApplicationController
     occurrences = Occurrence.joins(:reminder)
       .where(reminders: { user_id: @senior.id }, scheduled_at: start_date..end_date)
       .order(scheduled_at: :desc)
-      .includes(:reminder, :acknowledgement)
+      .includes(:reminder, :acknowledgements)
     
     render json: occurrences.map { |occ|
       {
@@ -24,9 +24,9 @@ class CaregiverDashboardController < ApplicationController
           notes: occ.reminder.notes,
           category: occ.reminder.category
         },
-        acknowledgement: occ.acknowledgement ? {
-          action: occ.acknowledgement.action,
-          acknowledged_at: occ.acknowledgement.created_at
+        acknowledgement: occ.acknowledgements.last ? {
+          action: occ.acknowledgements.last.kind,
+          acknowledged_at: occ.acknowledgements.last.created_at
         } : nil
       }
     }
@@ -41,7 +41,7 @@ class CaregiverDashboardController < ApplicationController
     occurrences = Occurrence.joins(:reminder)
       .where(reminders: { user_id: @senior.id }, scheduled_at: now..end_of_day)
       .order(:scheduled_at)
-      .includes(:reminder, :acknowledgement)
+      .includes(:reminder, :acknowledgements)
     
     render json: occurrences.map { |occ|
       {
@@ -54,9 +54,9 @@ class CaregiverDashboardController < ApplicationController
           notes: occ.reminder.notes,
           category: occ.reminder.category
         },
-        acknowledgement: occ.acknowledgement ? {
-          action: occ.acknowledgement.action,
-          acknowledged_at: occ.acknowledgement.created_at
+        acknowledgement: occ.acknowledgements.last ? {
+          action: occ.acknowledgements.last.kind,
+          acknowledged_at: occ.acknowledgements.last.created_at
         } : nil
       }
     }
