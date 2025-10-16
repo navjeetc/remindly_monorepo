@@ -29,6 +29,11 @@ Rails.application.routes.draw do
   post "dashboard/pair",     to: "dashboard#process_pair"
   get  "dashboard/generate", to: "dashboard#generate_token", as: :generate_token_dashboard
   get  "dashboard/senior/:id", to: "dashboard#senior", as: :senior_dashboard
+  get  "dashboard/senior/:senior_id/reminder/new", to: "dashboard#new_reminder", as: :new_reminder_dashboard
+  post "dashboard/senior/:senior_id/reminder", to: "dashboard#create_reminder", as: :create_reminder_dashboard
+  get  "dashboard/senior/:senior_id/reminder/:reminder_id/edit", to: "dashboard#edit_reminder", as: :edit_reminder_dashboard
+  patch "dashboard/senior/:senior_id/reminder/:reminder_id", to: "dashboard#update_reminder", as: :update_reminder_dashboard
+  delete "dashboard/senior/:senior_id/reminder/:reminder_id", to: "dashboard#delete_reminder", as: :delete_reminder_dashboard
   delete "dashboard/unlink/:id", to: "dashboard#unlink", as: :unlink_dashboard
   
   resources :reminders do

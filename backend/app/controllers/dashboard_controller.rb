@@ -96,11 +96,120 @@ class DashboardController < WebController
     redirect_to dashboard_path, notice: "Unlinked from #{senior_email}"
   end
   
+  # New reminder form for senior
+  def new_reminder
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    @reminder = Reminder.new
+  end
+  
+  # Edit reminder form
+  def edit_reminder
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    @reminder = @senior.reminders.find(params[:reminder_id])
+  end
+  
+  # Create reminder for senior
+  def create_reminder
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    
+    # Build rrule from form params
+    time = params[:reminder][:time] || Time.current.strftime("%H:%M")
+    frequency = params[:reminder][:frequency] || "DAILY"
+    
+    # Parse time and create start_time in senior's timezone
+    tz = ActiveSupport::TimeZone[@senior.tz]
+    hour, minute = time.split(":").map(&:to_i)
+    start_time = tz.now.change(hour: hour, min: minute, sec: 0)
+    
+    # Build rrule
+    rrule = "FREQ=#{frequency.upcase}"
+    
+    @reminder = @senior.reminders.build(
+      title: params[:reminder][:title],
+      notes: params[:reminder][:notes],
+      category: params[:reminder][:category] || :routine,
+      rrule: rrule,
+      tz: @senior.tz,
+      start_time: start_time
+    )
+    
+    if @reminder.save
+      # Generate occurrences for the reminder
+      Recurrence.expand(@reminder)
+      redirect_to senior_dashboard_path(@senior), notice: "Reminder created successfully!"
+    else
+      render :new_reminder
+    end
+  rescue ActiveRecord::RecordNotFound
+    redirect_to dashboard_path, alert: "Senior not found or not linked"
+  end
+  
+  # Update reminder
+  def update_reminder
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    @reminder = @senior.reminders.find(params[:reminder_id])
+    
+    # Build rrule from form params
+    time = params[:reminder][:time] || Time.current.strftime("%H:%M")
+    frequency = params[:reminder][:frequency] || "DAILY"
+    
+    # Parse time and create start_time in senior's timezone
+    tz = ActiveSupport::TimeZone[@senior.tz]
+    hour, minute = time.split(":").map(&:to_i)
+    start_time = tz.now.change(hour: hour, min: minute, sec: 0)
+    
+    # Build rrule
+    rrule = "FREQ=#{frequency.upcase}"
+    
+    if @reminder.update(
+      title: params[:reminder][:title],
+      notes: params[:reminder][:notes],
+      category: params[:reminder][:category] || :routine,
+      rrule: rrule,
+      start_time: start_time
+    )
+      # Don't delete any occurrences - just update the reminder
+      # Existing occurrences will keep the old schedule
+      # New occurrences will be created with the new schedule
+      Recurrence.expand(@reminder)
+      redirect_to senior_dashboard_path(@senior), notice: "Reminder updated successfully! Changes will apply to future reminders."
+    else
+      render :edit_reminder
+    end
+  rescue ActiveRecord::RecordNotFound
+    redirect_to dashboard_path, alert: "Reminder or senior not found"
+  end
+  
+  # Delete reminder
+  def delete_reminder
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    @reminder = @senior.reminders.find(params[:reminder_id])
+    
+    @reminder.destroy!
+    redirect_to senior_dashboard_path(@senior), notice: "Reminder deleted successfully!"
+  rescue ActiveRecord::RecordNotFound
+    redirect_to dashboard_path, alert: "Reminder or senior not found"
+  end
+  
   private
   
   def check_role!
     if current_user.role.nil?
       render 'pending_approval', layout: 'dashboard'
     end
+  end
+  
+  def reminder_params
+    params.require(:reminder).permit(:title, :notes, :category, :time_of_day, :frequency, :days_of_week)
   end
 end
