@@ -20,8 +20,9 @@ class CaregiverLink < ApplicationRecord
       
       attempts += 1
       if attempts >= max_attempts
-        # Extremely unlikely - increase token size if this happens
+        # Extremely unlikely - use larger token and verify uniqueness
         token = SecureRandom.urlsafe_base64(48)
+        raise "Unable to generate unique pairing token" if exists?(pairing_token: token)
         break
       end
     end

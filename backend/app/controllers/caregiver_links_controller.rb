@@ -13,7 +13,12 @@ class CaregiverLinksController < ApplicationController
   # Pair with a senior using a pairing token
   def pair
     token = params.require(:token)
-    link = CaregiverLink.find_by!(pairing_token: token)
+    link = CaregiverLink.find_by(pairing_token: token)
+    
+    unless link
+      render json: { error: "Invalid or expired pairing token" }, status: :unprocessable_entity
+      return
+    end
     
     if link.pending?
       link.pair_with(caregiver: current_user)

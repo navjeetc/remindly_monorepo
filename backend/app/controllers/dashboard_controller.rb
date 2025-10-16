@@ -124,10 +124,16 @@ class DashboardController < WebController
     time = permitted[:time] || Time.current.strftime("%H:%M")
     frequency = permitted[:frequency] || "DAILY"
     
-    # Parse time and create start_time in senior's timezone
+    # Parse time with validation
     tz = ActiveSupport::TimeZone[@senior.tz]
-    hour, minute = time.split(":").map(&:to_i)
-    start_time = tz.now.change(hour: hour, min: minute, sec: 0)
+    start_time = parse_time_safely(time, tz)
+    
+    unless start_time
+      @reminder = @senior.reminders.build(permitted)
+      @reminder.errors.add(:base, "Invalid time format. Please use HH:MM format (00:00 - 23:59)")
+      render :new_reminder
+      return
+    end
     
     # Build rrule
     rrule = "FREQ=#{frequency.upcase}"
@@ -166,10 +172,15 @@ class DashboardController < WebController
     time = permitted[:time] || Time.current.strftime("%H:%M")
     frequency = permitted[:frequency] || "DAILY"
     
-    # Parse time and create start_time in senior's timezone
+    # Parse time with validation
     tz = ActiveSupport::TimeZone[@senior.tz]
-    hour, minute = time.split(":").map(&:to_i)
-    start_time = tz.now.change(hour: hour, min: minute, sec: 0)
+    start_time = parse_time_safely(time, tz)
+    
+    unless start_time
+      @reminder.errors.add(:base, "Invalid time format. Please use HH:MM format (00:00 - 23:59)")
+      render :edit_reminder
+      return
+    end
     
     # Build rrule
     rrule = "FREQ=#{frequency.upcase}"
@@ -216,5 +227,19 @@ class DashboardController < WebController
   
   def reminder_params
     params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
+  end
+  
+  def parse_time_safely(time_string, timezone)
+    # Validate time format (HH:MM)
+    unless time_string.match?(/\A\d{1,2}:\d{2}\z/)
+      return nil
+    end
+    
+    hour, minute = time_string.split(":").map(&:to_i)
+    
+    # Validate ranges
+    return nil unless (0..23).cover?(hour) && (0..59).cover?(minute)
+    
+    timezone.now.change(hour: hour, min: minute, sec: 0)
   end
 end
