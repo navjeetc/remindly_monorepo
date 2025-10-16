@@ -85,7 +85,7 @@ class DashboardController < WebController
       .count
       
   rescue ActiveRecord::RecordNotFound
-    redirect_to dashboard_path, alert: "Senior not found or not linked"
+    redirect_to dashboard_path, alert: "Access denied"
   end
   
   # Remove a link
@@ -147,7 +147,7 @@ class DashboardController < WebController
       render :new_reminder
     end
   rescue ActiveRecord::RecordNotFound
-    redirect_to dashboard_path, alert: "Senior not found or not linked"
+    redirect_to dashboard_path, alert: "Access denied"
   end
   
   # Update reminder
@@ -185,7 +185,7 @@ class DashboardController < WebController
       render :edit_reminder
     end
   rescue ActiveRecord::RecordNotFound
-    redirect_to dashboard_path, alert: "Reminder or senior not found"
+    redirect_to dashboard_path, alert: "Access denied"
   end
   
   # Delete reminder
@@ -198,7 +198,7 @@ class DashboardController < WebController
     @reminder.destroy!
     redirect_to senior_dashboard_path(@senior), notice: "Reminder deleted successfully!"
   rescue ActiveRecord::RecordNotFound
-    redirect_to dashboard_path, alert: "Reminder or senior not found"
+    redirect_to dashboard_path, alert: "Access denied"
   end
   
   private

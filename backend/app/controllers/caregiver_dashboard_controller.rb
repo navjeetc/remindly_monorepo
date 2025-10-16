@@ -79,6 +79,6 @@ class CaregiverDashboardController < ApplicationController
     link = current_user.caregiver_links.find_by!(senior_id: senior_id)
     @senior = link.senior
   rescue ActiveRecord::RecordNotFound
-    render json: { error: "Senior not found or not linked" }, status: :not_found
+    render json: { error: "Access denied" }, status: :not_found
   end
 end

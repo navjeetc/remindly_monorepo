@@ -36,6 +36,11 @@ class SessionsController < ActionController::Base
   
   # Dev mode quick login
   def dev_login
+    unless Rails.env.development?
+      redirect_to login_path, alert: "Dev login is only available in development environment."
+      return
+    end
+    
     email = params[:email] || 'caregiver@example.com'
     user = User.find_or_create_by!(email: email)
     

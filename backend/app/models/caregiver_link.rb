@@ -8,7 +8,12 @@ class CaregiverLink < ApplicationRecord
   
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
-    token = SecureRandom.urlsafe_base64(32)
+    # Generate token with collision detection
+    token = nil
+    begin
+      token = SecureRandom.urlsafe_base64(32)
+    end while exists?(pairing_token: token)
+    
     create!(
       senior: senior,
       pairing_token: token,
