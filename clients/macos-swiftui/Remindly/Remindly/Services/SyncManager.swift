@@ -101,7 +101,9 @@ class SyncManager: ObservableObject {
             tz: tz,
             startTime: startTime
         )
-        let data = try JSONEncoder().encode(payload)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(payload)
         
         // Generate temporary negative ID for offline-created reminders
         let tempId = -Int(Date().timeIntervalSince1970)
@@ -280,7 +282,16 @@ class SyncManager: ObservableObject {
             _ = try await apiClient.snooze(occurrenceId: payload.occurrenceId, minutes: payload.minutes)
             
         case "create_reminder":
-            let payload = try JSONDecoder().decode(CreateReminderPayload.self, from: action.payload)
+            print("📝 Decoding CreateReminderPayload...")
+            if let jsonString = String(data: action.payload, encoding: .utf8) {
+                print("📝 Payload JSON: \(jsonString)")
+            }
+            
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let payload = try decoder.decode(CreateReminderPayload.self, from: action.payload)
+            print("✅ Decoded payload: title='\(payload.title)', category=\(payload.category)")
+            
             try await apiClient.createReminder(
                 title: payload.title,
                 notes: payload.notes,

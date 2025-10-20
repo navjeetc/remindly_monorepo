@@ -102,6 +102,9 @@ class AuthenticationManager: ObservableObject {
         // Set token in API client
         APIClient.shared.setToken(jwt)
         
+        // Clear any stale cached data before fresh login
+        try? DataManager.shared.clearAllLocalData()
+        
         // Update authentication state
         isAuthenticated = true
         
@@ -123,6 +126,9 @@ class AuthenticationManager: ObservableObject {
         try saveToken(token)
         saveEmail(email)
         
+        // Clear any stale cached data before fresh login
+        try? DataManager.shared.clearAllLocalData()
+        
         // Update authentication state
         isAuthenticated = true
         userEmail = email
@@ -139,6 +145,16 @@ class AuthenticationManager: ObservableObject {
         deleteEmail()
         isAuthenticated = false
         userEmail = nil
+        
+        // Clear all cached data
+        Task { @MainActor in
+            do {
+                try DataManager.shared.clearAllLocalData()
+            } catch {
+                print("⚠️ Failed to clear cache on logout: \(error.localizedDescription)")
+            }
+        }
+        
         print("✅ User logged out")
     }
     

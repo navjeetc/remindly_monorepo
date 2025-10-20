@@ -51,7 +51,7 @@ class TasksController < WebController
     @task.created_by = current_user
 
     if @task.save
-      redirect_to senior_task_path(@senior, @task), notice: "Task created successfully"
+      redirect_to senior_tasks_path(@senior), notice: "Task created successfully"
     else
       @caregivers = @senior.caregivers
       render :new, status: :unprocessable_entity

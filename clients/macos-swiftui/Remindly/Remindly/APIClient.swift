@@ -56,10 +56,23 @@ class APIClient {
             throw APIError.notAuthenticated
         }
         
-        var request = URLRequest(url: URL(string: "\(baseURL)/reminders/today")!)
+        let url = URL(string: "\(baseURL)/reminders/today")!
+        print("🌐 API Request: GET \(url)")
+        
+        var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        if let httpResponse = response as? HTTPURLResponse {
+            print("📡 API Response: Status \(httpResponse.statusCode)")
+        }
+        
+        // Log raw response data
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📡 Raw API Response: \(jsonString)")
+        }
+        
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
@@ -71,7 +84,9 @@ class APIClient {
             }
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
         }
-        return try decoder.decode([OccurrenceResponse].self, from: data)
+        let result = try decoder.decode([OccurrenceResponse].self, from: data)
+        print("📡 Decoded \(result.count) occurrences from API response")
+        return result
     }
     
     func acknowledge(occurrenceId: Int, kind: String) async throws {
@@ -127,6 +142,12 @@ class APIClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
         let (data, _) = try await URLSession.shared.data(for: request)
+        
+        // Log raw response for debugging
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📡 fetchReminders raw response: \(jsonString.prefix(200))...")
+        }
+        
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
@@ -138,7 +159,10 @@ class APIClient {
             }
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string \(dateString)")
         }
-        return try decoder.decode([ReminderResponse].self, from: data)
+        
+        // Backend returns paginated response: { reminders: [...], pagination: {...} }
+        let response = try decoder.decode(RemindersListResponse.self, from: data)
+        return response.reminders
     }
     
     func updateReminder(id: Int, title: String, notes: String?, category: String, rrule: String, tz: String, startTime: Date? = nil) async throws {
@@ -244,5 +268,24 @@ struct ReminderResponse: Codable, Identifiable {
         case userId = "user_id"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+}
+
+struct RemindersListResponse: Codable {
+    let reminders: [ReminderResponse]
+    let pagination: PaginationInfo
+}
+
+struct PaginationInfo: Codable {
+    let page: Int
+    let perPage: Int
+    let totalCount: Int
+    let totalPages: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case page
+        case perPage = "per_page"
+        case totalCount = "total_count"
+        case totalPages = "total_pages"
     }
 }
