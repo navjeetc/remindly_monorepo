@@ -29,7 +29,12 @@ class SessionsController < ActionController::Base
       jwt_token = JWT.encode(payload, hmac_secret, "HS256")
       session[:jwt_token] = jwt_token
       
-      redirect_to dashboard_path, notice: "Successfully signed in as #{user.email}"
+      # Redirect to profile if name is not set
+      if user.name.blank?
+        redirect_to profile_path, notice: "Welcome! Please complete your profile to continue."
+      else
+        redirect_to dashboard_path, notice: "Successfully signed in as #{user.display_name}"
+      end
     else
       redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
     end
@@ -52,7 +57,12 @@ class SessionsController < ActionController::Base
     # Store in session
     session[:jwt_token] = token
     
-    redirect_to dashboard_path, notice: "Logged in as #{user.email}"
+    # Redirect to profile if name is not set
+    if user.name.blank?
+      redirect_to profile_path, notice: "Welcome! Please complete your profile to continue."
+    else
+      redirect_to dashboard_path, notice: "Logged in as #{user.display_name}"
+    end
   end
   
   def destroy

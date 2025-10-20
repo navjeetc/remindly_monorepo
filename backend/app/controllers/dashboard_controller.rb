@@ -64,7 +64,7 @@ class DashboardController < WebController
   # Update profile
   def update_profile
     if current_user.update(profile_params)
-      redirect_to profile_path, notice: "Profile updated successfully"
+      redirect_to dashboard_path, notice: "Profile updated successfully"
     else
       render :profile
     end

@@ -53,7 +53,7 @@
                       <%= task.task_type.titleize %>
                     </span>
                     <% if task.assigned_to %>
-                      <span class="text-green-600">Assigned to: <%= task.assigned_to.email %></span>
+                      <span class="text-green-600">Assigned to: <%= task.assigned_to.friendly_name %></span>
                     <% end %>
                   </div>
                 </div>
@@ -120,8 +120,11 @@
                 <div class="flex items-center justify-between">
                   <div class="flex-1">
                     <p class="text-lg font-medium text-blue-600 truncate">
-                      <%= link.senior.email %>
+                      <%= link.senior.display_name %>
                     </p>
+                    <% if link.senior.display_name != link.senior.email %>
+                      <p class="text-sm text-gray-500"><%= link.senior.email %></p>
+                    <% end %>
                     <div class="mt-2 flex items-center text-sm text-gray-500">
                       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         <%= link.permission.titleize %>
@@ -158,8 +161,11 @@
             <div class="flex items-center justify-between">
               <div class="flex-1">
                 <p class="text-lg font-medium text-green-600 truncate">
-                  <%= link.caregiver.email %>
+                  <%= link.caregiver.friendly_name %>
                 </p>
+                <% if link.caregiver.friendly_name != link.caregiver.email %>
+                  <p class="text-sm text-gray-500"><%= link.caregiver.email %></p>
+                <% end %>
                 <div class="mt-2 flex items-center text-sm text-gray-500">
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     <%= link.permission.titleize %> Access

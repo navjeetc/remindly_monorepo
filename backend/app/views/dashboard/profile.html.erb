@@ -34,10 +34,12 @@
         <!-- Name -->
         <div>
           <%= f.label :name, "Full Name", class: "block text-sm font-medium text-gray-700" %>
+          <span class="text-red-500">*</span>
           <%= f.text_field :name, 
             class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
-            placeholder: "e.g., John Smith" %>
-          <p class="mt-1 text-xs text-gray-500">Your full name</p>
+            placeholder: "e.g., John Smith",
+            required: true %>
+          <p class="mt-1 text-xs text-gray-500">Your full name (required)</p>
         </div>
 
         <!-- Nickname -->
