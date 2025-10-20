@@ -35,6 +35,8 @@ Rails.application.routes.draw do
   patch "dashboard/senior/:senior_id/reminder/:reminder_id", to: "dashboard#update_reminder", as: :update_reminder_dashboard
   delete "dashboard/senior/:senior_id/reminder/:reminder_id", to: "dashboard#delete_reminder", as: :delete_reminder_dashboard
   delete "dashboard/unlink/:id", to: "dashboard#unlink", as: :unlink_dashboard
+  get  "dashboard/senior/:senior_id/invite_caregiver", to: "dashboard#invite_caregiver", as: :invite_caregiver_dashboard
+  post "dashboard/senior/:senior_id/invite_caregiver", to: "dashboard#process_invite_caregiver"
   
   resources :reminders do
     collection do

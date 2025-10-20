@@ -246,6 +246,59 @@ class DashboardController < WebController
     redirect_to dashboard_path, alert: "Access denied"
   end
   
+  # Invite another caregiver to help with a senior
+  def invite_caregiver
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+  end
+  
+  def process_invite_caregiver
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    
+    caregiver_email = params[:caregiver_email]&.strip&.downcase
+    
+    if caregiver_email.blank?
+      flash[:alert] = "Please enter a caregiver email"
+      render :invite_caregiver
+      return
+    end
+    
+    # Find or create the caregiver user
+    caregiver = User.find_by(email: caregiver_email)
+    
+    if caregiver.nil?
+      # Create new user with caregiver role
+      caregiver = User.create!(
+        email: caregiver_email,
+        role: :caregiver
+      )
+    elsif !caregiver.role_caregiver?
+      flash[:alert] = "#{caregiver_email} is not a caregiver"
+      render :invite_caregiver
+      return
+    end
+    
+    # Check if already linked
+    existing_link = CaregiverLink.find_by(senior_id: @senior.id, caregiver_id: caregiver.id)
+    if existing_link
+      flash[:alert] = "#{caregiver_email} is already linked to this senior"
+      redirect_to senior_dashboard_path(@senior)
+      return
+    end
+    
+    # Create the link with view_only permission by default
+    CaregiverLink.create!(
+      senior_id: @senior.id,
+      caregiver_id: caregiver.id,
+      permission: :view_only
+    )
+    
+    redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
+  end
+  
   private
   
   def check_role!
