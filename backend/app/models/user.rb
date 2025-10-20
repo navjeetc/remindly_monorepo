@@ -10,6 +10,13 @@ class User < ApplicationRecord
   has_many :caregiver_links, class_name: "CaregiverLink", foreign_key: "caregiver_id", dependent: :destroy
   has_many :seniors, through: :caregiver_links, source: :senior
   
+  # Task relationships
+  has_many :tasks_as_senior, class_name: "Task", foreign_key: "senior_id", dependent: :destroy
+  has_many :assigned_tasks, class_name: "Task", foreign_key: "assigned_to_id", dependent: :nullify
+  has_many :created_tasks, class_name: "Task", foreign_key: "created_by_id", dependent: :nullify
+  has_many :task_comments, dependent: :destroy
+  has_many :caregiver_availabilities, foreign_key: "caregiver_id", dependent: :destroy
+  
   validates :email, presence: true, uniqueness: true
   attribute :tz, :string, default: "America/New_York"
   

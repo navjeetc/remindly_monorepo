@@ -12,8 +12,27 @@ class MagicController < ApplicationController
   def verify
     token = params.require(:token)
     user  = User.find_signed(token, purpose: :magic_login)
-    return head :unauthorized unless user
-    render plain: issue_jwt(user:)
+    
+    unless user
+      # If it's a browser request, redirect to login with error
+      if request.format.html?
+        redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
+      else
+        head :unauthorized
+      end
+      return
+    end
+    
+    # If it's a browser request (HTML), set session and redirect to dashboard
+    if request.format.html?
+      payload = { uid: user.id, exp: 30.days.from_now.to_i }
+      jwt_token = JWT.encode(payload, hmac_secret, "HS256")
+      session[:jwt_token] = jwt_token
+      redirect_to dashboard_path, notice: "Successfully signed in as #{user.email}"
+    else
+      # For API requests, return JWT token
+      render plain: issue_jwt(user:)
+    end
   end
 
   def dev_exchange

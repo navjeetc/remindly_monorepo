@@ -64,6 +64,24 @@ struct ReminderListView: View {
                 .buttonStyle(.plain)
                 .help("Toggle offline mode (debug)")
                 
+                // Clear cache button (debug)
+                Button(action: {
+                    Task {
+                        do {
+                            try DataManager.shared.clearAllPendingActions()
+                            await vm.refresh()
+                        } catch {
+                            print("❌ Failed to clear cache: \(error)")
+                        }
+                    }
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 20))
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("Clear pending actions (debug)")
+                
                 // Debug button
                 Button(action: {
                     showDebugInfo.toggle()
@@ -196,7 +214,7 @@ struct ReminderCard: View {
                     
                     BigButton(title: "⏰ Snooze", color: .orange, fontSize: settings.fontSize - 2) {
                         Task {
-                            await vm.acknowledge(occurrence: occurrence, kind: "snooze")
+                            await vm.snooze(occurrence: occurrence, minutes: 10)
                         }
                     }
                     

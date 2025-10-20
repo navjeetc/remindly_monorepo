@@ -32,7 +32,15 @@ class Recurrence
       Rails.logger.info "  [#{idx}] #{t} (#{t >= now - 1.hour ? 'WILL CREATE' : 'SKIP - too old'})"
       # Only create if it's in the future or within the last hour (for today's reminders)
       if t >= now - 1.hour
-        reminder.occurrences.find_or_create_by!(scheduled_at: t)
+        begin
+          occurrence = reminder.occurrences.find_or_create_by!(scheduled_at: t)
+          Rails.logger.info "    ✅ Occurrence id=#{occurrence.id} for #{t}"
+        rescue ActiveRecord::RecordNotUnique => e
+          Rails.logger.warn "    ⚠️ Duplicate occurrence prevented for #{t}: #{e.message}"
+          # Occurrence already exists, fetch it
+          occurrence = reminder.occurrences.find_by!(scheduled_at: t)
+          Rails.logger.info "    ✅ Found existing occurrence id=#{occurrence.id}"
+        end
       end
     end
   end

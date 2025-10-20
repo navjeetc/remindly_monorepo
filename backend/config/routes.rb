@@ -62,5 +62,29 @@ Rails.application.routes.draw do
   get 'caregiver_dashboard/:senior_id/today', to: 'caregiver_dashboard#today'
   get 'caregiver_dashboard/:senior_id/missed_count', to: 'caregiver_dashboard#missed_count'
   
+  # Tasks (web interface)
+  resources :seniors, only: [] do
+    resources :tasks do
+      member do
+        post :complete
+        post :assign
+      end
+      resources :comments, controller: 'task_comments', only: [:create, :destroy]
+    end
+  end
+  
+  # API routes
+  namespace :api do
+    resources :tasks do
+      member do
+        post :assign
+        post :claim
+      end
+      resources :comments, controller: 'task_comments', only: [:index, :create, :destroy]
+    end
+    
+    resources :availability, controller: 'caregiver_availabilities', only: [:index, :create, :update, :destroy]
+  end
+  
   get "up" => "rails/health#show", as: :rails_health_check
 end

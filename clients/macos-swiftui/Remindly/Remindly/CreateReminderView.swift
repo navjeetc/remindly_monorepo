@@ -178,6 +178,7 @@ struct CreateReminderView: View {
                 rrule: rrule,
                 time: selectedTime
             )
+            isCreating = false
             dismiss()
         } catch {
             errorMessage = "Failed to create reminder: \(error.localizedDescription)"

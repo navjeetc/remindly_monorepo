@@ -1,0 +1,13 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-3xl font-bold text-gray-900">Edit Task</h2>
+      <p class="mt-1 text-sm text-gray-500"><%= @task.title %></p>
+    </div>
+    <%= link_to "← Back to Task", senior_task_path(@senior, @task), class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg p-6">
+    <%= render "form" %>
+  </div>
+</div>

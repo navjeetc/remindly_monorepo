@@ -1,5 +1,6 @@
 class SessionsController < ActionController::Base
   layout false
+  skip_before_action :verify_authenticity_token, only: [:verify_magic_link]
   
   def new
     # Show login page

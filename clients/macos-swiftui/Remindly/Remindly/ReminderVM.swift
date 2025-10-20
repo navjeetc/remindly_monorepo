@@ -133,7 +133,6 @@ class ReminderVM: ObservableObject {
                 for (index, occ) in occurrences.enumerated() {
                     print("  [\(index)] id:\(occ.id) - '\(occ.reminder.title)' at \(occ.scheduledAt) (\(occ.status))")
                 }
-                print("📊 Final occurrences count: \(occurrences.count)")
                 
                 // Also refresh reminders cache for offline editing
                 do {
@@ -152,6 +151,18 @@ class ReminderVM: ObservableObject {
                     print("📱 First occurrence title: '\(occurrences[0].reminder.title)'")
                 }
             }
+            
+            // Deduplicate by ID (defensive programming)
+            var seen = Set<Int>()
+            occurrences = occurrences.filter { occurrence in
+                if seen.contains(occurrence.id) {
+                    print("⚠️ Duplicate occurrence detected in refresh: id=\(occurrence.id), title='\(occurrence.reminder.title)'")
+                    return false
+                }
+                seen.insert(occurrence.id)
+                return true
+            }
+            print("📊 Final occurrences count after deduplication: \(occurrences.count)")
             
             // Schedule notifications for all pending reminders
             await notificationManager.scheduleNotifications(for: occurrences)
@@ -210,7 +221,7 @@ class ReminderVM: ObservableObject {
             // For hourly reminders, pass the start time
             let startTime = rrule.contains("FREQ=HOURLY") ? time : nil
             
-            // Queue the create action
+            // Queue the create action (this will sync and update cache if online)
             try await syncManager.queueCreateReminder(
                 title: title,
                 notes: notes,
@@ -220,19 +231,8 @@ class ReminderVM: ObservableObject {
                 startTime: startTime
             )
             
-            // Refresh to show new reminder's occurrences
+            // Refresh to show the new reminder (this fetches from API and updates UI)
             await refresh()
-            
-            // Also refresh reminders cache for offline editing
-            if networkMonitor.effectivelyConnected {
-                do {
-                    let reminders = try await apiClient.fetchReminders()
-                    try dataManager.saveReminders(reminders)
-                    print("✅ Cached \(reminders.count) reminders after create")
-                } catch {
-                    print("⚠️ Failed to cache reminders after create: \(error.localizedDescription)")
-                }
-            }
             
             print("✅ Reminder created: \(title)")
         } catch {

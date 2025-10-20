@@ -13,6 +13,7 @@ class SyncManager: ObservableObject {
     private let networkMonitor = NetworkMonitor.shared
     
     private var syncObserver: NSObjectProtocol?
+    private var isCreatingReminder = false
     
     private init() {
         setupNetworkObserver()
@@ -83,6 +84,20 @@ class SyncManager: ObservableObject {
     }
     
     func queueCreateReminder(title: String, notes: String?, category: String, rrule: String, tz: String, startTime: Date? = nil) async throws {
+        print("📝 queueCreateReminder called for: '\(title)'")
+        
+        // Prevent concurrent reminder creation
+        guard !isCreatingReminder else {
+            print("⚠️ Reminder creation already in progress, ignoring duplicate call for '\(title)'")
+            return
+        }
+        
+        isCreatingReminder = true
+        defer { 
+            isCreatingReminder = false
+            print("✅ queueCreateReminder completed for: '\(title)'")
+        }
+        
         let payload = CreateReminderPayload(
             title: title,
             notes: notes,
@@ -236,19 +251,31 @@ class SyncManager: ObservableObject {
             let actions = try dataManager.fetchPendingActions()
             print("🔄 Syncing \(actions.count) pending actions")
             
+            // Log all pending actions
+            for (index, action) in actions.enumerated() {
+                print("  [\(index)] \(action.actionType), reminderId: \(action.reminderId ?? -1), occurrenceId: \(action.occurrenceId ?? -1)")
+            }
+            
             for action in actions {
                 do {
+                    print("🔄 Processing action: \(action.actionType)")
                     try await processAction(action)
                     try dataManager.deletePendingAction(action)
                     print("✅ Synced action: \(action.actionType)")
                 } catch {
                     let retryCount = action.retryCount + 1
-                    try dataManager.updatePendingAction(action, retryCount: retryCount, error: error.localizedDescription)
                     print("❌ Failed to sync action: \(error.localizedDescription)")
                     
-                    // Stop syncing if we hit too many errors
-                    if retryCount >= 3 {
-                        print("⚠️ Action failed 3 times, skipping: \(action.actionType)")
+                    // If it's a decoding error or has failed 3 times, delete it
+                    if error.localizedDescription.contains("couldn't be read") || 
+                       error.localizedDescription.contains("correct format") ||
+                       retryCount >= 3 {
+                        print("🗑️ Deleting corrupted/failed action: \(action.actionType)")
+                        try dataManager.deletePendingAction(action)
+                    } else {
+                        // Otherwise, update retry count
+                        try dataManager.updatePendingAction(action, retryCount: retryCount, error: error.localizedDescription)
+                        print("⚠️ Will retry action (attempt \(retryCount)/3)")
                     }
                 }
             }
@@ -291,6 +318,11 @@ class SyncManager: ObservableObject {
             let reminders = try await apiClient.fetchReminders()
             try dataManager.saveReminders(reminders)
             print("✅ Cached \(reminders.count) reminders after create sync")
+            
+            // Also fetch and cache today's occurrences to ensure UI is up-to-date
+            let occurrences = try await apiClient.fetchTodayReminders()
+            try dataManager.saveOccurrences(occurrences)
+            print("✅ Cached \(occurrences.count) occurrences after create sync")
             
         case "update_reminder":
             let payload = try JSONDecoder().decode(UpdateReminderPayload.self, from: action.payload)
