@@ -18,7 +18,7 @@ class User < ApplicationRecord
   has_many :caregiver_availabilities, foreign_key: "caregiver_id", dependent: :destroy
   
   validates :email, presence: true, uniqueness: true
-  validates :name, presence: true, on: :update
+  validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
   
   # Generate a pairing token for this senior
