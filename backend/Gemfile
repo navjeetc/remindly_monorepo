@@ -50,10 +50,12 @@ end
 gem "jwt", "~> 2.7"
 gem "rack-cors", "~> 2.0"
 gem "ice_cube", "~> 0.16"
+gem "kaminari", "~> 1.2"
 
 group :development, :test do
   gem "rspec-rails", "~> 6.1"
   gem "factory_bot_rails", "~> 6.4"
+  gem "shoulda-matchers", "~> 6.0"
 end
 
 gem "letter_opener", "~> 1.10"

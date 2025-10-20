@@ -13,6 +13,7 @@ class SyncManager: ObservableObject {
     private let networkMonitor = NetworkMonitor.shared
     
     private var syncObserver: NSObjectProtocol?
+    private var isCreatingReminder = false
     
     private init() {
         setupNetworkObserver()
@@ -83,6 +84,15 @@ class SyncManager: ObservableObject {
     }
     
     func queueCreateReminder(title: String, notes: String?, category: String, rrule: String, tz: String, startTime: Date? = nil) async throws {
+        // Prevent concurrent reminder creation
+        guard !isCreatingReminder else {
+            print("⚠️ Reminder creation already in progress, ignoring duplicate call")
+            return
+        }
+        
+        isCreatingReminder = true
+        defer { isCreatingReminder = false }
+        
         let payload = CreateReminderPayload(
             title: title,
             notes: notes,
@@ -91,7 +101,9 @@ class SyncManager: ObservableObject {
             tz: tz,
             startTime: startTime
         )
-        let data = try JSONEncoder().encode(payload)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(payload)
         
         // Generate temporary negative ID for offline-created reminders
         let tempId = -Int(Date().timeIntervalSince1970)
@@ -270,7 +282,16 @@ class SyncManager: ObservableObject {
             _ = try await apiClient.snooze(occurrenceId: payload.occurrenceId, minutes: payload.minutes)
             
         case "create_reminder":
-            let payload = try JSONDecoder().decode(CreateReminderPayload.self, from: action.payload)
+            print("📝 Decoding CreateReminderPayload...")
+            if let jsonString = String(data: action.payload, encoding: .utf8) {
+                print("📝 Payload JSON: \(jsonString)")
+            }
+            
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let payload = try decoder.decode(CreateReminderPayload.self, from: action.payload)
+            print("✅ Decoded payload: title='\(payload.title)', category=\(payload.category)")
+            
             try await apiClient.createReminder(
                 title: payload.title,
                 notes: payload.notes,
@@ -291,6 +312,11 @@ class SyncManager: ObservableObject {
             let reminders = try await apiClient.fetchReminders()
             try dataManager.saveReminders(reminders)
             print("✅ Cached \(reminders.count) reminders after create sync")
+            
+            // Also fetch and cache today's occurrences to ensure UI is up-to-date
+            let occurrences = try await apiClient.fetchTodayReminders()
+            try dataManager.saveOccurrences(occurrences)
+            print("✅ Cached \(occurrences.count) occurrences after create sync")
             
         case "update_reminder":
             let payload = try JSONDecoder().decode(UpdateReminderPayload.self, from: action.payload)

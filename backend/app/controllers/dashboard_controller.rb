@@ -5,6 +5,8 @@ class DashboardController < WebController
   
   # Landing page - show pairing or dashboard
   def index
+    Rails.logger.info "🔍 Dashboard index: user_id=#{current_user.id}, role=#{current_user.role}, role_senior?=#{current_user.role_senior?}"
+    
     # Redirect admins to admin panel
     if current_user.role_admin?
       redirect_to admin_users_path
@@ -19,13 +21,52 @@ class DashboardController < WebController
         .where.not(senior_id: nil)
       @pending_links = []
     elsif current_user.role_senior?
-      # Seniors see their caregivers and pending tokens
+      # Seniors see their own tasks, reminders, and caregivers
       @linked_seniors = []
       @pending_links = current_user.senior_links.where(caregiver_id: nil).where.not(pairing_token: nil)
+      
+      # Get today's reminders for the senior
+      tz = ActiveSupport::TimeZone[current_user.tz]
+      now = tz.now.beginning_of_day
+      end_of_day = now.end_of_day
+      
+      # Expand all reminders to ensure today's occurrences exist
+      current_user.reminders.each do |reminder|
+        Recurrence.expand(reminder)
+      end
+      
+      @today_occurrences = Occurrence.joins(:reminder)
+        .where(reminders: { user_id: current_user.id }, scheduled_at: now..end_of_day)
+        .order(:scheduled_at)
+        .includes(:reminder, :acknowledgements)
+      
+      # Get upcoming tasks (next 7 days) - visible to senior
+      @upcoming_tasks = Task.where(senior_id: current_user.id)
+        .where.not(status: :completed)
+        .where(visible_to_senior: true)
+        .where('scheduled_at >= ?', now)
+        .where('scheduled_at <= ?', now + 7.days)
+        .order(:scheduled_at)
+        .limit(10)
+      
+      Rails.logger.info "📋 Senior dashboard: user_id=#{current_user.id}, tasks=#{@upcoming_tasks.count}, occurrences=#{@today_occurrences.count}"
     else
       # No role - will be caught by check_role!
       @linked_seniors = []
       @pending_links = []
+    end
+  end
+  
+  # Show profile page
+  def profile
+  end
+  
+  # Update profile
+  def update_profile
+    if current_user.update(profile_params)
+      redirect_to dashboard_path, notice: "Profile updated successfully"
+    else
+      render :profile
     end
   end
   
@@ -217,6 +258,65 @@ class DashboardController < WebController
     redirect_to dashboard_path, alert: "Access denied"
   end
   
+  # Invite another caregiver to help with a senior
+  def invite_caregiver
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+  end
+  
+  def process_invite_caregiver
+    @senior_id = params[:senior_id]
+    link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
+    @senior = link.senior
+    
+    caregiver_email = params[:caregiver_email]&.strip&.downcase
+    
+    if caregiver_email.blank?
+      flash[:alert] = "Please enter a caregiver email"
+      render :invite_caregiver
+      return
+    end
+    
+    # Find or create the caregiver user
+    caregiver = User.find_by(email: caregiver_email)
+    
+    if caregiver.nil?
+      # Create new user with caregiver role
+      caregiver = User.create!(
+        email: caregiver_email,
+        role: :caregiver
+      )
+    elsif caregiver.id == @senior.id
+      # Can't invite the senior to be their own caregiver
+      flash[:alert] = "You cannot invite the senior to be their own caregiver"
+      render :invite_caregiver
+      return
+    elsif !caregiver.role_caregiver?
+      # Only caregivers can be invited
+      flash[:alert] = "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role}."
+      render :invite_caregiver
+      return
+    end
+    
+    # Check if already linked
+    existing_link = CaregiverLink.find_by(senior_id: @senior.id, caregiver_id: caregiver.id)
+    if existing_link
+      flash[:alert] = "#{caregiver_email} is already linked to this senior"
+      redirect_to senior_dashboard_path(@senior)
+      return
+    end
+    
+    # Create the link with view permission by default
+    CaregiverLink.create!(
+      senior_id: @senior.id,
+      caregiver_id: caregiver.id,
+      permission: :view
+    )
+    
+    redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
+  end
+  
   private
   
   def check_role!
@@ -227,6 +327,10 @@ class DashboardController < WebController
   
   def reminder_params
     params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
+  end
+  
+  def profile_params
+    params.require(:user).permit(:name, :nickname, :tz)
   end
   
   def parse_time_safely(time_string, timezone)

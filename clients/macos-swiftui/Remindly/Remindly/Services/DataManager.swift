@@ -27,23 +27,34 @@ class DataManager {
     // MARK: - Occurrences
     
     func saveOccurrences(_ occurrences: [OccurrenceResponse]) throws {
-        // Clear existing occurrences for today
-        let today = Calendar.current.startOfDay(for: Date())
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
-        
+        // Clear ALL existing occurrences (not just today's) to prevent stale data
+        // This ensures deleted reminders AND temporary offline reminders don't show up from cache
         print("💾 saveOccurrences called with \(occurrences.count) occurrences")
         
-        let descriptor = FetchDescriptor<LocalOccurrence>(
-            predicate: #Predicate { occurrence in
-                occurrence.scheduledAt >= today && occurrence.scheduledAt < tomorrow
-            }
-        )
+        let descriptor = FetchDescriptor<LocalOccurrence>()
         
         let existing = try modelContext.fetch(descriptor)
         print("🗑️ Deleting \(existing.count) existing occurrences from cache")
         for occurrence in existing {
-            print("  - Deleting id:\(occurrence.id), reminderId:\(occurrence.reminderId)")
+            if occurrence.reminderId < 0 {
+                print("  - Deleting TEMPORARY occurrence id:\(occurrence.id), reminderId:\(occurrence.reminderId)")
+            }
             modelContext.delete(occurrence)
+        }
+        
+        // Also clear temporary reminders with negative IDs
+        let reminderDescriptor = FetchDescriptor<LocalReminder>(
+            predicate: #Predicate { reminder in
+                reminder.id < 0
+            }
+        )
+        let tempReminders = try modelContext.fetch(reminderDescriptor)
+        if !tempReminders.isEmpty {
+            print("🗑️ Deleting \(tempReminders.count) temporary reminders with negative IDs")
+            for reminder in tempReminders {
+                print("  - Deleting temp reminder id:\(reminder.id), title:'\(reminder.title)'")
+                modelContext.delete(reminder)
+            }
         }
         
         // Save new occurrences
@@ -213,6 +224,7 @@ class DataManager {
     // MARK: - Pending Actions
     
     func addPendingAction(_ action: PendingAction) throws {
+        print("➕ Adding pending action: \(action.actionType), reminderId: \(action.reminderId ?? -1)")
         modelContext.insert(action)
         try modelContext.save()
     }
@@ -235,5 +247,39 @@ class DataManager {
         action.lastRetryAt = Date()
         action.error = error
         try modelContext.save()
+    }
+    
+    // MARK: - Clear All Data
+    
+    func clearAllPendingActions() throws {
+        let descriptor = FetchDescriptor<PendingAction>()
+        let actions = try modelContext.fetch(descriptor)
+        for action in actions {
+            modelContext.delete(action)
+        }
+        try modelContext.save()
+        print("🗑️ Cleared \(actions.count) pending actions")
+    }
+    
+    func clearAllLocalData() throws {
+        // Clear pending actions
+        try clearAllPendingActions()
+        
+        // Clear occurrences
+        let occurrenceDescriptor = FetchDescriptor<LocalOccurrence>()
+        let occurrences = try modelContext.fetch(occurrenceDescriptor)
+        for occurrence in occurrences {
+            modelContext.delete(occurrence)
+        }
+        
+        // Clear reminders
+        let reminderDescriptor = FetchDescriptor<LocalReminder>()
+        let reminders = try modelContext.fetch(reminderDescriptor)
+        for reminder in reminders {
+            modelContext.delete(reminder)
+        }
+        
+        try modelContext.save()
+        print("🗑️ Cleared all local data: \(occurrences.count) occurrences, \(reminders.count) reminders")
     }
 }

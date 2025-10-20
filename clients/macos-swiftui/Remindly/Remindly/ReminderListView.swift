@@ -53,6 +53,24 @@ struct ReminderListView: View {
                 .buttonStyle(.plain)
                 .help("Create new reminder")
                 
+                // Clear cache button (debug)
+                Button(action: {
+                    Task {
+                        do {
+                            try DataManager.shared.clearAllLocalData()
+                            await vm.refresh()
+                        } catch {
+                            print("❌ Failed to clear cache: \(error)")
+                        }
+                    }
+                }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 20))
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("Clear all cached data (debug)")
+                
                 // Offline toggle (debug)
                 Button(action: {
                     NetworkMonitor.shared.forceOffline.toggle()

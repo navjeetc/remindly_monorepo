@@ -99,8 +99,18 @@ class AuthenticationManager: ObservableObject {
         // Save token securely
         try saveToken(jwt)
         
+        // Extract and save email from JWT
+        if let email = extractEmailFromJWT(jwt) {
+            saveEmail(email)
+            userEmail = email
+            print("✅ Extracted email from JWT: \(email)")
+        }
+        
         // Set token in API client
         APIClient.shared.setToken(jwt)
+        
+        // Clear any stale cached data before fresh login
+        try? DataManager.shared.clearAllLocalData()
         
         // Update authentication state
         isAuthenticated = true
@@ -123,6 +133,9 @@ class AuthenticationManager: ObservableObject {
         try saveToken(token)
         saveEmail(email)
         
+        // Clear any stale cached data before fresh login
+        try? DataManager.shared.clearAllLocalData()
+        
         // Update authentication state
         isAuthenticated = true
         userEmail = email
@@ -139,6 +152,16 @@ class AuthenticationManager: ObservableObject {
         deleteEmail()
         isAuthenticated = false
         userEmail = nil
+        
+        // Clear all cached data
+        Task { @MainActor in
+            do {
+                try DataManager.shared.clearAllLocalData()
+            } catch {
+                print("⚠️ Failed to clear cache on logout: \(error.localizedDescription)")
+            }
+        }
+        
         print("✅ User logged out")
     }
     
@@ -254,6 +277,31 @@ class AuthenticationManager: ObservableObject {
     
     private func deleteEmail() {
         UserDefaults.standard.removeObject(forKey: emailKey)
+    }
+    
+    /// Extract email from JWT payload
+    private func extractEmailFromJWT(_ jwt: String) -> String? {
+        let segments = jwt.components(separatedBy: ".")
+        guard segments.count > 1 else { return nil }
+        
+        let payloadSegment = segments[1]
+        // Add padding if needed for base64 decoding
+        var base64 = payloadSegment
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        
+        let paddingLength = 4 - base64.count % 4
+        if paddingLength < 4 {
+            base64 += String(repeating: "=", count: paddingLength)
+        }
+        
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let email = json["email"] as? String else {
+            return nil
+        }
+        
+        return email
     }
 }
 

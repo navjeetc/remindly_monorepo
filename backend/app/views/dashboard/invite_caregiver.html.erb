@@ -1,0 +1,50 @@
+<div class="max-w-2xl mx-auto">
+  <div class="mb-6">
+    <%= link_to "← Back to #{@senior.email}", senior_dashboard_path(@senior), class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+        Invite Another Caregiver
+      </h3>
+      
+      <p class="text-sm text-gray-600 mb-6">
+        Invite another caregiver to help with <%= @senior.email %>. They will be able to view tasks, reminders, and activity.
+      </p>
+
+      <%= form_with url: invite_caregiver_dashboard_path(@senior), method: :post, class: "space-y-6" do |f| %>
+        <div>
+          <%= label_tag :caregiver_email, "Caregiver Email", class: "block text-sm font-medium text-gray-700" %>
+          <%= email_field_tag :caregiver_email, nil, 
+            class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+            placeholder: "caregiver@example.com",
+            required: true %>
+          <p class="mt-2 text-sm text-gray-500">
+            If this email doesn't exist in the system, we'll create a new caregiver account for them.
+          </p>
+        </div>
+
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-blue-700">
+                The invited caregiver will have <strong>view</strong> access by default. You can change their permissions later if needed.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <%= link_to "Cancel", senior_dashboard_path(@senior), class: "inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+          <%= submit_tag "Send Invitation", class: "inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

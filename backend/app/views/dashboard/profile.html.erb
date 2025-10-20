@@ -1,0 +1,85 @@
+<div class="max-w-2xl mx-auto">
+  <div class="mb-6">
+    <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-6">
+        My Profile
+      </h3>
+
+      <%= form_with model: current_user, url: profile_path, method: :patch, class: "space-y-6" do |f| %>
+        <% if current_user.errors.any? %>
+          <div class="rounded-md bg-red-50 p-4">
+            <div class="text-sm text-red-700">
+              <ul class="list-disc pl-5 space-y-1">
+                <% current_user.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Email (read-only) -->
+        <div>
+          <%= f.label :email, class: "block text-sm font-medium text-gray-700" %>
+          <div class="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
+            <%= current_user.email %>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+        </div>
+
+        <!-- Name -->
+        <div>
+          <%= f.label :name, "Full Name", class: "block text-sm font-medium text-gray-700" %>
+          <span class="text-red-500">*</span>
+          <%= f.text_field :name, 
+            class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+            placeholder: "e.g., John Smith",
+            required: true %>
+          <p class="mt-1 text-xs text-gray-500">Your full name (required)</p>
+        </div>
+
+        <!-- Nickname -->
+        <div>
+          <%= f.label :nickname, class: "block text-sm font-medium text-gray-700" %>
+          <%= f.text_field :nickname, 
+            class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+            placeholder: "e.g., Johnny, Grandma, etc." %>
+          <p class="mt-1 text-xs text-gray-500">
+            How you'd like others to call you. If not set, your name will be used.
+          </p>
+        </div>
+
+        <!-- Timezone -->
+        <div>
+          <%= f.label :tz, "Timezone", class: "block text-sm font-medium text-gray-700" %>
+          <%= f.select :tz,
+            options_for_select(
+              ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] },
+              current_user.tz
+            ),
+            {},
+            class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+        </div>
+
+        <!-- Role (read-only) -->
+        <div>
+          <%= f.label :role, class: "block text-sm font-medium text-gray-700" %>
+          <div class="mt-1">
+            <span class="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium <%= current_user.role_senior? ? 'bg-blue-100 text-blue-800' : current_user.role_caregiver? ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800' %>">
+              <%= current_user.role.titleize %>
+            </span>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <%= link_to "Cancel", dashboard_path, class: "inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+          <%= f.submit "Save Changes", class: "inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
