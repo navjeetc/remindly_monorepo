@@ -5,6 +5,8 @@ class DashboardController < WebController
   
   # Landing page - show pairing or dashboard
   def index
+    Rails.logger.info "🔍 Dashboard index: user_id=#{current_user.id}, role=#{current_user.role}, role_senior?=#{current_user.role_senior?}"
+    
     # Redirect admins to admin panel
     if current_user.role_admin?
       redirect_to admin_users_path
@@ -19,9 +21,34 @@ class DashboardController < WebController
         .where.not(senior_id: nil)
       @pending_links = []
     elsif current_user.role_senior?
-      # Seniors see their caregivers and pending tokens
+      # Seniors see their own tasks, reminders, and caregivers
       @linked_seniors = []
       @pending_links = current_user.senior_links.where(caregiver_id: nil).where.not(pairing_token: nil)
+      
+      # Get today's reminders for the senior
+      tz = ActiveSupport::TimeZone[current_user.tz]
+      now = tz.now.beginning_of_day
+      end_of_day = now.end_of_day
+      
+      # Expand all reminders to ensure today's occurrences exist
+      current_user.reminders.each do |reminder|
+        Recurrence.expand(reminder)
+      end
+      
+      @today_occurrences = Occurrence.joins(:reminder)
+        .where(reminders: { user_id: current_user.id }, scheduled_at: now..end_of_day)
+        .order(:scheduled_at)
+        .includes(:reminder, :acknowledgements)
+      
+      # Get upcoming tasks (next 7 days)
+      @upcoming_tasks = Task.where(senior_id: current_user.id)
+        .where.not(status: :completed)
+        .where('scheduled_at >= ?', now)
+        .where('scheduled_at <= ?', now + 7.days)
+        .order(:scheduled_at)
+        .limit(10)
+      
+      Rails.logger.info "📋 Senior dashboard: user_id=#{current_user.id}, tasks=#{@upcoming_tasks.count}, occurrences=#{@today_occurrences.count}"
     else
       # No role - will be caught by check_role!
       @linked_seniors = []
