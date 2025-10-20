@@ -84,19 +84,14 @@ class SyncManager: ObservableObject {
     }
     
     func queueCreateReminder(title: String, notes: String?, category: String, rrule: String, tz: String, startTime: Date? = nil) async throws {
-        print("📝 queueCreateReminder called for: '\(title)'")
-        
         // Prevent concurrent reminder creation
         guard !isCreatingReminder else {
-            print("⚠️ Reminder creation already in progress, ignoring duplicate call for '\(title)'")
+            print("⚠️ Reminder creation already in progress, ignoring duplicate call")
             return
         }
         
         isCreatingReminder = true
-        defer { 
-            isCreatingReminder = false
-            print("✅ queueCreateReminder completed for: '\(title)'")
-        }
+        defer { isCreatingReminder = false }
         
         let payload = CreateReminderPayload(
             title: title,
@@ -251,31 +246,19 @@ class SyncManager: ObservableObject {
             let actions = try dataManager.fetchPendingActions()
             print("🔄 Syncing \(actions.count) pending actions")
             
-            // Log all pending actions
-            for (index, action) in actions.enumerated() {
-                print("  [\(index)] \(action.actionType), reminderId: \(action.reminderId ?? -1), occurrenceId: \(action.occurrenceId ?? -1)")
-            }
-            
             for action in actions {
                 do {
-                    print("🔄 Processing action: \(action.actionType)")
                     try await processAction(action)
                     try dataManager.deletePendingAction(action)
                     print("✅ Synced action: \(action.actionType)")
                 } catch {
                     let retryCount = action.retryCount + 1
+                    try dataManager.updatePendingAction(action, retryCount: retryCount, error: error.localizedDescription)
                     print("❌ Failed to sync action: \(error.localizedDescription)")
                     
-                    // If it's a decoding error or has failed 3 times, delete it
-                    if error.localizedDescription.contains("couldn't be read") || 
-                       error.localizedDescription.contains("correct format") ||
-                       retryCount >= 3 {
-                        print("🗑️ Deleting corrupted/failed action: \(action.actionType)")
-                        try dataManager.deletePendingAction(action)
-                    } else {
-                        // Otherwise, update retry count
-                        try dataManager.updatePendingAction(action, retryCount: retryCount, error: error.localizedDescription)
-                        print("⚠️ Will retry action (attempt \(retryCount)/3)")
+                    // Stop syncing if we hit too many errors
+                    if retryCount >= 3 {
+                        print("⚠️ Action failed 3 times, skipping: \(action.actionType)")
                     }
                 }
             }

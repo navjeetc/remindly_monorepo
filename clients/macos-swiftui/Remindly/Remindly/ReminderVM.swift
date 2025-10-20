@@ -231,10 +231,28 @@ class ReminderVM: ObservableObject {
                 startTime: startTime
             )
             
-            // Refresh to show the new reminder (this fetches from API and updates UI)
-            await refresh()
+            // Load the updated occurrences from cache (already updated by sync)
+            let localOccurrences = try dataManager.fetchTodayOccurrences()
+            occurrences = localOccurrences.map { $0.toOccurrenceResponse() }
+            
+            // Deduplicate by ID (defensive programming)
+            var seen = Set<Int>()
+            occurrences = occurrences.filter { occurrence in
+                if seen.contains(occurrence.id) {
+                    print("⚠️ Duplicate occurrence detected: id=\(occurrence.id), title='\(occurrence.reminder.title)'")
+                    return false
+                }
+                seen.insert(occurrence.id)
+                return true
+            }
+            
+            print("✅ Loaded \(occurrences.count) occurrences from cache after create")
+            
+            // Schedule notifications for all pending reminders
+            await notificationManager.scheduleNotifications(for: occurrences)
             
             print("✅ Reminder created: \(title)")
+            isLoading = false
         } catch {
             errorMessage = "Failed to create reminder: \(error.localizedDescription)"
             isLoading = false

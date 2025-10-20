@@ -72,11 +72,6 @@ class RemindersController < ApplicationController
     now = tz.now.beginning_of_day
     end_of_day = now.end_of_day
     
-    # Expand all active reminders to ensure today's occurrences exist
-    current_user.reminders.each do |reminder|
-      Recurrence.expand(reminder)
-    end
-    
     ocs = Occurrence.joins(:reminder)
       .where(reminders: { user_id: current_user.id }, scheduled_at: now..end_of_day)
       .order(:scheduled_at)
