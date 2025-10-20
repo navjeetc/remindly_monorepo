@@ -40,10 +40,9 @@ class DashboardController < WebController
         .order(:scheduled_at)
         .includes(:reminder, :acknowledgements)
       
-      # Get upcoming tasks (next 7 days) - only assigned and visible to senior
+      # Get upcoming tasks (next 7 days) - visible to senior
       @upcoming_tasks = Task.where(senior_id: current_user.id)
         .where.not(status: :completed)
-        .where.not(assigned_to_id: nil)
         .where(visible_to_senior: true)
         .where('scheduled_at >= ?', now)
         .where('scheduled_at <= ?', now + 7.days)
@@ -55,6 +54,19 @@ class DashboardController < WebController
       # No role - will be caught by check_role!
       @linked_seniors = []
       @pending_links = []
+    end
+  end
+  
+  # Show profile page
+  def profile
+  end
+  
+  # Update profile
+  def update_profile
+    if current_user.update(profile_params)
+      redirect_to profile_path, notice: "Profile updated successfully"
+    else
+      render :profile
     end
   end
   
@@ -275,8 +287,14 @@ class DashboardController < WebController
         email: caregiver_email,
         role: :caregiver
       )
+    elsif caregiver.id == @senior.id
+      # Can't invite the senior to be their own caregiver
+      flash[:alert] = "You cannot invite the senior to be their own caregiver"
+      render :invite_caregiver
+      return
     elsif !caregiver.role_caregiver?
-      flash[:alert] = "#{caregiver_email} is not a caregiver"
+      # Only caregivers can be invited
+      flash[:alert] = "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role}."
       render :invite_caregiver
       return
     end
@@ -289,11 +307,11 @@ class DashboardController < WebController
       return
     end
     
-    # Create the link with view_only permission by default
+    # Create the link with view permission by default
     CaregiverLink.create!(
       senior_id: @senior.id,
       caregiver_id: caregiver.id,
-      permission: :view_only
+      permission: :view
     )
     
     redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
@@ -309,6 +327,10 @@ class DashboardController < WebController
   
   def reminder_params
     params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
+  end
+  
+  def profile_params
+    params.require(:user).permit(:name, :nickname, :tz)
   end
   
   def parse_time_safely(time_string, timezone)

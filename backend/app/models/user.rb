@@ -24,4 +24,14 @@ class User < ApplicationRecord
   def generate_pairing_token
     CaregiverLink.generate_pairing_token(senior: self)
   end
+  
+  # Display name - uses nickname if available, otherwise name, otherwise email
+  def display_name
+    nickname.presence || name.presence || email
+  end
+  
+  # Friendly name for seniors to recognize caregivers
+  def friendly_name
+    nickname.presence || name.presence || email.split('@').first
+  end
 end

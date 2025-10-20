@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_20_173847) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_20_184419) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -111,6 +111,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_20_173847) do
     t.string "tz", default: "America/New_York"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "name"
+    t.string "nickname"
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 

@@ -25,6 +25,8 @@ Rails.application.routes.draw do
   
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard
+  get  "profile",            to: "dashboard#profile", as: :profile
+  patch "profile",           to: "dashboard#update_profile"
   get  "dashboard/pair",     to: "dashboard#pair", as: :pair_dashboard
   post "dashboard/pair",     to: "dashboard#process_pair"
   get  "dashboard/generate", to: "dashboard#generate_token", as: :generate_token_dashboard
