@@ -40,9 +40,11 @@ class DashboardController < WebController
         .order(:scheduled_at)
         .includes(:reminder, :acknowledgements)
       
-      # Get upcoming tasks (next 7 days)
+      # Get upcoming tasks (next 7 days) - only assigned and visible to senior
       @upcoming_tasks = Task.where(senior_id: current_user.id)
         .where.not(status: :completed)
+        .where.not(assigned_to_id: nil)
+        .where(visible_to_senior: true)
         .where('scheduled_at >= ?', now)
         .where('scheduled_at <= ?', now + 7.days)
         .order(:scheduled_at)

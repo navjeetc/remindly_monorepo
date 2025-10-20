@@ -132,7 +132,8 @@ class TasksController < WebController
       :duration_minutes,
       :location,
       :notes,
-      :assigned_to_id
+      :assigned_to_id,
+      :visible_to_senior
     )
   end
 end

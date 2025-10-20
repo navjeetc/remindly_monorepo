@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_16_194053) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_20_173847) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -94,6 +94,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_194053) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "visible_to_senior", default: true, null: false
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_id_and_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["created_by_id"], name: "index_tasks_on_created_by_id"

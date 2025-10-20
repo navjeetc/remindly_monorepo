@@ -157,7 +157,8 @@ module Api
         :duration_minutes,
         :location,
         :notes,
-        :completed_at
+        :completed_at,
+        :visible_to_senior
       )
     end
   end

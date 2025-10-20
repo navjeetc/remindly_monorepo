@@ -115,6 +115,21 @@
       <%= f.label :notes, "Notes/Instructions", class: "block text-sm font-medium text-gray-700" %>
       <%= f.text_area :notes, rows: 2, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "Important notes or instructions..." %>
     </div>
+
+    <!-- Visible to Senior -->
+    <div class="sm:col-span-2">
+      <div class="flex items-start">
+        <div class="flex items-center h-5">
+          <%= f.check_box :visible_to_senior, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+        </div>
+        <div class="ml-3 text-sm">
+          <%= f.label :visible_to_senior, class: "font-medium text-gray-700" do %>
+            Show this task to senior on their dashboard
+          <% end %>
+          <p class="text-gray-500">Uncheck to hide this task from the senior (useful to avoid overwhelming them with too many tasks)</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="flex justify-end space-x-3">
