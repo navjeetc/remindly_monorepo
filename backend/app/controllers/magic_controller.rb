@@ -28,7 +28,7 @@ class MagicController < ApplicationController
       payload = { uid: user.id, exp: 30.days.from_now.to_i }
       jwt_token = JWT.encode(payload, hmac_secret, "HS256")
       session[:jwt_token] = jwt_token
-      redirect_to dashboard_path, notice: "Successfully signed in as #{user.email}"
+      redirect_to dashboard_path, notice: "Successfully signed in as #{user.display_name}"
     else
       # For API requests, return JWT token
       render plain: issue_jwt(user:)
