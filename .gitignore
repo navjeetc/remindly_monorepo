@@ -21,6 +21,6 @@ backend/db/*.sqlite3-*
 backend/.byebug_history
 backend/config/master.key
 backend/config/credentials/*.key
-
+backend/.kamal/secrets
 # Node modules (if any)
 node_modules/
