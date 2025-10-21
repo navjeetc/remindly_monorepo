@@ -171,6 +171,7 @@ class RemindlyApp {
             notificationsEnabled: true,
             notificationSound: true,
             checkInterval: 10,
+            gracePeriod: 30, // seconds before scheduled time to announce
             quietHoursEnabled: false,
             quietHoursStart: '22:00',
             quietHoursEnd: '07:00',
@@ -575,7 +576,7 @@ class RemindlyApp {
 
     checkDueReminders() {
         const now = new Date();
-        const gracePeriod = 30 * 1000; // 30 seconds grace period
+        const gracePeriod = this.settings.gracePeriod * 1000; // Convert seconds to milliseconds
         
         console.log('⏰ checkDueReminders() - Checking', this.reminders.length, 'reminders');
 
