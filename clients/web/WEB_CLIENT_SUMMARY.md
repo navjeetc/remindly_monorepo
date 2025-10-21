@@ -38,7 +38,7 @@ clients/web/
 - Color-coded status (upcoming, overdue, completed)
 - Quick actions: Taken, Snooze (10 min), Skip
 - Automatic periodic checking (configurable interval)
-- 5-minute grace period for due reminders
+- 30-second grace period for due reminders
 - Visual highlighting when announcing
 
 ### ✅ Authentication
