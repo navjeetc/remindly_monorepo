@@ -1,6 +1,6 @@
 class DashboardController < WebController
   before_action :authenticate!
-  before_action :check_role!
+  before_action :check_role!, except: [:profile, :update_profile]
   layout 'dashboard'
   
   # Landing page - show pairing or dashboard
@@ -64,9 +64,10 @@ class DashboardController < WebController
   # Update profile
   def update_profile
     if current_user.update(profile_params)
+      # Redirect back to dashboard (which will show pending_approval if no role)
       redirect_to dashboard_path, notice: "Profile updated successfully"
     else
-      render :profile
+      render :profile, status: :unprocessable_entity
     end
   end
   

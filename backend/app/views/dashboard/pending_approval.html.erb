@@ -32,10 +32,14 @@
   
   <div class="mt-8 text-sm text-gray-500">
     <p>Logged in as: <strong><%= current_user.email %></strong></p>
+    <% if current_user.name.present? %>
+      <p class="mt-1">Name: <strong><%= current_user.name %></strong></p>
+    <% end %>
     <p class="mt-2">Please contact an administrator if you have questions.</p>
   </div>
   
-  <div class="mt-6">
+  <div class="mt-6 space-x-3">
+    <%= link_to "Update Profile", profile_path, class: "inline-flex items-center px-4 py-2 border border-blue-600 shadow-sm text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50" %>
     <%= button_to "Sign Out", logout_path, method: :delete, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
   </div>
 </div>

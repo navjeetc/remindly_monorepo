@@ -4,7 +4,19 @@ class Admin::UsersController < WebController
   layout 'dashboard'
   
   def index
-    @users = User.order(created_at: :desc)
+    @role_filter = params[:role_filter]
+    
+    # Eager load caregiver_links with seniors to avoid N+1 queries
+    @users = User.includes(caregiver_links: :senior).order(created_at: :desc)
+    
+    # Apply role filter if present
+    if @role_filter.present?
+      if @role_filter == 'none'
+        @users = @users.where(role: nil)
+      else
+        @users = @users.where(role: @role_filter)
+      end
+    end
   end
   
   def update_role

@@ -48,6 +48,7 @@ end
 
 # Remindly-specific gems
 gem "jwt", "~> 2.7"
+gem "postmark-rails"
 gem "rack-cors", "~> 2.0"
 gem "ice_cube", "~> 0.16"
 gem "kaminari", "~> 1.2"
