@@ -73,7 +73,7 @@
                       <%= user.caregiver_links.where.not(caregiver_id: nil).count %> caregiver(s)
                     </span>
                   <% elsif user.role_caregiver? %>
-                    <% senior_links = user.caregiver_links.includes(:senior).where.not(senior_id: nil) %>
+                    <% senior_links = user.caregiver_links.select { |link| link.senior_id.present? } %>
                     <span class="ml-4">
                       <%= senior_links.count %> senior(s)
                     </span>
