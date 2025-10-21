@@ -1,5 +1,5 @@
 class MagicMailer < ApplicationMailer
-  default from: ENV.fetch("MAILER_FROM", "noreply@remindly.app")
+  default from: Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
 
   def magic_link_email(user, token, web: false)
     @user = user
