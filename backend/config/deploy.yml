@@ -27,6 +27,7 @@ env:
     RAILS_SERVE_STATIC_FILES: "true"
     RAILS_LOG_TO_STDOUT: "true"
     RAILS_ENV: "production"
+    APP_URL: "https://remindly.anakhsoft.com"
   secret:
     - RAILS_MASTER_KEY
 
