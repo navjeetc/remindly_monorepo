@@ -205,6 +205,10 @@ kamal logs --tail 50
 
 # Container resource usage
 kamal app exec "ps aux"
+
+# Update user names from their email addresses, using rake task
+kamal app exec "bin/rails users:populate_names_from_email"
+
 ```
 
 ### Set Up External Monitoring
