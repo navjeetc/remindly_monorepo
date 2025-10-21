@@ -41,13 +41,34 @@ A web-based reminder application with **voice announcements** using the Web Spee
 
 ## Browser Compatibility
 
-| Feature | Chrome | Edge | Safari | Firefox |
-|---------|--------|------|--------|---------|
-| Voice Announcements | ✅ | ✅ | ✅ | ✅ |
+### macOS Recommendations
+
+**🏆 Best Experience: Safari**
+- Uses native macOS voices (Siri, Samantha)
+- Natural, high-quality voice announcements
+- Reliable speech synthesis
+- **Recommended for production use on macOS**
+
+**✅ Works Well: Firefox**
+- Voice announcements work
+- Uses Firefox's speech engine (more robotic voice)
+- Good alternative to Safari
+
+**⚠️ Limited Support: Chrome**
+- Known issues with Web Speech API on macOS
+- Speech synthesis may be unreliable or fail
+- Browser notifications work as fallback
+- Not recommended for voice announcements on macOS
+
+### Feature Support by Browser
+
+| Feature | Safari | Firefox | Chrome | Edge |
+|---------|--------|---------|--------|------|
+| Voice Announcements (macOS) | ✅ Excellent | ✅ Good | ⚠️ Unreliable | ⚠️ Unreliable |
 | Browser Notifications | ✅ | ✅ | ✅ | ✅ |
 | Local Storage | ✅ | ✅ | ✅ | ✅ |
 
-**Note**: Voice quality and available voices may vary by browser and operating system.
+**Note**: Voice quality and reliability vary significantly by browser on macOS. For other platforms (Windows/Linux), Chrome and Firefox generally work well.
 
 ## Setup Instructions
 

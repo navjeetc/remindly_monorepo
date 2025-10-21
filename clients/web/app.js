@@ -4,7 +4,7 @@
 
 class RemindlyApp {
     constructor() {
-        this.apiBaseUrl = localStorage.getItem('apiBaseUrl') || 'http://localhost:3000';
+        this.apiBaseUrl = localStorage.getItem('apiBaseUrl') || 'http://localhost:5000';
         this.authToken = localStorage.getItem('authToken');
         this.reminders = [];
         this.announcedReminders = new Set(); // Track which reminders have been announced
@@ -46,6 +46,13 @@ class RemindlyApp {
 
         // Refresh
         document.getElementById('refreshBtn').addEventListener('click', () => this.refreshReminders());
+
+        // Clear announced list
+        document.getElementById('clearAnnounced').addEventListener('click', () => {
+            this.announcedReminders.clear();
+            console.log('🔄 Cleared announced reminders list');
+            this.showMessage('Announced list cleared', 'success');
+        });
 
         // Settings sliders
         document.getElementById('voiceRate').addEventListener('input', (e) => {
@@ -109,12 +116,14 @@ class RemindlyApp {
 
     async handleDevLogin() {
         try {
-            const response = await fetch(`${this.apiBaseUrl}/magic/dev_exchange`);
-            const data = await response.json();
+            // Use a default dev email for quick login
+            const devEmail = 'dev@remindly.local';
+            const response = await fetch(`${this.apiBaseUrl}/magic/dev_exchange?email=${encodeURIComponent(devEmail)}`);
+            const data = await response.text(); // Backend returns plain text token
             
-            if (response.ok && data.token) {
-                this.authToken = data.token;
-                localStorage.setItem('authToken', data.token);
+            if (response.ok && data) {
+                this.authToken = data;
+                localStorage.setItem('authToken', data);
                 this.showMainContent();
                 this.startReminderChecking();
             } else {
@@ -165,7 +174,7 @@ class RemindlyApp {
             quietHoursEnabled: false,
             quietHoursStart: '22:00',
             quietHoursEnd: '07:00',
-            apiBaseUrl: 'http://localhost:3000'
+            apiBaseUrl: 'http://localhost:5000'
         };
 
         const saved = localStorage.getItem('remindlySettings');
@@ -235,23 +244,124 @@ class RemindlyApp {
     // ========================================================================
 
     speak(text) {
-        if (!this.settings.voiceEnabled) return;
-        if (!('speechSynthesis' in window)) return;
-        if (this.isInQuietHours()) return;
-
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
+        console.log('🔊 speak() called with:', text);
+        console.log('   voiceEnabled:', this.settings.voiceEnabled);
+        console.log('   speechSynthesis available:', 'speechSynthesis' in window);
+        console.log('   inQuietHours:', this.isInQuietHours());
+        
+        if (!this.settings.voiceEnabled) {
+            console.log('❌ Voice disabled in settings');
+            return;
+        }
+        if (!('speechSynthesis' in window)) {
+            console.log('❌ speechSynthesis not available');
+            return;
+        }
+        if (this.isInQuietHours()) {
+            console.log('❌ In quiet hours');
+            return;
+        }
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'en-US';
         utterance.rate = this.settings.voiceRate;
         utterance.volume = this.settings.voiceVolume;
         
-        window.speechSynthesis.speak(utterance);
+        // Try to use a specific voice (helps with some browsers)
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            // Prefer English voices
+            const englishVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+            utterance.voice = englishVoice;
+            console.log('Using voice:', englishVoice.name);
+        }
+        
+        console.log('✅ Speaking:', text);
+        console.log('   rate:', utterance.rate, 'volume:', utterance.volume);
+        
+        utterance.onstart = () => {
+            console.log('🎤 Speech started');
+        };
+        utterance.onend = () => {
+            console.log('🎤 Speech ended');
+        };
+        utterance.onerror = (e) => {
+            console.error('❌ Speech error:', e);
+            console.error('Error details:', {
+                error: e.error,
+                charIndex: e.charIndex,
+                elapsedTime: e.elapsedTime
+            });
+        };
+        
+        try {
+            // Chrome workaround: Cancel everything and wait
+            console.log('🔄 Resetting speech synthesis...');
+            window.speechSynthesis.cancel();
+            
+            // Wait longer for Chrome to fully reset
+            setTimeout(() => {
+                console.log('📢 Calling speechSynthesis.speak()...');
+                
+                // Add a resume() call - sometimes needed in Chrome
+                window.speechSynthesis.resume();
+                
+                window.speechSynthesis.speak(utterance);
+                
+                // Chrome workaround: Call resume again after speak
+                setTimeout(() => {
+                    window.speechSynthesis.resume();
+                    console.log('🔍 Speaking status:', window.speechSynthesis.speaking);
+                    console.log('🔍 Pending status:', window.speechSynthesis.pending);
+                }, 100);
+            }, 500); // Longer delay for Chrome
+        } catch (error) {
+            console.error('❌ Exception calling speak():', error);
+        }
     }
 
     testVoice() {
-        this.speak('This is a test of the voice announcement system');
+        console.log('🎤 ========================================');
+        console.log('🎤 TEST VOICE BUTTON CLICKED');
+        console.log('🎤 ========================================');
+        
+        // Check if speech synthesis is available
+        if (!('speechSynthesis' in window)) {
+            console.error('❌ speechSynthesis not available in this browser');
+            alert('Speech synthesis is not supported in this browser');
+            return;
+        }
+        
+        console.log('✅ speechSynthesis is available');
+        console.log('Current state:', {
+            speaking: window.speechSynthesis.speaking,
+            pending: window.speechSynthesis.pending,
+            paused: window.speechSynthesis.paused
+        });
+        
+        // Try to get voices first (sometimes needed to initialize)
+        const voices = window.speechSynthesis.getVoices();
+        console.log('Available voices:', voices.length);
+        
+        if (voices.length > 0) {
+            console.log('First 5 voices:');
+            voices.slice(0, 5).forEach((v, i) => {
+                console.log(`  ${i}: ${v.name} (${v.lang})`);
+            });
+        }
+        
+        // On some browsers, we need to wait for voices to load
+        if (voices.length === 0) {
+            console.log('⏳ No voices available yet, waiting for voiceschanged event...');
+            window.speechSynthesis.onvoiceschanged = () => {
+                const newVoices = window.speechSynthesis.getVoices();
+                console.log('✅ Voices loaded:', newVoices.length);
+                this.speak('This is a test of the voice announcement system');
+            };
+        } else {
+            console.log('🔊 Calling speak() with test message...');
+            this.speak('This is a test of the voice announcement system');
+        }
     }
 
     // ========================================================================
@@ -278,7 +388,7 @@ class RemindlyApp {
         if (Notification.permission !== 'granted') return;
         if (this.isInQuietHours()) return;
 
-        const title = reminder.reminder.title;
+        const title = `⏰ REMINDER: ${reminder.reminder.title}`;
         const body = reminder.reminder.notes || `Time for your ${reminder.reminder.category || 'reminder'}`;
 
         const notification = new Notification(title, {
@@ -287,6 +397,7 @@ class RemindlyApp {
             badge: '🔔',
             tag: `reminder-${reminder.id}`,
             requireInteraction: true,
+            silent: false, // Play system sound
             data: { reminderId: reminder.id }
         });
 
@@ -295,6 +406,12 @@ class RemindlyApp {
             notification.close();
             this.scrollToReminder(reminder.id);
         };
+        
+        // Also show an alert for critical reminders
+        if (this.settings.voiceEnabled) {
+            // Since voice doesn't work, show a prominent alert
+            this.showMessage(`🔔 ${reminder.reminder.title}`, 'info');
+        }
     }
 
     // ========================================================================
@@ -339,7 +456,25 @@ class RemindlyApp {
             });
 
             if (response.ok) {
-                this.reminders = await response.json();
+                const newReminders = await response.json();
+                console.log('📥 Received reminders:', newReminders);
+                
+                // Clear announced reminders if the list has changed (new IDs)
+                const newIds = new Set(newReminders.map(r => r.id));
+                const oldIds = new Set(this.reminders.map(r => r.id));
+                const idsChanged = newReminders.length !== this.reminders.length || 
+                                  ![...newIds].every(id => oldIds.has(id));
+                
+                if (idsChanged) {
+                    console.log('🔄 Reminder list changed, clearing announced set');
+                    this.announcedReminders.clear();
+                }
+                
+                this.reminders = newReminders;
+                
+                if (this.reminders.length > 0) {
+                    console.log('📅 First reminder sample:', this.reminders[0]);
+                }
                 this.renderReminders();
                 this.updateStats();
                 this.checkDueReminders();
@@ -382,10 +517,19 @@ class RemindlyApp {
     }
 
     createReminderCard(reminder) {
-        const scheduledTime = new Date(reminder.scheduledAt);
+        // Handle both camelCase and snake_case from API
+        const scheduledAt = reminder.scheduledAt || reminder.scheduled_at;
+        const scheduledTime = new Date(scheduledAt);
         const now = new Date();
         const isPast = scheduledTime < now;
         const isCompleted = reminder.status !== 'pending';
+        
+        // Check if date is valid
+        if (isNaN(scheduledTime.getTime())) {
+            console.error('Invalid date for reminder:', reminder);
+            return ''; // Skip invalid reminders
+        }
+        
         const timeStr = scheduledTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         
         const statusClass = isCompleted ? 'completed' : (isPast ? 'overdue' : 'upcoming');
@@ -409,7 +553,7 @@ class RemindlyApp {
                         <button class="btn-action btn-skip">✗ Skip</button>
                     </div>
                 ` : `
-                    <div class="reminder-status">${reminder.status === 'taken' ? 'Completed' : 'Skipped'}</div>
+                    <div class="reminder-status">${reminder.status === 'acknowledged' ? 'Completed' : 'Skipped'}</div>
                 `}
             </div>
         `;
@@ -418,7 +562,7 @@ class RemindlyApp {
     updateStats() {
         const total = this.reminders.length;
         const pending = this.reminders.filter(r => r.status === 'pending').length;
-        const completed = this.reminders.filter(r => r.status === 'taken').length;
+        const completed = this.reminders.filter(r => r.status === 'acknowledged').length;
 
         document.getElementById('totalCount').textContent = total;
         document.getElementById('pendingCount').textContent = pending;
@@ -431,18 +575,44 @@ class RemindlyApp {
 
     checkDueReminders() {
         const now = new Date();
-        const gracePeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+        const gracePeriod = 30 * 1000; // 30 seconds grace period
+        
+        console.log('⏰ checkDueReminders() - Checking', this.reminders.length, 'reminders');
 
         this.reminders.forEach(reminder => {
-            if (reminder.status !== 'pending') return;
-            if (this.announcedReminders.has(reminder.id)) return;
-
-            const scheduledTime = new Date(reminder.scheduledAt);
+            const scheduledAt = reminder.scheduledAt || reminder.scheduled_at;
+            const scheduledTime = new Date(scheduledAt);
             const timeDiff = scheduledTime - now;
+            const minutesUntil = (timeDiff / 1000 / 60).toFixed(1);
+            
+            console.log(`  📋 ${reminder.reminder.title}:`);
+            console.log(`     Status: ${reminder.status}, Already announced: ${this.announcedReminders.has(reminder.id)}`);
+            console.log(`     Time until due: ${minutesUntil} minutes`);
+            
+            if (reminder.status !== 'pending') {
+                console.log(`     ⏭️  Skipping - not pending`);
+                return;
+            }
+            if (this.announcedReminders.has(reminder.id)) {
+                console.log(`     ⏭️  Skipping - already announced`);
+                return;
+            }
+            
+            // Skip if invalid date
+            if (isNaN(scheduledTime.getTime())) {
+                console.error('     ❌ Invalid scheduled_at for reminder:', reminder);
+                return;
+            }
 
-            // Announce if reminder is due (within grace period or past due)
-            if (timeDiff <= gracePeriod && timeDiff > -gracePeriod) {
+            // Announce if reminder is due (within grace period BEFORE scheduled time)
+            // Only announce if it's coming up, not if it's already past
+            if (timeDiff <= gracePeriod && timeDiff >= 0) {
+                console.log(`     🔔 ANNOUNCING! (due in ${(timeDiff/1000/60).toFixed(1)} minutes)`);
                 this.announceReminder(reminder);
+            } else if (timeDiff < 0) {
+                console.log(`     ⏭️  Skipping - already ${Math.abs(timeDiff/1000/60).toFixed(1)} minutes overdue`);
+            } else {
+                console.log(`     ⏳ Not yet due (${(timeDiff/1000/60).toFixed(1)} minutes until due)`);
             }
         });
     }
