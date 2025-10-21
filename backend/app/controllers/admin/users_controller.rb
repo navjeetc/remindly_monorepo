@@ -4,7 +4,18 @@ class Admin::UsersController < WebController
   layout 'dashboard'
   
   def index
+    @role_filter = params[:role_filter]
+    
     @users = User.order(created_at: :desc)
+    
+    # Apply role filter if present
+    if @role_filter.present?
+      if @role_filter == 'none'
+        @users = @users.where(role: nil)
+      else
+        @users = @users.where(role: @role_filter)
+      end
+    end
   end
   
   def update_role

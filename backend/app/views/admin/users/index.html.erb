@@ -6,9 +6,47 @@
     </span>
   </div>
 
+  <!-- Filter Section -->
+  <div class="bg-white shadow sm:rounded-lg p-4">
+    <%= form_with url: admin_users_path, method: :get, class: "flex items-center space-x-4" do |f| %>
+      <div class="flex-1">
+        <label for="role_filter" class="block text-sm font-medium text-gray-700 mb-1">Filter by Role</label>
+        <%= f.select :role_filter,
+          options_for_select(
+            [
+              ['All Users', ''],
+              ['No Role', 'none'],
+              ['Senior', 'senior'],
+              ['Caregiver', 'caregiver'],
+              ['Admin', 'admin']
+            ],
+            @role_filter
+          ),
+          {},
+          class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+          onchange: "this.form.submit()"
+        %>
+      </div>
+      <div class="pt-6">
+        <%= f.submit "Apply Filter", class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+      </div>
+      <% if @role_filter.present? %>
+        <div class="pt-6">
+          <%= link_to "Clear Filter", admin_users_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
   <div class="bg-white shadow overflow-hidden sm:rounded-md">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-      <h3 class="text-sm font-medium text-gray-900">All Users (<%= @users.count %>)</h3>
+      <h3 class="text-sm font-medium text-gray-900">
+        <% if @role_filter.present? %>
+          <%= @role_filter == 'none' ? 'Users with No Role' : "#{@role_filter.titleize} Users" %> (<%= @users.count %>)
+        <% else %>
+          All Users (<%= @users.count %>)
+        <% end %>
+      </h3>
     </div>
     <ul class="divide-y divide-gray-200">
       <% @users.each do |user| %>
@@ -27,16 +65,30 @@
                   </span>
                 <% end %>
               </div>
-              <div class="mt-2 flex items-center text-sm text-gray-500">
-                <span>Joined <%= time_ago_in_words(user.created_at) %> ago</span>
-                <% if user.role_senior? %>
-                  <span class="ml-4">
-                    <%= user.caregiver_links.where.not(caregiver_id: nil).count %> caregiver(s)
-                  </span>
-                <% elsif user.role_caregiver? %>
-                  <span class="ml-4">
-                    <%= user.caregiver_links.where.not(caregiver_id: nil).count %> senior(s)
-                  </span>
+              <div class="mt-2 text-sm text-gray-500">
+                <div class="flex items-center">
+                  <span>Joined <%= time_ago_in_words(user.created_at) %> ago</span>
+                  <% if user.role_senior? %>
+                    <span class="ml-4">
+                      <%= user.caregiver_links.where.not(caregiver_id: nil).count %> caregiver(s)
+                    </span>
+                  <% elsif user.role_caregiver? %>
+                    <% senior_links = user.caregiver_links.includes(:senior).where.not(senior_id: nil) %>
+                    <span class="ml-4">
+                      <%= senior_links.count %> senior(s)
+                    </span>
+                  <% end %>
+                </div>
+                
+                <% if user.role_caregiver? && senior_links.any? %>
+                  <div class="mt-2 flex flex-wrap gap-1">
+                    <span class="text-xs text-gray-600">Caring for:</span>
+                    <% senior_links.each do |link| %>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 border border-green-200" title="<%= link.senior.email %>">
+                        <%= link.senior.name.present? ? link.senior.name : link.senior.email %>
+                      </span>
+                    <% end %>
+                  </div>
                 <% end %>
               </div>
             </div>
