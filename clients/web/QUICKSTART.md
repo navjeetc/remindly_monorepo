@@ -8,10 +8,10 @@ Get up and running with voice-enabled reminders in 3 minutes!
 
 ```bash
 cd backend
-rails server
+rails server -p 5000
 ```
 
-The backend should start on `http://localhost:3000`
+The backend should start on `http://localhost:5000`
 
 ### 2. Start the Web Client (Terminal 2)
 
@@ -140,7 +140,7 @@ See [README.md](./README.md) for complete documentation including:
 
 1. Check the [README.md](./README.md) troubleshooting section
 2. Open browser DevTools console (F12) to see error messages
-3. Verify backend is running: `curl http://localhost:3000/up`
+3. Verify backend is running: `curl http://localhost:5000/up`
 
 ---
 

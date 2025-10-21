@@ -75,7 +75,7 @@ A web-based reminder application with **voice announcements** using the Web Spee
 ### 1. Prerequisites
 
 - Modern web browser (Chrome, Edge, Safari, Firefox)
-- Remindly backend server running (default: `http://localhost:3000`)
+- Remindly backend server running (default: `http://localhost:5000`)
 
 ### 2. Start the Backend
 
@@ -174,7 +174,7 @@ Access via the ⚙️ icon in the header.
 - **End Time**: When quiet hours end (e.g., 07:00)
 
 #### API Settings
-- **API Base URL**: Backend server URL (default: `http://localhost:3000`)
+- **API Base URL**: Backend server URL (default: `http://localhost:5000`)
 
 ### Local Storage
 

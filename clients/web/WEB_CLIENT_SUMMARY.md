@@ -168,7 +168,7 @@ Click "Quick Dev Login" for instant access
 - Check Interval: 10 seconds
 - Notifications: Enabled
 - Quiet Hours: Disabled
-- API URL: http://localhost:3000
+- API URL: http://localhost:5000
 
 ### Persistent Storage
 All settings saved to `localStorage`:
