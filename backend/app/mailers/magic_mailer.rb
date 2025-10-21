@@ -16,12 +16,15 @@ class MagicMailer < ApplicationMailer
   def generate_magic_link(token, web: false)
     # For web dashboard, always use web URL
     # For macOS app, use custom URL scheme
+    app_url = Rails.application.credentials.base_url || ENV.fetch('APP_URL', 'http://localhost:5000')
+    app_url = "https://#{app_url}" unless app_url.start_with?('http')
+    
     base_url = if web
-      "#{ENV.fetch('APP_URL', 'http://localhost:5000')}/login/verify"
+      "#{app_url}/login/verify"
     elsif ENV["MAGIC_LINK_SCHEME"] == "remindly"
       "remindly://magic/verify"
     else
-      "#{ENV.fetch('APP_URL', 'http://localhost:5000')}/magic/verify"
+      "#{app_url}/magic/verify"
     end
     
     # Use URI to properly encode the token parameter
