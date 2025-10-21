@@ -65,6 +65,9 @@ Rails.application.configure do
   config.action_mailer.default_options = { 
     from: Rails.application.credentials.admin_email || "noreply@remindly.anakhsoft.com" 
   }
+  # Deliver emails immediately instead of queuing them
+  config.action_mailer.deliver_later_queue_name = nil
+  config.action_mailer.delivery_job = nil
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
