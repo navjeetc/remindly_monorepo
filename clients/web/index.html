@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remindly - Voice Reminders</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔔 Remindly</h1>
+            <div class="header-actions">
+                <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+                <button id="refreshBtn" class="icon-btn" title="Refresh">🔄</button>
+                <span id="statusIndicator" class="status-indicator offline">●</span>
+            </div>
+        </header>
+
+        <!-- Login Section -->
+        <div id="loginSection" class="login-section">
+            <div class="login-card">
+                <h2>Welcome to Remindly</h2>
+                <p>Enter your email to receive a magic link</p>
+                <form id="loginForm">
+                    <input type="email" id="emailInput" placeholder="your@email.com" required>
+                    <button type="submit" class="btn-primary">Send Magic Link</button>
+                </form>
+                <div id="loginMessage" class="message"></div>
+                <hr>
+                <p class="dev-mode-text">Development Mode</p>
+                <button id="devLoginBtn" class="btn-secondary">Quick Dev Login</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" class="main-content" style="display: none;">
+            <!-- Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat">
+                    <span class="stat-label">Today's Reminders</span>
+                    <span id="totalCount" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Pending</span>
+                    <span id="pendingCount" class="stat-value">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Completed</span>
+                    <span id="completedCount" class="stat-value">0</span>
+                </div>
+            </div>
+
+            <!-- Reminders List -->
+            <div class="reminders-section">
+                <h2>Today's Reminders</h2>
+                <div id="remindersList" class="reminders-list">
+                    <!-- Reminders will be populated here -->
+                </div>
+                <div id="emptyState" class="empty-state">
+                    <p>No reminders for today</p>
+                </div>
+            </div>
+
+            <!-- Logout -->
+            <div class="footer">
+                <button id="logoutBtn" class="btn-secondary">Logout</button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn" id="closeSettings">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Voice Settings -->
+                    <section class="settings-section">
+                        <h3>🔊 Voice Settings</h3>
+                        <div class="setting-item">
+                            <label for="voiceEnabled">
+                                <input type="checkbox" id="voiceEnabled" checked>
+                                Enable Voice Announcements
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="voiceRate">Voice Speed</label>
+                            <input type="range" id="voiceRate" min="0.1" max="2" step="0.1" value="0.4">
+                            <span id="voiceRateValue">0.4</span>
+                        </div>
+                        <div class="setting-item">
+                            <label for="voiceVolume">Voice Volume</label>
+                            <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="1.0">
+                            <span id="voiceVolumeValue">1.0</span>
+                        </div>
+                        <button id="testVoiceBtn" class="btn-secondary">Test Voice</button>
+                    </section>
+
+                    <!-- Notification Settings -->
+                    <section class="settings-section">
+                        <h3>🔔 Notification Settings</h3>
+                        <div class="setting-item">
+                            <label for="notificationsEnabled">
+                                <input type="checkbox" id="notificationsEnabled" checked>
+                                Enable Browser Notifications
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="notificationSound">
+                                <input type="checkbox" id="notificationSound" checked>
+                                Play Notification Sound
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="checkInterval">Check Interval (seconds)</label>
+                            <input type="number" id="checkInterval" min="5" max="60" value="10">
+                        </div>
+                        <button id="requestNotificationBtn" class="btn-secondary">Request Notification Permission</button>
+                    </section>
+
+                    <!-- Quiet Hours -->
+                    <section class="settings-section">
+                        <h3>🌙 Quiet Hours</h3>
+                        <div class="setting-item">
+                            <label for="quietHoursEnabled">
+                                <input type="checkbox" id="quietHoursEnabled">
+                                Enable Quiet Hours
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="quietHoursStart">Start Time</label>
+                            <input type="time" id="quietHoursStart" value="22:00">
+                        </div>
+                        <div class="setting-item">
+                            <label for="quietHoursEnd">End Time</label>
+                            <input type="time" id="quietHoursEnd" value="07:00">
+                        </div>
+                    </section>
+
+                    <!-- API Settings -->
+                    <section class="settings-section">
+                        <h3>🔗 API Settings</h3>
+                        <div class="setting-item">
+                            <label for="apiBaseUrl">API Base URL</label>
+                            <input type="text" id="apiBaseUrl" value="http://localhost:5000" placeholder="http://localhost:5000">
+                        </div>
+                    </section>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveSettings" class="btn-primary">Save Settings</button>
+                    <button id="resetSettings" class="btn-secondary">Reset to Defaults</button>
+                    <button id="clearAnnounced" class="btn-secondary">Clear Announced List</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
