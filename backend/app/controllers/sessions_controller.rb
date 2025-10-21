@@ -13,7 +13,7 @@ class SessionsController < ActionController::Base
     token = user.signed_id(purpose: :magic_login, expires_in: 30.minutes)
     
     # Send magic link email
-    MagicMailer.magic_link_email(user, token, web: true).deliver_later
+    MagicMailer.magic_link_email(user, token, web: true).deliver_now
     
     redirect_to login_path, notice: "Magic link sent! Check your email to sign in."
   end
