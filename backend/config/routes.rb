@@ -3,7 +3,8 @@ Rails.application.routes.draw do
   root "dashboard#index"
   
   # Web Client (Voice Announcements)
-  get "client", to: redirect("/client/", status: 302)
+  # Note: Access at /client/ (with trailing slash) for proper CSS loading
+  # Rails serves static files from public/client/ automatically
   
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
