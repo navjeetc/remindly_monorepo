@@ -2,6 +2,9 @@ Rails.application.routes.draw do
   # Root - redirect to dashboard
   root "dashboard#index"
   
+  # Web Client (Voice Announcements)
+  get "client", to: redirect("/client/index.html", status: 302)
+  
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
   post "login/magic",        to: "sessions#request_magic_link", as: :request_magic_link
