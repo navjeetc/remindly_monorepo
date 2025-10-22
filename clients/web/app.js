@@ -118,21 +118,40 @@ class RemindlyApp {
         }
     }
 
-    checkForMagicLinkToken() {
+    async checkForMagicLinkToken() {
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        const signedToken = urlParams.get('token');
         
         console.log('🔑 Checking for magic link token...');
         console.log('   URL:', window.location.href);
-        console.log('   Token found:', token ? 'YES' : 'NO');
+        console.log('   Token found:', signedToken ? 'YES' : 'NO');
         
-        if (token) {
-            console.log('✅ Token found, logging in...');
-            this.authToken = token;
-            localStorage.setItem('authToken', token);
-            window.history.replaceState({}, document.title, window.location.pathname);
-            this.showMainContent();
-            this.startReminderChecking();
+        if (signedToken) {
+            console.log('✅ Signed token found, exchanging for JWT...');
+            
+            try {
+                // Exchange the signed token for a JWT token
+                const response = await fetch(`${this.apiBaseUrl}/magic/verify?token=${encodeURIComponent(signedToken)}`);
+                
+                if (response.ok) {
+                    const jwtToken = await response.text();
+                    console.log('✅ JWT token received');
+                    
+                    this.authToken = jwtToken;
+                    localStorage.setItem('authToken', jwtToken);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    this.showMainContent();
+                    this.startReminderChecking();
+                } else {
+                    console.error('❌ Failed to verify token:', response.status);
+                    this.showLoginMessage('Invalid or expired magic link', 'error');
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (error) {
+                console.error('❌ Error verifying token:', error);
+                this.showLoginMessage('Network error. Please try again.', 'error');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         } else {
             console.log('❌ No token in URL');
         }
