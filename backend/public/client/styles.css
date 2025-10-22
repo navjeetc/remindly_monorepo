@@ -68,6 +68,15 @@ body {
     align-items: center;
 }
 
+.version {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    background: var(--bg-color);
+    border-radius: 4px;
+    font-weight: 500;
+}
+
 .icon-btn {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
