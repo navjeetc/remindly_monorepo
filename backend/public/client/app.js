@@ -23,10 +23,28 @@ class RemindlyApp {
         this.loadSettings();
         this.checkAuthentication();
         this.checkForMagicLinkToken();
+        this.hideDevFeaturesInProduction();
         
         // Check for Web Speech API support
         if (!('speechSynthesis' in window)) {
             this.showMessage('Warning: Your browser does not support voice announcements', 'warning');
+        }
+    }
+
+    hideDevFeaturesInProduction() {
+        // Hide dev login if not on localhost
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname === '';
+        
+        if (!isLocalhost) {
+            const devModeText = document.querySelector('.dev-mode-text');
+            const devLoginBtn = document.getElementById('devLoginBtn');
+            const devHr = document.querySelector('#loginSection hr');
+            
+            if (devModeText) devModeText.style.display = 'none';
+            if (devLoginBtn) devLoginBtn.style.display = 'none';
+            if (devHr) devHr.style.display = 'none';
         }
     }
 
