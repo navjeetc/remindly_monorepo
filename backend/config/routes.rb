@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   root "dashboard#index"
   
   # Web Client (Voice Announcements)
-  get "client", to: redirect("/client/index.html", status: 302)
+  get "client", to: redirect("/client/", status: 302)
   
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
