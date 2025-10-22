@@ -508,7 +508,7 @@ class RemindlyApp {
         if (!this.authToken) return;
 
         try {
-            const response = await fetch(`${this.apiBaseUrl}/profile`, {
+            const response = await fetch(`${this.apiBaseUrl}/reminders/profile`, {
                 headers: {
                     'Authorization': `Bearer ${this.authToken}`,
                     'Content-Type': 'application/json'
