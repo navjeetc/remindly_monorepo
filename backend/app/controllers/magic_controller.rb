@@ -7,6 +7,12 @@ class MagicController < ApplicationController
     # Only /client/ requests should get web client links
     is_web_client = params[:client] == 'web' || (request.referer&.include?('/client') && !request.referer&.include?('/login'))
     
+    # Debug logging
+    Rails.logger.info "🔍 Magic link request:"
+    Rails.logger.info "   Referer: #{request.referer}"
+    Rails.logger.info "   Client param: #{params[:client]}"
+    Rails.logger.info "   Is web client: #{is_web_client}"
+    
     # Send magic link email
     MagicMailer.magic_link_email(user, token, web: is_web_client).deliver_now
     
