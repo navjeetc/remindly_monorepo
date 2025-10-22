@@ -504,11 +504,40 @@ class RemindlyApp {
     // Reminder Management
     // ========================================================================
 
+    async fetchUserProfile() {
+        if (!this.authToken) return;
+
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const user = await response.json();
+                const userName = user.display_name || user.name || user.email;
+                const userNameEl = document.getElementById('userName');
+                userNameEl.textContent = `Welcome, ${userName}`;
+                userNameEl.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+        }
+    }
+
     async refreshReminders() {
         if (!this.authToken) return;
 
         try {
             this.updateStatusIndicator('loading');
+            
+            // Fetch user profile on first load
+            if (!this.userProfileFetched) {
+                this.fetchUserProfile();
+                this.userProfileFetched = true;
+            }
             
             const response = await fetch(`${this.apiBaseUrl}/reminders/today`, {
                 headers: {

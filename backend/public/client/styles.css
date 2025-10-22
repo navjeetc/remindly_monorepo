@@ -53,6 +53,13 @@ body {
 .header h1 {
     font-size: 2rem;
     color: var(--primary-color);
+    margin-bottom: 0;
+}
+
+.user-name {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
 }
 
 .header-actions {

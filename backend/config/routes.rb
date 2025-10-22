@@ -47,6 +47,7 @@ Rails.application.routes.draw do
   resources :reminders do
     collection do
       get :today
+      get :profile
       delete :bulk_destroy
     end
   end
