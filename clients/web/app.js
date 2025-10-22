@@ -122,12 +122,19 @@ class RemindlyApp {
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         
+        console.log('🔑 Checking for magic link token...');
+        console.log('   URL:', window.location.href);
+        console.log('   Token found:', token ? 'YES' : 'NO');
+        
         if (token) {
+            console.log('✅ Token found, logging in...');
             this.authToken = token;
             localStorage.setItem('authToken', token);
             window.history.replaceState({}, document.title, window.location.pathname);
             this.showMainContent();
             this.startReminderChecking();
+        } else {
+            console.log('❌ No token in URL');
         }
     }
 
