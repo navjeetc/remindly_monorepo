@@ -4,7 +4,9 @@
 
 class RemindlyApp {
     constructor() {
-        this.apiBaseUrl = localStorage.getItem('apiBaseUrl') || 'http://localhost:5000';
+        // Determine default API base URL based on environment
+        const defaultApiUrl = this.getDefaultApiUrl();
+        this.apiBaseUrl = localStorage.getItem('apiBaseUrl') || defaultApiUrl;
         this.authToken = localStorage.getItem('authToken');
         this.reminders = [];
         this.announcedReminders = new Set(); // Track which reminders have been announced
@@ -12,6 +14,21 @@ class RemindlyApp {
         this.settings = this.loadSettings();
         
         this.init();
+    }
+
+    getDefaultApiUrl() {
+        // In production, use the current domain
+        // In development (localhost), use localhost:5000
+        const isLocalhost = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname === '';
+        
+        if (isLocalhost) {
+            return 'http://localhost:5000';
+        } else {
+            // Use current domain with https
+            return `${window.location.protocol}//${window.location.host}`;
+        }
     }
 
     // ========================================================================
@@ -193,7 +210,7 @@ class RemindlyApp {
             quietHoursEnabled: false,
             quietHoursStart: '22:00',
             quietHoursEnd: '07:00',
-            apiBaseUrl: 'http://localhost:5000'
+            apiBaseUrl: this.getDefaultApiUrl()
         };
 
         const saved = localStorage.getItem('remindlySettings');
