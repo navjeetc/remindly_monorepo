@@ -3,8 +3,9 @@ class MagicController < ApplicationController
     user  = User.find_or_create_by!(email: params.require(:email))
     token = user.signed_id(purpose: :magic_login, expires_in: 30.minutes)
     
-    # Detect if request is from web client (check referer or explicit param)
-    is_web_client = params[:client] == 'web' || request.referer&.include?('/client')
+    # Detect if request is from voice web client (not the dashboard login)
+    # Only /client/ requests should get web client links
+    is_web_client = params[:client] == 'web' || (request.referer&.include?('/client') && !request.referer&.include?('/login'))
     
     # Send magic link email
     MagicMailer.magic_link_email(user, token, web: is_web_client).deliver_now
