@@ -8,20 +8,20 @@ SSH into the server and set up a cron job that executes the rake task inside the
 
 ```bash
 # SSH into the server
-ssh navjeetc@161.35.104.56
+ssh $USER@$SERVER_IP
 
 # Edit crontab
 crontab -e
 
 # Add this line (runs at 10 PM daily)
-0 22 * * * cd /home/navjeetc && docker exec $(docker ps --filter "label=service=remindly-backend" --filter "label=role=web" --format "{{.ID}}" | head -1) bin/rails audit:daily_report >> /home/navjeetc/audit_cron.log 2>&1
+0 22 * * * cd $HOME && docker exec $(docker ps --filter "label=service=remindly-backend" --filter "label=role=web" --format "{{.ID}}" | head -1) bin/rails audit:daily_report >> $HOME/audit_cron.log 2>&1
 ```
 
 ### Explanation:
 - `0 22 * * *` - Runs at 10:00 PM every day
 - `docker ps --filter ...` - Finds the running web container
 - `docker exec ... bin/rails audit:daily_report` - Executes the rake task inside the container
-- `>> /home/navjeetc/audit_cron.log 2>&1` - Logs output to a file
+- `>> $HOME/audit_cron.log 2>&1` - Logs output to a file
 
 ## Option 2: Kamal Accessory with Cron
 

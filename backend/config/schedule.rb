@@ -12,7 +12,8 @@ set :output, "log/cron.log"
 # Note: Time is in server's local timezone. To use a specific timezone, set:
 #   set :chronic_options, hours24: true
 #   ENV['TZ'] = 'America/New_York'
-# Or use explicit cron syntax: '0 22 * * *' (10 PM in 24-hour format)
+# Note: The 'at:' argument accepts 12-hour format (e.g., '10:00 pm'), but whenever will
+# generate the actual cron expression in 24-hour format (e.g., '0 22 * * *' for 10 PM).
 every 1.day, at: '10:00 pm' do
   rake "audit:daily_report"
 end
