@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #1e40af;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background-color: #f8fafc;
+      border-left: 4px solid #2563eb;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .stat-card.success {
+      border-left-color: #10b981;
+      background-color: #f0fdf4;
+    }
+    .stat-card.failed {
+      border-left-color: #ef4444;
+      background-color: #fef2f2;
+    }
+    .stat-card.logout {
+      border-left-color: #6b7280;
+      background-color: #f9fafb;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th {
+      background-color: #f8fafc;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #1f2937;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    tr:hover {
+      background-color: #f9fafb;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-success {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    .badge-failed {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    .badge-logout {
+      background-color: #e5e7eb;
+      color: #374151;
+    }
+    .no-events {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+    }
+    .user-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      background-color: #f8fafc;
+      border-radius: 6px;
+    }
+    .user-email {
+      font-weight: 600;
+      color: #1e40af;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Daily Audit Report</h1>
+    <p><strong>Date:</strong> <%= @date.strftime('%A, %B %d, %Y') %></p>
+    <p><strong>Period:</strong> <%= @start_time.strftime('%I:%M %p') %> - <%= @end_time.strftime('%I:%M %p %Z') %></p>
+
+    <h2>Summary Statistics</h2>
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Total Events</div>
+        <div class="stat-value"><%= @total_events %></div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Successful Logins</div>
+        <div class="stat-value"><%= @successful_logins %></div>
+      </div>
+      <div class="stat-card failed">
+        <div class="stat-label">Failed Logins</div>
+        <div class="stat-value"><%= @failed_logins %></div>
+      </div>
+      <div class="stat-card logout">
+        <div class="stat-label">Logouts</div>
+        <div class="stat-value"><%= @logouts %></div>
+      </div>
+    </div>
+
+    <% if @events.any? %>
+      <h2>Activity by User</h2>
+      <p><strong><%= @active_users.count %></strong> unique user(s) had authentication activity</p>
+
+      <% @events_by_user.each do |user, user_events| %>
+        <div class="user-section">
+          <div class="user-email">
+            <%= user ? user.email : "Unknown User" %>
+            <% if user&.role %>
+              <span class="badge badge-success"><%= user.role.titleize %></span>
+            <% end %>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Method</th>
+                <th>IP Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% user_events.each do |event| %>
+                <tr>
+                  <td><%= event.time.strftime('%I:%M %p') %></td>
+                  <td>
+                    <span class="badge <%= 
+                      case event.name
+                      when 'Login Success' then 'badge-success'
+                      when 'Login Failed' then 'badge-failed'
+                      when 'Logout' then 'badge-logout'
+                      end
+                    %>">
+                      <%= event.name %>
+                    </span>
+                  </td>
+                  <td><%= event.properties['method'] || 'N/A' %></td>
+                  <td><%= event.properties['ip'] || 'N/A' %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <h2>All Events</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Event</th>
+            <th>Method</th>
+            <th>Client</th>
+            <th>IP Address</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @events.each do |event| %>
+            <tr>
+              <td><%= event.time.strftime('%I:%M %p') %></td>
+              <td><%= event.user&.email || 'Unknown' %></td>
+              <td>
+                <span class="badge <%= 
+                  case event.name
+                  when 'Login Success' then 'badge-success'
+                  when 'Login Failed' then 'badge-failed'
+                  when 'Logout' then 'badge-logout'
+                  end
+                %>">
+                  <%= event.name %>
+                </span>
+              </td>
+              <td><%= event.properties['method'] || 'N/A' %></td>
+              <td><%= event.properties['client_type'] || 'N/A' %></td>
+              <td><%= event.properties['ip'] || 'N/A' %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="no-events">
+        <h3>No authentication events recorded</h3>
+        <p>There were no login, logout, or failed login attempts during this period.</p>
+      </div>
+    <% end %>
+
+    <div class="footer">
+      <p>This is an automated report from Remindly Audit System</p>
+      <p>Generated at <%= Time.current.strftime('%B %d, %Y at %I:%M %p %Z') %></p>
+    </div>
+  </div>
+</body>
+</html>

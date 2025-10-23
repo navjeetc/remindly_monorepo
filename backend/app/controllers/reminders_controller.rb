@@ -5,6 +5,17 @@ class RemindersController < ApplicationController
   rescue_from ActiveRecord::RecordNotFound, with: :not_found
   rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
 
+  def profile
+    render json: {
+      id: current_user.id,
+      email: current_user.email,
+      name: current_user.name,
+      display_name: current_user.display_name,
+      nickname: current_user.nickname,
+      role: current_user.role
+    }
+  end
+
   def index
     reminders = current_user.reminders
     

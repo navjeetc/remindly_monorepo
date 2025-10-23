@@ -1,0 +1,41 @@
+DAILY AUDIT REPORT
+==================
+
+Date: <%= @date.strftime('%A, %B %d, %Y') %>
+Period: <%= @start_time.strftime('%I:%M %p') %> - <%= @end_time.strftime('%I:%M %p %Z') %>
+
+SUMMARY STATISTICS
+------------------
+Total Events: <%= @total_events %>
+Successful Logins: <%= @successful_logins %>
+Failed Logins: <%= @failed_logins %>
+Logouts: <%= @logouts %>
+
+<% if @events.any? %>
+ACTIVITY BY USER
+----------------
+<%= @active_users.count %> unique user(s) had authentication activity
+
+<% @events_by_user.each do |user, user_events| %>
+<%= user ? user.email : "Unknown User" %><% if user&.role %> (<%= user.role.titleize %>)<% end %>
+<%= "-" * 60 %>
+<% user_events.each do |event| %>
+  <%= event.time.strftime('%I:%M %p') %> | <%= event.name.ljust(15) %> | <%= (event.properties['method'] || 'N/A').ljust(20) %> | <%= event.properties['ip'] || 'N/A' %>
+<% end %>
+
+<% end %>
+
+ALL EVENTS
+----------
+<% @events.each do |event| %>
+<%= event.time.strftime('%I:%M %p') %> | <%= (event.user&.email || 'Unknown').ljust(30) %> | <%= event.name.ljust(15) %> | <%= (event.properties['method'] || 'N/A').ljust(20) %> | <%= (event.properties['client_type'] || 'N/A').ljust(15) %> | <%= event.properties['ip'] || 'N/A' %>
+<% end %>
+<% else %>
+NO AUTHENTICATION EVENTS RECORDED
+----------------------------------
+There were no login, logout, or failed login attempts during this period.
+<% end %>
+
+---
+This is an automated report from Remindly Audit System
+Generated at <%= Time.current.strftime('%B %d, %Y at %I:%M %p %Z') %>

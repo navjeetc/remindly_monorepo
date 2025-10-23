@@ -2,6 +2,10 @@ Rails.application.routes.draw do
   # Root - redirect to dashboard
   root "dashboard#index"
   
+  # Web Client (Voice Announcements)
+  # Note: Access at /client/ (with trailing slash) for proper CSS loading
+  # Rails serves static files from public/client/ automatically
+  
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
   post "login/magic",        to: "sessions#request_magic_link", as: :request_magic_link
@@ -11,7 +15,8 @@ Rails.application.routes.draw do
   
   # Magic link authentication (API)
   get  "magic/request",      to: "magic#request_link"
-  get  "magic/verify",       to: "magic#verify"
+  get  "magic/verify",       to: "magic#verify"  # Keep GET for email links
+  post "magic/verify",       to: "magic#verify"  # POST for better security
   get  "magic/dev_exchange", to: "magic#dev_exchange"
   
   # Admin panel
@@ -21,6 +26,7 @@ Rails.application.routes.draw do
         patch :update_role
       end
     end
+    resources :audit_logs, only: [:index, :show]
   end
   
   # Web dashboard
@@ -43,6 +49,7 @@ Rails.application.routes.draw do
   resources :reminders do
     collection do
       get :today
+      get :profile
       delete :bulk_destroy
     end
   end

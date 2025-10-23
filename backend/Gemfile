@@ -60,3 +60,5 @@ group :development, :test do
 end
 
 gem "letter_opener", "~> 1.10"
+gem "ahoy_matey", "~> 5.2"
+gem "whenever", "~> 1.0", require: false
