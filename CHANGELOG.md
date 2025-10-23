@@ -5,6 +5,15 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-10-23
+
+### Fixed
+- **Web client magic link routing**
+  - Fixed web client to send `client=web` parameter
+  - Magic links now correctly point to `/client/` instead of `/magic/verify`
+  - Updated cache buster to force browser reload of updated JavaScript
+  - Fixed version display in web client UI
+
 ## [0.2.1] - 2025-10-23
 
 ### Security
