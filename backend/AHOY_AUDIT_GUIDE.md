@@ -167,11 +167,40 @@ User.where(id: today_logins)
 2. **Data Retention**: Consider implementing a data retention policy to delete old audit logs
 3. **Access Control**: Restrict access to audit logs to admin users only
 
+## Automated Email Reports
+
+Daily audit reports are automatically sent via email every night at 10 PM, summarizing all login/logout activity from the previous day.
+
+**Features:**
+- Comprehensive statistics (total events, success/fail counts)
+- Activity grouped by user
+- Detailed event listings with IP addresses
+- Beautiful HTML emails with plain text fallback
+
+**See:** `AUDIT_REPORTS_GUIDE.md` for complete documentation on:
+- Configuration and setup
+- Manual commands
+- Deployment instructions
+- Troubleshooting
+- Customization options
+
+**Quick Start:**
+```bash
+# Set recipient email
+export AUDIT_REPORT_EMAIL="admin@example.com"
+
+# Test manually
+rails audit:daily_report
+
+# Preview without sending
+rails audit:preview
+```
+
 ## Future Enhancements
 
 Potential additions:
 - Geocoding to track login locations
 - Anomaly detection for suspicious login patterns
-- Email notifications for unusual login activity
-- Admin dashboard for viewing audit logs
+- Real-time alerts for unusual login activity
+- Weekly and monthly trend reports
 - Export functionality for compliance reporting
