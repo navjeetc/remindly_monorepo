@@ -16,12 +16,18 @@ fi
 # Update VERSION file
 echo "$NEW_VERSION" > VERSION
 
-# Update web client
-sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" clients/web/index.html
-sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/public/client/index.html
-
-# Update dashboard layout
-sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/app/views/layouts/dashboard.html.erb
+# Detect OS and use correct sed syntax
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" clients/web/index.html
+    sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/public/client/index.html
+    sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/app/views/layouts/dashboard.html.erb
+else
+    # Linux
+    sed -i "s/v$CURRENT_VERSION/v$NEW_VERSION/g" clients/web/index.html
+    sed -i "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/public/client/index.html
+    sed -i "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/app/views/layouts/dashboard.html.erb
+fi
 
 echo "Version bumped to $NEW_VERSION"
 echo "Files updated:"
