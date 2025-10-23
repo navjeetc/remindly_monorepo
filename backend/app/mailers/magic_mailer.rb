@@ -14,9 +14,8 @@ class MagicMailer < ApplicationMailer
   private
 
   def generate_magic_link(token, web: false)
-    # For web client, use /client/ path
-    # For web dashboard, use /login/verify
-    # For macOS app, use custom URL scheme
+    # For web client (voice announcements), use /client/ path
+    # For API/macOS app, use /magic/verify or custom URL scheme
     app_url = Rails.application.credentials.base_url || ENV.fetch('APP_URL', 'http://localhost:5000')
     app_url = "https://#{app_url}" unless app_url.start_with?('http')
     

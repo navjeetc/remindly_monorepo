@@ -9,6 +9,9 @@ Ahoy.api = false
 Ahoy.api_only = false
 
 # Track bots in development for testing, exclude in production
+# Rationale: Tracking bot traffic in production can skew analytics and create noise in
+# security monitoring. We enable bot tracking only in development to allow testing, but
+# disable it in production to ensure data quality.
 Ahoy.track_bots = Rails.env.development?
 
 # set to true for geocoding (and add the geocoder gem to your Gemfile)
