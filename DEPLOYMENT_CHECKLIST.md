@@ -2,6 +2,27 @@
 
 Based on your existing gifter app deployment setup.
 
+## ⚠️ IMPORTANT: Before Every Deployment
+
+**Always bump the version first!**
+
+```bash
+# Run the version bump script
+./scripts/bump_version.sh 0.3.0
+
+# This will automatically:
+# ✓ Update VERSION file
+# ✓ Update backend/config/deploy.yml APP_VERSION
+# ✓ Update all client HTML files
+# ✓ Create CHANGELOG.md entry template
+
+# Then:
+# 1. Edit CHANGELOG.md and fill in the changes
+# 2. Review: git diff
+# 3. Commit: git add -A && git commit -m "Bump version to 0.3.0"
+# 4. Deploy: cd backend && kamal deploy
+```
+
 ## Pre-Deployment Setup
 
 ### 1. DigitalOcean VPS
