@@ -131,7 +131,14 @@ class RemindlyApp {
             
             try {
                 // Exchange the signed token for a JWT token
-                const response = await fetch(`${this.apiBaseUrl}/magic/verify?token=${encodeURIComponent(signedToken)}`);
+                // Use POST to avoid exposing token in URL/logs
+                const response = await fetch(`${this.apiBaseUrl}/magic/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: signedToken })
+                });
                 
                 if (response.ok) {
                     const jwtToken = await response.text();

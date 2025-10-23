@@ -14,8 +14,17 @@ class MagicController < ApplicationController
   end
 
   def verify
-    token = params.require(:token)
-    user  = User.find_signed(token, purpose: :magic_login)
+    # Support both GET (email links) and POST (API) for token verification
+    # POST is preferred for security (token not in URL/logs)
+    token = if request.post? && request.content_type == 'application/json'
+              JSON.parse(request.body.read)['token']
+            else
+              params[:token]
+            end
+    
+    return head :bad_request if token.blank?
+    
+    user = User.find_signed(token, purpose: :magic_login)
     
     unless user
       # Track failed login attempt

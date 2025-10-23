@@ -15,7 +15,8 @@ Rails.application.routes.draw do
   
   # Magic link authentication (API)
   get  "magic/request",      to: "magic#request_link"
-  get  "magic/verify",       to: "magic#verify"
+  get  "magic/verify",       to: "magic#verify"  # Keep GET for email links
+  post "magic/verify",       to: "magic#verify"  # POST for better security
   get  "magic/dev_exchange", to: "magic#dev_exchange"
   
   # Admin panel
