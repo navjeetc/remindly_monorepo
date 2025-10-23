@@ -9,6 +9,10 @@ set :environment, ENV['RAILS_ENV'] || 'production'
 set :output, "log/cron.log"
 
 # Daily audit report - runs every day at 10 PM
+# Note: Time is in server's local timezone. To use a specific timezone, set:
+#   set :chronic_options, hours24: true
+#   ENV['TZ'] = 'America/New_York'
+# Or use explicit cron syntax: '0 22 * * *' (10 PM in 24-hour format)
 every 1.day, at: '10:00 pm' do
   rake "audit:daily_report"
 end
