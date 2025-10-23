@@ -42,9 +42,6 @@ RUN bundle install && \
 # Copy application code
 COPY . .
 
-# Copy VERSION file from monorepo root to Rails root
-COPY ../VERSION ./VERSION
-
 # Precompile bootsnap code for faster boot times
 RUN bundle exec bootsnap precompile app/ lib/
 
