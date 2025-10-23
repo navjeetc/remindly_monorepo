@@ -5,5 +5,5 @@ if File.exist?(VERSION_FILE)
   APP_VERSION = File.read(VERSION_FILE).strip
 else
   # Fallback for production where VERSION file might not be accessible
-  APP_VERSION = ENV.fetch('APP_VERSION', '0.2')
+  APP_VERSION = ENV.fetch('APP_VERSION', '0.2.1')
 end
