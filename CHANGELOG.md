@@ -5,6 +5,41 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2025-10-23
+
+### Changed
+- **Code quality improvements from PR feedback**
+  - Use current time as default for new reminders (instead of hardcoded 09:00)
+  - Simplified JSON request body parsing in magic_controller
+  - Removed redundant getDefaultApiUrl() call in web client
+  - Moved helper method inside namespace to avoid global pollution
+
+### Fixed
+- **Documentation improvements**
+  - Clarified cron time format (12-hour input vs 24-hour output)
+  - Use environment variables in cron documentation instead of hardcoded values
+
+
+## [0.2.3] - 2025-10-23
+
+### Added
+- **Automated version bump script**
+  - `bump_version.sh` now updates deploy.yml APP_VERSION
+  - Auto-creates CHANGELOG.md entry template
+  - Added deployment reminder to DEPLOYMENT_CHECKLIST.md
+
+### Changed
+- **Version management improvements**
+  - Version fallback now checks multiple sources (monorepo VERSION, Rails VERSION, ENV)
+  - Better documentation of version priority order
+  - Removed hardcoded version fallbacks
+
+### Fixed
+- **Production version display**
+  - Fixed "unknown" version in production
+  - Added APP_VERSION to deployment environment variables
+
+
 ## [0.2.2] - 2025-10-23
 
 ### Fixed

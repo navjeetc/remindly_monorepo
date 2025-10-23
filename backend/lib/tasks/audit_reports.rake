@@ -1,15 +1,14 @@
-# Helper method to resolve recipient email from various sources
-def resolve_audit_recipient_email(provided_email = nil)
-  provided_email.presence || 
-    ENV['AUDIT_REPORT_EMAIL'] || 
-    Rails.application.credentials.audit_report_email ||
-    Rails.application.credentials.admin_email
-end
-
 namespace :audit do
+  # Helper method to resolve recipient email from various sources
+  def self.resolve_audit_recipient_email(provided_email = nil)
+    provided_email.presence || 
+      ENV['AUDIT_REPORT_EMAIL'] || 
+      Rails.application.credentials.audit_report_email ||
+      Rails.application.credentials.admin_email
+  end
   desc "Send daily audit report for yesterday's login/logout activity"
   task daily_report: :environment do
-    recipient_email = resolve_audit_recipient_email
+    recipient_email = self.resolve_audit_recipient_email
 
     if recipient_email.blank?
       puts "❌ Error: No recipient email configured"
@@ -37,7 +36,7 @@ namespace :audit do
   desc "Send audit report for a specific date (usage: rake audit:report_for_date[2025-01-15,email@example.com])"
   task :report_for_date, [:date, :email] => :environment do |t, args|
     date = Date.parse(args[:date])
-    recipient_email = resolve_audit_recipient_email(args[:email])
+    recipient_email = self.resolve_audit_recipient_email(args[:email])
 
     if recipient_email.blank?
       puts "❌ Error: No recipient email provided"

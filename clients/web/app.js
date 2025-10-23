@@ -244,7 +244,7 @@ class RemindlyApp {
             quietHoursEnabled: false,
             quietHoursStart: '22:00',
             quietHoursEnd: '07:00',
-            apiBaseUrl: this.getDefaultApiUrl()
+            apiBaseUrl: this.apiBaseUrl // Use already initialized value from constructor
         };
 
         const saved = localStorage.getItem('remindlySettings');

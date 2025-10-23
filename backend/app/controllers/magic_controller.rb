@@ -16,11 +16,8 @@ class MagicController < ApplicationController
   def verify
     # Support both GET (email links) and POST (API) for token verification
     # POST is preferred for security (token not in URL/logs)
-    token = if request.post? && request.content_type == 'application/json'
-              JSON.parse(request.body.read)['token']
-            else
-              params[:token]
-            end
+    # Rails automatically parses JSON request bodies into params
+    token = params[:token]
     
     return head :bad_request if token.blank?
     
