@@ -24,6 +24,17 @@ class SessionsController < ActionController::Base
     user = User.find_signed(token, purpose: :magic_login)
     
     if user
+      # Authenticate user with Ahoy
+      ahoy.authenticate(user)
+      
+      # Track successful login
+      ahoy.track "Login Success", {
+        method: "magic_link_web",
+        client_type: "web_dashboard",
+        ip: request.remote_ip,
+        user_agent: request.user_agent
+      }
+      
       # Generate JWT and store in session
       payload = { uid: user.id, exp: 30.days.from_now.to_i }
       jwt_token = JWT.encode(payload, hmac_secret, "HS256")
@@ -36,6 +47,15 @@ class SessionsController < ActionController::Base
         redirect_to dashboard_path, notice: "Successfully signed in as #{user.display_name}"
       end
     else
+      # Track failed login
+      ahoy.track "Login Failed", {
+        reason: "invalid_or_expired_token",
+        method: "magic_link_web",
+        client_type: "web_dashboard",
+        ip: request.remote_ip,
+        user_agent: request.user_agent
+      }
+      
       redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
     end
   end
@@ -49,6 +69,17 @@ class SessionsController < ActionController::Base
     
     email = params[:email] || 'caregiver@example.com'
     user = User.find_or_create_by!(email: email)
+    
+    # Authenticate user with Ahoy
+    ahoy.authenticate(user)
+    
+    # Track dev login
+    ahoy.track "Login Success", {
+      method: "dev_login",
+      client_type: "web_dashboard",
+      ip: request.remote_ip,
+      user_agent: request.user_agent
+    }
     
     # Generate JWT
     payload = { uid: user.id, exp: 30.days.from_now.to_i }
@@ -66,12 +97,31 @@ class SessionsController < ActionController::Base
   end
   
   def destroy
+    # Track logout event before clearing session
+    if current_user
+      ahoy.track "Logout", {
+        client_type: "web_dashboard",
+        ip: request.remote_ip,
+        user_agent: request.user_agent
+      }
+    end
+    
     session.delete(:jwt_token)
     cookies.delete(:jwt_token)
     redirect_to login_path, notice: "Logged out successfully"
   end
   
   private
+  
+  def current_user
+    @current_user ||= begin
+      token = session[:jwt_token] || cookies.encrypted[:jwt_token]
+      payload = token && JWT.decode(token, hmac_secret, true, { algorithm: "HS256" }).first
+      User.find_by(id: payload&.fetch("uid", nil))
+    rescue JWT::DecodeError
+      nil
+    end
+  end
   
   def hmac_secret
     ENV.fetch("JWT_SECRET", "dev_secret_change_me")

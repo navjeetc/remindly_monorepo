@@ -25,6 +25,7 @@ Rails.application.routes.draw do
         patch :update_role
       end
     end
+    resources :audit_logs, only: [:index, :show]
   end
   
   # Web dashboard

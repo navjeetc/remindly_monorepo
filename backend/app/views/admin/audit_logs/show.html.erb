@@ -1,0 +1,208 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div class="flex items-center space-x-4">
+      <%= link_to admin_audit_logs_path, class: "text-gray-400 hover:text-gray-600" do %>
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+      <% end %>
+      <h2 class="text-3xl font-bold text-gray-900">Audit Log Details</h2>
+    </div>
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+      Admin Panel
+    </span>
+  </div>
+
+  <!-- Event Overview -->
+  <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 bg-gray-50">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">Event Information</h3>
+      <p class="mt-1 max-w-2xl text-sm text-gray-500">Detailed information about this audit event</p>
+    </div>
+    <div class="border-t border-gray-200">
+      <dl>
+        <!-- Event Name -->
+        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Event Name</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium <%= 
+              case @event.name
+              when 'Login Success'
+                'bg-green-100 text-green-800'
+              when 'Login Failed'
+                'bg-red-100 text-red-800'
+              when 'Logout'
+                'bg-gray-100 text-gray-800'
+              else
+                'bg-blue-100 text-blue-800'
+              end
+            %>">
+              <%= @event.name %>
+            </span>
+          </dd>
+        </div>
+
+        <!-- Event ID -->
+        <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Event ID</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-mono"><%= @event.id %></dd>
+        </div>
+
+        <!-- Timestamp -->
+        <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Timestamp</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+            <%= @event.time.strftime("%B %d, %Y at %I:%M:%S %p %Z") %>
+            <span class="text-gray-500">(<%= time_ago_in_words(@event.time) %> ago)</span>
+          </dd>
+        </div>
+
+        <!-- User -->
+        <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">User</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+            <% if @event.user %>
+              <div class="space-y-1">
+                <div><strong>Email:</strong> <%= @event.user.email %></div>
+                <div><strong>User ID:</strong> <%= @event.user.id %></div>
+                <% if @event.user.role %>
+                  <div>
+                    <strong>Role:</strong> 
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= 
+                      @event.user.role_admin? ? 'bg-purple-100 text-purple-800' : 
+                      @event.user.role_caregiver? ? 'bg-blue-100 text-blue-800' : 
+                      'bg-green-100 text-green-800' 
+                    %>">
+                      <%= @event.user.role.titleize %>
+                    </span>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <span class="text-gray-500 italic">No user associated</span>
+            <% end %>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Event Properties -->
+  <% if @event.properties.present? %>
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div class="px-4 py-5 sm:px-6 bg-gray-50">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Event Properties</h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500">Additional data captured with this event</p>
+      </div>
+      <div class="border-t border-gray-200">
+        <dl>
+          <% @event.properties.each_with_index do |(key, value), index| %>
+            <div class="<%= index.even? ? 'bg-white' : 'bg-gray-50' %> px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500"><%= key.titleize %></dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <% if key == 'reason' %>
+                  <span class="text-red-600 font-medium"><%= value %></span>
+                <% else %>
+                  <%= value %>
+                <% end %>
+              </dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Visit Information -->
+  <% if @event.visit %>
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div class="px-4 py-5 sm:px-6 bg-gray-50">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Visit Information</h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500">Browser session details</p>
+      </div>
+      <div class="border-t border-gray-200">
+        <dl>
+          <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+            <dt class="text-sm font-medium text-gray-500">Visit Token</dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-mono"><%= @event.visit.visit_token %></dd>
+          </div>
+
+          <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+            <dt class="text-sm font-medium text-gray-500">Started At</dt>
+            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+              <%= @event.visit.started_at.strftime("%B %d, %Y at %I:%M:%S %p %Z") %>
+            </dd>
+          </div>
+
+          <% if @event.visit.browser %>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">Browser</dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @event.visit.browser %></dd>
+            </div>
+          <% end %>
+
+          <% if @event.visit.os %>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">Operating System</dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @event.visit.os %></dd>
+            </div>
+          <% end %>
+
+          <% if @event.visit.device_type %>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">Device Type</dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @event.visit.device_type %></dd>
+            </div>
+          <% end %>
+
+          <% if @event.visit.ip %>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">IP Address</dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-mono"><%= @event.visit.ip %></dd>
+            </div>
+          <% end %>
+
+          <% if @event.visit.referrer %>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">Referrer</dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 break-all"><%= @event.visit.referrer %></dd>
+            </div>
+          <% end %>
+
+          <% if @event.visit.landing_page %>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt class="text-sm font-medium text-gray-500">Landing Page</dt>
+              <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 break-all"><%= @event.visit.landing_page %></dd>
+            </div>
+          <% end %>
+
+          <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+            <dt class="text-sm font-medium text-gray-500">User Agent</dt>
+            <dd class="mt-1 text-xs text-gray-600 sm:mt-0 sm:col-span-2 font-mono break-all"><%= @event.visit.user_agent %></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Raw JSON Data -->
+  <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 bg-gray-50">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">Raw Event Data</h3>
+      <p class="mt-1 max-w-2xl text-sm text-gray-500">Complete event data in JSON format</p>
+    </div>
+    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+      <pre class="text-xs bg-gray-50 p-4 rounded overflow-x-auto"><%= JSON.pretty_generate(@event.as_json) %></pre>
+    </div>
+  </div>
+
+  <!-- Back Button -->
+  <div>
+    <%= link_to admin_audit_logs_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" do %>
+      <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Back to Audit Logs
+    <% end %>
+  </div>
+</div>

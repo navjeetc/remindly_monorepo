@@ -17,6 +17,10 @@ class User < ApplicationRecord
   has_many :task_comments, dependent: :destroy
   has_many :caregiver_availabilities, foreign_key: "caregiver_id", dependent: :destroy
   
+  # Ahoy analytics
+  has_many :visits, class_name: "Ahoy::Visit", dependent: :destroy
+  has_many :events, class_name: "Ahoy::Event", dependent: :destroy
+  
   validates :email, presence: true, uniqueness: true
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"

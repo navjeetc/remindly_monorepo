@@ -1,0 +1,223 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <h2 class="text-3xl font-bold text-gray-900">Audit Logs</h2>
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+      Admin Panel
+    </span>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="bg-white shadow sm:rounded-lg p-4">
+    <%= form_with url: admin_audit_logs_path, method: :get, class: "space-y-4" do |f| %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Event Type Filter -->
+        <div>
+          <label for="event_filter" class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+          <%= f.select :event_filter,
+            options_for_select(
+              [['All Events', '']] + @event_names.map { |name| [name, name] },
+              @event_filter
+            ),
+            {},
+            class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          %>
+        </div>
+
+        <!-- User Filter -->
+        <div>
+          <label for="user_id" class="block text-sm font-medium text-gray-700 mb-1">User</label>
+          <%= f.select :user_id,
+            options_for_select(
+              [['All Users', '']] + @users_with_events.map { |u| [u.email, u.id] },
+              @user_filter
+            ),
+            {},
+            class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          %>
+        </div>
+
+        <!-- Date From -->
+        <div>
+          <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+          <%= f.date_field :date_from,
+            value: @date_from,
+            class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          %>
+        </div>
+
+        <!-- Date To -->
+        <div>
+          <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+          <%= f.date_field :date_to,
+            value: @date_to,
+            class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          %>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <%= f.submit "Apply Filters", class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+        <% if @event_filter.present? || @user_filter.present? || @date_from.present? || @date_to.present? %>
+          <%= link_to "Clear Filters", admin_audit_logs_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Stats Summary -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="px-4 py-5 sm:p-6">
+        <dt class="text-sm font-medium text-gray-500 truncate">Total Events</dt>
+        <dd class="mt-1 text-3xl font-semibold text-gray-900"><%= @events.total_count %></dd>
+      </div>
+    </div>
+    <div class="bg-green-50 overflow-hidden shadow rounded-lg">
+      <div class="px-4 py-5 sm:p-6">
+        <dt class="text-sm font-medium text-green-700 truncate">Successful Logins</dt>
+        <dd class="mt-1 text-3xl font-semibold text-green-900">
+          <%= Ahoy::Event.where(name: "Login Success").count %>
+        </dd>
+      </div>
+    </div>
+    <div class="bg-red-50 overflow-hidden shadow rounded-lg">
+      <div class="px-4 py-5 sm:p-6">
+        <dt class="text-sm font-medium text-red-700 truncate">Failed Logins</dt>
+        <dd class="mt-1 text-3xl font-semibold text-red-900">
+          <%= Ahoy::Event.where(name: "Login Failed").count %>
+        </dd>
+      </div>
+    </div>
+  </div>
+
+  <!-- Events Table -->
+  <div class="bg-white shadow overflow-hidden sm:rounded-md">
+    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      <h3 class="text-sm font-medium text-gray-900">
+        Recent Events (<%= @events.total_count %>)
+      </h3>
+    </div>
+    
+    <% if @events.any? %>
+      <ul class="divide-y divide-gray-200">
+        <% @events.each do |event| %>
+          <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="flex items-center space-x-3">
+                  <!-- Event Name Badge -->
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= 
+                    case event.name
+                    when 'Login Success'
+                      'bg-green-100 text-green-800'
+                    when 'Login Failed'
+                      'bg-red-100 text-red-800'
+                    when 'Logout'
+                      'bg-gray-100 text-gray-800'
+                    else
+                      'bg-blue-100 text-blue-800'
+                    end
+                  %>">
+                    <%= event.name %>
+                  </span>
+                  
+                  <!-- User Email -->
+                  <% if event.user %>
+                    <span class="text-sm font-medium text-gray-900"><%= event.user.email %></span>
+                  <% else %>
+                    <span class="text-sm text-gray-500 italic">No user</span>
+                  <% end %>
+                  
+                  <!-- Timestamp -->
+                  <span class="text-xs text-gray-500">
+                    <%= time_ago_in_words(event.time) %> ago
+                  </span>
+                </div>
+                
+                <!-- Event Details -->
+                <div class="mt-2 text-sm text-gray-600 space-y-1">
+                  <% if event.properties.present? %>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1">
+                      <% if event.properties['method'] %>
+                        <span><strong>Method:</strong> <%= event.properties['method'] %></span>
+                      <% end %>
+                      <% if event.properties['client_type'] %>
+                        <span><strong>Client:</strong> <%= event.properties['client_type'] %></span>
+                      <% end %>
+                      <% if event.properties['ip'] %>
+                        <span><strong>IP:</strong> <%= event.properties['ip'] %></span>
+                      <% end %>
+                      <% if event.properties['reason'] %>
+                        <span class="text-red-600"><strong>Reason:</strong> <%= event.properties['reason'] %></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  
+                  <!-- Visit Info -->
+                  <% if event.visit %>
+                    <div class="text-xs text-gray-500">
+                      <strong>Visit:</strong> 
+                      <%= event.visit.browser %> on <%= event.visit.os %> 
+                      <% if event.visit.device_type %>
+                        (<%= event.visit.device_type %>)
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="ml-4 flex-shrink-0">
+                <%= link_to "Details", admin_audit_log_path(event), class: "text-blue-600 hover:text-blue-900 text-sm font-medium" %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+      
+      <!-- Pagination -->
+      <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Showing <span class="font-medium"><%= @events.offset_value + 1 %></span> to 
+            <span class="font-medium"><%= [@events.offset_value + @events.length, @events.total_count].min %></span> of 
+            <span class="font-medium"><%= @events.total_count %></span> results
+          </div>
+          <div class="flex space-x-2">
+            <% if @events.prev_page %>
+              <%= link_to "Previous", admin_audit_logs_path(page: @events.prev_page, event_filter: @event_filter, user_id: @user_filter, date_from: @date_from, date_to: @date_to), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+            <% end %>
+            <% if @events.next_page %>
+              <%= link_to "Next", admin_audit_logs_path(page: @events.next_page, event_filter: @event_filter, user_id: @user_filter, date_from: @date_from, date_to: @date_to), class: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="px-4 py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No audit logs found</h3>
+        <p class="mt-1 text-sm text-gray-500">Try adjusting your filters or check back later.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Info Box -->
+  <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+    <div class="flex">
+      <div class="flex-shrink-0">
+        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      <div class="ml-3">
+        <p class="text-sm text-blue-700">
+          <strong>Audit Log Information:</strong><br>
+          This page shows all authentication events including successful logins, failed login attempts, and logouts. 
+          Events are tracked with IP address, user agent, and other metadata for security monitoring.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

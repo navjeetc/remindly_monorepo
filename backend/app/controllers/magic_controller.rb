@@ -24,6 +24,14 @@ class MagicController < ApplicationController
     user  = User.find_signed(token, purpose: :magic_login)
     
     unless user
+      # Track failed login attempt
+      ahoy.track "Login Failed", {
+        reason: "invalid_or_expired_token",
+        method: "magic_link",
+        ip: request.remote_ip,
+        user_agent: request.user_agent
+      }
+      
       # If it's a browser request, redirect to login with error
       if request.format.html?
         redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
@@ -32,6 +40,17 @@ class MagicController < ApplicationController
       end
       return
     end
+    
+    # Authenticate user with Ahoy
+    ahoy.authenticate(user)
+    
+    # Track successful login
+    ahoy.track "Login Success", {
+      method: "magic_link",
+      client_type: request.format.html? ? "web" : "api",
+      ip: request.remote_ip,
+      user_agent: request.user_agent
+    }
     
     # If it's a browser request (HTML), set session and redirect to dashboard
     if request.format.html?
@@ -48,6 +67,18 @@ class MagicController < ApplicationController
   def dev_exchange
     return head :forbidden unless Rails.env.development?
     user = User.find_or_create_by!(email: params.require(:email))
+    
+    # Authenticate user with Ahoy
+    ahoy.authenticate(user)
+    
+    # Track dev login
+    ahoy.track "Login Success", {
+      method: "dev_exchange",
+      client_type: "api",
+      ip: request.remote_ip,
+      user_agent: request.user_agent
+    }
+    
     render plain: issue_jwt(user:)
   end
 
