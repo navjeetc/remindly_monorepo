@@ -131,7 +131,14 @@ class RemindlyApp {
             
             try {
                 // Exchange the signed token for a JWT token
-                const response = await fetch(`${this.apiBaseUrl}/magic/verify?token=${encodeURIComponent(signedToken)}`);
+                // Use POST to avoid exposing token in URL/logs
+                const response = await fetch(`${this.apiBaseUrl}/magic/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: signedToken })
+                });
                 
                 if (response.ok) {
                     const jwtToken = await response.text();
@@ -162,7 +169,8 @@ class RemindlyApp {
         const email = document.getElementById('emailInput').value;
         
         try {
-            const response = await fetch(`${this.apiBaseUrl}/magic/request?email=${encodeURIComponent(email)}`);
+            // Add client=web parameter to get /client/ magic links
+            const response = await fetch(`${this.apiBaseUrl}/magic/request?email=${encodeURIComponent(email)}&client=web`);
             const data = await response.json();
             
             if (response.ok) {
