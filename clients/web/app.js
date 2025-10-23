@@ -169,7 +169,8 @@ class RemindlyApp {
         const email = document.getElementById('emailInput').value;
         
         try {
-            const response = await fetch(`${this.apiBaseUrl}/magic/request?email=${encodeURIComponent(email)}`);
+            // Add client=web parameter to get /client/ magic links
+            const response = await fetch(`${this.apiBaseUrl}/magic/request?email=${encodeURIComponent(email)}&client=web`);
             const data = await response.json();
             
             if (response.ok) {
