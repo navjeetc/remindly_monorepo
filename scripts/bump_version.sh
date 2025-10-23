@@ -65,15 +65,12 @@ CHANGELOG_ENTRY="## [$NEW_VERSION] - $TODAY
 "
 
 # Insert new version at the top of CHANGELOG (after header)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - insert after line 7 (after the header)
-    sed -i '' "7a\\
-$CHANGELOG_ENTRY
-" CHANGELOG.md
-else
-    # Linux
-    sed -i "7a\\$CHANGELOG_ENTRY" CHANGELOG.md
-fi
+# Use a temp file approach for better compatibility
+TEMP_FILE=$(mktemp)
+head -n 7 CHANGELOG.md > "$TEMP_FILE"
+echo "$CHANGELOG_ENTRY" >> "$TEMP_FILE"
+tail -n +8 CHANGELOG.md >> "$TEMP_FILE"
+mv "$TEMP_FILE" CHANGELOG.md
 echo "✅ Created CHANGELOG.md entry template"
 
 echo ""
