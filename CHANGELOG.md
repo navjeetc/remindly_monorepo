@@ -5,6 +5,34 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-10-24
+
+### Added
+- **How To page** with comprehensive descriptions of main features
+  - Reminders functionality with custom schedules, categories, and voice announcements
+  - Tasks functionality with assignment, scheduling, and status tracking
+  - Browser compatibility note for voice announcements (Safari works best, Firefox supported, Chrome not supported)
+  - Three video tutorial links:
+    - How to Log In (magic link authentication)
+    - How a Senior starts a request to connect with a Caregiver
+    - How a Caregiver connects with a Senior
+- **Contact Us page** with form for user feedback and support
+  - Form fields: name, email, and message (all required)
+  - Email notifications sent to admin_email via ContactMailer
+  - HTML and text email templates with professional formatting
+  - Reply-to set to submitter's email for easy responses
+- **Navigation links** for How To and Contact Us pages in dashboard header
+
+### Changed
+- 
+
+### Fixed
+- 
+
+### Security
+-
+
+
 ## [0.2.4] - 2025-10-23
 
 ### Changed
