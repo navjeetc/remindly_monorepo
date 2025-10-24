@@ -77,6 +77,14 @@ class DashboardController < WebController
       return
     end
     
+    # Email format validation
+    email_regex = /\A[^@\s]+@[^@\s]+\.[^@\s]+\z/
+    unless email.match?(email_regex)
+      flash[:alert] = "Please enter a valid email address"
+      render :contact
+      return
+    end
+    
     # Log the contact submission
     Rails.logger.info "📧 Contact form submission: name=#{name}, email=#{email}, message_length=#{description.length}"
     
