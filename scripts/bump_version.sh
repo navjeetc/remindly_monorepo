@@ -27,24 +27,20 @@ echo ""
 
 # Update VERSION file
 echo "$NEW_VERSION" > VERSION
-echo "✅ Updated VERSION file"
+# Copy VERSION file to backend for production deployment
+cp VERSION backend/VERSION
+echo "✅ Updated VERSION file (root and backend)"
 
 # Update deploy.yml APP_VERSION
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
     sed -i '' "s/APP_VERSION: \"$CURRENT_VERSION\"/APP_VERSION: \"$NEW_VERSION\"/g" backend/config/deploy.yml
-    sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" clients/web/index.html
-    sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/public/client/index.html
-    sed -i '' "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/app/views/layouts/dashboard.html.erb
 else
     # Linux
     sed -i "s/APP_VERSION: \"$CURRENT_VERSION\"/APP_VERSION: \"$NEW_VERSION\"/g" backend/config/deploy.yml
-    sed -i "s/v$CURRENT_VERSION/v$NEW_VERSION/g" clients/web/index.html
-    sed -i "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/public/client/index.html
-    sed -i "s/v$CURRENT_VERSION/v$NEW_VERSION/g" backend/app/views/layouts/dashboard.html.erb
 fi
 echo "✅ Updated deploy.yml APP_VERSION"
-echo "✅ Updated client HTML files"
+echo "✅ Version is now fetched dynamically by clients"
 
 # Create CHANGELOG entry template
 TODAY=$(date +%Y-%m-%d)
@@ -77,10 +73,8 @@ echo ""
 echo "📋 Summary of changes:"
 echo "  ✓ VERSION: $CURRENT_VERSION → $NEW_VERSION"
 echo "  ✓ backend/config/deploy.yml: APP_VERSION updated"
-echo "  ✓ clients/web/index.html: version updated"
-echo "  ✓ backend/public/client/index.html: version updated"
-echo "  ✓ backend/app/views/layouts/dashboard.html.erb: version updated"
 echo "  ✓ CHANGELOG.md: new version entry created"
+echo "  ✓ Version will be fetched dynamically via /version API endpoint"
 echo ""
 echo "📝 Next steps:"
 echo "  1. Edit CHANGELOG.md and fill in the changes"

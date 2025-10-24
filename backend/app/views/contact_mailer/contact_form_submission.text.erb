@@ -1,0 +1,20 @@
+NEW CONTACT FORM SUBMISSION
+========================================
+
+You have received a new contact form submission from the Remindly dashboard.
+
+Name: <%= @name %>
+
+Email: <%= @email %>
+
+Message:
+----------------------------------------
+<%= @description %>
+----------------------------------------
+
+Submitted At: <%= @submitted_at.strftime("%B %d, %Y at %I:%M %p %Z") %>
+
+To reply, send an email to: <%= @email %>
+
+---
+This email was sent from the Remindly Contact Form.

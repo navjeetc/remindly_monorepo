@@ -1,6 +1,6 @@
 class DashboardController < WebController
   before_action :authenticate!
-  before_action :check_role!, except: [:profile, :update_profile]
+  before_action :check_role!, except: [:profile, :update_profile, :how_to, :contact, :submit_contact]
   layout 'dashboard'
   
   # Landing page - show pairing or dashboard
@@ -54,6 +54,54 @@ class DashboardController < WebController
       # No role - will be caught by check_role!
       @linked_seniors = []
       @pending_links = []
+    end
+  end
+  
+  # Show how-to page
+  def how_to
+  end
+  
+  # Show contact form
+  def contact
+  end
+  
+  # Submit contact form
+  def submit_contact
+    name = params[:name]
+    email = params[:email]
+    description = params[:description]
+    
+    if name.blank? || email.blank? || description.blank?
+      flash[:alert] = "All fields are required"
+      render :contact
+      return
+    end
+    
+    # Email format validation
+    email_regex = /\A[^@\s]+@[^@\s]+\.[^@\s]+\z/
+    unless email.match?(email_regex)
+      flash[:alert] = "Please enter a valid email address"
+      render :contact
+      return
+    end
+    
+    # Log the contact submission
+    Rails.logger.info "📧 Contact form submission: name=#{name}, email=#{email}, message_length=#{description.length}"
+    
+    # Send email to admin
+    begin
+      ContactMailer.contact_form_submission(
+        name: name,
+        email: email,
+        description: description
+      ).deliver_now
+      
+      Rails.logger.info "✅ Contact form email sent successfully to admin"
+      redirect_to dashboard_path, notice: "Thank you for contacting us! We'll get back to you soon."
+    rescue => e
+      Rails.logger.error "❌ Failed to send contact form email: #{e.message}"
+      flash[:alert] = "Sorry, we couldn't send your message due to a technical issue. Please try again later or use an alternative contact method."
+      render :contact
     end
   end
   

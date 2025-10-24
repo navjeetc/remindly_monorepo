@@ -31,6 +31,9 @@ Rails.application.routes.draw do
   
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard
+  get  "how_to",             to: "dashboard#how_to", as: :how_to
+  get  "contact",            to: "dashboard#contact", as: :contact
+  post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile
   patch "profile",           to: "dashboard#update_profile"
   get  "dashboard/pair",     to: "dashboard#pair", as: :pair_dashboard
@@ -96,6 +99,9 @@ Rails.application.routes.draw do
     
     resources :availability, controller: 'caregiver_availabilities', only: [:index, :create, :update, :destroy]
   end
+  
+  # Version endpoint
+  get "version", to: "application#version"
   
   get "up" => "rails/health#show", as: :rails_health_check
 end
