@@ -57,6 +57,45 @@ class DashboardController < WebController
     end
   end
   
+  # Show how-to page
+  def how_to
+  end
+  
+  # Show contact form
+  def contact
+  end
+  
+  # Submit contact form
+  def submit_contact
+    name = params[:name]
+    email = params[:email]
+    description = params[:description]
+    
+    if name.blank? || email.blank? || description.blank?
+      flash[:alert] = "All fields are required"
+      render :contact
+      return
+    end
+    
+    # Log the contact submission
+    Rails.logger.info "📧 Contact form submission: name=#{name}, email=#{email}, message_length=#{description.length}"
+    
+    # Send email to admin
+    begin
+      ContactMailer.contact_form_submission(
+        name: name,
+        email: email,
+        description: description
+      ).deliver_now
+      
+      Rails.logger.info "✅ Contact form email sent successfully to admin"
+      redirect_to dashboard_path, notice: "Thank you for contacting us! We'll get back to you soon."
+    rescue => e
+      Rails.logger.error "❌ Failed to send contact form email: #{e.message}"
+      redirect_to dashboard_path, notice: "Thank you for contacting us! We'll get back to you soon."
+    end
+  end
+  
   # Show profile page
   def profile
   end
