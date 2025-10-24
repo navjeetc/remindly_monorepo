@@ -27,7 +27,9 @@ echo ""
 
 # Update VERSION file
 echo "$NEW_VERSION" > VERSION
-echo "✅ Updated VERSION file"
+# Copy VERSION file to backend for production deployment
+cp VERSION backend/VERSION
+echo "✅ Updated VERSION file (root and backend)"
 
 # Update deploy.yml APP_VERSION
 if [[ "$OSTYPE" == "darwin"* ]]; then

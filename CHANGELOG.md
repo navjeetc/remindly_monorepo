@@ -24,7 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Navigation links** for How To and Contact Us pages in dashboard header
 
 ### Changed
-- 
+- **Version management improved** - Version is now fetched dynamically via `/version` API endpoint
+  - Web client automatically displays current version without hardcoding
+  - Simplified bump_version.sh script (no longer needs to update HTML files)
+  - Single source of truth for version (VERSION file + deploy.yml)
 
 ### Fixed
 - 
