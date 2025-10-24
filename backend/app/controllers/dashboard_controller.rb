@@ -1,6 +1,6 @@
 class DashboardController < WebController
   before_action :authenticate!
-  before_action :check_role!, except: [:profile, :update_profile]
+  before_action :check_role!, except: [:profile, :update_profile, :how_to, :contact, :submit_contact]
   layout 'dashboard'
   
   # Landing page - show pairing or dashboard
