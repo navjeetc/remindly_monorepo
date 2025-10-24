@@ -100,7 +100,8 @@ class DashboardController < WebController
       redirect_to dashboard_path, notice: "Thank you for contacting us! We'll get back to you soon."
     rescue => e
       Rails.logger.error "❌ Failed to send contact form email: #{e.message}"
-      redirect_to dashboard_path, notice: "Thank you for contacting us! We'll get back to you soon."
+      flash[:alert] = "Sorry, we couldn't send your message due to a technical issue. Please try again later or use an alternative contact method."
+      render :contact
     end
   end
   
