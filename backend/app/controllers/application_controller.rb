@@ -1,4 +1,9 @@
 class ApplicationController < ActionController::API
+  # Public endpoint to get app version
+  def version
+    render json: { version: APP_VERSION }
+  end
+  
   private
 
   def current_user

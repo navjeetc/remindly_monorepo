@@ -100,5 +100,8 @@ Rails.application.routes.draw do
     resources :availability, controller: 'caregiver_availabilities', only: [:index, :create, :update, :destroy]
   end
   
+  # Version endpoint
+  get "version", to: "application#version"
+  
   get "up" => "rails/health#show", as: :rails_health_check
 end

@@ -41,6 +41,7 @@ class RemindlyApp {
         this.checkAuthentication();
         this.checkForMagicLinkToken();
         this.hideDevFeaturesInProduction();
+        this.fetchAndDisplayVersion();
         
         // Check for Web Speech API support
         if (!('speechSynthesis' in window)) {
@@ -863,6 +864,26 @@ class RemindlyApp {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
+    }
+
+    // ========================================================================
+    // Version Management
+    // ========================================================================
+
+    async fetchAndDisplayVersion() {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/version`);
+            if (response.ok) {
+                const data = await response.json();
+                const versionElement = document.getElementById('appVersion');
+                if (versionElement && data.version) {
+                    versionElement.textContent = `v${data.version}`;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch version:', error);
+            // Keep the placeholder "v..." if fetch fails
+        }
     }
 }
 
