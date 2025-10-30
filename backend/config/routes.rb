@@ -29,9 +29,11 @@ Rails.application.routes.draw do
     resources :audit_logs, only: [:index, :show]
   end
   
+  # Public pages (no authentication required)
+  get  "how_to",             to: "pages#how_to", as: :how_to
+  
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard
-  get  "how_to",             to: "dashboard#how_to", as: :how_to
   get  "contact",            to: "dashboard#contact", as: :contact
   post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile
