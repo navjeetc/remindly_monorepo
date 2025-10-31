@@ -27,7 +27,7 @@ env:
     RAILS_SERVE_STATIC_FILES: "true"
     RAILS_LOG_TO_STDOUT: "true"
     RAILS_ENV: "production"
-    APP_VERSION: "0.2.5"
+    APP_VERSION: "0.2.6"
   secret:
     - RAILS_MASTER_KEY
 
