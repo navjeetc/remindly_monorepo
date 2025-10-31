@@ -5,6 +5,25 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2025-10-30
+
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- Fixed iPad mini icon sizing with additional responsive breakpoints
+- Added md: breakpoint for medium tablets (including iPad mini)
+- Icons now scale: h-4 w-4 (mobile) → h-5 w-5 (small tablets) → h-6 w-6 (medium tablets) → h-8-12 w-8-12 (desktop)
+- Fixed task action icons, senior dashboard stats icons, and empty state icons
+- Ensures proper sizing on iPad mini 7.9" displays
+
+### Security
+- 
+
+
 ## [0.2.6] - 2025-10-30
 
 ### Added
