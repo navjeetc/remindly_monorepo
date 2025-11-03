@@ -5,6 +5,25 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2025-11-03
+
+### Added
+- App version display on public pages (login, how_to, contact) for easier debugging
+
+### Changed
+- 
+
+### Fixed
+- Fixed NoMethodError when displaying app version on public pages
+- iPad mini specific icon sizing with custom CSS media queries
+- Added device-specific media queries targeting iPad mini (768px-1024px, pixel-ratio: 1)
+- Force smaller icons on tablets using transform scale (75%)
+- Applied responsive fixes to dashboard, tasks, admin, and pending approval pages
+
+### Security
+- 
+
+
 ## [0.2.7] - 2025-10-30
 
 ### Added
