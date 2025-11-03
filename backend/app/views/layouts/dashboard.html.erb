@@ -6,38 +6,6 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      /* iPad mini specific fixes */
-      @media only screen 
-        and (min-device-width: 768px) 
-        and (max-device-width: 1024px) 
-        and (-webkit-min-device-pixel-ratio: 1) 
-        and (orientation: portrait) {
-        .ipad-mini-fix svg {
-          width: 1.25rem !important;
-          height: 1.25rem !important;
-        }
-      }
-      
-      @media only screen 
-        and (min-device-width: 768px) 
-        and (max-device-width: 1024px) 
-        and (-webkit-min-device-pixel-ratio: 1) 
-        and (orientation: landscape) {
-        .ipad-mini-fix svg {
-          width: 1.5rem !important;
-          height: 1.5rem !important;
-        }
-      }
-      
-      /* Force smaller icons on tablets with similar characteristics */
-      @media (min-width: 768px) and (max-width: 1024px) {
-        svg[class*="h-"][class*="w-"] {
-          transform: scale(0.75);
-          transform-origin: center;
-        }
-      }
-    </style>
   </head>
 
   <body class="bg-gray-50">
