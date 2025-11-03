@@ -9,16 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - App version display on public pages (login, how_to, contact) for easier debugging
+- App version display in dashboard header for logged-in users
 
 ### Changed
 - 
 
 ### Fixed
-- Fixed NoMethodError when displaying app version on public pages
-- iPad mini specific icon sizing with custom CSS media queries
-- Added device-specific media queries targeting iPad mini (768px-1024px, pixel-ratio: 1)
-- Force smaller icons on tablets using transform scale (75%)
-- Applied responsive fixes to dashboard, tasks, admin, and pending approval pages
+- Fixed NoMethodError when displaying app version on public pages (use APP_VERSION constant)
 
 ### Security
 - 
