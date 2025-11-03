@@ -1,6 +1,6 @@
 class DashboardController < WebController
   before_action :authenticate!
-  before_action :check_role!, except: [:profile, :update_profile, :how_to, :contact, :submit_contact]
+  before_action :check_role!, except: [:profile, :update_profile, :how_to, :contact, :submit_contact, :voice_reminders]
   layout 'dashboard'
   
   # Landing page - show pairing or dashboard
@@ -364,6 +364,54 @@ class DashboardController < WebController
     )
     
     redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
+  end
+  
+  # Voice reminders interface - session-based authentication
+  def voice_reminders
+    # Only seniors can access voice reminders
+    unless current_user.role_senior?
+      redirect_to dashboard_path, alert: "Voice reminders are only available for seniors"
+      return
+    end
+    
+    # Use dashboard layout for consistent navigation
+  end
+  
+  # API endpoint for voice reminders - session-based
+  def today_reminders_json
+    # Only seniors can access their own reminders
+    unless current_user.role_senior?
+      render json: { error: "Unauthorized" }, status: :unauthorized
+      return
+    end
+    
+    tz = ActiveSupport::TimeZone[current_user.tz]
+    now = tz.now.beginning_of_day
+    end_of_day = now.end_of_day
+    
+    Rails.logger.info "🔍 Voice Reminders Debug:"
+    Rails.logger.info "  User: #{current_user.email} (tz: #{current_user.tz})"
+    Rails.logger.info "  Time range: #{now} to #{end_of_day}"
+    
+    occurrences = Occurrence
+      .joins(:reminder)
+      .where(reminders: { user_id: current_user.id })
+      .where(scheduled_at: now..end_of_day)
+      .where(status: :pending)
+      .order(:scheduled_at)
+    
+    Rails.logger.info "  Found #{occurrences.count} occurrences"
+    
+    render json: occurrences.map { |occ|
+      {
+        id: occ.id,
+        title: occ.reminder.title,
+        description: occ.reminder.notes || '',
+        scheduled_at: occ.scheduled_at,
+        acknowledged_at: (occ.status == 'acknowledged' ? occ.updated_at : nil),
+        snoozed_until: nil
+      }
+    }
   end
   
   private

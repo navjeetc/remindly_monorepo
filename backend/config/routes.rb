@@ -34,6 +34,8 @@ Rails.application.routes.draw do
   
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard
+  get  "voice_reminders",    to: "dashboard#voice_reminders", as: :voice_reminders
+  get  "voice_reminders/today", to: "dashboard#today_reminders_json", as: :voice_reminders_today
   get  "contact",            to: "dashboard#contact", as: :contact
   post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile

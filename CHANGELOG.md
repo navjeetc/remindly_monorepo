@@ -5,6 +5,31 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-11-03
+
+### Added
+- Voice Reminders page with automatic text-to-speech announcements
+- Browser-based speech synthesis for reminder announcements
+- Done, Snooze (10 min), and Skip actions for reminders
+- Acknowledgements system to track reminder completion
+- Senior-friendly simplified UI with larger text and clearer layout
+- Chrome/Chromium browser workarounds for speech synthesis
+- Timezone-aware reminder scheduling and display
+
+### Changed
+- Simplified Senior Dashboard to show only pending reminders prominently
+- Completed reminders now collapsed in dropdown to reduce clutter
+- Increased font sizes and button sizes for better accessibility
+- Only announce reminder titles (not notes) to keep announcements concise
+- Voice Reminders page uses timestamp-based cache busting for JavaScript
+
+### Fixed
+- Timezone display issues in new reminder form
+- Voice announcements now work correctly in Safari and Chrome-based browsers
+- Duplicate announcement prevention
+- JavaScript null reference errors in stats updates
+
+
 ## [0.2.8] - 2025-11-03
 
 ### Added

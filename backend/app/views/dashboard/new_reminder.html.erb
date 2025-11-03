@@ -42,7 +42,7 @@
 
           <div>
             <%= f.label :time, "Time", class: "block text-sm font-medium text-gray-700" %>
-            <%= f.time_field :time, value: Time.current.strftime("%H:%M"), required: true, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+            <%= f.time_field :time, value: Time.current.in_time_zone(@senior.tz).strftime("%H:%M"), required: true, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           </div>
         </div>
 

@@ -1,0 +1,131 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="voice-reminders-container">
+        <!-- Voice Reminders Header - Simplified for Seniors -->
+        <div class="mb-8">
+            <h1 class="text-5xl font-bold text-gray-900 mb-2">🔊 My Reminders</h1>
+            <p class="text-2xl text-gray-600">I'll remind you when it's time</p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent">
+            <!-- Simplified Stats - Only show what matters -->
+            <div class="bg-blue-50 rounded-xl shadow-sm p-6 mb-8 border-2 border-blue-200">
+                <div class="text-center">
+                    <div class="text-xl font-medium text-gray-600 mb-2">You have</div>
+                    <div id="pendingCount" class="text-6xl font-bold text-blue-600">0</div>
+                    <div class="text-xl font-medium text-gray-600 mt-2">reminders today</div>
+                </div>
+            </div>
+
+            <!-- Reminders List - Larger, clearer -->
+            <div>
+                <div id="remindersList" class="space-y-4">
+                    <!-- Reminders will be populated here -->
+                </div>
+                <div id="emptyState" class="text-center py-16" style="display: none;">
+                    <p class="text-3xl text-gray-400">✨ No reminders right now</p>
+                    <p class="text-xl text-gray-400 mt-2">Enjoy your day!</p>
+                </div>
+            </div>
+            
+            <!-- Hidden controls for caregivers/debugging -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <details class="text-sm text-gray-500">
+                    <summary class="cursor-pointer hover:text-gray-700">Advanced Options</summary>
+                    <div class="mt-4 flex items-center space-x-2">
+                        <button id="refreshBtn" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            🔄 Refresh
+                        </button>
+                        <button id="clearAnnouncedBtn" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" title="Clear announced reminders list">
+                            🗑️ Clear Announced
+                        </button>
+                        <span id="statusIndicator" class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                    </div>
+                </details>
+            </div>
+
+        </div>
+
+        <!-- Settings Modal (hidden) -->
+        <div id="settingsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn" id="closeSettings">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Voice Settings -->
+                    <section class="settings-section">
+                        <h3>🔊 Voice Settings</h3>
+                        <div class="setting-item">
+                            <label for="voiceEnabled">
+                                <input type="checkbox" id="voiceEnabled" checked>
+                                Enable Voice Announcements
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="voiceRate">Voice Speed</label>
+                            <input type="range" id="voiceRate" min="0.1" max="2" step="0.1" value="0.4">
+                            <span id="voiceRateValue">0.4</span>
+                        </div>
+                        <div class="setting-item">
+                            <label for="voiceVolume">Voice Volume</label>
+                            <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="1.0">
+                            <span id="voiceVolumeValue">1.0</span>
+                        </div>
+                        <button id="testVoiceBtn" class="btn-secondary">Test Voice</button>
+                    </section>
+
+                    <!-- Notification Settings -->
+                    <section class="settings-section">
+                        <h3>🔔 Notification Settings</h3>
+                        <div class="setting-item">
+                            <label for="notificationsEnabled">
+                                <input type="checkbox" id="notificationsEnabled" checked>
+                                Enable Browser Notifications
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="notificationSound">
+                                <input type="checkbox" id="notificationSound" checked>
+                                Play Notification Sound
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="checkInterval">Check Interval (seconds)</label>
+                            <input type="number" id="checkInterval" min="5" max="60" value="10">
+                        </div>
+                        <button id="requestNotificationBtn" class="btn-secondary">Request Notification Permission</button>
+                    </section>
+
+                    <!-- Quiet Hours -->
+                    <section class="settings-section">
+                        <h3>🌙 Quiet Hours</h3>
+                        <div class="setting-item">
+                            <label for="quietHoursEnabled">
+                                <input type="checkbox" id="quietHoursEnabled">
+                                Enable Quiet Hours
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label for="quietHoursStart">Start Time</label>
+                            <input type="time" id="quietHoursStart" value="22:00">
+                        </div>
+                        <div class="setting-item">
+                            <label for="quietHoursEnd">End Time</label>
+                            <input type="time" id="quietHoursEnd" value="07:00">
+                        </div>
+                    </section>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveSettings" class="btn-primary">Save Settings</button>
+                    <button id="resetSettings" class="btn-secondary">Reset to Defaults</button>
+                    <button id="clearAnnounced" class="btn-secondary">Clear Announced List</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load session-based voice reminders JavaScript -->
+<script src="/voice_reminders.js?v=<%= Time.now.to_i %>"></script>
