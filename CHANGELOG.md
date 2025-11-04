@@ -5,6 +5,15 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-11-04
+
+### Fixed
+- Added comprehensive null checks for all DOM elements in voice_reminders.js to prevent runtime errors
+- Fixed API filter to return both pending and acknowledged reminders for proper completion status display
+- Re-enabled raise_on_missing_callback_actions in development environment for better error detection
+- Added documentation comment explaining slow voice rate default (40% speed optimized for seniors)
+
+
 ## [0.3.0] - 2025-11-03
 
 ### Added

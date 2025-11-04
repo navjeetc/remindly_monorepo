@@ -403,7 +403,9 @@ class VoiceRemindersApp {
 
     updateStatus(status) {
         const indicator = document.getElementById('statusIndicator');
-        indicator.className = `status-indicator ${status}`;
+        if (indicator) {
+            indicator.className = `status-indicator ${status}`;
+        }
     }
 
     showError(message) {
@@ -413,43 +415,90 @@ class VoiceRemindersApp {
 
     // Settings methods
     openSettings() {
-        document.getElementById('settingsModal').style.display = 'flex';
-        this.loadSettingsToUI();
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'flex';
+            this.loadSettingsToUI();
+        } else {
+            this.showError("Settings modal element not found.");
+        }
     }
 
     closeSettings() {
-        document.getElementById('settingsModal').style.display = 'none';
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'none';
+        }
     }
 
     loadSettingsToUI() {
-        document.getElementById('voiceEnabled').checked = this.settings.voiceEnabled;
-        document.getElementById('voiceRate').value = this.settings.voiceRate;
-        document.getElementById('voiceRateValue').textContent = this.settings.voiceRate;
-        document.getElementById('voiceVolume').value = this.settings.voiceVolume;
-        document.getElementById('voiceVolumeValue').textContent = this.settings.voiceVolume;
-        document.getElementById('notificationsEnabled').checked = this.settings.notificationsEnabled;
-        document.getElementById('notificationSound').checked = this.settings.notificationSound;
-        document.getElementById('checkInterval').value = this.settings.checkInterval;
-        document.getElementById('quietHoursEnabled').checked = this.settings.quietHoursEnabled;
-        document.getElementById('quietHoursStart').value = this.settings.quietHoursStart;
-        document.getElementById('quietHoursEnd').value = this.settings.quietHoursEnd;
+        const voiceEnabled = document.getElementById('voiceEnabled');
+        if (voiceEnabled) voiceEnabled.checked = this.settings.voiceEnabled;
+        
+        const voiceRate = document.getElementById('voiceRate');
+        if (voiceRate) voiceRate.value = this.settings.voiceRate;
+        
+        const voiceRateValue = document.getElementById('voiceRateValue');
+        if (voiceRateValue) voiceRateValue.textContent = this.settings.voiceRate;
+        
+        const voiceVolume = document.getElementById('voiceVolume');
+        if (voiceVolume) voiceVolume.value = this.settings.voiceVolume;
+        
+        const voiceVolumeValue = document.getElementById('voiceVolumeValue');
+        if (voiceVolumeValue) voiceVolumeValue.textContent = this.settings.voiceVolume;
+        
+        const notificationsEnabled = document.getElementById('notificationsEnabled');
+        if (notificationsEnabled) notificationsEnabled.checked = this.settings.notificationsEnabled;
+        
+        const notificationSound = document.getElementById('notificationSound');
+        if (notificationSound) notificationSound.checked = this.settings.notificationSound;
+        
+        const checkInterval = document.getElementById('checkInterval');
+        if (checkInterval) checkInterval.value = this.settings.checkInterval;
+        
+        const quietHoursEnabled = document.getElementById('quietHoursEnabled');
+        if (quietHoursEnabled) quietHoursEnabled.checked = this.settings.quietHoursEnabled;
+        
+        const quietHoursStart = document.getElementById('quietHoursStart');
+        if (quietHoursStart) quietHoursStart.value = this.settings.quietHoursStart;
+        
+        const quietHoursEnd = document.getElementById('quietHoursEnd');
+        if (quietHoursEnd) quietHoursEnd.value = this.settings.quietHoursEnd;
     }
 
     saveSettings() {
-        this.settings = {
-            voiceEnabled: document.getElementById('voiceEnabled').checked,
-            voiceRate: document.getElementById('voiceRate').value,
-            voiceVolume: document.getElementById('voiceVolume').value,
-            notificationsEnabled: document.getElementById('notificationsEnabled').checked,
-            notificationSound: document.getElementById('notificationSound').checked,
-            checkInterval: parseInt(document.getElementById('checkInterval').value),
-            quietHoursEnabled: document.getElementById('quietHoursEnabled').checked,
-            quietHoursStart: document.getElementById('quietHoursStart').value,
-            quietHoursEnd: document.getElementById('quietHoursEnd').value
-        };
+        const voiceEnabled = document.getElementById('voiceEnabled');
+        const voiceRate = document.getElementById('voiceRate');
+        const voiceVolume = document.getElementById('voiceVolume');
+        const notificationsEnabled = document.getElementById('notificationsEnabled');
+        const notificationSound = document.getElementById('notificationSound');
+        const checkInterval = document.getElementById('checkInterval');
+        const quietHoursEnabled = document.getElementById('quietHoursEnabled');
+        const quietHoursStart = document.getElementById('quietHoursStart');
+        const quietHoursEnd = document.getElementById('quietHoursEnd');
         
-        localStorage.setItem('voiceRemindersSettings', JSON.stringify(this.settings));
-        this.closeSettings();
+        // Only save if elements exist
+        if (voiceEnabled && voiceRate && voiceVolume && notificationsEnabled && 
+            notificationSound && checkInterval && quietHoursEnabled && 
+            quietHoursStart && quietHoursEnd) {
+            
+            this.settings = {
+                voiceEnabled: voiceEnabled.checked,
+                voiceRate: voiceRate.value,
+                voiceVolume: voiceVolume.value,
+                notificationsEnabled: notificationsEnabled.checked,
+                notificationSound: notificationSound.checked,
+                checkInterval: parseInt(checkInterval.value),
+                quietHoursEnabled: quietHoursEnabled.checked,
+                quietHoursStart: quietHoursStart.value,
+                quietHoursEnd: quietHoursEnd.value
+            };
+            
+            localStorage.setItem('voiceRemindersSettings', JSON.stringify(this.settings));
+            this.closeSettings();
+        } else {
+            this.showError('Settings form elements not found.');
+        }
         
         // Restart periodic check with new interval
         clearInterval(this.checkInterval);
