@@ -17,6 +17,9 @@ class User < ApplicationRecord
   has_many :task_comments, dependent: :destroy
   has_many :caregiver_availabilities, foreign_key: "caregiver_id", dependent: :destroy
   
+  # Scheduling integrations
+  has_many :scheduling_integrations, dependent: :destroy
+  
   # Ahoy analytics
   has_many :visits, class_name: "Ahoy::Visit", dependent: :destroy
   has_many :events, class_name: "Ahoy::Event", dependent: :destroy
