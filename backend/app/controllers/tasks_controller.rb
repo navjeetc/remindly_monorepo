@@ -15,6 +15,15 @@ class TasksController < WebController
     @tasks = @tasks.by_priority(params[:priority]) if params[:priority].present?
     @tasks = @tasks.assigned_to_user(params[:assigned_to]) if params[:assigned_to].present?
     @tasks = @tasks.unassigned if params[:unassigned] == "true"
+    
+    # External source filter
+    if params[:external_source].present?
+      if params[:external_source] == "manual"
+        @tasks = @tasks.manually_created
+      else
+        @tasks = @tasks.where(external_source: params[:external_source])
+      end
+    end
 
     # Date range filter
     if params[:view] == "upcoming"

@@ -1,0 +1,140 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Scheduling Integrations</h1>
+    <p class="text-gray-600">
+      Connect external scheduling platforms to automatically sync appointments as tasks.
+      <span class="text-sm text-gray-500">(Optional - you can continue managing tasks manually)</span>
+    </p>
+  </div>
+
+  <% if @senior_integrations.any? %>
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-4">
+        Active Integrations for <%= @senior.name || @senior.email %>
+      </h2>
+      
+      <div class="space-y-4">
+        <% @senior_integrations.each do |integration| %>
+          <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <% if integration.provider_acuity? %>
+                    <span class="text-2xl">🏥</span>
+                    <h3 class="text-lg font-semibold text-gray-900">Acuity Scheduling</h3>
+                  <% elsif integration.provider_calendly? %>
+                    <span class="text-2xl">📅</span>
+                    <h3 class="text-lg font-semibold text-gray-900">Calendly</h3>
+                  <% end %>
+                  
+                  <% if integration.status_active? %>
+                    <span class="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Active</span>
+                  <% elsif integration.status_error? %>
+                    <span class="px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-full">Error</span>
+                  <% else %>
+                    <span class="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full">Inactive</span>
+                  <% end %>
+                </div>
+                
+                <div class="text-sm text-gray-600 space-y-1">
+                  <p><strong>User ID:</strong> <%= integration.provider_user_id %></p>
+                  <% if integration.last_synced_at %>
+                    <p><strong>Last synced:</strong> <%= time_ago_in_words(integration.last_synced_at) %> ago</p>
+                  <% else %>
+                    <p><strong>Last synced:</strong> Never</p>
+                  <% end %>
+                  <p><strong>Auto-sync:</strong> <%= integration.sync_enabled? ? 'Enabled' : 'Disabled' %></p>
+                  
+                  <% if integration.status_error? && integration.settings['last_error'] %>
+                    <p class="text-red-600 mt-2">
+                      <strong>Error:</strong> <%= integration.settings['last_error'] %>
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="flex gap-2">
+                <%= link_to 'View', scheduling_integration_path(integration), 
+                    class: 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+                <%= button_to 'Sync Now', sync_scheduling_integration_path(integration), 
+                    method: :post,
+                    class: 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700',
+                    data: { turbo: false } %>
+                <%= link_to 'Settings', edit_scheduling_integration_path(integration), 
+                    class: 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+                <%= button_to 'Disconnect', scheduling_integration_path(integration), 
+                    method: :delete,
+                    data: { turbo_confirm: 'Are you sure? Synced tasks will remain but won\'t update automatically.' },
+                    class: 'px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50' %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Connect a Scheduling Platform</h2>
+    
+    <div class="grid md:grid-cols-2 gap-4">
+      <!-- Acuity Scheduling -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-3xl">🏥</span>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Acuity Scheduling</h3>
+            <span class="inline-block px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">Recommended</span>
+          </div>
+        </div>
+        
+        <p class="text-sm text-gray-600 mb-4">
+          HIPAA-compliant scheduling platform designed for healthcare providers.
+          Perfect for medical appointments and senior care.
+        </p>
+        
+        <ul class="text-sm text-gray-600 mb-4 space-y-1">
+          <li>✅ HIPAA Compliant (BAA available)</li>
+          <li>✅ Healthcare-focused features</li>
+          <li>✅ Intake forms & custom fields</li>
+          <li>✅ Simple API key authentication</li>
+        </ul>
+        
+        <%= link_to 'Connect Acuity', new_senior_scheduling_integration_path(@senior, provider: 'acuity'), 
+            class: 'block w-full px-4 py-2 text-center text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700' %>
+      </div>
+      
+      <!-- Calendly -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition opacity-60">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-3xl">📅</span>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Calendly</h3>
+            <span class="inline-block px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-full">Coming Soon</span>
+          </div>
+        </div>
+        
+        <p class="text-sm text-gray-600 mb-4">
+          Popular scheduling tool for general appointments and meetings.
+        </p>
+        
+        <ul class="text-sm text-gray-600 mb-4 space-y-1">
+          <li>✅ Easy to use</li>
+          <li>✅ Popular platform</li>
+          <li>✅ OAuth integration</li>
+          <li>⚠️ Not HIPAA compliant</li>
+        </ul>
+        
+        <button disabled 
+            class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed">
+          Coming Soon
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6">
+    <%= link_to '← Back to Dashboard', senior_dashboard_path(@senior), 
+        class: 'text-blue-600 hover:text-blue-700' %>
+  </div>
+</div>

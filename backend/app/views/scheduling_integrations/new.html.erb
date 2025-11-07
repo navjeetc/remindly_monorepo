@@ -1,0 +1,86 @@
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Connect Acuity Scheduling</h1>
+    <p class="text-gray-600">
+      Enter your Acuity Scheduling credentials to automatically sync appointments.
+    </p>
+  </div>
+
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <h3 class="text-sm font-semibold text-blue-900 mb-2">📋 How to find your credentials:</h3>
+    <ol class="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+      <li>Log in to your <a href="https://secure.acuityscheduling.com/" target="_blank" class="underline">Acuity Scheduling account</a></li>
+      <li>Go to <strong>Business Settings</strong> → <strong>Integrations</strong> → <strong>API</strong></li>
+      <li>Your <strong>User ID</strong> and <strong>API Key</strong> will be displayed there</li>
+      <li>Copy and paste them below</li>
+    </ol>
+  </div>
+
+  <%= form_with model: @integration, url: senior_scheduling_integrations_path(@senior), class: 'space-y-6' do |f| %>
+    <% if @integration.errors.any? %>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-red-900 mb-2">Please fix the following errors:</h3>
+        <ul class="text-sm text-red-800 list-disc list-inside">
+          <% @integration.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= f.hidden_field :provider, value: 'acuity' %>
+
+    <div>
+      <%= f.label :provider_user_id, 'User ID', class: 'block text-sm font-medium text-gray-700 mb-2' %>
+      <%= f.text_field :provider_user_id, 
+          class: 'w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500',
+          placeholder: 'e.g., 12345678',
+          required: true %>
+      <p class="mt-1 text-sm text-gray-500">Your Acuity Scheduling User ID (found in API settings)</p>
+    </div>
+
+    <div>
+      <%= f.label :api_key, 'API Key', class: 'block text-sm font-medium text-gray-700 mb-2' %>
+      <%= f.password_field :api_key, 
+          class: 'w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500',
+          placeholder: 'Your API key',
+          required: true %>
+      <p class="mt-1 text-sm text-gray-500">Your Acuity Scheduling API Key (keep this secret!)</p>
+    </div>
+
+    <div class="flex items-center">
+      <%= f.check_box :sync_enabled, class: 'h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500' %>
+      <%= f.label :sync_enabled, class: 'ml-2 block text-sm text-gray-700' do %>
+        Enable automatic syncing
+        <span class="text-gray-500">(Recommended - appointments will sync hourly)</span>
+      <% end %>
+    </div>
+
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <h3 class="text-sm font-semibold text-yellow-900 mb-2">🔒 Security & Privacy</h3>
+      <ul class="text-sm text-yellow-800 space-y-1">
+        <li>• Your credentials are encrypted and stored securely</li>
+        <li>• Only you can see and manage this integration</li>
+        <li>• You can disconnect at any time</li>
+        <li>• Synced tasks will remain even if you disconnect</li>
+      </ul>
+    </div>
+
+    <div class="flex gap-3">
+      <%= f.submit 'Connect & Verify', 
+          class: 'flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
+          data: { disable_with: 'Verifying credentials...' } %>
+      <%= link_to 'Cancel', senior_scheduling_integrations_path(@senior), 
+          class: 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+    </div>
+  <% end %>
+
+  <div class="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-gray-900 mb-2">❓ Need help?</h3>
+    <ul class="text-sm text-gray-600 space-y-1">
+      <li>• <a href="https://help.acuityscheduling.com/hc/en-us/articles/219149167-API-Overview" target="_blank" class="text-blue-600 hover:underline">Acuity API Documentation</a></li>
+      <li>• <a href="https://help.acuityscheduling.com/" target="_blank" class="text-blue-600 hover:underline">Acuity Help Center</a></li>
+      <li>• Contact your Remindly administrator for assistance</li>
+    </ul>
+  </div>
+</div>

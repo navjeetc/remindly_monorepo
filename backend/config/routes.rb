@@ -89,6 +89,19 @@ Rails.application.routes.draw do
       end
       resources :comments, controller: 'task_comments', only: [:create, :destroy]
     end
+    
+    # Scheduling integrations
+    resources :scheduling_integrations, only: [:index, :new, :create]
+  end
+  
+  # Scheduling integrations (not scoped to senior)
+  resources :scheduling_integrations, only: [:show, :edit, :update, :destroy] do
+    member do
+      post :sync
+    end
+    collection do
+      post :verify
+    end
   end
   
   # API routes
