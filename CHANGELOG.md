@@ -5,6 +5,93 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-11-04
+
+### Fixed
+- Added comprehensive null checks for all DOM elements in voice_reminders.js to prevent runtime errors
+- Fixed API filter to return both pending and acknowledged reminders for proper completion status display
+- Re-enabled raise_on_missing_callback_actions in development environment for better error detection
+- Added documentation comment explaining slow voice rate default (40% speed optimized for seniors)
+
+
+## [0.3.0] - 2025-11-03
+
+### Added
+- Voice Reminders page with automatic text-to-speech announcements
+- Browser-based speech synthesis for reminder announcements
+- Done, Snooze (10 min), and Skip actions for reminders
+- Acknowledgements system to track reminder completion
+- Senior-friendly simplified UI with larger text and clearer layout
+- Chrome/Chromium browser workarounds for speech synthesis
+- Timezone-aware reminder scheduling and display
+
+### Changed
+- Simplified Senior Dashboard to show only pending reminders prominently
+- Completed reminders now collapsed in dropdown to reduce clutter
+- Increased font sizes and button sizes for better accessibility
+- Only announce reminder titles (not notes) to keep announcements concise
+- Voice Reminders page uses timestamp-based cache busting for JavaScript
+
+### Fixed
+- Timezone display issues in new reminder form
+- Voice announcements now work correctly in Safari and Chrome-based browsers
+- Duplicate announcement prevention
+- JavaScript null reference errors in stats updates
+
+
+## [0.2.8] - 2025-11-03
+
+### Added
+- App version display on public pages (login, how_to, contact) for easier debugging
+- App version display in dashboard header for logged-in users
+
+### Changed
+- 
+
+### Fixed
+- Fixed NoMethodError when displaying app version on public pages (use APP_VERSION constant)
+
+### Security
+- 
+
+
+## [0.2.7] - 2025-10-30
+
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- Fixed iPad mini icon sizing with additional responsive breakpoints
+- Added md: breakpoint for medium tablets (including iPad mini)
+- Icons now scale: h-4 w-4 (mobile) → h-5 w-5 (small tablets) → h-6 w-6 (medium tablets) → h-8-12 w-8-12 (desktop)
+- Fixed task action icons, senior dashboard stats icons, and empty state icons
+- Ensures proper sizing on iPad mini 7.9" displays
+
+### Security
+- 
+
+
+## [0.2.6] - 2025-10-30
+
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- Fixed responsive icon sizing on tablets and iPads
+- Icons now scale appropriately: smaller on mobile, medium on small tablets, full size on desktop
+- Updated viewport meta tag for better tablet behavior
+- Added responsive text sizing for main headings
+
+### Security
+- 
+
+
 ## [0.2.5] - 2025-10-24
 
 ### Added

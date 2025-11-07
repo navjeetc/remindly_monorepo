@@ -1,4 +1,4 @@
-class AcknowledgementsController < ApplicationController
+class AcknowledgementsController < WebController
   before_action :authenticate!
 
   def create

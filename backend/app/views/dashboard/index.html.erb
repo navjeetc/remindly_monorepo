@@ -70,40 +70,62 @@
     </div>
   <% end %>
 
-  <!-- Senior's Today's Reminders -->
-  <!-- Debug: role=<%= current_user.role %>, occurrences_defined=<%= defined?(@today_occurrences).present? %>, occurrences_count=<%= @today_occurrences&.count || 0 %> -->
+  <!-- Senior's Today's Reminders - Simplified -->
   <% if current_user.role_senior? && defined?(@today_occurrences) && @today_occurrences.present? %>
-    <div class="bg-white shadow sm:rounded-lg">
-      <div class="px-4 py-5 sm:p-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Today's Reminders</h3>
-        <div class="space-y-3">
-          <% @today_occurrences.each do |occ| %>
-            <div class="border-l-4 <%= occ.status == 'pending' ? 'border-yellow-400 bg-yellow-50' : occ.status == 'acknowledged' ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50' %> p-4">
-              <div class="flex justify-between items-start">
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-900"><%= occ.reminder.title %></p>
-                  <% if occ.reminder.notes.present? %>
-                    <p class="text-sm text-gray-600 mt-1"><%= occ.reminder.notes %></p>
-                  <% end %>
-                  <div class="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                    <span><%= occ.scheduled_at.in_time_zone(current_user.tz).strftime("%I:%M %p") %></span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= occ.status == 'pending' ? 'bg-yellow-100 text-yellow-800' : occ.status == 'acknowledged' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
-                      <%= occ.status.titleize %>
-                    </span>
-                    <% if occ.acknowledgements.any? %>
-                      <span class="text-green-600">✓ <%= occ.acknowledgements.last.kind.titleize %></span>
+    <% pending_reminders = @today_occurrences.select { |occ| occ.status == 'pending' } %>
+    <% if pending_reminders.any? %>
+      <div class="bg-white shadow-lg sm:rounded-xl">
+        <div class="px-6 py-6 sm:p-8">
+          <h3 class="text-3xl font-bold text-gray-900 mb-6">📋 Today's Reminders</h3>
+          <div class="space-y-4">
+            <% pending_reminders.each do |occ| %>
+              <div class="border-l-4 border-yellow-400 bg-yellow-50 p-6 rounded-r-lg shadow-md">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <p class="text-2xl font-bold text-gray-900"><%= occ.reminder.title %></p>
+                    <% if occ.reminder.notes.present? %>
+                      <p class="text-lg text-gray-700 mt-2"><%= occ.reminder.notes %></p>
                     <% end %>
+                    <div class="mt-3">
+                      <span class="text-xl font-semibold text-gray-700 bg-white px-4 py-2 rounded-lg shadow-sm">
+                        <%= occ.scheduled_at.in_time_zone(current_user.tz).strftime("%I:%M %p") %>
+                      </span>
+                    </div>
                   </div>
+                  <span class="inline-flex items-center px-4 py-2 rounded-full text-base font-medium bg-blue-100 text-blue-800">
+                    <%= occ.reminder.category.titleize %>
+                  </span>
                 </div>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  <%= occ.reminder.category.titleize %>
-                </span>
               </div>
-            </div>
-          <% end %>
+            <% end %>
+          </div>
         </div>
       </div>
-    </div>
+    <% end %>
+    
+    <!-- Completed reminders - collapsed by default -->
+    <% completed_reminders = @today_occurrences.select { |occ| occ.status != 'pending' } %>
+    <% if completed_reminders.any? %>
+      <div class="bg-white shadow sm:rounded-lg">
+        <div class="px-4 py-4 sm:p-6">
+          <details class="text-gray-600">
+            <summary class="cursor-pointer text-lg font-medium hover:text-gray-900">
+              ✅ Completed Today (<%= completed_reminders.count %>)
+            </summary>
+            <div class="mt-4 space-y-2">
+              <% completed_reminders.each do |occ| %>
+                <div class="border-l-4 border-green-300 bg-green-50 p-3 rounded-r-lg">
+                  <div class="flex justify-between items-center">
+                    <p class="text-base font-medium text-gray-700"><%= occ.reminder.title %></p>
+                    <span class="text-sm text-gray-500"><%= occ.scheduled_at.in_time_zone(current_user.tz).strftime("%I:%M %p") %></span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </details>
+        </div>
+      </div>
+    <% end %>
   <% end %>
 
   <!-- Show linked seniors for caregivers -->
