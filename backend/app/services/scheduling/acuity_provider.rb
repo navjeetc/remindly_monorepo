@@ -100,7 +100,7 @@ module Scheduling
         id: data['id'].to_s,
         title: data['type'] || 'Appointment',
         type: data['type'],
-        datetime: Time.zone.parse(data['datetime']),
+        datetime: Time.parse(data['datetime']),
         duration: data['duration'].to_i,
         location: parse_location(data),
         notes: data['notes'],

@@ -120,7 +120,7 @@
                 </div>
                 
                 <div class="text-sm text-gray-600 space-y-1">
-                  <p>📅 <%= task.scheduled_at.strftime('%B %d, %Y at %I:%M %p') %></p>
+                  <p>📅 <%= format_user_time(task.scheduled_at, '%B %d, %Y at %I:%M %p', task.senior) %></p>
                   <% if task.location.present? %>
                     <p>📍 <%= task.location %></p>
                   <% end %>

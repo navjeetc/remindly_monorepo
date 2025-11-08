@@ -26,11 +26,16 @@ module Scheduling
 
       appointments.each do |appointment|
         begin
-          sync_appointment(appointment)
+          # Skip appointments that don't match this senior
+          unless appointment_matches_senior?(appointment)
+            Rails.logger.info "Skipping appointment #{appointment[:id]} - doesn't match senior #{integration.senior_id}"
+            next
+          end
           
-          # Check if task was created or updated
-          task = Task.find_by(external_source: integration.provider, external_id: appointment[:id])
-          if task.created_at > 5.seconds.ago
+          task = sync_appointment(appointment)
+          
+          # Check if task was created or updated based on the return value
+          if task.previously_new_record?
             results[:created] += 1
           else
             results[:updated] += 1
@@ -127,6 +132,37 @@ module Scheduling
       notes << "Phone: #{appointment[:client_phone]}" if appointment[:client_phone].present?
       notes << "\n#{appointment[:notes]}" if appointment[:notes].present?
       notes.join("\n")
+    end
+
+    # Check if appointment matches the senior
+    # Matches by email (primary) or name (fallback)
+    # @param appointment [Hash] Appointment data
+    # @return [Boolean] True if appointment matches senior
+    def appointment_matches_senior?(appointment)
+      senior = integration.senior
+      return false unless senior.present?
+
+      client_email = appointment[:client_email]&.downcase&.strip
+      client_name = appointment[:client_name]&.downcase&.strip
+      
+      # Match by email (most reliable)
+      if client_email.present? && senior.email.present?
+        return true if senior.email.downcase.strip == client_email
+      end
+      
+      # Match by full name (fallback)
+      if client_name.present? && senior.name.present?
+        return true if senior.name.downcase.strip == client_name
+      end
+      
+      # Match by nickname (additional fallback)
+      if client_name.present? && senior.nickname.present?
+        return true if senior.nickname.downcase.strip == client_name
+      end
+      
+      # If no match found, log for debugging
+      Rails.logger.info "No match for appointment #{appointment[:id]}: client='#{client_email}' vs senior='#{senior.email}'"
+      false
     end
   end
 end
