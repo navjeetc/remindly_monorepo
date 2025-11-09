@@ -1,8 +1,12 @@
 <div class="space-y-6">
   <div class="flex justify-between items-center">
     <h2 class="text-3xl font-bold text-gray-900">My Availability</h2>
-    <%= link_to "Add Availability", new_caregiver_availability_path, 
-        class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+    <div class="flex space-x-3">
+      <%= link_to "Add Single Day", new_caregiver_availability_path, 
+          class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <%= link_to "Bulk Add", bulk_new_caregiver_availabilities_path, 
+          class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+    </div>
   </div>
 
   <% if @availabilities.any? %>
