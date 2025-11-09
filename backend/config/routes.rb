@@ -112,6 +112,16 @@ Rails.application.routes.draw do
     end
   end
   
+  # Senior coverage view for caregivers
+  resources :seniors, only: [] do
+    resource :coverage, only: [:show], controller: 'senior_coverage'
+  end
+  
+  # DEV ONLY: Quick user switching
+  if Rails.env.development?
+    get '/dev/switch_user', to: 'dev#switch_user'
+  end
+  
   # API routes
   namespace :api do
     resources :tasks do

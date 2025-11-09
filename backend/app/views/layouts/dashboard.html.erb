@@ -40,6 +40,31 @@
           </div>
           <div class="flex items-center space-x-4">
             <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">v<%= APP_VERSION %></span>
+            
+            <% if Rails.env.development? && current_user %>
+              <!-- DEV ONLY: Quick User Switch -->
+              <div class="relative">
+                <select onchange="if(this.value) window.location.href='/dev/switch_user?user_id=' + this.value" 
+                        class="text-xs bg-yellow-100 border border-yellow-300 text-yellow-800 rounded px-2 py-1 pr-6">
+                  <option value="">🔧 <%= current_user.display_name %></option>
+                  <optgroup label="Caregivers">
+                    <% User.where(role: 1).order(:name).each do |user| %>
+                      <option value="<%= user.id %>">
+                        <%= user.display_name %>
+                      </option>
+                    <% end %>
+                  </optgroup>
+                  <optgroup label="Seniors">
+                    <% User.where(role: 0).order(:name).each do |user| %>
+                      <option value="<%= user.id %>">
+                        <%= user.display_name %>
+                      </option>
+                    <% end %>
+                  </optgroup>
+                </select>
+              </div>
+            <% end %>
+            
             <% if current_user %>
               <span class="text-sm text-gray-700"><%= current_user.display_name %></span>
               <%= link_to "Profile", profile_path, class: "text-sm text-gray-700 hover:text-gray-900" %>
