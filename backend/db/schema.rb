@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_23_044727) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_07_184300) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -109,6 +109,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_044727) do
     t.index ["user_id"], name: "index_reminders_on_user_id"
   end
 
+  create_table "scheduling_integrations", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "senior_id"
+    t.integer "provider", default: 0, null: false
+    t.integer "status", default: 0, null: false
+    t.string "provider_user_id", null: false
+    t.string "api_key"
+    t.string "api_secret"
+    t.string "access_token"
+    t.string "webhook_secret"
+    t.datetime "last_synced_at"
+    t.boolean "sync_enabled", default: true, null: false
+    t.json "settings", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider"], name: "index_scheduling_integrations_on_provider"
+    t.index ["senior_id", "provider"], name: "index_scheduling_integrations_on_senior_id_and_provider"
+    t.index ["senior_id"], name: "index_scheduling_integrations_on_senior_id"
+    t.index ["status"], name: "index_scheduling_integrations_on_status"
+    t.index ["user_id", "provider"], name: "index_scheduling_integrations_on_user_id_and_provider"
+    t.index ["user_id"], name: "index_scheduling_integrations_on_user_id"
+  end
+
   create_table "task_comments", force: :cascade do |t|
     t.integer "task_id", null: false
     t.integer "user_id", null: false
@@ -137,10 +160,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_044727) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "visible_to_senior", default: true, null: false
+    t.integer "scheduling_integration_id"
+    t.string "external_source"
+    t.string "external_id"
+    t.string "external_url"
+    t.json "sync_metadata", default: {}
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_id_and_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["created_by_id"], name: "index_tasks_on_created_by_id"
+    t.index ["external_source", "external_id"], name: "index_tasks_on_external_source_and_external_id", unique: true, where: "external_source IS NOT NULL"
+    t.index ["external_source"], name: "index_tasks_on_external_source"
     t.index ["scheduled_at"], name: "index_tasks_on_scheduled_at"
+    t.index ["scheduling_integration_id"], name: "index_tasks_on_scheduling_integration_id"
     t.index ["senior_id", "scheduled_at"], name: "index_tasks_on_senior_id_and_scheduled_at"
     t.index ["senior_id"], name: "index_tasks_on_senior_id"
     t.index ["status"], name: "index_tasks_on_status"
@@ -164,8 +195,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_23_044727) do
   add_foreign_key "caregiver_links", "users", column: "senior_id"
   add_foreign_key "occurrences", "reminders"
   add_foreign_key "reminders", "users"
+  add_foreign_key "scheduling_integrations", "users"
+  add_foreign_key "scheduling_integrations", "users", column: "senior_id"
   add_foreign_key "task_comments", "tasks"
   add_foreign_key "task_comments", "users"
+  add_foreign_key "tasks", "scheduling_integrations"
   add_foreign_key "tasks", "users", column: "assigned_to_id"
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"

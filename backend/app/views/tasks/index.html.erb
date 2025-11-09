@@ -12,7 +12,7 @@
 
   <!-- Filters -->
   <div class="bg-white shadow sm:rounded-lg p-4">
-    <%= form_with url: senior_tasks_path(@senior), method: :get, class: "grid grid-cols-1 gap-4 sm:grid-cols-5" do |f| %>
+    <%= form_with url: senior_tasks_path(@senior), method: :get, class: "grid grid-cols-1 gap-4 sm:grid-cols-6" do |f| %>
       <div>
         <%= f.label :view, "View", class: "block text-sm font-medium text-gray-700" %>
         <%= f.select :view, 
@@ -70,6 +70,19 @@
           class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
       </div>
 
+      <div>
+        <%= f.label :external_source, "Source", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.select :external_source, 
+          options_for_select([
+            ["All Sources", ""],
+            ["Manual", "manual"],
+            ["Acuity", "acuity"],
+            ["Calendly", "calendly"]
+          ], params[:external_source]),
+          {}, 
+          class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      </div>
+
       <div class="flex items-end">
         <%= f.submit "Filter", class: "w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700" %>
       </div>
@@ -113,7 +126,14 @@
                     </div>
 
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-gray-900 truncate"><%= task.title %></p>
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-medium text-gray-900 truncate"><%= task.title %></p>
+                        <% if task.external_appointment? %>
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            🔗 <%= task.external_provider_name %>
+                          </span>
+                        <% end %>
+                      </div>
                       <p class="text-sm text-gray-500">
                         <%= task.scheduled_at.strftime("%b %d, %Y at %I:%M %p") %>
                         <% if task.location.present? %>

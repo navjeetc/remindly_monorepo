@@ -1,0 +1,171 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+          <% if @integration.provider_acuity? %>
+            🏥 Acuity Scheduling Integration
+          <% elsif @integration.provider_calendly? %>
+            📅 Calendly Integration
+          <% end %>
+        </h1>
+        <p class="text-gray-600">
+          Connected for <%= @integration.senior&.name || @integration.senior&.email || 'your account' %>
+        </p>
+      </div>
+      
+      <div class="flex gap-2">
+        <%= button_to 'Sync Now', sync_scheduling_integration_path(@integration), 
+            method: :post,
+            class: 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700',
+            data: { turbo: false } %>
+        <%= link_to 'Settings', edit_scheduling_integration_path(@integration), 
+            class: 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integration Status -->
+  <div class="grid md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-sm font-medium text-gray-500 mb-1">Status</div>
+      <div class="flex items-center gap-2">
+        <% if @integration.status_active? %>
+          <span class="flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          </span>
+          <span class="text-lg font-semibold text-green-700">Active</span>
+        <% elsif @integration.status_error? %>
+          <span class="flex h-3 w-3 bg-red-500 rounded-full"></span>
+          <span class="text-lg font-semibold text-red-700">Error</span>
+        <% else %>
+          <span class="flex h-3 w-3 bg-gray-400 rounded-full"></span>
+          <span class="text-lg font-semibold text-gray-700">Inactive</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-sm font-medium text-gray-500 mb-1">Last Synced</div>
+      <div class="text-lg font-semibold text-gray-900">
+        <% if @integration.last_synced_at %>
+          <%= time_ago_in_words(@integration.last_synced_at) %> ago
+        <% else %>
+          Never
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="text-sm font-medium text-gray-500 mb-1">Auto-Sync</div>
+      <div class="text-lg font-semibold text-gray-900">
+        <%= @integration.sync_enabled? ? '✅ Enabled' : '⏸️ Disabled' %>
+      </div>
+    </div>
+  </div>
+
+  <% if @integration.status_error? && @integration.settings['last_error'] %>
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <h3 class="text-sm font-semibold text-red-900 mb-2">⚠️ Error</h3>
+      <p class="text-sm text-red-800"><%= @integration.settings['last_error'] %></p>
+      <p class="text-xs text-red-600 mt-2">
+        Last occurred: <%= Time.parse(@integration.settings['last_error_at']).strftime('%B %d, %Y at %I:%M %p') rescue 'Unknown' %>
+      </p>
+    </div>
+  <% end %>
+
+  <!-- Integration Details -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Integration Details</h2>
+    
+    <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Provider</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @integration.provider.titleize %></dd>
+      </div>
+      
+      <div>
+        <dt class="text-sm font-medium text-gray-500">User ID</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @integration.provider_user_id %></dd>
+      </div>
+      
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Created</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @integration.created_at.strftime('%B %d, %Y') %></dd>
+      </div>
+      
+      <div>
+        <dt class="text-sm font-medium text-gray-500">Synced Tasks</dt>
+        <dd class="mt-1 text-sm text-gray-900"><%= @integration.tasks.count %> total</dd>
+      </div>
+    </dl>
+  </div>
+
+  <!-- Recent Synced Tasks -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Synced Appointments</h2>
+    
+    <% if @tasks.any? %>
+      <div class="space-y-3">
+        <% @tasks.each do |task| %>
+          <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <h3 class="font-semibold text-gray-900"><%= task.title %></h3>
+                  <span class="px-2 py-1 text-xs font-medium <%= task.status == 'completed' ? 'text-green-700 bg-green-100' : task.status == 'cancelled' ? 'text-red-700 bg-red-100' : 'text-blue-700 bg-blue-100' %> rounded-full">
+                    <%= task.status.titleize %>
+                  </span>
+                </div>
+                
+                <div class="text-sm text-gray-600 space-y-1">
+                  <p>📅 <%= format_user_time(task.scheduled_at, '%B %d, %Y at %I:%M %p', task.senior) %></p>
+                  <% if task.location.present? %>
+                    <p>📍 <%= task.location %></p>
+                  <% end %>
+                  <% if task.duration_minutes.present? %>
+                    <p>⏱️ <%= task.duration_minutes %> minutes</p>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="flex gap-2">
+                <% if task.external_link %>
+                  <%= link_to 'View in Acuity', task.external_link, 
+                      target: '_blank',
+                      class: 'px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100' %>
+                <% end %>
+                <%= link_to 'View Task', senior_task_path(task.senior, task), 
+                    class: 'px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <% if @integration.tasks.count > 20 %>
+        <div class="mt-4 text-center">
+          <%= link_to "View all #{@integration.tasks.count} synced tasks", 
+              senior_tasks_path(@integration.senior, external_source: @integration.provider), 
+              class: 'text-blue-600 hover:text-blue-700 text-sm font-medium' %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="text-center py-8 text-gray-500">
+        <p class="text-lg mb-2">No appointments synced yet</p>
+        <p class="text-sm">Click "Sync Now" to fetch appointments from <%= @integration.provider.titleize %></p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-6 flex justify-between">
+    <%= link_to '← Back to Integrations', senior_scheduling_integrations_path(@integration.senior), 
+        class: 'text-blue-600 hover:text-blue-700' %>
+    
+    <%= button_to 'Disconnect Integration', scheduling_integration_path(@integration), 
+        method: :delete,
+        data: { turbo_confirm: 'Are you sure? Synced tasks will remain but won\'t update automatically.' },
+        class: 'px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50' %>
+  </div>
+</div>
