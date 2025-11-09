@@ -104,6 +104,9 @@ Rails.application.routes.draw do
     end
   end
   
+  # Native scheduling (feature flagged)
+  resources :caregiver_availabilities, only: [:index, :new, :create, :edit, :update, :destroy]
+  
   # API routes
   namespace :api do
     resources :tasks do
