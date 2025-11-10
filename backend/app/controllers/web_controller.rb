@@ -28,6 +28,7 @@ class WebController < ActionController::Base
     return {} unless Rails.env.development?
     
     @dev_users_by_role ||= {
+      admins: User.where(role: :admin).order(:name),
       caregivers: User.where(role: :caregiver).order(:name),
       seniors: User.where(role: :senior).order(:name)
     }

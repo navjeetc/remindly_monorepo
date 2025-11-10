@@ -47,6 +47,13 @@
                 <select onchange="if(this.value) window.location.href='/dev/switch_user?user_id=' + this.value" 
                         class="text-xs bg-yellow-100 border border-yellow-300 text-yellow-800 rounded px-2 py-1 pr-6">
                   <option value="">🔧 <%= current_user.display_name %></option>
+                  <optgroup label="Admins">
+                    <% dev_users_by_role[:admins].each do |user| %>
+                      <option value="<%= user.id %>">
+                        <%= user.display_name %>
+                      </option>
+                    <% end %>
+                  </optgroup>
                   <optgroup label="Caregivers">
                     <% dev_users_by_role[:caregivers].each do |user| %>
                       <option value="<%= user.id %>">
