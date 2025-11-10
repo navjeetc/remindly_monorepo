@@ -132,6 +132,10 @@
             <%= button_to "Mark Complete", complete_senior_task_path(@senior, @task), method: :post, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700" %>
           <% end %>
           
+          <% if @task.assigned_to == current_user && (@task.status == "assigned" || @task.status == "in_progress") %>
+            <%= button_to "Unassign Me", unassign_senior_task_path(@senior, @task), method: :post, class: "inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-white hover:bg-orange-50", data: { confirm: "Are you sure you want to unassign yourself? This task will become available for other caregivers." } %>
+          <% end %>
+          
           <%= button_to "Cancel Task", senior_task_path(@senior, @task), method: :patch, params: { task: { status: :cancelled } }, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50", data: { confirm: "Are you sure you want to cancel this task?" } %>
         </div>
       </div>

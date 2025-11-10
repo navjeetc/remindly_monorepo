@@ -427,7 +427,7 @@ class DashboardController < WebController
   end
   
   def profile_params
-    params.require(:user).permit(:name, :nickname, :tz)
+    params.require(:user).permit(:name, :nickname, :tz, :notify_on_task_assigned_to_others)
   end
   
   def parse_time_safely(time_string, timezone)

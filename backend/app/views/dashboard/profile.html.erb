@@ -65,6 +65,28 @@
             class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
         </div>
 
+        <!-- Notification Preferences (Caregivers only) -->
+        <% if current_user.role_caregiver? %>
+          <div class="border-t border-gray-200 pt-6">
+            <h4 class="text-base font-medium text-gray-900 mb-4">Notification Preferences</h4>
+            
+            <div class="space-y-4">
+              <div class="relative flex items-start">
+                <div class="flex items-center h-5">
+                  <%= f.check_box :notify_on_task_assigned_to_others, 
+                    class: "focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" %>
+                </div>
+                <div class="ml-3 text-sm">
+                  <%= f.label :notify_on_task_assigned_to_others, class: "font-medium text-gray-700" do %>
+                    Notify me when tasks are assigned to other caregivers
+                  <% end %>
+                  <p class="text-gray-500">You'll always be notified when a task is assigned to you. This setting controls whether you also want to know when tasks are assigned to others.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
         <!-- Role (read-only) -->
         <% if current_user.role.present? %>
           <div>

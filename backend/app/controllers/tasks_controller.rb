@@ -2,7 +2,7 @@ class TasksController < WebController
   before_action :authenticate!
   before_action :set_senior
   before_action :authorize_senior_access!
-  before_action :set_task, only: [:show, :edit, :update, :destroy, :complete, :assign]
+  before_action :set_task, only: [:show, :edit, :update, :destroy, :complete, :assign, :unassign]
   layout 'dashboard'
 
   # GET /dashboard/senior/:senior_id/tasks
@@ -107,9 +107,72 @@ class TasksController < WebController
     end
 
     if @task.update(assigned_to: caregiver, status: :assigned)
+      # Always notify the assigned caregiver
+      Notification.create!(
+        user: caregiver,
+        notification_type: Notification::TYPES[:task_assigned],
+        title: "You've been assigned: #{@task.title}",
+        message: "Task scheduled for #{@task.scheduled_at.strftime('%A, %B %d at %I:%M %p')}",
+        metadata: {
+          task_id: @task.id,
+          senior_id: @senior.id,
+          senior_name: @senior.display_name,
+          assigned_by: current_user.display_name
+        }
+      )
+      
+      # Notify other caregivers who opted in
+      @senior.caregivers.where(notify_on_task_assigned_to_others: true).where.not(id: caregiver.id).each do |other_caregiver|
+        Notification.create!(
+          user: other_caregiver,
+          notification_type: Notification::TYPES[:task_assigned],
+          title: "Task assigned: #{@task.title}",
+          message: "#{caregiver.display_name} was assigned this task for #{@senior.display_name}",
+          metadata: {
+            task_id: @task.id,
+            senior_id: @senior.id,
+            senior_name: @senior.display_name,
+            assigned_to: caregiver.display_name
+          }
+        )
+      end
+      
       redirect_to senior_task_path(@senior, @task), notice: "Task assigned to #{caregiver.email}"
     else
       redirect_to senior_task_path(@senior, @task), alert: "Could not assign task"
+    end
+  end
+
+  # POST /dashboard/senior/:senior_id/tasks/:id/unassign
+  def unassign
+    # Only the assigned caregiver can unassign themselves
+    unless @task.assigned_to == current_user
+      redirect_to senior_task_path(@senior, @task), alert: "You can only unassign yourself"
+      return
+    end
+
+    unassigned_caregiver = @task.assigned_to
+
+    if @task.update(assigned_to: nil, status: :pending)
+      # Notify all caregivers except the one who unassigned themselves
+      @senior.caregivers.where.not(id: unassigned_caregiver.id).each do |caregiver|
+        Notification.create!(
+          user: caregiver,
+          notification_type: Notification::TYPES[:task_available],
+          title: "Task now available: #{@task.title}",
+          message: "#{unassigned_caregiver.display_name} has unassigned themselves from this task. It's now available for assignment.",
+          metadata: {
+            task_id: @task.id,
+            senior_id: @senior.id,
+            senior_name: @senior.display_name,
+            unassigned_by: unassigned_caregiver.display_name
+          }
+        )
+      end
+      
+      redirect_to senior_task_path(@senior, @task), notice: "You have unassigned yourself from this task. Other caregivers have been notified."
+    else
+      redirect_to senior_task_path(@senior, @task), alert: "Could not unassign task"
     end
   end
 

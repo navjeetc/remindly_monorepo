@@ -2,6 +2,22 @@
   <div class="flex justify-between items-center">
     <h2 class="text-3xl font-bold text-gray-900">My Availability</h2>
     <div class="flex space-x-3">
+      <!-- View Toggle -->
+      <div class="inline-flex rounded-md shadow-sm" role="group">
+        <button type="button" onclick="showView('list')" id="list-view-btn" class="px-4 py-2 text-sm font-medium text-gray-900 bg-blue-50 border border-blue-300 rounded-l-lg hover:bg-blue-100 text-blue-700">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+          List
+        </button>
+        <button type="button" onclick="showView('calendar')" id="calendar-view-btn" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100">
+          <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          Calendar
+        </button>
+      </div>
+      
       <%= link_to "Add Single Day", new_caregiver_availability_path, 
           class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
       <%= link_to "Bulk Add", bulk_new_caregiver_availabilities_path, 
@@ -9,6 +25,13 @@
     </div>
   </div>
 
+  <!-- Calendar View -->
+  <div id="calendar-view" class="hidden">
+    <%= render 'calendar', availabilities: @availabilities %>
+  </div>
+
+  <!-- List View -->
+  <div id="list-view">
   <% if @availabilities.any? %>
     <div class="bg-white shadow overflow-hidden sm:rounded-md">
       <ul class="divide-y divide-gray-200">
@@ -56,6 +79,42 @@
       </div>
     </div>
   <% end %>
+  </div>
+  <!-- End List View -->
 
   <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
 </div>
+
+<script>
+function showView(view) {
+  const listView = document.getElementById('list-view');
+  const calendarView = document.getElementById('calendar-view');
+  const listBtn = document.getElementById('list-view-btn');
+  const calendarBtn = document.getElementById('calendar-view-btn');
+  
+  if (view === 'list') {
+    listView.classList.remove('hidden');
+    calendarView.classList.add('hidden');
+    listBtn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-300');
+    listBtn.classList.remove('bg-white', 'text-gray-900');
+    calendarBtn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-300');
+    calendarBtn.classList.add('bg-white', 'text-gray-900');
+  } else {
+    listView.classList.add('hidden');
+    calendarView.classList.remove('hidden');
+    calendarBtn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-300');
+    calendarBtn.classList.remove('bg-white', 'text-gray-900');
+    listBtn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-300');
+    listBtn.classList.add('bg-white', 'text-gray-900');
+  }
+  
+  // Save preference
+  localStorage.setItem('availabilityView', view);
+}
+
+// Restore saved view preference on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const savedView = localStorage.getItem('availabilityView') || 'list';
+  showView(savedView);
+});
+</script>
