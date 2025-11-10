@@ -22,9 +22,16 @@ class SeniorCoverageController < WebController
       .order(:date, :start_time)
       .includes(:caregiver)
     
-    # Group by date and caregiver
+    # Group by date and caregiver for efficient lookup
     @availabilities_by_date = @availabilities.group_by(&:date)
     @availabilities_by_caregiver = @availabilities.group_by(&:caregiver_id)
+    
+    # Create nested hash for O(1) lookup: [caregiver_id][date] => [availabilities]
+    @availabilities_by_caregiver_and_date = @caregivers.each_with_object({}) do |caregiver, hash|
+      hash[caregiver.id] = (@start_date..@end_date).each_with_object({}) do |date, date_hash|
+        date_hash[date] = @availabilities.select { |a| a.caregiver_id == caregiver.id && a.date == date }
+      end
+    end
     
     # Find coverage gaps (dates with no availability)
     @coverage_gaps = find_coverage_gaps

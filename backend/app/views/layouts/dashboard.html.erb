@@ -48,14 +48,14 @@
                         class="text-xs bg-yellow-100 border border-yellow-300 text-yellow-800 rounded px-2 py-1 pr-6">
                   <option value="">🔧 <%= current_user.display_name %></option>
                   <optgroup label="Caregivers">
-                    <% User.where(role: 1).order(:name).each do |user| %>
+                    <% dev_users_by_role[:caregivers].each do |user| %>
                       <option value="<%= user.id %>">
                         <%= user.display_name %>
                       </option>
                     <% end %>
                   </optgroup>
                   <optgroup label="Seniors">
-                    <% User.where(role: 0).order(:name).each do |user| %>
+                    <% dev_users_by_role[:seniors].each do |user| %>
                       <option value="<%= user.id %>">
                         <%= user.display_name %>
                       </option>

@@ -43,13 +43,13 @@ class FeatureFlag
     # Get all features with their status
     # @return [Hash] Features with enabled status
     def all
-      FEATURES.transform_values do |config|
-        {
+      FEATURES.map do |feature_key, config|
+        [feature_key, {
           name: config[:name],
           description: config[:description],
-          enabled: enabled?(config[:env_var].downcase.to_sym)
-        }
-      end
+          enabled: enabled?(feature_key)
+        }]
+      end.to_h
     end
 
     # Enable a feature (for testing)

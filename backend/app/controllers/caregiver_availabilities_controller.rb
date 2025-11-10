@@ -121,11 +121,16 @@ class CaregiverAvailabilitiesController < WebController
     return [] if dates_param.blank?
     
     # dates_param can be an array of date strings or a comma-separated string
-    if dates_param.is_a?(Array)
-      dates_param.map { |d| Date.parse(d) rescue nil }.compact
-    else
-      dates_param.split(',').map { |d| Date.parse(d.strip) rescue nil }.compact
-    end
+    dates = dates_param.is_a?(Array) ? dates_param : dates_param.split(',')
+    
+    dates.map do |d|
+      begin
+        Date.parse(d.strip)
+      rescue ArgumentError
+        Rails.logger.warn "Invalid date format: #{d}"
+        nil
+      end
+    end.compact
   end
   
   def check_gap_filled(availability)

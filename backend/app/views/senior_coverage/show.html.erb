@@ -88,7 +88,7 @@
                   <% end %>
                 </td>
                 <% (@start_date..@end_date).each do |date| %>
-                  <% availabilities = @availabilities.select { |a| a.caregiver_id == caregiver.id && a.date == date } %>
+                  <% availabilities = @availabilities_by_caregiver_and_date[caregiver.id][date] || [] %>
                   <% is_today = date == Date.current %>
                   <td class="px-2 py-4 text-center text-xs <%= is_today ? 'bg-blue-50' : '' %>">
                     <% if availabilities.any? %>

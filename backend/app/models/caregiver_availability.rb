@@ -86,7 +86,7 @@ class CaregiverAvailability < ApplicationRecord
       .where(caregiver_id: caregiver_id, date: date)
       .where.not(id: id) # Exclude self when updating
       .where("(start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?)",
-             end_time, start_time, end_time, end_time, start_time, end_time)
+             end_time, start_time, start_time, end_time, start_time, end_time)
 
     if overlapping.exists?
       errors.add(:base, "This time slot overlaps with existing availability")
