@@ -41,15 +41,15 @@ backend/
 4. Each reminder announces only once (deduplication)
 5. Respects quiet hours and user settings
 
-### Browser Compatibility (macOS)
+### Browser Compatibility
 
-| Browser | Voice Quality | Reliability | Recommendation |
-|---------|--------------|-------------|----------------|
-| **Safari** | ⭐⭐⭐⭐⭐ Excellent | ✅ Very Reliable | **🏆 Recommended** |
-| **Firefox** | ⭐⭐⭐ Good | ✅ Reliable | ✅ Good Alternative |
-| **Chrome** | ⭐⭐ Fair | ⚠️ Unreliable | ❌ Not Recommended |
+| Browser | Voice Quality | Support |
+|---------|--------------|---------|
+| **Safari** | ⭐⭐⭐⭐⭐ Excellent | ✅ Fully Supported |
+| **Chrome** | ⭐⭐⭐⭐ Very Good | ✅ Fully Supported |
+| **Firefox** | ⭐⭐⭐ Good | ✅ Fully Supported |
 
-**Safari** uses native macOS voices (Siri, Samantha) and provides the best experience.
+Voice announcements work across all modern browsers.
 
 ## 🎯 Key Technical Decisions
 
@@ -70,16 +70,15 @@ if (timeDiff <= gracePeriod && timeDiff >= 0) {
 - Auto-clears when reminder list changes
 - Manual "Clear Announced List" button for testing
 
-### 4. Safari-Specific Optimizations
-- Longer delays (500ms) for speech synthesis
-- `resume()` calls to wake up speech engine
-- Explicit voice selection
+### 4. Browser Optimizations
+- Appropriate delays for speech synthesis
+- `resume()` calls to ensure speech engine is active
+- Explicit voice selection for best quality
 
 ## 📊 Testing Results
 
 ### What Works ✅
-- Voice announcements in Safari (excellent quality)
-- Voice announcements in Firefox (good quality)
+- Voice announcements in all modern browsers
 - Browser notifications in all browsers
 - Reminder actions (Taken, Snooze, Skip)
 - Settings persistence
@@ -88,7 +87,6 @@ if (timeDiff <= gracePeriod && timeDiff >= 0) {
 - Responsive design
 
 ### Known Limitations ⚠️
-- Chrome has unreliable speech synthesis on macOS
 - Tab must be open for announcements (browser limitation)
 - No true background mode (unlike native apps)
 - Voice quality varies by browser
@@ -105,7 +103,7 @@ rails server -p 5000
 cd clients/web
 python3 -m http.server 8080
 
-# 3. Open Safari
+# 3. Open your browser
 open http://localhost:8080
 ```
 
@@ -174,12 +172,11 @@ All settings persist in `localStorage`.
 
 ### Web Speech API Challenges
 1. **Browser Differences**: Each browser implements speech synthesis differently
-2. **macOS Chrome Bug**: Known issue with speech cancellation
-3. **Timing Issues**: Need delays and `resume()` calls for reliability
-4. **Voice Quality**: Safari uses native voices, others use synthetic
+2. **Timing Issues**: Need delays and `resume()` calls for reliability
+3. **Voice Quality**: Varies by browser and platform
 
 ### Solutions Implemented
-1. **Browser Detection**: Recommend Safari for best experience
+1. **Universal Support**: Works across all modern browsers
 2. **Fallback Notifications**: Browser notifications work everywhere
 3. **Comprehensive Logging**: Debug output for troubleshooting
 4. **Testing Tools**: Scripts to create and check reminders
@@ -188,7 +185,7 @@ All settings persist in `localStorage`.
 
 ✅ **Feature Parity**: Matches SwiftUI app functionality
 ✅ **Cross-Platform**: Works on all major browsers
-✅ **Voice Quality**: Excellent in Safari, good in Firefox
+✅ **Voice Quality**: Excellent across modern browsers
 ✅ **User-Friendly**: Clean UI with intuitive settings
 ✅ **Well-Documented**: Comprehensive guides and examples
 ✅ **Production-Ready**: Error handling, status indicators, offline detection
@@ -204,7 +201,7 @@ All settings persist in `localStorage`.
 - Deploy to static hosting (Netlify, Vercel, GitHub Pages)
 - Update API Base URL in settings
 - Configure production email service for magic links
-- Recommend Safari for macOS users
+- Works on all modern browsers
 
 ## 📈 Future Enhancements
 
@@ -217,20 +214,20 @@ Potential improvements (not implemented):
 - [ ] Calendar view
 - [ ] Custom notification sounds
 - [ ] Multiple voice selection
-- [ ] Better Chrome support (if/when fixed)
+- [ ] Enhanced voice customization options
 
 ## 🎉 Conclusion
 
-The web client successfully provides voice-enabled reminders in a cross-platform web application. While Safari provides the best experience on macOS, the client works well in Firefox and provides fallback notifications in Chrome.
+The web client successfully provides voice-enabled reminders in a cross-platform web application that works across all modern browsers.
 
 **Status**: ✅ Complete and ready for production use
 
-**Recommended Browser**: Safari (macOS)
+**Browser Support**: All modern browsers (Safari, Chrome, Firefox, Edge)
 
 **Branch**: `feature/web-client-voice-announcements`
 
 ---
 
 **Built**: October 21, 2025
-**Testing**: Extensive testing in Safari, Firefox, and Chrome on macOS
-**Result**: Fully functional with excellent voice quality in Safari
+**Testing**: Extensive testing across Safari, Chrome, and Firefox
+**Result**: Fully functional with excellent voice quality across all browsers

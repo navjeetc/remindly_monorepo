@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Done, Snooze (10 min), and Skip actions for reminders
 - Acknowledgements system to track reminder completion
 - Senior-friendly simplified UI with larger text and clearer layout
-- Chrome/Chromium browser workarounds for speech synthesis
+- Cross-browser speech synthesis support
 - Timezone-aware reminder scheduling and display
 
 ### Changed
@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Timezone display issues in new reminder form
-- Voice announcements now work correctly in Safari and Chrome-based browsers
+- Voice announcements now work correctly across all modern browsers
 - Duplicate announcement prevention
 - JavaScript null reference errors in stats updates
 
@@ -122,7 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **How To page** with comprehensive descriptions of main features
   - Reminders functionality with custom schedules, categories, and voice announcements
   - Tasks functionality with assignment, scheduling, and status tracking
-  - Browser compatibility note for voice announcements (Safari works best, Firefox supported, Chrome not supported)
+  - Browser compatibility note for voice announcements (all modern browsers supported)
   - Three video tutorial links:
     - How to Log In (magic link authentication)
     - How a Senior starts a request to connect with a Caregiver

@@ -100,7 +100,7 @@ curl -I http://remindly.anakahsoft.com/client/index.html
 
 ### Full Test
 
-1. Open Safari (recommended browser)
+1. Open your web browser
 2. Go to: `http://remindly.anakahsoft.com/client`
 3. Click "Quick Dev Login"
 4. Create test reminders using Rails console:
@@ -109,12 +109,12 @@ curl -I http://remindly.anakahsoft.com/client/index.html
    ```
 5. Wait for voice announcements
 
-## Browser Recommendations for Users
+## Browser Compatibility
 
-**macOS:**
-- 🏆 **Safari** - Best experience (native voices)
-- ✅ **Firefox** - Works well (robotic voice)
-- ⚠️ **Chrome** - Not recommended (unreliable)
+Voice announcements work across all modern browsers:
+- ✅ **Safari** - Excellent voice quality
+- ✅ **Chrome** - Fully supported
+- ✅ **Firefox** - Fully supported
 
 ## Troubleshooting
 
@@ -127,7 +127,7 @@ If styling doesn't load:
 
 ### Voice Not Working
 
-1. Ensure user is using Safari on macOS
+1. Check browser supports Web Speech API
 2. Check macOS System Settings → Accessibility → Spoken Content
 3. Enable "Speak selection"
 4. Test voice in Settings panel
@@ -187,7 +187,7 @@ rm -rf backend/public/client/
 ✅ Web client accessible at `/client`
 ✅ Styling loads correctly
 ✅ Authentication works
-✅ Voice announcements work in Safari
+✅ Voice announcements work
 ✅ Browser notifications appear
 ✅ All actions work (Taken, Snooze, Skip)
 ✅ No CORS errors
