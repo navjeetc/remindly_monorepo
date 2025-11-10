@@ -40,12 +40,15 @@ class CoverageGapNotificationService
     
     caregivers.each do |caregiver|
       # Mark old gap notifications for this date as read (they're now outdated)
-      Notification
+      # Find notifications manually since SQLite doesn't support JSON operators
+      gap_notifications = Notification
         .where(user: caregiver, notification_type: Notification::TYPES[:coverage_gap])
         .unread
-        .where("metadata->>'senior_id' = ?", senior.id.to_s)
-        .where("metadata->'gap_dates' @> ?", [date.to_s].to_json)
-        .update_all(read_at: Time.current)
+        .select { |n| n.metadata['senior_id'] == senior.id && n.metadata['gap_dates']&.include?(date.to_s) }
+      
+      gap_notifications.each do |notification|
+        notification.update(read_at: Time.current)
+      end
       
       # Create new "gap filled" notification
       Notification.create!(
@@ -85,11 +88,11 @@ class CoverageGapNotificationService
   
   def self.create_gap_notification(caregiver, senior, gaps)
     # Don't create duplicate notifications for the same gaps
+    # Check manually since SQLite doesn't support JSON operators
     existing = Notification
       .where(user: caregiver, notification_type: Notification::TYPES[:coverage_gap])
       .where("created_at > ?", 1.day.ago)
-      .where("metadata->>'senior_id' = ?", senior.id.to_s)
-      .exists?
+      .any? { |n| n.metadata['senior_id'] == senior.id }
     
     return if existing
     
