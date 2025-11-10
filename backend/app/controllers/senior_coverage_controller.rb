@@ -9,7 +9,7 @@ class SeniorCoverageController < WebController
   def show
     # Get all caregivers linked to this senior
     @caregiver_links = @senior.senior_links.includes(:caregiver)
-    @caregivers = @caregiver_links.map(&:caregiver)
+    @caregivers = @caregiver_links.map(&:caregiver).compact
     
     # Get date range (default: current week)
     @start_date = params[:start_date]&.to_date || Date.current.beginning_of_week
