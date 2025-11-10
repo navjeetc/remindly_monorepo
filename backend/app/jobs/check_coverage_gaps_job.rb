@@ -5,7 +5,7 @@ class CheckCoverageGapsJob < ApplicationJob
   def perform
     Rails.logger.info "🔍 Checking coverage gaps..."
     
-    # Get all seniors who have multiple caregivers
+    # Get all seniors who have at least one caregiver
     seniors_with_caregivers = User.where(role: :senior)
       .joins(:senior_links)
       .where.not(caregiver_links: { caregiver_id: nil })

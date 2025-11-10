@@ -7,8 +7,8 @@ class SeniorCoverageController < WebController
 
   # GET /seniors/:senior_id/coverage
   def show
-    # Get all caregivers linked to this senior (only active links with caregiver assigned)
-    @caregiver_links = @senior.senior_links.includes(:caregiver).where.not(caregiver_id: nil)
+    # Get all caregivers linked to this senior
+    @caregiver_links = @senior.senior_links.includes(:caregiver)
     @caregivers = @caregiver_links.map(&:caregiver)
     
     # Get date range (default: current week)

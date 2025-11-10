@@ -6,7 +6,7 @@ class CoverageGapNotificationService
   def self.check_and_notify(senior, start_date = Date.current, end_date = Date.current + 14.days)
     return unless senior.role_senior?
     
-    caregivers = senior.caregivers.where.not(id: nil)
+    caregivers = senior.caregivers
     return if caregivers.empty?
     
     # Find coverage gaps
@@ -35,7 +35,7 @@ class CoverageGapNotificationService
   def self.notify_gap_filled(senior, date)
     return unless senior.role_senior?
     
-    caregivers = senior.caregivers.where.not(id: nil)
+    caregivers = senior.caregivers
     return if caregivers.empty?
     
     caregivers.each do |caregiver|
