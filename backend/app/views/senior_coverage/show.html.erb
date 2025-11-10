@@ -1,0 +1,120 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-3xl font-bold text-gray-900">Coverage for <%= @senior.display_name %></h2>
+      <p class="text-sm text-gray-500 mt-1">Caregiver availability coordination</p>
+    </div>
+    <div class="flex space-x-2">
+      <%= link_to senior_coverage_path(@senior, start_date: @start_date - 7.days), 
+          class: "px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" do %>
+        ← Previous Week
+      <% end %>
+      <%= link_to senior_coverage_path(@senior, start_date: @start_date + 7.days), 
+          class: "px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" do %>
+        Next Week →
+      <% end %>
+    </div>
+  </div>
+
+  <% if @coverage_gaps.any? %>
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-yellow-800">Coverage Gaps Detected</h3>
+          <div class="mt-2 text-sm text-yellow-700">
+            <p>No caregiver availability on: 
+              <%= @coverage_gaps.map { |d| d.strftime('%a, %b %d') }.join(', ') %>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Caregivers List -->
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Caregivers (<%= @caregivers.count %>)</h3>
+      <div class="flex flex-wrap gap-2">
+        <% @caregivers.each do |caregiver| %>
+          <% is_current_user = caregiver.id == current_user.id %>
+          <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium <%= is_current_user ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' %>">
+            <%= caregiver.display_name %>
+            <% if is_current_user %>
+              <span class="ml-1 text-xs">(You)</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Calendar View -->
+  <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">
+        Week of <%= @start_date.strftime('%B %d, %Y') %>
+      </h3>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead>
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Caregiver
+              </th>
+              <% (@start_date..@end_date).each do |date| %>
+                <% is_today = date == Date.current %>
+                <% has_gap = @coverage_gaps.include?(date) %>
+                <th class="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider <%= is_today ? 'bg-blue-50 text-blue-700' : has_gap ? 'bg-yellow-50 text-yellow-700' : 'text-gray-500' %>">
+                  <div><%= date.strftime('%a') %></div>
+                  <div class="font-bold"><%= date.day %></div>
+                </th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% @caregivers.each do |caregiver| %>
+              <tr class="<%= caregiver.id == current_user.id ? 'bg-blue-50' : '' %>">
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <%= caregiver.display_name %>
+                  <% if caregiver.id == current_user.id %>
+                    <span class="ml-1 text-xs text-blue-600">(You)</span>
+                  <% end %>
+                </td>
+                <% (@start_date..@end_date).each do |date| %>
+                  <% availabilities = @availabilities_by_caregiver_and_date[caregiver.id][date] || [] %>
+                  <% is_today = date == Date.current %>
+                  <td class="px-2 py-4 text-center text-xs <%= is_today ? 'bg-blue-50' : '' %>">
+                    <% if availabilities.any? %>
+                      <div class="space-y-1">
+                        <% availabilities.each do |avail| %>
+                          <div class="inline-block px-2 py-1 bg-green-100 text-green-800 rounded">
+                            <%= avail.start_time.strftime('%I:%M%p') %>-<%= avail.end_time.strftime('%I:%M%p') %>
+                          </div>
+                        <% end %>
+                      </div>
+                    <% else %>
+                      <span class="text-gray-400">—</span>
+                    <% end %>
+                  </td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-between items-center">
+    <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
+    <%= link_to "Manage My Availability", caregiver_availabilities_path, 
+        class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+  </div>
+</div>

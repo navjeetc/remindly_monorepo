@@ -23,5 +23,16 @@ class WebController < ActionController::Base
 
   def hmac_secret = ENV.fetch("JWT_SECRET", "dev_secret_change_me")
   
-  helper_method :current_user
+  # DEV ONLY: Get users grouped by role for dev switcher
+  def dev_users_by_role
+    return {} unless Rails.env.development?
+    
+    @dev_users_by_role ||= {
+      admins: User.where(role: :admin).order(:name),
+      caregivers: User.where(role: :caregiver).order(:name),
+      seniors: User.where(role: :senior).order(:name)
+    }
+  end
+  
+  helper_method :current_user, :dev_users_by_role
 end

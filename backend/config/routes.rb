@@ -104,6 +104,35 @@ Rails.application.routes.draw do
     end
   end
   
+  # Native scheduling (feature flagged)
+  resources :caregiver_availabilities, only: [:index, :new, :create, :edit, :update, :destroy] do
+    collection do
+      get :bulk_new
+      post :bulk_create
+    end
+  end
+  
+  # Senior coverage view for caregivers
+  resources :seniors, only: [] do
+    resource :coverage, only: [:show], controller: 'senior_coverage'
+  end
+  
+  # Notifications
+  resources :notifications, only: [:index] do
+    member do
+      post :mark_read
+    end
+    collection do
+      post :mark_all_read
+    end
+  end
+  
+  # DEV ONLY: Quick user switching and testing
+  if Rails.env.development?
+    get '/dev/switch_user', to: 'dev#switch_user'
+    post '/dev/trigger_coverage_check', to: 'dev#trigger_coverage_check', as: :trigger_coverage_check_dev
+  end
+  
   # API routes
   namespace :api do
     resources :tasks do

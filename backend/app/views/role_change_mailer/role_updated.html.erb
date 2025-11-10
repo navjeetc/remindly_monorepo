@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #4F46E5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+    .role-change { background-color: white; padding: 20px; margin: 20px 0; border-left: 4px solid #4F46E5; border-radius: 4px; }
+    .role { font-weight: bold; color: #4F46E5; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+    .button { display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Remindly</h1>
+    </div>
+    
+    <div class="content">
+      <h2>Your Account Role Has Been Updated</h2>
+      
+      <p>Hello <%= @user.name || @user.email %>,</p>
+      
+      <p>An administrator has updated your role on Remindly.</p>
+      
+      <div class="role-change">
+        <p><strong>Previous Role:</strong> <span class="role"><%= @old_role.titleize %></span></p>
+        <p><strong>New Role:</strong> <span class="role"><%= @new_role.titleize %></span></p>
+        <p><strong>Changed By:</strong> <%= @changed_by.email %></p>
+        <p><strong>Date:</strong> <%= Time.current.strftime("%B %d, %Y at %I:%M %p") %></p>
+      </div>
+      
+      <% if @new_role == "senior" %>
+        <p>As a <strong>Senior</strong>, you can:</p>
+        <ul>
+          <li>Receive and manage medication reminders</li>
+          <li>Generate pairing tokens to connect with caregivers</li>
+          <li>View your daily schedule and tasks</li>
+        </ul>
+      <% elsif @new_role == "caregiver" %>
+        <p>As a <strong>Caregiver</strong>, you can:</p>
+        <li>Pair with seniors using their pairing tokens</li>
+          <li>Create and manage reminders for your seniors</li>
+          <li>Monitor senior activity and medication adherence</li>
+          <li>Manage availability and coverage schedules</li>
+        </ul>
+      <% elsif @new_role == "admin" %>
+        <p>As an <strong>Administrator</strong>, you have full access to:</p>
+        <ul>
+          <li>Manage all user accounts and roles</li>
+          <li>Access the admin panel</li>
+          <li>View system-wide statistics</li>
+        </ul>
+      <% elsif @new_role == "none" %>
+        <p>Your role has been removed. Please contact an administrator if you believe this was done in error.</p>
+      <% end %>
+      
+      <p style="text-align: center;">
+        <a href="https://remindly.anakhsoft.com/dashboard" class="button">Go to Dashboard</a>
+      </p>
+      
+      <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+        If you did not expect this change or believe it was made in error, please contact support immediately.
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p>&copy; <%= Time.current.year %> Remindly. All rights reserved.</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -21,9 +21,22 @@ class Admin::UsersController < WebController
   
   def update_role
     @user = User.find(params[:id])
+    old_role = @user.role
     new_role = params[:role].presence
     
-    @user.update!(role: new_role)
+    # Update role without triggering name validation
+    @user.update_column(:role, new_role)
+    
+    # Send notification to user about role change
+    if old_role != new_role
+      RoleChangeMailer.role_updated(
+        user: @user,
+        old_role: old_role,
+        new_role: new_role,
+        changed_by: current_user
+      ).deliver_later
+    end
+    
     redirect_to admin_users_path, notice: "Role updated for #{@user.email}"
   end
   
