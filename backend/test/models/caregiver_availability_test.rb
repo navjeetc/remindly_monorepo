@@ -8,7 +8,7 @@ class CaregiverAvailabilityTest < ActiveSupport::TestCase
 
   test "should not allow overlapping availability - new slot starts before existing ends" do
     # Create first availability: 9am-12pm
-    existing = CaregiverAvailability.create!(
+    CaregiverAvailability.create!(
       caregiver: @caregiver,
       date: @date,
       start_time: Time.parse("09:00"),
@@ -29,7 +29,7 @@ class CaregiverAvailabilityTest < ActiveSupport::TestCase
 
   test "should not allow overlapping availability - new slot extends past existing" do
     # Create first availability: 9am-12pm
-    existing = CaregiverAvailability.create!(
+    CaregiverAvailability.create!(
       caregiver: @caregiver,
       date: @date,
       start_time: Time.parse("09:00"),
@@ -50,7 +50,7 @@ class CaregiverAvailabilityTest < ActiveSupport::TestCase
 
   test "should not allow overlapping availability - new slot completely contains existing" do
     # Create first availability: 10am-12pm
-    existing = CaregiverAvailability.create!(
+    CaregiverAvailability.create!(
       caregiver: @caregiver,
       date: @date,
       start_time: Time.parse("10:00"),
@@ -71,7 +71,7 @@ class CaregiverAvailabilityTest < ActiveSupport::TestCase
 
   test "should allow non-overlapping availability on same date" do
     # Create first availability: 9am-12pm
-    existing = CaregiverAvailability.create!(
+    CaregiverAvailability.create!(
       caregiver: @caregiver,
       date: @date,
       start_time: Time.parse("09:00"),
@@ -91,7 +91,7 @@ class CaregiverAvailabilityTest < ActiveSupport::TestCase
 
   test "should allow same time slot on different dates" do
     # Create first availability: 9am-12pm on date1
-    existing = CaregiverAvailability.create!(
+    CaregiverAvailability.create!(
       caregiver: @caregiver,
       date: @date,
       start_time: Time.parse("09:00"),

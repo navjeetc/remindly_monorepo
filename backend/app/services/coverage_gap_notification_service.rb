@@ -46,9 +46,8 @@ class CoverageGapNotificationService
         .unread
         .select { |n| n.metadata['senior_id'] == senior.id && n.metadata['gap_dates']&.include?(date.to_s) }
       
-      gap_notifications.each do |notification|
-        notification.update(read_at: Time.current)
-      end
+      # Use update_all for efficient bulk update instead of N+1 updates
+      Notification.where(id: gap_notifications.map(&:id)).update_all(read_at: Time.current)
       
       # Create new "gap filled" notification
       Notification.create!(
