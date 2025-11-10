@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_07_184300) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_10_002800) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -84,6 +84,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_07_184300) do
     t.string "pairing_token"
     t.index ["pairing_token"], name: "index_caregiver_links_on_pairing_token", unique: true
     t.index ["senior_id", "caregiver_id"], name: "index_caregiver_links_on_senior_id_and_caregiver_id", unique: true
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "notification_type", null: false
+    t.string "title", null: false
+    t.text "message"
+    t.datetime "read_at"
+    t.json "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["notification_type"], name: "index_notifications_on_notification_type"
+    t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
+    t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "occurrences", force: :cascade do |t|
@@ -193,6 +207,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_07_184300) do
   add_foreign_key "caregiver_availabilities", "users", column: "caregiver_id"
   add_foreign_key "caregiver_links", "users", column: "caregiver_id"
   add_foreign_key "caregiver_links", "users", column: "senior_id"
+  add_foreign_key "notifications", "users"
   add_foreign_key "occurrences", "reminders"
   add_foreign_key "reminders", "users"
   add_foreign_key "scheduling_integrations", "users"

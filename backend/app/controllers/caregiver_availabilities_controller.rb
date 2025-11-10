@@ -31,6 +31,9 @@ class CaregiverAvailabilitiesController < WebController
     @availability = current_user.caregiver_availabilities.build(availability_params)
 
     if @availability.save
+      # Check if this fills a coverage gap for any seniors
+      check_gap_filled(@availability)
+      
       redirect_to caregiver_availabilities_path, notice: "Availability added successfully"
     else
       render :new, status: :unprocessable_entity
@@ -122,6 +125,14 @@ class CaregiverAvailabilitiesController < WebController
       dates_param.map { |d| Date.parse(d) rescue nil }.compact
     else
       dates_param.split(',').map { |d| Date.parse(d.strip) rescue nil }.compact
+    end
+  end
+  
+  def check_gap_filled(availability)
+    # Check all seniors this caregiver is linked to
+    current_user.seniors.each do |senior|
+      # Notify that this date now has coverage
+      CoverageGapNotificationService.notify_gap_filled(senior, availability.date)
     end
   end
 end

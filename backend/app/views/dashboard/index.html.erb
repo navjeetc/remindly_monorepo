@@ -12,6 +12,9 @@
         <% if FeatureFlag.enabled?(:native_scheduling) %>
           <%= link_to "My Availability", caregiver_availabilities_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
         <% end %>
+        <% if Rails.env.development? %>
+          <%= button_to "🔧 Check Coverage Gaps", trigger_coverage_check_dev_path, method: :post, class: "inline-flex items-center px-4 py-2 border border-yellow-300 text-sm font-medium rounded-md text-yellow-800 bg-yellow-50 hover:bg-yellow-100" %>
+        <% end %>
       <% end %>
     </div>
   </div>

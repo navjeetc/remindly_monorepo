@@ -15,6 +15,12 @@ class DevController < WebController
     redirect_to dashboard_path, notice: "Switched to #{user.display_name}"
   end
   
+  # DEV ONLY: Trigger coverage gap check manually
+  def trigger_coverage_check
+    CheckCoverageGapsJob.perform_now
+    redirect_to dashboard_path, notice: "Coverage gap check triggered"
+  end
+  
   private
   
   def check_development_environment!

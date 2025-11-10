@@ -95,7 +95,7 @@ env:
     ENABLE_EXTERNAL_SCHEDULING: "true"
 ```
 
-**Heroku:**
+**Heroku:** 
 ```bash
 heroku config:set ENABLE_NATIVE_SCHEDULING=true
 ```
