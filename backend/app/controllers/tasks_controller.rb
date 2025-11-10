@@ -154,8 +154,8 @@ class TasksController < WebController
     unassigned_caregiver = @task.assigned_to
 
     if @task.update(assigned_to: nil, status: :pending)
-      # Notify all caregivers for this senior that the task is now available
-      @senior.caregivers.each do |caregiver|
+      # Notify all caregivers except the one who unassigned themselves
+      @senior.caregivers.where.not(id: unassigned_caregiver.id).each do |caregiver|
         Notification.create!(
           user: caregiver,
           notification_type: Notification::TYPES[:task_available],
