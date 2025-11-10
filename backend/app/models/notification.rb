@@ -5,7 +5,9 @@ class Notification < ApplicationRecord
   TYPES = {
     coverage_gap: 'coverage_gap',
     coverage_filled: 'coverage_filled',
-    availability_changed: 'availability_changed'
+    availability_changed: 'availability_changed',
+    task_available: 'task_available',
+    task_assigned: 'task_assigned'
   }.freeze
 
   validates :notification_type, presence: true, inclusion: { in: TYPES.values }

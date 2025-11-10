@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_10_002800) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -200,6 +200,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_002800) do
     t.datetime "updated_at", null: false
     t.string "name"
     t.string "nickname"
+    t.boolean "notify_on_task_assigned_to_others", default: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
