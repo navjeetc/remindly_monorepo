@@ -5,6 +5,29 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-11-10
+
+### Added
+- Calendar view for caregiver availability with toggle between list and calendar views
+- Color-coded monthly calendar (green for available days, white for unavailable, gray for past)
+- Display both start and end times on calendar days
+- Month navigation (previous/next) for availability calendar
+- Click-to-add functionality on calendar days
+- Task unassign feature - caregivers can unassign themselves from tasks
+- Task assignment notifications - assigned caregiver always notified
+- Notification preference for caregivers to opt-in to notifications when tasks assigned to others
+- New notification types: `task_available` and `task_assigned`
+- "Unassign Me" button in task detail view with confirmation dialog
+
+### Changed
+- Updated how-to pages to clarify acknowledgment tracking (care receivers can acknowledge/snooze)
+- Improved notification system to exclude caregiver from their own unassignment notification
+- Enhanced availability view with persistent view preference (localStorage)
+
+### Fixed
+- Migration version updated to match Rails 8.0
+
+
 ## [0.3.2] - 2025-11-09
 
 ### Added
