@@ -113,6 +113,21 @@ class TasksController < WebController
     end
   end
 
+  # POST /dashboard/senior/:senior_id/tasks/:id/unassign
+  def unassign
+    # Only the assigned caregiver can unassign themselves
+    unless @task.assigned_to == current_user
+      redirect_to senior_task_path(@senior, @task), alert: "You can only unassign yourself"
+      return
+    end
+
+    if @task.update(assigned_to: nil, status: :pending)
+      redirect_to senior_task_path(@senior, @task), notice: "You have unassigned yourself from this task"
+    else
+      redirect_to senior_task_path(@senior, @task), alert: "Could not unassign task"
+    end
+  end
+
   private
 
   def set_senior

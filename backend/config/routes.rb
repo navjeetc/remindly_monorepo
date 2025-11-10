@@ -86,6 +86,7 @@ Rails.application.routes.draw do
       member do
         post :complete
         post :assign
+        post :unassign
       end
       resources :comments, controller: 'task_comments', only: [:create, :destroy]
     end
