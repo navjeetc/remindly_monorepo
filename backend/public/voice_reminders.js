@@ -7,6 +7,9 @@ class VoiceRemindersApp {
         this.synth = window.speechSynthesis;
         this.checkInterval = null;
         this.speechInitialized = false;
+        this.voiceUnlockPrompted = false;
+        this.voiceUnlocked = !this.requiresVoiceUnlock();
+        this.voiceUnlockListener = null;
     }
 
     init() {
@@ -15,6 +18,8 @@ class VoiceRemindersApp {
         this.loadReminders();
         this.startPeriodicCheck();
         this.updateStatus('online');
+        this.maybeShowVoiceUnlockPrompt();
+        this.setupVoiceUnlockListeners();
     }
     
     initializeSpeech() {
@@ -90,6 +95,11 @@ class VoiceRemindersApp {
         const requestNotificationBtn = document.getElementById('requestNotificationBtn');
         if (requestNotificationBtn) {
             requestNotificationBtn.addEventListener('click', () => this.requestNotificationPermission());
+        }
+
+        const enableVoiceBtn = document.getElementById('enableVoiceBtn');
+        if (enableVoiceBtn) {
+            enableVoiceBtn.addEventListener('click', () => this.handleVoiceUnlock());
         }
 
         // Voice settings sliders (optional)
@@ -228,6 +238,15 @@ class VoiceRemindersApp {
 
     speak(text) {
         if (!this.synth) return;
+        if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
+            console.log('❌ Voice locked on iOS - waiting for unlock gesture');
+            this.maybeShowVoiceUnlockPrompt();
+            if (!this.voiceUnlockPrompted) {
+                alert('Tap the 🔊 Enable Voice button to allow reminders to speak aloud on iPad.');
+                this.voiceUnlockPrompted = true;
+            }
+            return;
+        }
         
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = parseFloat(this.settings.voiceRate);
@@ -422,6 +441,117 @@ class VoiceRemindersApp {
         } else {
             this.showError("Settings modal element not found.");
         }
+    }
+
+    async handleVoiceUnlock({ silent = false } = {}) {
+        if (!this.requiresVoiceUnlock()) {
+            this.voiceUnlocked = true;
+            this.maybeShowVoiceUnlockPrompt();
+            return true;
+        }
+        if (this.voiceUnlocked) {
+            if (!silent) alert('Voice is already enabled.');
+            this.maybeShowVoiceUnlockPrompt();
+            return true;
+        }
+        if (!this.synth) {
+            if (!silent) alert('Voice synthesis is not available on this device.');
+            return false;
+        }
+
+        try {
+            await this.performVoiceUnlockSequence();
+            this.voiceUnlocked = true;
+            this.voiceUnlockPrompted = false;
+            if (!silent) alert('Voice announcements enabled.');
+            this.removeVoiceUnlockListeners();
+        } catch (error) {
+            console.error('❌ Failed to unlock voice:', error);
+            if (!silent) alert('Unable to enable voice. Please try again.');
+            this.setupVoiceUnlockListeners();
+        }
+        this.maybeShowVoiceUnlockPrompt();
+        return this.voiceUnlocked;
+    }
+
+    performVoiceUnlockSequence() {
+        return new Promise((resolve, reject) => {
+            try {
+                const utterance = new SpeechSynthesisUtterance('Voice enabled');
+                utterance.volume = 0.01;
+                utterance.rate = 0.5;
+                let settled = false;
+                const finish = () => {
+                    if (!settled) {
+                        settled = true;
+                        resolve();
+                    }
+                };
+                utterance.onend = finish;
+                utterance.onerror = (event) => {
+                    if (!settled) {
+                        settled = true;
+                        reject(event.error || event);
+                    }
+                };
+                this.synth.cancel();
+                this.synth.speak(utterance);
+                setTimeout(finish, 750);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    maybeShowVoiceUnlockPrompt() {
+        const button = document.getElementById('enableVoiceBtn');
+        if (!button) return;
+        if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
+            button.style.display = 'inline-flex';
+        } else {
+            button.style.display = 'none';
+        }
+    }
+
+    requiresVoiceUnlock() {
+        return this.isIOSDevice();
+    }
+
+    isIOSDevice() {
+        const platform = navigator.platform || '';
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
+        const iPadOS13Up = navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(platform);
+        const iOSDevice = /iPad|iPhone|iPod/.test(userAgent);
+        return iOSDevice || iPadOS13Up;
+    }
+
+    setupVoiceUnlockListeners() {
+        if (!this.requiresVoiceUnlock()) {
+            this.removeVoiceUnlockListeners();
+            return;
+        }
+        if (this.voiceUnlocked) {
+            this.removeVoiceUnlockListeners();
+            return;
+        }
+        if (this.voiceUnlockListener) return;
+
+        const handler = () => {
+            if (this.voiceUnlocked || !this.requiresVoiceUnlock()) {
+                this.removeVoiceUnlockListeners();
+                return;
+            }
+            this.handleVoiceUnlock({ silent: true });
+        };
+
+        this.voiceUnlockListener = handler;
+        ['touchend', 'click'].forEach(evt => document.addEventListener(evt, handler, { passive: true }));
+    }
+
+    removeVoiceUnlockListeners() {
+        if (!this.voiceUnlockListener) return;
+        ['touchend', 'click'].forEach(evt => document.removeEventListener(evt, this.voiceUnlockListener));
+        this.voiceUnlockListener = null;
     }
 
     closeSettings() {

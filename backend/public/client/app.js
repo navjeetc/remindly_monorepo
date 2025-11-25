@@ -12,6 +12,8 @@ class RemindlyApp {
         this.announcedReminders = new Set(); // Track which reminders have been announced
         this.checkInterval = null;
         this.settings = this.loadSettings();
+        this.voiceUnlockPrompted = false;
+        this.voiceUnlocked = !this.requiresVoiceUnlock();
         
         this.init();
     }
@@ -31,6 +33,86 @@ class RemindlyApp {
         }
     }
 
+    async handleVoiceUnlock({ silent = false } = {}) {
+        if (!this.requiresVoiceUnlock()) {
+            this.voiceUnlocked = true;
+            this.maybeShowVoiceUnlockPrompt();
+            return true;
+        }
+        if (this.voiceUnlocked) {
+            if (!silent) this.showMessage('Voice already enabled', 'success');
+            this.maybeShowVoiceUnlockPrompt();
+            return true;
+        }
+        if (!('speechSynthesis' in window)) {
+            if (!silent) this.showMessage('Voice synthesis not available on this device', 'error');
+            return false;
+        }
+
+        try {
+            await this.performVoiceUnlockSequence();
+            this.voiceUnlocked = true;
+            this.voiceUnlockPrompted = false;
+            if (!silent) this.showMessage('Voice announcements enabled', 'success');
+        } catch (error) {
+            console.error('❌ Failed to unlock voice:', error);
+            if (!silent) this.showMessage('Unable to enable voice. Please try again.', 'error');
+        }
+        this.maybeShowVoiceUnlockPrompt();
+        return this.voiceUnlocked;
+    }
+
+    performVoiceUnlockSequence() {
+        return new Promise((resolve, reject) => {
+            try {
+                const utterance = new SpeechSynthesisUtterance('Voice enabled');
+                utterance.volume = 0.01;
+                utterance.rate = 0.5;
+                let settled = false;
+                const finish = () => {
+                    if (!settled) {
+                        settled = true;
+                        resolve();
+                    }
+                };
+                utterance.onend = finish;
+                utterance.onerror = (event) => {
+                    if (!settled) {
+                        settled = true;
+                        reject(event.error || event);
+                    }
+                };
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utterance);
+                setTimeout(finish, 750);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    maybeShowVoiceUnlockPrompt() {
+        const button = document.getElementById('enableVoiceBtn');
+        if (!button) return;
+        if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
+            button.style.display = 'inline-flex';
+        } else {
+            button.style.display = 'none';
+        }
+    }
+
+    requiresVoiceUnlock() {
+        return this.isIOSDevice();
+    }
+
+    isIOSDevice() {
+        const platform = navigator.platform || '';
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera || '';
+        const iPadOS13Up = navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(platform);
+        const iOSDevice = /iPad|iPhone|iPod/.test(userAgent);
+        return iOSDevice || iPadOS13Up;
+    }
+
     // ========================================================================
     // Initialization
     // ========================================================================
@@ -42,6 +124,7 @@ class RemindlyApp {
         this.checkForMagicLinkToken();
         this.hideDevFeaturesInProduction();
         this.fetchAndDisplayVersion();
+        this.maybeShowVoiceUnlockPrompt();
         
         // Check for Web Speech API support
         if (!('speechSynthesis' in window)) {
@@ -78,6 +161,7 @@ class RemindlyApp {
         document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
         document.getElementById('resetSettings').addEventListener('click', () => this.resetSettings());
         document.getElementById('testVoiceBtn').addEventListener('click', () => this.testVoice());
+        document.getElementById('enableVoiceBtn').addEventListener('click', () => this.handleVoiceUnlock());
         document.getElementById('requestNotificationBtn').addEventListener('click', () => this.requestNotificationPermission());
 
         // Refresh
@@ -330,6 +414,15 @@ class RemindlyApp {
         }
         if (this.isInQuietHours()) {
             console.log('❌ In quiet hours');
+            return;
+        }
+        if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
+            console.log('❌ Voice locked on iOS - waiting for unlock gesture');
+            this.maybeShowVoiceUnlockPrompt();
+            if (!this.voiceUnlockPrompted) {
+                this.showMessage('Tap the 🔊 button to enable voice playback on iPad', 'warning');
+                this.voiceUnlockPrompted = true;
+            }
             return;
         }
 
