@@ -96,9 +96,7 @@
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     <%= occ.reminder.category.titleize %>
                   </span>
-                  <% if occ.status == 'pending' %>
-                    <%= link_to "Edit", edit_reminder_dashboard_path(@senior, occ.reminder), class: "text-xs text-blue-600 hover:text-blue-800" %>
-                  <% end %>
+                  <%= link_to "Edit", edit_reminder_dashboard_path(@senior, occ.reminder), class: "text-xs text-blue-600 hover:text-blue-800" %>
                 </div>
               </div>
             </div>
