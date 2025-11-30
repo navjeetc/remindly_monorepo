@@ -5,6 +5,25 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2025-11-25
+
+### Added
+- Automatic iPad voice-unlock listeners for the web client and Rails dashboard (voice unlock attempts fire after any tap)
+- Enable Voice button in Advanced Options for the Rails dashboard (mirrors standalone web client)
+- ⚙️ Settings button in the dashboard Advanced Options row so caregivers can access audio controls
+
+### Changed
+- Voice reminders now reuse the same unlock flow across hosted and standalone clients for consistency
+- Improved caregiver-facing UI to surface voice settings and unlock affordance
+
+### Fixed
+- iPad reminders no longer stay silent until caregivers find a hidden enable control
+- Voice unlock instructions now appear wherever the button exists (web client + dashboard)
+
+### Security
+- 
+
+
 ## [0.3.3] - 2025-11-10
 
 ### Added
