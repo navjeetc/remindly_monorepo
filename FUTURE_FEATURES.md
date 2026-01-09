@@ -75,20 +75,34 @@ This document tracks potential features and enhancements for future development 
 
 ---
 
-### 5. Task List Visibility for Care Receivers
+### 5. Task List Visibility for Care Receivers ✅ **COMPLETED**
 **Description:** Care receivers should be able to view their upcoming tasks, not just receive reminders.
 
-**Features:**
-- Dashboard view of upcoming tasks
-- Calendar view option
-- Task details and descriptions
-- Completed task history
+**Status:** ✅ Implemented and Enhanced
 
-**Technical Considerations:**
-- Simplified UI for seniors
-- Read-only vs. interactive options
-- Notification preferences
-- Accessibility features
+**Implementation:**
+- ✅ Dashboard view of upcoming tasks (30-day window)
+- ✅ Task details (title, description, time, priority, assigned caregiver)
+- ✅ Visibility controls via `visible_to_senior` flag (defaults to true)
+- ✅ Informational note for caregivers explaining visibility criteria
+- ✅ Available on both web dashboard and voice reminder clients
+
+**Completed Features:**
+- Dashboard view showing tasks for next 30 days
+- Task filtering by status, type, priority
+- Task details with scheduling information
+- Visibility toggle per task
+
+**Future Enhancements (Optional):**
+- Calendar view option
+- Completed task history view
+- Enhanced filtering options
+- Mobile-optimized view
+
+**Files Modified:**
+- `backend/app/controllers/dashboard_controller.rb` - Extended visibility window to 30 days
+- `backend/app/views/dashboard/index.html.erb` - Updated heading
+- `backend/app/views/tasks/index.html.erb` - Added visibility criteria info for caregivers
 
 ---
 
