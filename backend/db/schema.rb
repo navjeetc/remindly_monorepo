@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_09_225735) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -166,7 +166,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
     t.integer "task_type", default: 0, null: false
     t.integer "status", default: 0, null: false
     t.integer "priority", default: 1, null: false
-    t.datetime "scheduled_at", null: false
+    t.datetime "scheduled_at"
     t.integer "duration_minutes"
     t.string "location"
     t.text "notes"
@@ -179,11 +179,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
     t.string "external_id"
     t.string "external_url"
     t.json "sync_metadata", default: {}
+    t.string "rrule"
+    t.string "tz"
+    t.datetime "start_time"
+    t.integer "parent_task_id"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_id_and_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["created_by_id"], name: "index_tasks_on_created_by_id"
     t.index ["external_source", "external_id"], name: "index_tasks_on_external_source_and_external_id", unique: true, where: "external_source IS NOT NULL"
     t.index ["external_source"], name: "index_tasks_on_external_source"
+    t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
+    t.index ["rrule"], name: "index_tasks_on_rrule"
     t.index ["scheduled_at"], name: "index_tasks_on_scheduled_at"
     t.index ["scheduling_integration_id"], name: "index_tasks_on_scheduling_integration_id"
     t.index ["senior_id", "scheduled_at"], name: "index_tasks_on_senior_id_and_scheduled_at"
@@ -216,6 +222,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
   add_foreign_key "task_comments", "tasks"
   add_foreign_key "task_comments", "users"
   add_foreign_key "tasks", "scheduling_integrations"
+  add_foreign_key "tasks", "tasks", column: "parent_task_id"
   add_foreign_key "tasks", "users", column: "assigned_to_id"
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"

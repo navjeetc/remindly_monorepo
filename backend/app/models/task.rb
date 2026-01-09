@@ -3,6 +3,8 @@ class Task < ApplicationRecord
   belongs_to :assigned_to, class_name: "User", optional: true
   belongs_to :created_by, class_name: "User"
   belongs_to :scheduling_integration, optional: true
+  belongs_to :parent_task, class_name: "Task", optional: true
+  has_many :child_tasks, class_name: "Task", foreign_key: :parent_task_id, dependent: :nullify
   has_many :task_comments, dependent: :destroy
 
   enum :task_type, {
@@ -33,7 +35,6 @@ class Task < ApplicationRecord
   validates :task_type, presence: true
   validates :status, presence: true
   validates :priority, presence: true
-  validates :scheduled_at, presence: true
   validates :duration_minutes, numericality: { greater_than: 0, allow_nil: true }
 
   # Scopes for common queries
@@ -47,11 +48,20 @@ class Task < ApplicationRecord
   scope :by_priority, ->(priority) { where(priority: priority) }
   scope :in_date_range, ->(start_date, end_date) { where(scheduled_at: start_date..end_date) }
   
+  # Scopes for open-ended tasks
+  scope :open_ended, -> { where(scheduled_at: nil) }
+  scope :scheduled, -> { where.not(scheduled_at: nil) }
+  
   # Scopes for external scheduling integrations
   scope :synced_from_external, -> { where.not(external_source: nil) }
   scope :manually_created, -> { where(external_source: nil) }
   scope :from_acuity, -> { where(external_source: 'acuity') }
   scope :from_calendly, -> { where(external_source: 'calendly') }
+  
+  # Scopes for recurring tasks
+  scope :recurring_templates, -> { where.not(rrule: nil) }
+  scope :one_time_or_instances, -> { where(rrule: nil) }
+  scope :instances_of, ->(parent_id) { where(parent_task_id: parent_id) }
 
   # Callbacks
   before_save :update_status_on_assignment
@@ -80,6 +90,31 @@ class Task < ApplicationRecord
   def external_provider_name
     return nil unless external_appointment?
     external_source.titleize
+  end
+
+  # Recurrence methods
+  def recurring_template?
+    rrule.present?
+  end
+
+  def recurring_instance?
+    parent_task_id.present?
+  end
+
+  # Open-ended task check
+  def open_ended?
+    scheduled_at.nil?
+  end
+
+  def expand!(horizon_days: 30)
+    return unless recurring_template?
+    Recurrence.expand_task(self, horizon_days: horizon_days)
+  end
+
+  def stop_recurrence!(delete_future: false)
+    return unless recurring_template?
+    child_tasks.upcoming.where(status: :pending).destroy_all if delete_future
+    update!(rrule: nil)
   end
 
   private
