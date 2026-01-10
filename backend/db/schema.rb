@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_09_225735) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_09_234319) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -198,6 +198,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_09_225735) do
     t.index ["task_type"], name: "index_tasks_on_task_type"
   end
 
+  create_table "time_blocks", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.datetime "start_time", null: false
+    t.datetime "end_time", null: false
+    t.string "reason"
+    t.boolean "recurring", default: false, null: false
+    t.string "recurrence_pattern"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_time_blocks_on_active"
+    t.index ["user_id", "start_time", "end_time"], name: "index_time_blocks_on_user_id_and_start_time_and_end_time"
+    t.index ["user_id"], name: "index_time_blocks_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", null: false
     t.integer "role"
@@ -226,4 +241,5 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_09_225735) do
   add_foreign_key "tasks", "users", column: "assigned_to_id"
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"
+  add_foreign_key "time_blocks", "users"
 end

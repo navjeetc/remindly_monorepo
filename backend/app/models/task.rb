@@ -36,6 +36,7 @@ class Task < ApplicationRecord
   validates :status, presence: true
   validates :priority, presence: true
   validates :duration_minutes, numericality: { greater_than: 0, allow_nil: true }
+  validate :not_during_blocked_time, if: :scheduled_at?
 
   # Scopes for common queries
   scope :upcoming, -> { where("scheduled_at >= ?", Time.current).order(:scheduled_at) }
@@ -130,6 +131,27 @@ class Task < ApplicationRecord
       self.completed_at = Time.current
     elsif status_changed? && status != "completed"
       self.completed_at = nil
+    end
+  end
+
+  def not_during_blocked_time
+    return unless scheduled_at.present? && senior_id.present?
+    
+    # Calculate task end time if duration is specified
+    task_end = if duration_minutes.present?
+      scheduled_at + duration_minutes.minutes
+    else
+      scheduled_at + 1.hour # Default 1 hour if no duration
+    end
+    
+    # Check for overlapping time blocks
+    blocked = TimeBlock.active
+      .for_user(senior_id)
+      .overlapping(scheduled_at, task_end)
+    
+    if blocked.exists?
+      block = blocked.first
+      errors.add(:scheduled_at, "conflicts with blocked time: #{block.reason || 'Unavailable'} (#{block.start_time.strftime('%I:%M %p')} - #{block.end_time.strftime('%I:%M %p')})")
     end
   end
 end

@@ -23,6 +23,9 @@ class User < ApplicationRecord
   # Notifications
   has_many :notifications, dependent: :destroy
   
+  # Time blocks
+  has_many :time_blocks, dependent: :destroy
+  
   # Ahoy analytics
   has_many :visits, class_name: "Ahoy::Visit", dependent: :destroy
   has_many :events, class_name: "Ahoy::Event", dependent: :destroy
