@@ -5,6 +5,60 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-09
+
+### Added
+- **Recurring Tasks**: Full support for recurring tasks with user-friendly UI
+  - Daily, weekly, and monthly recurrence patterns
+  - Visual pattern builder with live preview
+  - Auto-generates RRULE in iCalendar format
+  - Automatically expands into task instances for next 30 days
+  - Parent-child relationship (template → instances)
+  - Edit template to regenerate all future instances
+  - Reuses existing Recurrence service from Reminders
+  
+- **Open-Ended Tasks**: Tasks without specific scheduled dates
+  - Easy checkbox toggle: "Make this an open-ended task"
+  - Auto-hides date field when marked as open-ended
+  - Smart default (tomorrow at 9 AM) when converting to scheduled
+  - Purple badge display throughout UI
+  - Separate section on tasks index showing open-ended tasks
+  - Filter option to view all open-ended tasks
+  - Caregivers can claim when available
+  
+- **Blocking Unavailable Times**: Prevent task scheduling during unavailable periods
+  - Create time blocks with start/end times and optional reason
+  - Recurring patterns: Daily, Weekdays, Weekends, Weekly, Every Night
+  - One-time blocks for specific dates/times
+  - Active/inactive toggle to temporarily disable blocks
+  - Automatic validation prevents task scheduling during blocked times
+  - Overlap prevention for time blocks
+  - Detailed error messages showing conflict details
+  - Full CRUD interface for managing time blocks
+  
+- Database migrations:
+  - Added `rrule`, `tz`, `start_time`, `parent_task_id` to tasks table
+  - Made `scheduled_at` nullable in tasks table
+  - Created `time_blocks` table with full recurrence support
+
+### Changed
+- Task model now supports optional `scheduled_at` for open-ended tasks
+- Task form includes recurrence pattern builder with dropdown selectors
+- Task validation now checks against blocked time periods
+- Tasks index page reorganized with open-ended tasks section
+- Added "🚫 Blocked Times" button to tasks navigation
+
+### Fixed
+- All views now handle nil `scheduled_at` values correctly
+- Task assignment notifications work with open-ended tasks
+- Senior dashboard displays open-ended tasks without errors
+- Task show view handles tasks without scheduled dates
+
+### Security
+- Time block access restricted to senior and their caregivers
+- Validation prevents overlapping time blocks for security
+
+
 ## [0.3.4] - 2025-11-25
 
 ### Added
