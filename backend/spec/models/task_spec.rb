@@ -145,4 +145,86 @@ RSpec.describe Task, type: :model do
       end
     end
   end
+
+  describe 'recurring task instance management' do
+    let(:senior) { create(:user, role: :senior) }
+    let(:creator) { create(:user, role: :caregiver) }
+
+    it 'cleans up future instances when recurrence is removed' do
+      # Create a recurring task
+      task = create(:task,
+        senior: senior,
+        created_by: creator,
+        rrule: 'FREQ=DAILY',
+        tz: 'America/New_York',
+        start_time: Time.current
+      )
+
+      # Create future instances
+      3.times do |i|
+        create(:task,
+          senior: senior,
+          created_by: creator,
+          parent_task: task,
+          scheduled_at: (i + 1).days.from_now,
+          status: :pending
+        )
+      end
+
+      expect(task.child_tasks.count).to eq(3)
+
+      # Simulate controller behavior: check if was recurring, then update
+      was_recurring = task.recurring_template?
+      task.update!(rrule: nil, tz: nil, start_time: nil)
+
+      # If was recurring but no longer is, clean up
+      if was_recurring && !task.recurring_template?
+        task.child_tasks.upcoming.where(status: :pending).destroy_all
+      end
+
+      expect(task.child_tasks.upcoming.where(status: :pending).count).to eq(0)
+    end
+
+    it 'preserves completed instances when recurrence is removed' do
+      # Create a recurring task
+      task = create(:task,
+        senior: senior,
+        created_by: creator,
+        rrule: 'FREQ=DAILY',
+        tz: 'America/New_York',
+        start_time: Time.current
+      )
+
+      # Create a completed instance and a pending instance
+      completed_instance = create(:task,
+        senior: senior,
+        created_by: creator,
+        parent_task: task,
+        scheduled_at: 1.day.ago,
+        status: :completed
+      )
+
+      pending_instance = create(:task,
+        senior: senior,
+        created_by: creator,
+        parent_task: task,
+        scheduled_at: 1.day.from_now,
+        status: :pending
+      )
+
+      # Remove recurrence
+      was_recurring = task.recurring_template?
+      task.update!(rrule: nil)
+
+      # Clean up only pending future instances
+      if was_recurring && !task.recurring_template?
+        task.child_tasks.upcoming.where(status: :pending).destroy_all
+      end
+
+      # Completed instance should remain
+      expect(Task.exists?(completed_instance.id)).to be true
+      # Pending future instance should be removed
+      expect(Task.exists?(pending_instance.id)).to be false
+    end
+  end
 end
