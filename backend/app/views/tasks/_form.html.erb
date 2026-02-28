@@ -176,9 +176,13 @@
 
         function buildRRule() {
           const pattern = patternSelect.value;
+          
+          // If no pattern is selected (e.g., on initial load), do not
+          // clear existing recurrence values that may have been set
+          // from @task.rrule / @task.start_time.
           if (!pattern) {
-            rruleField.value = '';
-            startTimeField.value = '';
+            // Only clear if the user explicitly selected "Does not repeat"
+            // after the form has been initialized
             return;
           }
 
@@ -224,7 +228,15 @@
         }
 
         // Event listeners
-        patternSelect.addEventListener('change', updateRecurrenceUI);
+        patternSelect.addEventListener('change', function() {
+          // If user explicitly selects "Does not repeat", clear the fields
+          if (!patternSelect.value) {
+            rruleField.value = '';
+            startTimeField.value = '';
+          }
+          updateRecurrenceUI();
+        });
+        
         document.getElementById('daily_interval').addEventListener('input', buildRRule);
         document.getElementById('monthly_day').addEventListener('input', buildRRule);
         document.getElementById('recurrence_time_input').addEventListener('change', buildRRule);
@@ -233,8 +245,12 @@
           checkbox.addEventListener('change', buildRRule);
         });
 
-        // Initialize
-        updateRecurrenceUI();
+        // Initialize: Don't call updateRecurrenceUI on load if there's existing rrule data
+        // This prevents clearing existing recurrence when editing a recurring task
+        const hasExistingRrule = rruleField.value && rruleField.value.trim() !== '';
+        if (!hasExistingRrule) {
+          updateRecurrenceUI();
+        }
       });
     </script>
 
