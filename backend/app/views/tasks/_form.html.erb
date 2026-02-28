@@ -75,6 +75,9 @@
       </div>
     </div>
 
+    <!-- Hidden field to explicitly clear scheduled_at when open-ended -->
+    <%= f.hidden_field :scheduled_at, id: "task_scheduled_at_hidden", value: "" %>
+    
     <!-- Scheduled Date/Time -->
     <div class="sm:col-span-2" id="scheduled_at_field">
       <%= f.label :scheduled_at, "Scheduled Date/Time", class: "block text-sm font-medium text-gray-700" %>
@@ -86,6 +89,7 @@
         const openEndedToggle = document.getElementById('open_ended_toggle');
         const scheduledAtField = document.getElementById('scheduled_at_field');
         const scheduledAtInput = document.getElementById('task_scheduled_at_input');
+        const scheduledAtHidden = document.getElementById('task_scheduled_at_hidden');
 
         function getDefaultDateTime() {
           // Set to tomorrow at 9:00 AM
@@ -105,12 +109,15 @@
 
         function updateScheduledAtField() {
           if (openEndedToggle.checked) {
+            // Hide the visible input and disable the hidden field
             scheduledAtField.style.display = 'none';
-            scheduledAtInput.value = '';
             scheduledAtInput.disabled = true;
+            scheduledAtHidden.disabled = false; // Enable hidden field to submit blank value
           } else {
+            // Show the visible input and disable the hidden field
             scheduledAtField.style.display = 'block';
             scheduledAtInput.disabled = false;
+            scheduledAtHidden.disabled = true; // Disable hidden field so visible input is used
             
             // Set default date/time if field is empty
             if (!scheduledAtInput.value) {
