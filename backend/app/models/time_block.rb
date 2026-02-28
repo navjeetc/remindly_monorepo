@@ -11,8 +11,7 @@ class TimeBlock < ApplicationRecord
   scope :recurring, -> { where(recurring: true) }
   scope :one_time, -> { where(recurring: false) }
   scope :overlapping, ->(start_time, end_time) {
-    where("(start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?)",
-          end_time, start_time, end_time, end_time, start_time, end_time)
+    where("start_time < ? AND end_time > ?", end_time, start_time)
   }
 
   # Check if a given time falls within this block
