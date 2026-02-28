@@ -37,6 +37,11 @@ class Task < ApplicationRecord
   validates :priority, presence: true
   validates :duration_minutes, numericality: { greater_than: 0, allow_nil: true }
   validate :not_during_blocked_time, if: :scheduled_at?
+  
+  # Recurring task validations
+  validates :tz, presence: true, if: :rrule?
+  validates :start_time, presence: true, if: :rrule?
+  validate :valid_timezone, if: :rrule?
 
   # Scopes for common queries
   scope :upcoming, -> { where("scheduled_at >= ?", Time.current).order(:scheduled_at) }
@@ -152,6 +157,14 @@ class Task < ApplicationRecord
     if blocked.exists?
       block = blocked.first
       errors.add(:scheduled_at, "conflicts with blocked time: #{block.reason || 'Unavailable'} (#{block.start_time.strftime('%I:%M %p')} - #{block.end_time.strftime('%I:%M %p')})")
+    end
+  end
+
+  def valid_timezone
+    return if tz.blank?
+    
+    unless ActiveSupport::TimeZone[tz]
+      errors.add(:tz, "is not a valid timezone")
     end
   end
 end

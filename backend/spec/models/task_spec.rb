@@ -14,6 +14,39 @@ RSpec.describe Task, type: :model do
     it { should validate_presence_of(:status) }
     it { should validate_presence_of(:priority) }
     # Note: scheduled_at is optional for open-ended tasks
+
+    describe 'recurring task validations' do
+      let(:senior) { create(:user, role: :senior) }
+      let(:creator) { create(:user, role: :caregiver) }
+
+      it 'requires tz when rrule is present' do
+        task = build(:task, senior: senior, created_by: creator, rrule: 'FREQ=DAILY', tz: nil, start_time: Time.current)
+        expect(task).not_to be_valid
+        expect(task.errors[:tz]).to include("can't be blank")
+      end
+
+      it 'requires start_time when rrule is present' do
+        task = build(:task, senior: senior, created_by: creator, rrule: 'FREQ=DAILY', tz: 'America/New_York', start_time: nil)
+        expect(task).not_to be_valid
+        expect(task.errors[:start_time]).to include("can't be blank")
+      end
+
+      it 'validates timezone is valid when rrule is present' do
+        task = build(:task, senior: senior, created_by: creator, rrule: 'FREQ=DAILY', tz: 'Invalid/Timezone', start_time: Time.current)
+        expect(task).not_to be_valid
+        expect(task.errors[:tz]).to include('is not a valid timezone')
+      end
+
+      it 'allows valid recurring task' do
+        task = build(:task, senior: senior, created_by: creator, rrule: 'FREQ=DAILY', tz: 'America/New_York', start_time: Time.current)
+        expect(task).to be_valid
+      end
+
+      it 'does not require tz/start_time when rrule is not present' do
+        task = build(:task, senior: senior, created_by: creator, rrule: nil, tz: nil, start_time: nil)
+        expect(task).to be_valid
+      end
+    end
   end
 
   describe 'enums' do
