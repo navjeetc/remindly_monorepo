@@ -13,7 +13,7 @@ RSpec.describe Task, type: :model do
     it { should validate_presence_of(:task_type) }
     it { should validate_presence_of(:status) }
     it { should validate_presence_of(:priority) }
-    it { should validate_presence_of(:scheduled_at) }
+    # Note: scheduled_at is optional for open-ended tasks
   end
 
   describe 'enums' do

@@ -1,11 +1,11 @@
 FactoryBot.define do
   factory :time_block do
-    user { nil }
-    start_time { "2026-01-09 18:43:19" }
-    end_time { "2026-01-09 18:43:19" }
-    reason { "MyString" }
+    association :user
+    start_time { Time.current }
+    end_time { 2.hours.from_now }
+    reason { "Unavailable" }
     recurring { false }
-    recurrence_pattern { "MyString" }
-    active { false }
+    recurrence_pattern { nil }
+    active { true }
   end
 end
