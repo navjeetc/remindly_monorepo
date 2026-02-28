@@ -57,6 +57,21 @@ RSpec.describe Task, type: :model do
       expect(Task.unassigned).to include(unassigned_task)
       expect(Task.unassigned).not_to include(assigned_task)
     end
+
+    describe 'open-ended vs scheduled' do
+      let!(:open_ended_task) { create(:task, senior: senior, scheduled_at: nil) }
+      let!(:scheduled_task) { create(:task, senior: senior, scheduled_at: 1.day.from_now) }
+
+      it 'returns open-ended tasks (no scheduled_at)' do
+        expect(Task.open_ended).to include(open_ended_task)
+        expect(Task.open_ended).not_to include(scheduled_task)
+      end
+
+      it 'returns scheduled tasks (has scheduled_at)' do
+        expect(Task.scheduled).to include(scheduled_task)
+        expect(Task.scheduled).not_to include(open_ended_task)
+      end
+    end
   end
 
   describe 'callbacks' do

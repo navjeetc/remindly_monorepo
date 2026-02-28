@@ -48,7 +48,10 @@ class Recurrence
   def self.expand_task(task, horizon_days: 30)
     return unless task.rrule.present?
     
-    tz = ActiveSupport::TimeZone[task.tz]
+    # Fallback: task.tz -> senior.tz -> Time.zone (app default)
+    tz = ActiveSupport::TimeZone[task.tz] || 
+         ActiveSupport::TimeZone[task.senior.tz] || 
+         Time.zone
     now = tz.now
     stop = now + horizon_days.days
     
