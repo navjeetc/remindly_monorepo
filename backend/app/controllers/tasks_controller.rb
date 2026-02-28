@@ -82,11 +82,16 @@ class TasksController < WebController
 
   # PATCH /dashboard/senior/:senior_id/tasks/:id
   def update
+    was_recurring = @task.recurring_template?
+    
     if @task.update(task_params)
-      # If this is a recurring template, regenerate future instances
+      # If this is still a recurring template, regenerate future instances
       if @task.recurring_template?
         @task.child_tasks.upcoming.where(status: :pending).destroy_all
         @task.expand!
+      # If the task was previously recurring but is no longer, clean up future instances
+      elsif was_recurring
+        @task.child_tasks.upcoming.where(status: :pending).destroy_all
       end
       
       redirect_to senior_task_path(@senior, @task), notice: "Task updated successfully"
