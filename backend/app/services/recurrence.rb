@@ -76,27 +76,21 @@ class Recurrence
       Rails.logger.info "  [#{idx}] #{scheduled_at} (#{scheduled_at >= now ? 'WILL CREATE' : 'SKIP - past'})"
       
       if scheduled_at >= now
-        begin
-          child_task = task.child_tasks.find_or_create_by!(scheduled_at: scheduled_at) do |t|
-            t.senior = task.senior
-            t.created_by = task.created_by
-            t.assigned_to = task.assigned_to
-            t.title = task.title
-            t.description = task.description
-            t.task_type = task.task_type
-            t.priority = task.priority
-            t.duration_minutes = task.duration_minutes
-            t.location = task.location
-            t.notes = task.notes
-            t.visible_to_senior = task.visible_to_senior
-            t.status = :pending
-          end
-          Rails.logger.info "    ✅ Task instance id=#{child_task.id} for #{scheduled_at}"
-        rescue ActiveRecord::RecordNotUnique => e
-          Rails.logger.warn "    ⚠️ Duplicate task prevented for #{scheduled_at}: #{e.message}"
-          child_task = task.child_tasks.find_by!(scheduled_at: scheduled_at)
-          Rails.logger.info "    ✅ Found existing task id=#{child_task.id}"
+        child_task = task.child_tasks.find_or_create_by!(scheduled_at: scheduled_at) do |t|
+          t.senior = task.senior
+          t.created_by = task.created_by
+          t.assigned_to = task.assigned_to
+          t.title = task.title
+          t.description = task.description
+          t.task_type = task.task_type
+          t.priority = task.priority
+          t.duration_minutes = task.duration_minutes
+          t.location = task.location
+          t.notes = task.notes
+          t.visible_to_senior = task.visible_to_senior
+          t.status = :pending
         end
+        Rails.logger.info "    ✅ Task instance id=#{child_task.id} for #{scheduled_at}"
       end
     end
   end
