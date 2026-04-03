@@ -34,6 +34,15 @@ class User < ApplicationRecord
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
   
+  # Class methods to get users by role
+  def self.caregivers
+    where(role: :caregiver)
+  end
+  
+  def self.seniors
+    where(role: :senior)
+  end
+  
   # Generate a pairing token for this senior
   def generate_pairing_token
     CaregiverLink.generate_pairing_token(senior: self)

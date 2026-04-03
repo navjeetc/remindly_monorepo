@@ -363,6 +363,13 @@ class DashboardController < WebController
       permission: :view
     )
     
+    # Send invitation email to the caregiver
+    CaregiverInvitationMailer.invitation_email(
+      caregiver: caregiver,
+      senior: @senior,
+      inviter: current_user
+    ).deliver_later
+    
     redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
   end
   
