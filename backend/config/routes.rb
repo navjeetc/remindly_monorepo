@@ -82,6 +82,8 @@ Rails.application.routes.draw do
   
   # Tasks (web interface)
   resources :seniors, only: [] do
+    resources :time_blocks, except: [:show]
+    
     resources :tasks do
       member do
         post :complete

@@ -3,6 +3,8 @@ class Task < ApplicationRecord
   belongs_to :assigned_to, class_name: "User", optional: true
   belongs_to :created_by, class_name: "User"
   belongs_to :scheduling_integration, optional: true
+  belongs_to :parent_task, class_name: "Task", optional: true
+  has_many :child_tasks, class_name: "Task", foreign_key: :parent_task_id, dependent: :nullify
   has_many :task_comments, dependent: :destroy
 
   enum :task_type, {
@@ -33,8 +35,13 @@ class Task < ApplicationRecord
   validates :task_type, presence: true
   validates :status, presence: true
   validates :priority, presence: true
-  validates :scheduled_at, presence: true
   validates :duration_minutes, numericality: { greater_than: 0, allow_nil: true }
+  validate :not_during_blocked_time, if: :scheduled_at?
+  
+  # Recurring task validations
+  validates :tz, presence: true, if: :rrule?
+  validates :start_time, presence: true, if: :rrule?
+  validate :valid_timezone, if: :rrule?
 
   # Scopes for common queries
   scope :upcoming, -> { where("scheduled_at >= ?", Time.current).order(:scheduled_at) }
@@ -47,11 +54,20 @@ class Task < ApplicationRecord
   scope :by_priority, ->(priority) { where(priority: priority) }
   scope :in_date_range, ->(start_date, end_date) { where(scheduled_at: start_date..end_date) }
   
+  # Scopes for open-ended tasks
+  scope :open_ended, -> { where(scheduled_at: nil) }
+  scope :scheduled, -> { where.not(scheduled_at: nil) }
+  
   # Scopes for external scheduling integrations
   scope :synced_from_external, -> { where.not(external_source: nil) }
   scope :manually_created, -> { where(external_source: nil) }
   scope :from_acuity, -> { where(external_source: 'acuity') }
   scope :from_calendly, -> { where(external_source: 'calendly') }
+  
+  # Scopes for recurring tasks
+  scope :recurring_templates, -> { where.not(rrule: nil) }
+  scope :one_time_or_instances, -> { where(rrule: nil) }
+  scope :instances_of, ->(parent_id) { where(parent_task_id: parent_id) }
 
   # Callbacks
   before_save :update_status_on_assignment
@@ -82,6 +98,31 @@ class Task < ApplicationRecord
     external_source.titleize
   end
 
+  # Recurrence methods
+  def recurring_template?
+    rrule.present?
+  end
+
+  def recurring_instance?
+    parent_task_id.present?
+  end
+
+  # Open-ended task check
+  def open_ended?
+    scheduled_at.nil?
+  end
+
+  def expand!(horizon_days: 30)
+    return unless recurring_template?
+    Recurrence.expand_task(self, horizon_days: horizon_days)
+  end
+
+  def stop_recurrence!(delete_future: false)
+    return unless recurring_template?
+    child_tasks.upcoming.where(status: :pending).destroy_all if delete_future
+    update!(rrule: nil)
+  end
+
   private
 
   def update_status_on_assignment
@@ -95,6 +136,35 @@ class Task < ApplicationRecord
       self.completed_at = Time.current
     elsif status_changed? && status != "completed"
       self.completed_at = nil
+    end
+  end
+
+  def not_during_blocked_time
+    return unless scheduled_at.present? && senior_id.present?
+    
+    # Calculate task end time if duration is specified
+    task_end = if duration_minutes.present?
+      scheduled_at + duration_minutes.minutes
+    else
+      scheduled_at + 1.hour # Default 1 hour if no duration
+    end
+    
+    # Check for overlapping time blocks
+    blocked = TimeBlock.active
+      .for_user(senior_id)
+      .overlapping(scheduled_at, task_end)
+    
+    if blocked.exists?
+      block = blocked.first
+      errors.add(:scheduled_at, "conflicts with blocked time: #{block.reason || 'Unavailable'} (#{block.start_time.strftime('%I:%M %p')} - #{block.end_time.strftime('%I:%M %p')})")
+    end
+  end
+
+  def valid_timezone
+    return if tz.blank?
+    
+    unless ActiveSupport::TimeZone[tz]
+      errors.add(:tz, "is not a valid timezone")
     end
   end
 end

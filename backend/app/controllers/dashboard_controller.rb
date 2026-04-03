@@ -40,12 +40,12 @@ class DashboardController < WebController
         .order(:scheduled_at)
         .includes(:reminder, :acknowledgements)
       
-      # Get upcoming tasks (next 7 days) - visible to senior
+      # Get upcoming tasks (next 30 days) - visible to senior
       @upcoming_tasks = Task.where(senior_id: current_user.id)
         .where.not(status: :completed)
         .where(visible_to_senior: true)
         .where('scheduled_at >= ?', now)
-        .where('scheduled_at <= ?', now + 7.days)
+        .where('scheduled_at <= ?', now + 30.days)
         .order(:scheduled_at)
         .limit(10)
       
@@ -362,6 +362,13 @@ class DashboardController < WebController
       caregiver_id: caregiver.id,
       permission: :view
     )
+    
+    # Send invitation email to the caregiver
+    CaregiverInvitationMailer.invitation_email(
+      caregiver: caregiver,
+      senior: @senior,
+      inviter: current_user
+    ).deliver_later
     
     redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
   end

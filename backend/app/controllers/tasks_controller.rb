@@ -30,11 +30,16 @@ class TasksController < WebController
       @tasks = @tasks.upcoming
     elsif params[:view] == "past"
       @tasks = @tasks.past
+    elsif params[:view] == "open_ended"
+      @tasks = @tasks.open_ended
     else
-      @tasks = @tasks.order(:scheduled_at)
+      @tasks = @tasks.scheduled.order(:scheduled_at)
     end
 
     @tasks = @tasks.page(params[:page]).per(20)
+    
+    # Get open-ended tasks separately for display
+    @open_ended_tasks = @senior.tasks_as_senior.open_ended.where.not(status: :completed).order(created_at: :desc).limit(10)
     
     # Get caregivers for filter dropdown
     @caregivers = @senior.caregivers
@@ -60,6 +65,9 @@ class TasksController < WebController
     @task.created_by = current_user
 
     if @task.save
+      # Expand recurring task if rrule is present
+      @task.expand! if @task.recurring_template?
+      
       redirect_to senior_tasks_path(@senior), notice: "Task created successfully"
     else
       @caregivers = @senior.caregivers
@@ -74,7 +82,18 @@ class TasksController < WebController
 
   # PATCH /dashboard/senior/:senior_id/tasks/:id
   def update
+    was_recurring = @task.recurring_template?
+    
     if @task.update(task_params)
+      # If this is still a recurring template, regenerate future instances
+      if @task.recurring_template?
+        @task.child_tasks.upcoming.where(status: :pending).destroy_all
+        @task.expand!
+      # If the task was previously recurring but is no longer, clean up future instances
+      elsif was_recurring
+        @task.child_tasks.upcoming.where(status: :pending).destroy_all
+      end
+      
       redirect_to senior_task_path(@senior, @task), notice: "Task updated successfully"
     else
       @caregivers = @senior.caregivers
@@ -107,12 +126,19 @@ class TasksController < WebController
     end
 
     if @task.update(assigned_to: caregiver, status: :assigned)
+      # Build notification message based on whether task is scheduled or open-ended
+      task_message = if @task.scheduled_at.present?
+        "Task scheduled for #{@task.scheduled_at.strftime('%A, %B %d at %I:%M %p')}"
+      else
+        "Open-ended task (no specific date)"
+      end
+      
       # Always notify the assigned caregiver
       Notification.create!(
         user: caregiver,
         notification_type: Notification::TYPES[:task_assigned],
         title: "You've been assigned: #{@task.title}",
-        message: "Task scheduled for #{@task.scheduled_at.strftime('%A, %B %d at %I:%M %p')}",
+        message: task_message,
         metadata: {
           task_id: @task.id,
           senior_id: @senior.id,
@@ -205,7 +231,10 @@ class TasksController < WebController
       :location,
       :notes,
       :assigned_to_id,
-      :visible_to_senior
+      :visible_to_senior,
+      :rrule,
+      :tz,
+      :start_time
     )
   end
 end

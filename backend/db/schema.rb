@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_28_004536) do
   create_table "acknowledgements", force: :cascade do |t|
     t.integer "occurrence_id", null: false
     t.integer "kind", null: false
@@ -166,7 +166,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
     t.integer "task_type", default: 0, null: false
     t.integer "status", default: 0, null: false
     t.integer "priority", default: 1, null: false
-    t.datetime "scheduled_at", null: false
+    t.datetime "scheduled_at"
     t.integer "duration_minutes"
     t.string "location"
     t.text "notes"
@@ -179,17 +179,39 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
     t.string "external_id"
     t.string "external_url"
     t.json "sync_metadata", default: {}
+    t.string "rrule"
+    t.string "tz"
+    t.datetime "start_time"
+    t.integer "parent_task_id"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_id_and_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["created_by_id"], name: "index_tasks_on_created_by_id"
     t.index ["external_source", "external_id"], name: "index_tasks_on_external_source_and_external_id", unique: true, where: "external_source IS NOT NULL"
     t.index ["external_source"], name: "index_tasks_on_external_source"
+    t.index ["parent_task_id", "scheduled_at"], name: "index_tasks_on_parent_task_id_and_scheduled_at", unique: true, where: "parent_task_id IS NOT NULL"
+    t.index ["parent_task_id"], name: "index_tasks_on_parent_task_id"
+    t.index ["rrule"], name: "index_tasks_on_rrule"
     t.index ["scheduled_at"], name: "index_tasks_on_scheduled_at"
     t.index ["scheduling_integration_id"], name: "index_tasks_on_scheduling_integration_id"
     t.index ["senior_id", "scheduled_at"], name: "index_tasks_on_senior_id_and_scheduled_at"
     t.index ["senior_id"], name: "index_tasks_on_senior_id"
     t.index ["status"], name: "index_tasks_on_status"
     t.index ["task_type"], name: "index_tasks_on_task_type"
+  end
+
+  create_table "time_blocks", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.datetime "start_time", null: false
+    t.datetime "end_time", null: false
+    t.string "reason"
+    t.boolean "recurring", default: false, null: false
+    t.string "recurrence_pattern"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_time_blocks_on_active"
+    t.index ["user_id", "start_time", "end_time"], name: "index_time_blocks_on_user_id_and_start_time_and_end_time"
+    t.index ["user_id"], name: "index_time_blocks_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -216,7 +238,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_10_174500) do
   add_foreign_key "task_comments", "tasks"
   add_foreign_key "task_comments", "users"
   add_foreign_key "tasks", "scheduling_integrations"
+  add_foreign_key "tasks", "tasks", column: "parent_task_id"
   add_foreign_key "tasks", "users", column: "assigned_to_id"
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"
+  add_foreign_key "time_blocks", "users"
 end

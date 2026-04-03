@@ -49,9 +49,18 @@
         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
           <dt class="text-sm font-medium text-gray-500">Scheduled for</dt>
           <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-            <%= @task.scheduled_at.strftime("%A, %B %d, %Y at %I:%M %p") %>
-            <% if @task.duration_minutes.present? %>
-              <span class="text-gray-500">(~<%= @task.duration_minutes %> minutes)</span>
+            <% if @task.scheduled_at.present? %>
+              <%= @task.scheduled_at.strftime("%A, %B %d, %Y at %I:%M %p") %>
+              <% if @task.duration_minutes.present? %>
+                <span class="text-gray-500">(~<%= @task.duration_minutes %> minutes)</span>
+              <% end %>
+            <% else %>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                📋 Open-ended (no specific date)
+              </span>
+              <% if @task.duration_minutes.present? %>
+                <span class="text-gray-500 ml-2">(~<%= @task.duration_minutes %> minutes)</span>
+              <% end %>
             <% end %>
           </dd>
         </div>

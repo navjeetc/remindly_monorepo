@@ -4,39 +4,69 @@ This document tracks potential features and enhancements for future development 
 
 ## Priority Features
 
-### 1. Recurring Tasks
+### 1. Recurring Tasks ✅ **COMPLETED**
 **Description:** Ability to set tasks to repeat automatically on a schedule.
 
-**Use Cases:**
-- Weekly tasks (e.g., laundry every Thursday)
-- Daily routines (e.g., medication reminders)
-- Monthly appointments (e.g., doctor visits)
+**Status:** ✅ Implemented
 
-**Technical Considerations:**
-- Recurrence patterns (daily, weekly, monthly, custom)
-- End date or occurrence count options
-- Handling of skipped/missed occurrences
-- Database schema for recurrence rules
+**Implementation:**
+- ✅ User-friendly UI with dropdown selector (Daily/Weekly/Monthly)
+- ✅ Pattern-specific options (interval, day selection, day of month)
+- ✅ Time picker with live preview
+- ✅ Auto-generates RRULE using iCalendar format
+- ✅ Reuses existing Recurrence service from Reminders
+- ✅ Automatically expands into task instances for next 30 days
+- ✅ Parent-child relationship (template → instances)
+
+**Completed Features:**
+- Daily recurrence with configurable interval
+- Weekly recurrence with day selection (Sun-Sat)
+- Monthly recurrence with day of month
+- Live preview showing human-readable pattern
+- Auto-expansion on task create/update
+
+**Files Modified:**
+- `backend/app/models/task.rb` - Added recurrence associations and methods
+- `backend/app/services/recurrence.rb` - Extended to handle tasks
+- `backend/app/controllers/tasks_controller.rb` - Auto-expansion logic
+- `backend/app/views/tasks/_form.html.erb` - User-friendly recurrence UI
+- `backend/db/migrate/*` - Added rrule, tz, start_time, parent_task_id fields
 
 ---
 
-### 2. Open-ended Tasks
+### 2. Open-ended Tasks ✅ **COMPLETED**
 **Description:** Create tasks without specifying a date/time, allowing caregivers to self-assign based on availability.
 
-**Use Cases:**
-- Flexible tasks that don't have strict deadlines
-- Tasks that any available caregiver can complete
-- Non-time-sensitive activities
+**Status:** ✅ Implemented
 
-**Technical Considerations:**
-- Task pool/queue system
-- Self-assignment mechanism
-- Visibility of unassigned tasks
-- Notification strategy for available tasks
+**Implementation:**
+- ✅ Made scheduled_at optional in tasks table
+- ✅ Easy checkbox toggle in task form
+- ✅ Auto-hides date field when marked as open-ended
+- ✅ Smart default (tomorrow at 9 AM) when converting to scheduled
+- ✅ Purple badge display throughout UI
+- ✅ Separate section on tasks index showing open-ended tasks
+- ✅ All nil checks in place for scheduled_at across views
+
+**Completed Features:**
+- Checkbox toggle: "Make this an open-ended task (no specific date)"
+- Open-ended tasks displayed in purple-highlighted section
+- Filter option to view all open-ended tasks
+- Assignment notifications handle open-ended tasks
+- Senior dashboard displays open-ended tasks correctly
+
+**Files Modified:**
+- `backend/app/models/task.rb` - Added open_ended? method and scopes
+- `backend/app/controllers/tasks_controller.rb` - Handle nil scheduled_at
+- `backend/app/views/tasks/_form.html.erb` - Checkbox toggle with JavaScript
+- `backend/app/views/tasks/index.html.erb` - Open-ended tasks section
+- `backend/app/views/tasks/show.html.erb` - Handle nil scheduled_at
+- `backend/app/views/dashboard/index.html.erb` - Handle nil scheduled_at
+- `backend/db/migrate/*` - Made scheduled_at nullable
 
 ---
 
-### 3. Blocking Unavailable Times
+### 3. Blocking Unavailable Times ⏳ **PENDING**
 **Description:** Enable blocking out time periods when the care receiver is unavailable.
 
 **Use Cases:**
@@ -53,7 +83,7 @@ This document tracks potential features and enhancements for future development 
 
 ---
 
-### 4. Hierarchy of Caregivers
+### 4. Hierarchy of Caregivers ⏳ **PENDING**
 **Description:** Implement role-based permissions with a main caregiver having elevated privileges.
 
 **Roles:**
@@ -75,20 +105,34 @@ This document tracks potential features and enhancements for future development 
 
 ---
 
-### 5. Task List Visibility for Care Receivers
+### 5. Task List Visibility for Care Receivers ✅ **COMPLETED**
 **Description:** Care receivers should be able to view their upcoming tasks, not just receive reminders.
 
-**Features:**
-- Dashboard view of upcoming tasks
-- Calendar view option
-- Task details and descriptions
-- Completed task history
+**Status:** ✅ Implemented and Enhanced
 
-**Technical Considerations:**
-- Simplified UI for seniors
-- Read-only vs. interactive options
-- Notification preferences
-- Accessibility features
+**Implementation:**
+- ✅ Dashboard view of upcoming tasks (30-day window)
+- ✅ Task details (title, description, time, priority, assigned caregiver)
+- ✅ Visibility controls via `visible_to_senior` flag (defaults to true)
+- ✅ Informational note for caregivers explaining visibility criteria
+- ✅ Available on both web dashboard and voice reminder clients
+
+**Completed Features:**
+- Dashboard view showing tasks for next 30 days
+- Task filtering by status, type, priority
+- Task details with scheduling information
+- Visibility toggle per task
+
+**Future Enhancements (Optional):**
+- Calendar view option
+- Completed task history view
+- Enhanced filtering options
+- Mobile-optimized view
+
+**Files Modified:**
+- `backend/app/controllers/dashboard_controller.rb` - Extended visibility window to 30 days
+- `backend/app/views/dashboard/index.html.erb` - Updated heading
+- `backend/app/views/tasks/index.html.erb` - Added visibility criteria info for caregivers
 
 ---
 

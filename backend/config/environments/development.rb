@@ -73,5 +73,6 @@ Rails.application.configure do
   # config.generators.apply_rubocop_autocorrect_after_generate!
 
   config.hosts << "remindly.ngrok.io"
+  config.hosts << "localhost"
 
 end

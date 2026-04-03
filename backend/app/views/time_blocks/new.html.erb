@@ -1,0 +1,14 @@
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-6">
+    <h2 class="text-2xl font-bold leading-7 text-gray-900">
+      🚫 New Blocked Time
+    </h2>
+    <p class="mt-1 text-sm text-gray-500">
+      Block out time when <%= @senior.display_name %> is unavailable for tasks
+    </p>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg p-6">
+    <%= render 'form' %>
+  </div>
+</div>

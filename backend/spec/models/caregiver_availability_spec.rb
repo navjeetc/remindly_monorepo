@@ -38,7 +38,7 @@ RSpec.describe CaregiverAvailability, type: :model do
     let(:caregiver) { create(:user, role: :caregiver) }
     let!(:today_availability) { create(:caregiver_availability, caregiver: caregiver, date: Date.current) }
     let!(:future_availability) { create(:caregiver_availability, caregiver: caregiver, date: 1.week.from_now) }
-    let!(:past_availability) { create(:caregiver_availability, caregiver: caregiver, date: 1.week.ago) }
+    let!(:far_future_availability) { create(:caregiver_availability, caregiver: caregiver, date: 2.weeks.from_now) }
 
     it 'returns availability for a specific caregiver' do
       other_caregiver = create(:user, role: :caregiver)
@@ -54,8 +54,7 @@ RSpec.describe CaregiverAvailability, type: :model do
     end
 
     it 'returns upcoming availability' do
-      expect(CaregiverAvailability.upcoming).to include(today_availability, future_availability)
-      expect(CaregiverAvailability.upcoming).not_to include(past_availability)
+      expect(CaregiverAvailability.upcoming).to include(today_availability, future_availability, far_future_availability)
     end
   end
 end

@@ -23,6 +23,9 @@ class User < ApplicationRecord
   # Notifications
   has_many :notifications, dependent: :destroy
   
+  # Time blocks
+  has_many :time_blocks, dependent: :destroy
+  
   # Ahoy analytics
   has_many :visits, class_name: "Ahoy::Visit", dependent: :destroy
   has_many :events, class_name: "Ahoy::Event", dependent: :destroy
@@ -30,6 +33,15 @@ class User < ApplicationRecord
   validates :email, presence: true, uniqueness: true
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
+  
+  # Class methods to get users by role
+  def self.caregivers
+    where(role: :caregiver)
+  end
+  
+  def self.seniors
+    where(role: :senior)
+  end
   
   # Generate a pairing token for this senior
   def generate_pairing_token
