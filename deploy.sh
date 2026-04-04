@@ -18,5 +18,7 @@ fi
 # Navigate to backend directory
 cd "$(dirname "$0")/backend" || exit 1
 
+# Ensure gems are installed before deploying with Kamal
+bundle check || bundle install
 # Deploy with Kamal
 bundle exec kamal deploy
