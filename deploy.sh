@@ -6,12 +6,17 @@ if [ -n "$ASDF_DIR" ] && [ -f "$ASDF_DIR/asdf.sh" ]; then
 elif [ -f /opt/homebrew/opt/asdf/libexec/asdf.sh ]; then
   . /opt/homebrew/opt/asdf/libexec/asdf.sh
 else
-  echo "Error: Could not find asdf initialization script. Set ASDF_DIR or install asdf so deploy.sh can load the intended Ruby." >&2
+set -euo pipefail
+
+# Load asdf
+if [ ! -f /opt/homebrew/opt/asdf/libexec/asdf.sh ]; then
+  echo "Error: /opt/homebrew/opt/asdf/libexec/asdf.sh not found" >&2
   exit 1
 fi
+. /opt/homebrew/opt/asdf/libexec/asdf.sh
 
 # Navigate to backend directory
-cd "$(dirname "$0")/backend"
+cd "$(dirname "$0")/backend" || exit 1
 
 # Deploy with Kamal
 bundle exec kamal deploy
