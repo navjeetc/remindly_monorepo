@@ -85,5 +85,10 @@ Rails.application.configure do
   # ]
   #
   # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  
+  # Allow requests from all configured domains
+  config.hosts << "remindly.anakhsoft.com"
+  config.hosts << "remindly.care"
+  config.hosts << "www.remindly.care"
 end
