@@ -12,7 +12,7 @@ servers:
 # Enable SSL auto certification via Let's Encrypt
 proxy:
   ssl: true
-  host: remindly.anakhsoft.com
+  host: remindly.anakhsoft.com,remindly.care,www.remindly.care
 
 # Credentials for your image host (DigitalOcean Container Registry)
 registry:
