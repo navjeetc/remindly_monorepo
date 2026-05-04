@@ -45,4 +45,29 @@ RSpec.describe "Magic link", type: :request do
       expect(magic_link_in_last_email).to start_with("#{configured_url}/magic/verify")
     end
   end
+
+  describe "POST /login/magic (dashboard form)" do
+    before { ActionMailer::Base.deliveries.clear }
+
+    def magic_link_in_last_email
+      mail = ActionMailer::Base.deliveries.last
+      mail.body.encoded[%r{https?://[^\s"'<]+}]
+    end
+
+    it "uses remindly.care as the magic link host when the dashboard login originates there" do
+      post "/login/magic",
+        params: { email: "user@example.com" },
+        headers: { "HOST" => "remindly.care", "X-Forwarded-Proto" => "https" }
+
+      expect(magic_link_in_last_email).to start_with("https://remindly.care/magic/verify")
+    end
+
+    it "uses remindly.anakhsoft.com when the dashboard login originates there" do
+      post "/login/magic",
+        params: { email: "user@example.com" },
+        headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+
+      expect(magic_link_in_last_email).to start_with("https://remindly.anakhsoft.com/magic/verify")
+    end
+  end
 end
