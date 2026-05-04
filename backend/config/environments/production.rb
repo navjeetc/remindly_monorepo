@@ -12,6 +12,9 @@ Rails.application.configure do
   # Full error reports are disabled.
   config.consider_all_requests_local = false
 
+  # Turn on fragment caching in view templates.
+  config.action_controller.perform_caching = true
+
   # Cache assets for far-future expiry since they are all digest stamped.
   config.public_file_server.headers = { "cache-control" => "public, max-age=#{1.year.to_i}" }
 
@@ -34,7 +37,7 @@ Rails.application.configure do
   config.log_tags = [ :request_id ]
   config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
 
-  # Change to "debug" to log everything (including potentially personally-identifiable information!)
+  # Change to "debug" to log everything (including potentially personally-identifiable information!).
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
   # Prevent health checks from clogging up the logs.
@@ -55,14 +58,14 @@ Rails.application.configure do
 
   # Configure Postmark for email delivery
   config.action_mailer.delivery_method = :postmark
-  config.action_mailer.postmark_settings = { 
-    api_token: Rails.application.credentials.postmark_api_token 
+  config.action_mailer.postmark_settings = {
+    api_token: Rails.application.credentials.postmark_api_token
   }
-  config.action_mailer.default_url_options = { 
-    host: Rails.application.credentials.base_url || "remindly.anakhsoft.com" 
+  config.action_mailer.default_url_options = {
+    host: Rails.application.credentials.base_url || "remindly.anakhsoft.com"
   }
-  config.action_mailer.default_options = { 
-    from: Rails.application.credentials.admin_email || "noreply@remindly.anakhsoft.com" 
+  config.action_mailer.default_options = {
+    from: Rails.application.credentials.admin_email || "noreply@remindly.anakhsoft.com"
   }
   # Deliver emails immediately instead of queuing them
   config.action_mailer.deliver_later_queue_name = nil
@@ -86,7 +89,7 @@ Rails.application.configure do
   #
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-  
+
   # Allow requests from all configured domains
   config.hosts << "remindly.anakhsoft.com"
   config.hosts << "remindly.care"

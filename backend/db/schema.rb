@@ -10,53 +10,53 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_28_004536) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_02_041152) do
   create_table "acknowledgements", force: :cascade do |t|
-    t.integer "occurrence_id", null: false
-    t.integer "kind", null: false
     t.datetime "at", null: false
     t.datetime "created_at", null: false
+    t.integer "kind", null: false
+    t.integer "occurrence_id", null: false
     t.datetime "updated_at", null: false
     t.index ["occurrence_id"], name: "index_acknowledgements_on_occurrence_id"
   end
 
   create_table "ahoy_events", force: :cascade do |t|
-    t.integer "visit_id"
-    t.integer "user_id"
     t.string "name"
     t.text "properties"
     t.datetime "time"
+    t.integer "user_id"
+    t.integer "visit_id"
     t.index ["name", "time"], name: "index_ahoy_events_on_name_and_time"
     t.index ["user_id"], name: "index_ahoy_events_on_user_id"
     t.index ["visit_id"], name: "index_ahoy_events_on_visit_id"
   end
 
   create_table "ahoy_visits", force: :cascade do |t|
-    t.string "visit_token"
-    t.string "visitor_token"
-    t.integer "user_id"
-    t.string "ip"
-    t.text "user_agent"
-    t.text "referrer"
-    t.string "referring_domain"
-    t.text "landing_page"
+    t.string "app_version"
     t.string "browser"
-    t.string "os"
-    t.string "device_type"
-    t.string "country"
-    t.string "region"
     t.string "city"
+    t.string "country"
+    t.string "device_type"
+    t.string "ip"
+    t.text "landing_page"
     t.float "latitude"
     t.float "longitude"
-    t.string "utm_source"
-    t.string "utm_medium"
-    t.string "utm_term"
-    t.string "utm_content"
-    t.string "utm_campaign"
-    t.string "app_version"
+    t.string "os"
     t.string "os_version"
     t.string "platform"
+    t.text "referrer"
+    t.string "referring_domain"
+    t.string "region"
     t.datetime "started_at"
+    t.text "user_agent"
+    t.integer "user_id"
+    t.string "utm_campaign"
+    t.string "utm_content"
+    t.string "utm_medium"
+    t.string "utm_source"
+    t.string "utm_term"
+    t.string "visit_token"
+    t.string "visitor_token"
     t.index ["user_id"], name: "index_ahoy_visits_on_user_id"
     t.index ["visit_token"], name: "index_ahoy_visits_on_visit_token", unique: true
     t.index ["visitor_token", "started_at"], name: "index_ahoy_visits_on_visitor_token_and_started_at"
@@ -64,11 +64,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_28_004536) do
 
   create_table "caregiver_availabilities", force: :cascade do |t|
     t.integer "caregiver_id", null: false
+    t.datetime "created_at", null: false
     t.date "date", null: false
-    t.time "start_time", null: false
     t.time "end_time", null: false
     t.text "notes"
-    t.datetime "created_at", null: false
+    t.time "start_time", null: false
     t.datetime "updated_at", null: false
     t.index ["caregiver_id", "date"], name: "index_caregiver_availabilities_on_caregiver_id_and_date"
     t.index ["caregiver_id"], name: "index_caregiver_availabilities_on_caregiver_id"
@@ -76,68 +76,68 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_28_004536) do
   end
 
   create_table "caregiver_links", force: :cascade do |t|
-    t.integer "senior_id", null: false
     t.integer "caregiver_id"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.integer "permission", default: 0, null: false
     t.string "pairing_token"
+    t.integer "permission", default: 0, null: false
+    t.integer "senior_id", null: false
+    t.datetime "updated_at", null: false
     t.index ["pairing_token"], name: "index_caregiver_links_on_pairing_token", unique: true
     t.index ["senior_id", "caregiver_id"], name: "index_caregiver_links_on_senior_id_and_caregiver_id", unique: true
   end
 
   create_table "notifications", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.string "notification_type", null: false
-    t.string "title", null: false
-    t.text "message"
-    t.datetime "read_at"
-    t.json "metadata"
     t.datetime "created_at", null: false
+    t.text "message"
+    t.json "metadata"
+    t.string "notification_type", null: false
+    t.datetime "read_at"
+    t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.index ["notification_type"], name: "index_notifications_on_notification_type"
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "occurrences", force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.integer "reminder_id", null: false
     t.datetime "scheduled_at", null: false
     t.integer "status", default: 0, null: false
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["reminder_id", "scheduled_at"], name: "index_occurrences_on_reminder_id_and_scheduled_at", unique: true
     t.index ["reminder_id"], name: "index_occurrences_on_reminder_id"
   end
 
   create_table "reminders", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.string "title", null: false
-    t.text "notes"
-    t.string "rrule", null: false
-    t.string "tz", null: false
     t.integer "category", default: 0
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.text "notes"
+    t.string "rrule", null: false
     t.datetime "start_time"
+    t.string "title", null: false
+    t.string "tz", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.index ["user_id"], name: "index_reminders_on_user_id"
   end
 
   create_table "scheduling_integrations", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.integer "senior_id"
-    t.integer "provider", default: 0, null: false
-    t.integer "status", default: 0, null: false
-    t.string "provider_user_id", null: false
+    t.string "access_token"
     t.string "api_key"
     t.string "api_secret"
-    t.string "access_token"
-    t.string "webhook_secret"
-    t.datetime "last_synced_at"
-    t.boolean "sync_enabled", default: true, null: false
-    t.json "settings", default: {}
     t.datetime "created_at", null: false
+    t.datetime "last_synced_at"
+    t.integer "provider", default: 0, null: false
+    t.string "provider_user_id", null: false
+    t.integer "senior_id"
+    t.json "settings", default: {}
+    t.integer "status", default: 0, null: false
+    t.boolean "sync_enabled", default: true, null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.string "webhook_secret"
     t.index ["provider"], name: "index_scheduling_integrations_on_provider"
     t.index ["senior_id", "provider"], name: "index_scheduling_integrations_on_senior_id_and_provider"
     t.index ["senior_id"], name: "index_scheduling_integrations_on_senior_id"
@@ -147,42 +147,42 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_28_004536) do
   end
 
   create_table "task_comments", force: :cascade do |t|
-    t.integer "task_id", null: false
-    t.integer "user_id", null: false
     t.text "content", null: false
     t.datetime "created_at", null: false
+    t.integer "task_id", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.index ["task_id", "created_at"], name: "index_task_comments_on_task_id_and_created_at"
     t.index ["task_id"], name: "index_task_comments_on_task_id"
     t.index ["user_id"], name: "index_task_comments_on_user_id"
   end
 
   create_table "tasks", force: :cascade do |t|
-    t.integer "senior_id", null: false
     t.integer "assigned_to_id"
-    t.integer "created_by_id", null: false
-    t.string "title", null: false
-    t.text "description"
-    t.integer "task_type", default: 0, null: false
-    t.integer "status", default: 0, null: false
-    t.integer "priority", default: 1, null: false
-    t.datetime "scheduled_at"
-    t.integer "duration_minutes"
-    t.string "location"
-    t.text "notes"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
+    t.integer "created_by_id", null: false
+    t.text "description"
+    t.integer "duration_minutes"
+    t.string "external_id"
+    t.string "external_source"
+    t.string "external_url"
+    t.string "location"
+    t.text "notes"
+    t.integer "parent_task_id"
+    t.integer "priority", default: 1, null: false
+    t.string "rrule"
+    t.datetime "scheduled_at"
+    t.integer "scheduling_integration_id"
+    t.integer "senior_id", null: false
+    t.datetime "start_time"
+    t.integer "status", default: 0, null: false
+    t.json "sync_metadata", default: {}
+    t.integer "task_type", default: 0, null: false
+    t.string "title", null: false
+    t.string "tz"
     t.datetime "updated_at", null: false
     t.boolean "visible_to_senior", default: true, null: false
-    t.integer "scheduling_integration_id"
-    t.string "external_source"
-    t.string "external_id"
-    t.string "external_url"
-    t.json "sync_metadata", default: {}
-    t.string "rrule"
-    t.string "tz"
-    t.datetime "start_time"
-    t.integer "parent_task_id"
     t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_id_and_status"
     t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
     t.index ["created_by_id"], name: "index_tasks_on_created_by_id"
@@ -200,29 +200,29 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_28_004536) do
   end
 
   create_table "time_blocks", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.datetime "start_time", null: false
-    t.datetime "end_time", null: false
-    t.string "reason"
-    t.boolean "recurring", default: false, null: false
-    t.string "recurrence_pattern"
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
+    t.datetime "end_time", null: false
+    t.string "reason"
+    t.string "recurrence_pattern"
+    t.boolean "recurring", default: false, null: false
+    t.datetime "start_time", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.index ["active"], name: "index_time_blocks_on_active"
     t.index ["user_id", "start_time", "end_time"], name: "index_time_blocks_on_user_id_and_start_time_and_end_time"
     t.index ["user_id"], name: "index_time_blocks_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
-    t.string "email", null: false
-    t.integer "role"
-    t.string "tz", default: "America/New_York"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.string "email", null: false
     t.string "name"
     t.string "nickname"
     t.boolean "notify_on_task_assigned_to_others", default: false
+    t.integer "role"
+    t.string "tz", default: "America/New_York"
+    t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
