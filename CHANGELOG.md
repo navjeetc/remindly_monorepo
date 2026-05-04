@@ -5,6 +5,25 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-05-03
+
+### Fixed
+- **Restore environment config clobbered by Rails 8.1 `app:update`**: The
+  Rails 8.1 upgrade replaced `config/environments/production.rb` and
+  `development.rb` with template defaults and dropped the project's
+  customizations. Re-applied them:
+  - Production: `assume_ssl` / `force_ssl` (HSTS + secure cookies),
+    `solid_cache_store`, Solid Queue Active Job adapter (so `deliver_later`
+    and `CheckCoverageGapsJob` work), Postmark delivery method,
+    `raise_delivery_errors`, mailer host / from, `host_authorization` `/up`
+    exclude, and the explicit hosts allowlist for `remindly.anakhsoft.com`,
+    `remindly.care`, and `www.remindly.care`.
+  - Development: `letter_opener` delivery method and mailer host port `5000`
+    so dev magic-link emails open in the browser again.
+- Drop the `bin/importmap audit` step from `config/ci.rb` since
+  `importmap-rails` is not a dependency.
+
+
 ## [0.4.2] - 2026-05-03
 
 ### Fixed
