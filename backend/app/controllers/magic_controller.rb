@@ -6,9 +6,9 @@ class MagicController < ApplicationController
     # Detect if request is from voice web client (not the dashboard login)
     # Use explicit client parameter to avoid fragile referer-based detection
     is_web_client = params[:client] == 'web'
-    
+
     # Send magic link email
-    MagicMailer.magic_link_email(user, token, web: is_web_client).deliver_now
+    MagicMailer.magic_link_email(user, token, web: is_web_client, origin: request.base_url).deliver_now
     
     render json: { status: "sent" }
   end
