@@ -28,10 +28,10 @@ class Recurrence
     all_occurrences = schedule.occurrences_between(start_time, stop)
     Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
     
+    today_start = now.beginning_of_day
     all_occurrences.each_with_index do |t, idx|
-      Rails.logger.info "  [#{idx}] #{t} (#{t >= now - 1.hour ? 'WILL CREATE' : 'SKIP - too old'})"
-      # Only create if it's in the future or within the last hour (for today's reminders)
-      if t >= now - 1.hour
+      Rails.logger.info "  [#{idx}] #{t} (#{t >= today_start ? 'WILL CREATE' : 'SKIP - before today'})"
+      if t >= today_start
         begin
           occurrence = reminder.occurrences.find_or_create_by!(scheduled_at: t)
           Rails.logger.info "    ✅ Occurrence id=#{occurrence.id} for #{t}"
