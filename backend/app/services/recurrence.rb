@@ -29,18 +29,35 @@ class Recurrence
     Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
     
     today_start = now.beginning_of_day
+
+    # Decide which occurrences to materialize.
+    #
+    # Always create current/upcoming occurrences (>= now). For occurrences whose
+    # time has already passed *today*, create only the most recent one — the
+    # "current" period. This keeps a same-day reminder visible even after its
+    # clock time has passed (e.g. a caregiver in EST sets a reminder that is
+    # already in the past for a senior in IST) without backfilling every earlier
+    # slot of the day. Without this, an hourly / BYHOUR reminder opened for the
+    # first time in the afternoon would spawn a pending occurrence for every
+    # earlier hour, nagging the senior with stale reminders.
+    upcoming, past = all_occurrences.partition { |t| t >= now }
+    most_recent_past = past.select { |t| t >= today_start }.max
+    to_create = upcoming
+    to_create << most_recent_past if most_recent_past
+
     all_occurrences.each_with_index do |t, idx|
-      Rails.logger.info "  [#{idx}] #{t} (#{t >= today_start ? 'WILL CREATE' : 'SKIP - before today'})"
-      if t >= today_start
-        begin
-          occurrence = reminder.occurrences.find_or_create_by!(scheduled_at: t)
-          Rails.logger.info "    ✅ Occurrence id=#{occurrence.id} for #{t}"
-        rescue ActiveRecord::RecordNotUnique => e
-          Rails.logger.warn "    ⚠️ Duplicate occurrence prevented for #{t}: #{e.message}"
-          # Occurrence already exists, fetch it
-          occurrence = reminder.occurrences.find_by!(scheduled_at: t)
-          Rails.logger.info "    ✅ Found existing occurrence id=#{occurrence.id}"
-        end
+      Rails.logger.info "  [#{idx}] #{t} (#{to_create.include?(t) ? 'WILL CREATE' : 'SKIP'})"
+    end
+
+    to_create.sort.each do |t|
+      begin
+        occurrence = reminder.occurrences.find_or_create_by!(scheduled_at: t)
+        Rails.logger.info "    ✅ Occurrence id=#{occurrence.id} for #{t}"
+      rescue ActiveRecord::RecordNotUnique => e
+        Rails.logger.warn "    ⚠️ Duplicate occurrence prevented for #{t}: #{e.message}"
+        # Occurrence already exists, fetch it
+        occurrence = reminder.occurrences.find_by!(scheduled_at: t)
+        Rails.logger.info "    ✅ Found existing occurrence id=#{occurrence.id}"
       end
     end
   end
