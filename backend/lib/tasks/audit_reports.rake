@@ -17,19 +17,29 @@ namespace :audit do
     end
 
     date = Date.yesterday
-    puts "📧 Sending daily audit report for #{date.strftime('%B %d, %Y')} to #{recipient_email}..."
 
-    begin
-      AuditReportMailer.daily_report(
-        date: date,
-        recipient_email: recipient_email
-      ).deliver_now
+    event_count = Ahoy::Event
+      .where(name: ["Login Success", "Login Failed", "Logout"])
+      .where(time: date.beginning_of_day..date.end_of_day)
+      .count
 
-      puts "✅ Daily audit report sent successfully!"
-    rescue => e
-      puts "❌ Error sending audit report: #{e.message}"
-      puts e.backtrace.join("\n")
-      raise e
+    if event_count.zero?
+      puts "ℹ️  No login/logout activity for #{date.strftime('%B %d, %Y')} — skipping audit report email."
+    else
+      puts "📧 Sending daily audit report for #{date.strftime('%B %d, %Y')} to #{recipient_email}..."
+
+      begin
+        AuditReportMailer.daily_report(
+          date: date,
+          recipient_email: recipient_email
+        ).deliver_now
+
+        puts "✅ Daily audit report sent successfully!"
+      rescue => e
+        puts "❌ Error sending audit report: #{e.message}"
+        puts e.backtrace.join("\n")
+        raise e
+      end
     end
   end
 
