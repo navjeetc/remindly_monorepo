@@ -19,7 +19,9 @@ jobs:
 
     env:
       RAILS_ENV: test
-      # The app reads this at boot; the value only needs to be stable for tests.
+      # Read via ENV.fetch where JWTs are signed and verified (ApplicationController,
+      # WebController, and the request specs). Those have a dev fallback, so this is
+      # set to keep CI explicit rather than because a missing value would fail boot.
       JWT_SECRET: test_secret_for_ci
 
     steps:
@@ -29,7 +31,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version-file: backend/.ruby-version
           bundler-cache: true
           working-directory: backend
 
@@ -52,7 +54,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version-file: backend/.ruby-version
           bundler-cache: true
           working-directory: backend
 

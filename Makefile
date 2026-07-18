@@ -3,7 +3,7 @@ SHELL := /bin/bash
 # ---- Variables ----
 BACKEND_DIR := backend
 WEB_CLIENT_SRC := clients/web
-WEB_CLIENT_DEST := backend/public/client
+WEB_CLIENT_DEST := $(BACKEND_DIR)/public/client
 # Only these are served; docs and manifests stay out of public/ (see
 # backend/spec/public_assets_spec.rb).
 WEB_CLIENT_FILES := app.js index.html styles.css
