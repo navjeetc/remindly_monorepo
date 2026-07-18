@@ -6,10 +6,14 @@
 # NOTE: a blank line ends a record, so every Disallow below must stay in one
 # unbroken block under the User-agent line or it silently applies to nobody.
 User-agent: *
-# Auth flows — magic-link URLs are single-use credentials, never crawl them
+# Auth flows — magic-link URLs are single-use credentials, never crawl them.
+# /client/ belongs here too: MagicMailer sends web logins to /client/?token=...
+# and app.js exchanges that token for a JWT on load, so a crawler fetching the
+# link would burn the credential.
 Disallow: /login
 Disallow: /logout
 Disallow: /magic/
+Disallow: /client/
 Disallow: /dev_login
 # Caregiver/senior dashboard and everything under it
 Disallow: /dashboard
