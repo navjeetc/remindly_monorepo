@@ -133,7 +133,8 @@ a magic-link URL rather than the button.
 
 ## Configuration
 - `JWT_SECRET` (required): shared HMAC for JWT signing.
-- Database: PostgreSQL (see `backend/config/database.yml` you will create via `rails new`).
+- Database: SQLite3 (`backend/config/database.yml`). In production it persists on
+  a Docker volume at `/rails/storage/production.sqlite3`.
 
 ## Notes
 - Rails 8 compatible; recurrence powered by `ice_cube`.

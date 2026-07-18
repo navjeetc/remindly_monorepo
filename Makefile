@@ -28,7 +28,7 @@ backend-db: ## Reset DB
 	cd $(BACKEND_DIR) && bin/rails db:drop db:create db:migrate
 
 backend-up: ## Run Rails API server
-	cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s -b $(BIND)
+	cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s -b $(BIND) -p $(PORT)
 
 backend-up-lan: ## Run Rails API server reachable from phones/tablets on the LAN
 	@ip=$$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}'); \
@@ -44,7 +44,7 @@ dev: ## Run both backend and frontend (requires tmux or run in separate terminal
 	@echo "Backend will run on http://localhost:5000"
 	@echo "Frontend will run on http://localhost:8080"
 	@if command -v tmux >/dev/null 2>&1; then \
-		tmux new-session -d -s remindly 'cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s' \; \
+		tmux new-session -d -s remindly 'cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s -p $(PORT)' \; \
 		split-window -h 'cd clients/web && npm run dev' \; \
 		attach-session -t remindly; \
 	else \
