@@ -1,1 +1,31 @@
 # See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+#
+# Everything behind authenticate! is private. Crawlers get redirected to /login
+# anyway, but keeping them out avoids burning crawl budget on those redirects.
+#
+# NOTE: a blank line ends a record, so every Disallow below must stay in one
+# unbroken block under the User-agent line or it silently applies to nobody.
+User-agent: *
+# Auth flows — magic-link URLs are single-use credentials, never crawl them
+Disallow: /login
+Disallow: /logout
+Disallow: /magic/
+Disallow: /dev_login
+# Caregiver/senior dashboard and everything under it
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /contact
+Disallow: /voice_reminders
+Disallow: /reminders
+Disallow: /acknowledgements
+Disallow: /caregiver_links
+Disallow: /caregiver_dashboard/
+Disallow: /caregiver_availabilities
+Disallow: /seniors/
+Disallow: /scheduling_integrations
+Disallow: /notifications
+Disallow: /admin/
+# Machine endpoints
+Disallow: /api/
+Disallow: /up
+Disallow: /version

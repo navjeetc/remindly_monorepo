@@ -1,4 +1,15 @@
 module ApplicationHelper
+  # The app answers on remindly.anakhsoft.com, remindly.care and www.remindly.care,
+  # so every page is reachable at three URLs. Point search engines at one of them.
+  CANONICAL_HOST = "https://www.remindly.care".freeze
+
+  # Canonical URL for the current page, always on CANONICAL_HOST.
+  # Query strings are dropped — none of our indexable pages vary by them.
+  # @return [String] Absolute canonical URL
+  def canonical_url
+    "#{CANONICAL_HOST}#{request.path}"
+  end
+
   # Convert UTC time to user's timezone for display
   # @param time [Time, ActiveSupport::TimeWithZone] Time to convert
   # @param user [User] User whose timezone to use
