@@ -13,8 +13,17 @@ class RemindlyApp {
         this.checkInterval = null;
         this.settings = this.loadSettings();
         this.voiceUnlockPrompted = false;
-        this.voiceUnlocked = !this.requiresVoiceUnlock();
+        this.voiceUnlocked = this.hasPriorUserActivation();
         this.voiceUnlockListener = null;
+        // Only surface the 🔊 prompt once speech has actually been refused, so
+        // desktop users who never hit the limit don't see a control they don't need.
+        this.voiceBlocked = false;
+        this.voiceUnlockInFlight = null;
+        // Reminders whose speech was refused, kept as id -> text so they can be
+        // spoken once voice unlocks. Separate from announcedReminders: the
+        // notification and card highlight already went out, and only the voice
+        // needs replaying.
+        this.pendingVoiceAnnouncements = new Map();
         this.debugEnabled = localStorage.getItem('debug') === 'true';
 
         this.init();
@@ -328,7 +337,9 @@ class RemindlyApp {
     // Voice Announcements (Web Speech API)
     // ========================================================================
 
-    speak(text) {
+    // reminderId lets a blocked announcement be un-marked so it retries once the
+    // user unlocks; without it a refused announcement is lost for good.
+    speak(text, reminderId = null) {
         this.debug('🔊 speak() called with:', text);
         this.debug('   voiceEnabled:', this.settings.voiceEnabled);
         this.debug('   speechSynthesis available:', 'speechSynthesis' in window);
@@ -346,13 +357,9 @@ class RemindlyApp {
             this.debug('❌ In quiet hours');
             return;
         }
-        if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
-            this.debug('❌ Voice locked on iOS - waiting for unlock gesture');
-            this.maybeShowVoiceUnlockPrompt();
-            if (!this.voiceUnlockPrompted) {
-                this.showMessage('Tap the 🔊 button to enable voice playback on iPad', 'warning');
-                this.voiceUnlockPrompted = true;
-            }
+        if (!this.voiceUnlocked) {
+            this.debug('❌ Voice locked - waiting for unlock gesture');
+            this.onVoiceBlocked(reminderId, text);
             return;
         }
 
@@ -386,6 +393,12 @@ class RemindlyApp {
                 charIndex: e.charIndex,
                 elapsedTime: e.elapsedTime
             });
+            // The browser refused for lack of a user gesture. Re-lock so the next
+            // touch or click re-arms voice, and let this reminder announce again.
+            if (e.error === 'not-allowed') {
+                this.voiceUnlocked = false;
+                this.onVoiceBlocked(reminderId, text);
+            }
         };
         
         try {
@@ -415,11 +428,6 @@ class RemindlyApp {
     }
 
     async handleVoiceUnlock({ silent = false } = {}) {
-        if (!this.requiresVoiceUnlock()) {
-            this.voiceUnlocked = true;
-            this.maybeShowVoiceUnlockPrompt();
-            return true;
-        }
         if (this.voiceUnlocked) {
             if (!silent) this.showMessage('Voice already enabled', 'success');
             this.maybeShowVoiceUnlockPrompt();
@@ -429,20 +437,35 @@ class RemindlyApp {
             if (!silent) this.showMessage('Voice synthesis not available on this device', 'error');
             return false;
         }
-
-        try {
-            await this.performVoiceUnlockSequence();
-            this.voiceUnlocked = true;
-            this.voiceUnlockPrompted = false;
-            if (!silent) this.showMessage('Voice announcements enabled', 'success');
-            this.removeVoiceUnlockListeners();
-        } catch (error) {
-            console.error('❌ Failed to unlock voice:', error);
-            if (!silent) this.showMessage('Unable to enable voice. Please try again.', 'error');
-            this.setupVoiceUnlockListeners();
+        // One tap fires both touchend and click, and the 🔊 button adds a third
+        // handler. Each attempt calls speechSynthesis.cancel(), so a later one
+        // aborts an earlier one and reports failure while the first was working.
+        // Share a single in-flight attempt instead.
+        if (this.voiceUnlockInFlight) {
+            return this.voiceUnlockInFlight;
         }
-        this.maybeShowVoiceUnlockPrompt();
-        return this.voiceUnlocked;
+
+        this.voiceUnlockInFlight = (async () => {
+            try {
+                await this.performVoiceUnlockSequence();
+                this.voiceUnlocked = true;
+                this.voiceUnlockPrompted = false;
+                this.voiceBlocked = false;
+                if (!silent) this.showMessage('Voice announcements enabled', 'success');
+                this.removeVoiceUnlockListeners();
+                this.replayPendingVoiceAnnouncements();
+            } catch (error) {
+                console.error('❌ Failed to unlock voice:', error);
+                if (!silent) this.showMessage('Unable to enable voice. Please try again.', 'error');
+                this.setupVoiceUnlockListeners();
+            } finally {
+                this.voiceUnlockInFlight = null;
+            }
+            this.maybeShowVoiceUnlockPrompt();
+            return this.voiceUnlocked;
+        })();
+
+        return this.voiceUnlockInFlight;
     }
 
     performVoiceUnlockSequence() {
@@ -477,15 +500,69 @@ class RemindlyApp {
     maybeShowVoiceUnlockPrompt() {
         const button = document.getElementById('enableVoiceBtn');
         if (!button) return;
-        if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
-            button.style.display = 'inline-flex';
-        } else {
-            button.style.display = 'none';
+        // iOS always needs the button up front. Elsewhere it only appears once
+        // speech has actually been refused, so it isn't UI noise for everyone else.
+        const needsPrompt = !this.voiceUnlocked && (this.isIOSDevice() || this.voiceBlocked);
+        button.style.display = needsPrompt ? 'inline-flex' : 'none';
+    }
+
+    // Speak anything that was refused while voice was locked. Driven by the unlock
+    // rather than by checkDueReminders(), which skips anything already overdue and
+    // so would drop these the moment their scheduled time passed.
+    replayPendingVoiceAnnouncements() {
+        if (this.pendingVoiceAnnouncements.size === 0) return;
+
+        const pending = [...this.pendingVoiceAnnouncements.entries()];
+        this.pendingVoiceAnnouncements.clear();
+
+        pending.forEach(([reminderId, text]) => {
+            // Skip anything acknowledged or snoozed while voice was locked — a
+            // senior who already took their medication shouldn't be told to.
+            const current = this.reminders.find(r => r.id === reminderId);
+            if (current && current.status !== 'pending') {
+                this.debug(`⏭️  Not replaying ${reminderId} — no longer pending`);
+                return;
+            }
+            this.debug(`🔁 Replaying blocked announcement: ${text}`);
+            this.speak(text, reminderId);
+        });
+    }
+
+    // Speech was refused for lack of a gesture. Re-arm the unlock listeners and
+    // show the 🔊 fallback.
+    //
+    // The reminder is queued for replay rather than dropped from
+    // announcedReminders. Un-marking it cannot work: checkDueReminders() only
+    // announces while timeDiff >= 0, so once the scheduled time passes the
+    // reminder is skipped as overdue and the retry never happens — with a 30s
+    // grace window that is nearly always. Un-marking also re-ran the browser
+    // notification and card highlight on every 10s poll, since those share the
+    // same marker as the voice.
+    onVoiceBlocked(reminderId = null, text = null) {
+        this.voiceBlocked = true;
+        if (reminderId !== null && text) {
+            this.pendingVoiceAnnouncements.set(reminderId, text);
+        }
+        this.setupVoiceUnlockListeners();
+        this.maybeShowVoiceUnlockPrompt();
+        if (!this.voiceUnlockPrompted) {
+            this.showMessage('Tap anywhere to enable voice announcements', 'warning');
+            this.voiceUnlockPrompted = true;
         }
     }
 
-    requiresVoiceUnlock() {
-        return this.isIOSDevice();
+    // Every modern browser gates speechSynthesis behind a user gesture, not just
+    // iOS — Chrome's autoplay policy rejects speak() with 'not-allowed' on a page
+    // the user has never interacted with. A senior's browser left open on a desk,
+    // or reopened after a restart and not touched, hits exactly that. So voice
+    // starts locked everywhere and `voiceUnlocked` is the single gate.
+    //
+    // A gesture that already happened is enough for desktop browsers, so those
+    // sessions unlock invisibly. iOS is stricter: it wants speech initiated from
+    // the gesture itself, so it always runs the explicit unlock sequence.
+    hasPriorUserActivation() {
+        if (this.isIOSDevice()) return false;
+        return navigator.userActivation?.hasBeenActive === true;
     }
 
     isIOSDevice() {
@@ -497,10 +574,6 @@ class RemindlyApp {
     }
 
     setupVoiceUnlockListeners() {
-        if (!this.requiresVoiceUnlock()) {
-            this.removeVoiceUnlockListeners();
-            return;
-        }
         if (this.voiceUnlocked) {
             this.removeVoiceUnlockListeners();
             return;
@@ -508,7 +581,7 @@ class RemindlyApp {
         if (this.voiceUnlockListener) return;
 
         const handler = () => {
-            if (this.voiceUnlocked || !this.requiresVoiceUnlock()) {
+            if (this.voiceUnlocked) {
                 this.removeVoiceUnlockListeners();
                 return;
             }
@@ -858,7 +931,7 @@ class RemindlyApp {
         this.announcedReminders.add(reminder.id);
 
         // Voice announcement
-        this.speak(reminder.reminder.title);
+        this.speak(reminder.reminder.title, reminder.id);
 
         // Browser notification
         this.showNotification(reminder);
