@@ -33,7 +33,7 @@ backend-up: ## Run Rails API server
 backend-up-lan: ## Run Rails API server reachable from phones/tablets on the LAN
 	@ip=$$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}'); \
 	echo "Voice client: http://$$ip:$(PORT)/client/"; \
-	echo "Host Authorization allows RFC1918 addresses and *.local in development."
+	echo "Rails allows any IP Host in development; *.local is allowed in development.rb."
 	$(MAKE) backend-up BIND=0.0.0.0
 
 frontend-up: ## Run web client
