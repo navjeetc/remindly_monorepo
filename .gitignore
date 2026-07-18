@@ -24,3 +24,6 @@ backend/config/credentials/*.key
 backend/.kamal/secrets
 # Node modules (if any)
 node_modules/
+
+# Local Claude Code session notes
+.claude/
