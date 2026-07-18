@@ -19,6 +19,11 @@ class RemindlyApp {
         // desktop users who never hit the limit don't see a control they don't need.
         this.voiceBlocked = false;
         this.voiceUnlockInFlight = null;
+        // Reminders whose speech was refused, kept as id -> text so they can be
+        // spoken once voice unlocks. Separate from announcedReminders: the
+        // notification and card highlight already went out, and only the voice
+        // needs replaying.
+        this.pendingVoiceAnnouncements = new Map();
         this.debugEnabled = localStorage.getItem('debug') === 'true';
 
         this.init();
@@ -354,7 +359,7 @@ class RemindlyApp {
         }
         if (!this.voiceUnlocked) {
             this.debug('❌ Voice locked - waiting for unlock gesture');
-            this.onVoiceBlocked(reminderId);
+            this.onVoiceBlocked(reminderId, text);
             return;
         }
 
@@ -392,7 +397,7 @@ class RemindlyApp {
             // touch or click re-arms voice, and let this reminder announce again.
             if (e.error === 'not-allowed') {
                 this.voiceUnlocked = false;
-                this.onVoiceBlocked(reminderId);
+                this.onVoiceBlocked(reminderId, text);
             }
         };
         
@@ -448,6 +453,7 @@ class RemindlyApp {
                 this.voiceBlocked = false;
                 if (!silent) this.showMessage('Voice announcements enabled', 'success');
                 this.removeVoiceUnlockListeners();
+                this.replayPendingVoiceAnnouncements();
             } catch (error) {
                 console.error('❌ Failed to unlock voice:', error);
                 if (!silent) this.showMessage('Unable to enable voice. Please try again.', 'error');
@@ -500,12 +506,43 @@ class RemindlyApp {
         button.style.display = needsPrompt ? 'inline-flex' : 'none';
     }
 
-    // Speech was refused for lack of a gesture. Re-arm the unlock listeners, show
-    // the 🔊 fallback, and drop the reminder from the announced set so the next
-    // poll re-announces it once voice is available.
-    onVoiceBlocked(reminderId = null) {
+    // Speak anything that was refused while voice was locked. Driven by the unlock
+    // rather than by checkDueReminders(), which skips anything already overdue and
+    // so would drop these the moment their scheduled time passed.
+    replayPendingVoiceAnnouncements() {
+        if (this.pendingVoiceAnnouncements.size === 0) return;
+
+        const pending = [...this.pendingVoiceAnnouncements.entries()];
+        this.pendingVoiceAnnouncements.clear();
+
+        pending.forEach(([reminderId, text]) => {
+            // Skip anything acknowledged or snoozed while voice was locked — a
+            // senior who already took their medication shouldn't be told to.
+            const current = this.reminders.find(r => r.id === reminderId);
+            if (current && current.status !== 'pending') {
+                this.debug(`⏭️  Not replaying ${reminderId} — no longer pending`);
+                return;
+            }
+            this.debug(`🔁 Replaying blocked announcement: ${text}`);
+            this.speak(text, reminderId);
+        });
+    }
+
+    // Speech was refused for lack of a gesture. Re-arm the unlock listeners and
+    // show the 🔊 fallback.
+    //
+    // The reminder is queued for replay rather than dropped from
+    // announcedReminders. Un-marking it cannot work: checkDueReminders() only
+    // announces while timeDiff >= 0, so once the scheduled time passes the
+    // reminder is skipped as overdue and the retry never happens — with a 30s
+    // grace window that is nearly always. Un-marking also re-ran the browser
+    // notification and card highlight on every 10s poll, since those share the
+    // same marker as the voice.
+    onVoiceBlocked(reminderId = null, text = null) {
         this.voiceBlocked = true;
-        if (reminderId !== null) this.announcedReminders.delete(reminderId);
+        if (reminderId !== null && text) {
+            this.pendingVoiceAnnouncements.set(reminderId, text);
+        }
         this.setupVoiceUnlockListeners();
         this.maybeShowVoiceUnlockPrompt();
         if (!this.voiceUnlockPrompted) {
