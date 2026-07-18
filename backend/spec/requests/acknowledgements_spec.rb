@@ -1,0 +1,65 @@
+require 'rails_helper'
+
+RSpec.describe "Acknowledgements", type: :request do
+  # The voice web client authenticates with a Bearer token and sends no CSRF
+  # token. When this controller inherited from WebController (ActionController::Base
+  # with protect_from_forgery), every POST failed with 422 before reaching the
+  # database — seniors could read reminders but never mark one taken.
+  let(:user) { User.create!(email: "senior@example.com", tz: "America/New_York") }
+  let(:jwt) { JWT.encode({ uid: user.id, exp: 1.hour.from_now.to_i }, ENV.fetch("JWT_SECRET", "dev_secret_change_me"), "HS256") }
+
+  let(:occurrence) do
+    reminder = Reminder.create!(user: user, title: "Pill", rrule: "FREQ=DAILY", tz: user.tz)
+    Occurrence.create!(reminder: reminder, scheduled_at: Time.current, status: :pending)
+  end
+
+  def auth_headers = { "Authorization" => "Bearer #{jwt}" }
+
+  describe "POST /acknowledgements" do
+    it "accepts a Bearer-authenticated request without a CSRF token" do
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: auth_headers
+      expect(response).to have_http_status(:created)
+    end
+
+    it "records the acknowledgement and marks the occurrence acknowledged" do
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: auth_headers
+
+      expect(occurrence.reload.status).to eq("acknowledged")
+      expect(occurrence.acknowledgements.last.kind).to eq("taken")
+    end
+
+    it "rejects an unauthenticated request" do
+      post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "does not let one user acknowledge another user's occurrence" do
+      other = User.create!(email: "intruder@example.com", tz: "America/New_York")
+      other_jwt = JWT.encode({ uid: other.id, exp: 1.hour.from_now.to_i }, ENV.fetch("JWT_SECRET", "dev_secret_change_me"), "HS256")
+
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: { "Authorization" => "Bearer #{other_jwt}" }
+
+      expect(response).to have_http_status(:not_found)
+      expect(occurrence.reload.status).to eq("pending")
+    end
+  end
+
+  describe "POST /acknowledgements/snooze" do
+    it "accepts a Bearer-authenticated snooze and schedules a new occurrence" do
+      expect {
+        post "/acknowledgements/snooze",
+          params: { occurrence_id: occurrence.id, minutes: 15 },
+          headers: auth_headers
+      }.to change { occurrence.reminder.occurrences.count }.by(1)
+
+      expect(response).to have_http_status(:created)
+      expect(occurrence.reload.status).to eq("acknowledged")
+    end
+  end
+end
