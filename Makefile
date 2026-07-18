@@ -2,11 +2,16 @@ SHELL := /bin/bash
 
 # ---- Variables ----
 BACKEND_DIR := backend
+WEB_CLIENT_SRC := clients/web
+WEB_CLIENT_DEST := $(BACKEND_DIR)/public/client
+# Only these are served; docs and manifests stay out of public/ (see
+# backend/spec/public_assets_spec.rb).
+WEB_CLIENT_FILES := app.js index.html styles.css
 JWT_SECRET ?= please_change_me
 RAILS_ENV ?= development
 
 # ---- Phonies ----
-.PHONY: setup backend-setup backend-db backend-up frontend-up dev rspec lint ci macos-build tauri-build clean
+.PHONY: setup backend-setup backend-db backend-up frontend-up dev rspec lint ci macos-build tauri-build clean sync-web-client
 
 setup: backend-setup ## Install backend deps
 	@echo 'Done.'
@@ -35,6 +40,13 @@ dev: ## Run both backend and frontend (requires tmux or run in separate terminal
 	else \
 		echo "tmux not found. Please run 'make backend-up' and 'make frontend-up' in separate terminals."; \
 	fi
+
+sync-web-client: ## Copy the voice web client into backend/public/client (clients/web is authoritative)
+	@mkdir -p "$(WEB_CLIENT_DEST)"
+	@set -e; for f in $(WEB_CLIENT_FILES); do \
+		cp "$(WEB_CLIENT_SRC)/$$f" "$(WEB_CLIENT_DEST)/$$f"; \
+		echo "synced $$f"; \
+	done
 
 rspec: ## Run Rails specs
 	cd $(BACKEND_DIR) && bundle exec rspec

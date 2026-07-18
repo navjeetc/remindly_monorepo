@@ -1,0 +1,66 @@
+name: CI
+
+# This file must live at the repository root. GitHub Actions only reads
+# .github/workflows/ from the root, so the previous copy at
+# backend/.github/workflows/ci.yml never ran — no PR in this repo has ever had a
+# check. Keep it here even though the app lives in backend/.
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      RAILS_ENV: test
+      # Read via ENV.fetch where JWTs are signed and verified (ApplicationController,
+      # WebController, and the request specs). Those have a dev fallback, so this is
+      # set to keep CI explicit rather than because a missing value would fail boot.
+      JWT_SECRET: test_secret_for_ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: backend/.ruby-version
+          bundler-cache: true
+          working-directory: backend
+
+      - name: Prepare test database
+        run: bin/rails db:test:prepare
+
+      # Covers the guard specs that enforce repo invariants — web_client_sync_spec
+      # (clients/web vs backend/public/client drift) and public_assets_spec (no
+      # docs or manifests served from public/) — alongside the app's own tests.
+      - name: Run tests
+        run: bundle exec rspec
+
+  scan_ruby:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: backend/.ruby-version
+          bundler-cache: true
+          working-directory: backend
+
+      - name: Scan for common Rails security vulnerabilities using static analysis
+        run: bin/brakeman --no-pager
+
+  # Lint is intentionally absent for now: RuboCop currently reports 683 offenses
+  # (620 auto-correctable), so enabling it would fail every PR. Clearing those is
+  # its own piece of work; add the job back here once the codebase is clean.

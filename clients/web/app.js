@@ -15,8 +15,16 @@ class RemindlyApp {
         this.voiceUnlockPrompted = false;
         this.voiceUnlocked = !this.requiresVoiceUnlock();
         this.voiceUnlockListener = null;
+        this.debugEnabled = localStorage.getItem('debug') === 'true';
 
         this.init();
+    }
+
+    // Verbose tracing, off by default. Enable from the console with:
+    //   localStorage.setItem('debug', 'true'); location.reload();
+    // Errors always log regardless — see console.error calls throughout.
+    debug(...args) {
+        if (this.debugEnabled) console.log(...args);
     }
 
     getDefaultApiUrl() {
@@ -92,7 +100,7 @@ class RemindlyApp {
         // Clear announced list
         document.getElementById('clearAnnounced').addEventListener('click', () => {
             this.announcedReminders.clear();
-            console.log('🔄 Cleared announced reminders list');
+            this.debug('🔄 Cleared announced reminders list');
             this.showMessage('Announced list cleared', 'success');
         });
 
@@ -129,12 +137,12 @@ class RemindlyApp {
         const urlParams = new URLSearchParams(window.location.search);
         const signedToken = urlParams.get('token');
         
-        console.log('🔑 Checking for magic link token...');
-        console.log('   URL:', window.location.href);
-        console.log('   Token found:', signedToken ? 'YES' : 'NO');
+        this.debug('🔑 Checking for magic link token...');
+        this.debug('   URL:', window.location.href);
+        this.debug('   Token found:', signedToken ? 'YES' : 'NO');
         
         if (signedToken) {
-            console.log('✅ Signed token found, exchanging for JWT...');
+            this.debug('✅ Signed token found, exchanging for JWT...');
             
             try {
                 // Exchange the signed token for a JWT token
@@ -149,7 +157,7 @@ class RemindlyApp {
                 
                 if (response.ok) {
                     const jwtToken = await response.text();
-                    console.log('✅ JWT token received');
+                    this.debug('✅ JWT token received');
                     
                     this.authToken = jwtToken;
                     localStorage.setItem('authToken', jwtToken);
@@ -167,7 +175,7 @@ class RemindlyApp {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         } else {
-            console.log('❌ No token in URL');
+            this.debug('❌ No token in URL');
         }
     }
 
@@ -321,25 +329,25 @@ class RemindlyApp {
     // ========================================================================
 
     speak(text) {
-        console.log('🔊 speak() called with:', text);
-        console.log('   voiceEnabled:', this.settings.voiceEnabled);
-        console.log('   speechSynthesis available:', 'speechSynthesis' in window);
-        console.log('   inQuietHours:', this.isInQuietHours());
+        this.debug('🔊 speak() called with:', text);
+        this.debug('   voiceEnabled:', this.settings.voiceEnabled);
+        this.debug('   speechSynthesis available:', 'speechSynthesis' in window);
+        this.debug('   inQuietHours:', this.isInQuietHours());
         
         if (!this.settings.voiceEnabled) {
-            console.log('❌ Voice disabled in settings');
+            this.debug('❌ Voice disabled in settings');
             return;
         }
         if (!('speechSynthesis' in window)) {
-            console.log('❌ speechSynthesis not available');
+            this.debug('❌ speechSynthesis not available');
             return;
         }
         if (this.isInQuietHours()) {
-            console.log('❌ In quiet hours');
+            this.debug('❌ In quiet hours');
             return;
         }
         if (this.requiresVoiceUnlock() && !this.voiceUnlocked) {
-            console.log('❌ Voice locked on iOS - waiting for unlock gesture');
+            this.debug('❌ Voice locked on iOS - waiting for unlock gesture');
             this.maybeShowVoiceUnlockPrompt();
             if (!this.voiceUnlockPrompted) {
                 this.showMessage('Tap the 🔊 button to enable voice playback on iPad', 'warning');
@@ -359,17 +367,17 @@ class RemindlyApp {
             // Prefer English voices
             const englishVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
             utterance.voice = englishVoice;
-            console.log('Using voice:', englishVoice.name);
+            this.debug('Using voice:', englishVoice.name);
         }
         
-        console.log('✅ Speaking:', text);
-        console.log('   rate:', utterance.rate, 'volume:', utterance.volume);
+        this.debug('✅ Speaking:', text);
+        this.debug('   rate:', utterance.rate, 'volume:', utterance.volume);
         
         utterance.onstart = () => {
-            console.log('🎤 Speech started');
+            this.debug('🎤 Speech started');
         };
         utterance.onend = () => {
-            console.log('🎤 Speech ended');
+            this.debug('🎤 Speech ended');
         };
         utterance.onerror = (e) => {
             console.error('❌ Speech error:', e);
@@ -382,12 +390,12 @@ class RemindlyApp {
         
         try {
             // Chrome workaround: Cancel everything and wait
-            console.log('🔄 Resetting speech synthesis...');
+            this.debug('🔄 Resetting speech synthesis...');
             window.speechSynthesis.cancel();
             
             // Wait longer for Chrome to fully reset
             setTimeout(() => {
-                console.log('📢 Calling speechSynthesis.speak()...');
+                this.debug('📢 Calling speechSynthesis.speak()...');
                 
                 // Add a resume() call - sometimes needed in Chrome
                 window.speechSynthesis.resume();
@@ -397,8 +405,8 @@ class RemindlyApp {
                 // Chrome workaround: Call resume again after speak
                 setTimeout(() => {
                     window.speechSynthesis.resume();
-                    console.log('🔍 Speaking status:', window.speechSynthesis.speaking);
-                    console.log('🔍 Pending status:', window.speechSynthesis.pending);
+                    this.debug('🔍 Speaking status:', window.speechSynthesis.speaking);
+                    this.debug('🔍 Pending status:', window.speechSynthesis.pending);
                 }, 100);
             }, 500); // Longer delay for Chrome
         } catch (error) {
@@ -518,9 +526,9 @@ class RemindlyApp {
     }
 
     testVoice() {
-        console.log('🎤 ========================================');
-        console.log('🎤 TEST VOICE BUTTON CLICKED');
-        console.log('🎤 ========================================');
+        this.debug('🎤 ========================================');
+        this.debug('🎤 TEST VOICE BUTTON CLICKED');
+        this.debug('🎤 ========================================');
         
         // Check if speech synthesis is available
         if (!('speechSynthesis' in window)) {
@@ -529,8 +537,8 @@ class RemindlyApp {
             return;
         }
         
-        console.log('✅ speechSynthesis is available');
-        console.log('Current state:', {
+        this.debug('✅ speechSynthesis is available');
+        this.debug('Current state:', {
             speaking: window.speechSynthesis.speaking,
             pending: window.speechSynthesis.pending,
             paused: window.speechSynthesis.paused
@@ -538,25 +546,25 @@ class RemindlyApp {
         
         // Try to get voices first (sometimes needed to initialize)
         const voices = window.speechSynthesis.getVoices();
-        console.log('Available voices:', voices.length);
+        this.debug('Available voices:', voices.length);
         
         if (voices.length > 0) {
-            console.log('First 5 voices:');
+            this.debug('First 5 voices:');
             voices.slice(0, 5).forEach((v, i) => {
-                console.log(`  ${i}: ${v.name} (${v.lang})`);
+                this.debug(`  ${i}: ${v.name} (${v.lang})`);
             });
         }
         
         // On some browsers, we need to wait for voices to load
         if (voices.length === 0) {
-            console.log('⏳ No voices available yet, waiting for voiceschanged event...');
+            this.debug('⏳ No voices available yet, waiting for voiceschanged event...');
             window.speechSynthesis.onvoiceschanged = () => {
                 const newVoices = window.speechSynthesis.getVoices();
-                console.log('✅ Voices loaded:', newVoices.length);
+                this.debug('✅ Voices loaded:', newVoices.length);
                 this.speak('This is a test of the voice announcement system');
             };
         } else {
-            console.log('🔊 Calling speak() with test message...');
+            this.debug('🔊 Calling speak() with test message...');
             this.speak('This is a test of the voice announcement system');
         }
     }
@@ -683,7 +691,7 @@ class RemindlyApp {
 
             if (response.ok) {
                 const newReminders = await response.json();
-                console.log('📥 Received reminders:', newReminders);
+                this.debug('📥 Received reminders:', newReminders);
                 
                 // Clear announced reminders if the list has changed (new IDs)
                 const newIds = new Set(newReminders.map(r => r.id));
@@ -692,14 +700,14 @@ class RemindlyApp {
                                   ![...newIds].every(id => oldIds.has(id));
                 
                 if (idsChanged) {
-                    console.log('🔄 Reminder list changed, clearing announced set');
+                    this.debug('🔄 Reminder list changed, clearing announced set');
                     this.announcedReminders.clear();
                 }
                 
                 this.reminders = newReminders;
                 
                 if (this.reminders.length > 0) {
-                    console.log('📅 First reminder sample:', this.reminders[0]);
+                    this.debug('📅 First reminder sample:', this.reminders[0]);
                 }
                 this.renderReminders();
                 this.updateStats();
@@ -803,48 +811,48 @@ class RemindlyApp {
         const now = new Date();
         const gracePeriod = this.settings.gracePeriod * 1000; // Convert seconds to milliseconds
         
-        console.log('⏰ checkDueReminders() - Checking', this.reminders.length, 'reminders');
+        this.debug('⏰ checkDueReminders() - Checking', this.reminders.length, 'reminders');
 
         this.reminders.forEach(reminder => {
             const scheduledAt = reminder.scheduledAt || reminder.scheduled_at;
             const scheduledTime = new Date(scheduledAt);
             const timeDiff = scheduledTime - now;
             const minutesUntil = (timeDiff / 1000 / 60).toFixed(1);
-            
-            console.log(`  📋 ${reminder.reminder.title}:`);
-            console.log(`     Status: ${reminder.status}, Already announced: ${this.announcedReminders.has(reminder.id)}`);
-            console.log(`     Time until due: ${minutesUntil} minutes`);
-            
+
+            this.debug(`  📋 ${reminder.reminder.title}: status=${reminder.status}, announced=${this.announcedReminders.has(reminder.id)}, due in ${minutesUntil}m`);
+
             if (reminder.status !== 'pending') {
-                console.log(`     ⏭️  Skipping - not pending`);
+                this.debug('     ⏭️  Skipping - not pending');
                 return;
             }
             if (this.announcedReminders.has(reminder.id)) {
-                console.log(`     ⏭️  Skipping - already announced`);
+                this.debug('     ⏭️  Skipping - already announced');
                 return;
             }
-            
+
             // Skip if invalid date
             if (isNaN(scheduledTime.getTime())) {
-                console.error('     ❌ Invalid scheduled_at for reminder:', reminder);
+                console.error('❌ Invalid scheduled_at for reminder:', reminder);
                 return;
             }
 
             // Announce if reminder is due (within grace period BEFORE scheduled time)
             // Only announce if it's coming up, not if it's already past
             if (timeDiff <= gracePeriod && timeDiff >= 0) {
-                console.log(`     🔔 ANNOUNCING! (due in ${(timeDiff/1000/60).toFixed(1)} minutes)`);
+                // Announcing is a real state change and happens once per reminder,
+                // so it stays visible without the debug flag.
+                console.log(`🔔 Announcing: ${reminder.reminder.title} (due in ${minutesUntil}m)`);
                 this.announceReminder(reminder);
             } else if (timeDiff < 0) {
-                console.log(`     ⏭️  Skipping - already ${Math.abs(timeDiff/1000/60).toFixed(1)} minutes overdue`);
+                this.debug(`     ⏭️  Skipping - already ${Math.abs(minutesUntil)}m overdue`);
             } else {
-                console.log(`     ⏳ Not yet due (${(timeDiff/1000/60).toFixed(1)} minutes until due)`);
+                this.debug(`     ⏳ Not yet due (${minutesUntil}m until due)`);
             }
         });
     }
 
     announceReminder(reminder) {
-        console.log('🔔 Announcing reminder:', reminder.reminder.title);
+        this.debug('🔔 Announcing reminder:', reminder.reminder.title);
         
         // Mark as announced
         this.announcedReminders.add(reminder.id);
@@ -947,14 +955,14 @@ class RemindlyApp {
             this.refreshReminders();
         }, intervalMs);
 
-        console.log(`✅ Started reminder checking every ${this.settings.checkInterval} seconds`);
+        this.debug(`✅ Started reminder checking every ${this.settings.checkInterval} seconds`);
     }
 
     stopReminderChecking() {
         if (this.checkInterval) {
             clearInterval(this.checkInterval);
             this.checkInterval = null;
-            console.log('🛑 Stopped reminder checking');
+            this.debug('🛑 Stopped reminder checking');
         }
     }
 
