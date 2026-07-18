@@ -82,10 +82,14 @@ Rails.application.configure do
   # "Blocked hosts" page rather than the app. Needed to test the voice client on
   # real iOS hardware — the voice-unlock path is iOS-only and cannot be verified
   # on desktop.
-  # Anchored, and the optional port is required because the Host header carries
-  # one. Unanchored patterns would match any hostname merely *containing* these,
-  # e.g. "192.168.1.1.attacker.com" — which is the DNS-rebinding case Host
-  # Authorization exists to stop.
-  config.hosts << /\A192\.168\.\d{1,3}\.\d{1,3}(:\d+)?\z/
+  # Only the Bonjour name needs allowing. Rails' development defaults already
+  # include IPAddr 0.0.0.0/0 and ::/0, so every numeric IP Host is permitted --
+  # adding RFC1918 ranges here would be dead config. Verify with:
+  #   bin/rails runner -e development 'Rails.application.config.hosts.each { |h| puts h.inspect }'
+  #
+  # Anchored, with an optional port suffix because the Host header may carry one.
+  # An unanchored pattern would match any hostname merely *containing* ".local",
+  # e.g. "evil.local.attacker.com" -- the DNS-rebinding case Host Authorization
+  # exists to stop.
   config.hosts << /\A[a-z0-9-]+\.local(:\d+)?\z/i
 end

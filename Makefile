@@ -9,9 +9,13 @@ WEB_CLIENT_DEST := $(BACKEND_DIR)/public/client
 WEB_CLIENT_FILES := app.js index.html styles.css
 JWT_SECRET ?= please_change_me
 RAILS_ENV ?= development
+# Rails binds to localhost by default, so a phone on the LAN cannot reach the dev
+# server no matter what config.hosts allows. `make backend-up-lan` overrides this.
+BIND ?= 127.0.0.1
+PORT ?= 5000
 
 # ---- Phonies ----
-.PHONY: setup backend-setup backend-db backend-up frontend-up dev rspec lint ci macos-build tauri-build clean sync-web-client
+.PHONY: setup backend-setup backend-db backend-up backend-up-lan frontend-up dev rspec lint ci macos-build tauri-build clean sync-web-client
 
 setup: backend-setup ## Install backend deps
 	@echo 'Done.'
@@ -24,7 +28,13 @@ backend-db: ## Reset DB
 	cd $(BACKEND_DIR) && bin/rails db:drop db:create db:migrate
 
 backend-up: ## Run Rails API server
-	cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s
+	cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s -b $(BIND)
+
+backend-up-lan: ## Run Rails API server reachable from phones/tablets on the LAN
+	@ip=$$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}'); \
+	echo "Voice client: http://$$ip:$(PORT)/client/"; \
+	echo "Host Authorization allows RFC1918 addresses and *.local in development."
+	$(MAKE) backend-up BIND=0.0.0.0
 
 frontend-up: ## Run web client
 	cd clients/web && npm run dev
