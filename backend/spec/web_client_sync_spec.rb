@@ -14,12 +14,22 @@ RSpec.describe "voice web client sync" do
   SERVED_DIR = Rails.root.join("public", "client")
   RUNTIME_FILES = %w[app.js index.html styles.css].freeze
 
+  # Skip only when the whole client isn't checked out (a backend-only checkout).
+  # Once the directory is present, a missing runtime file is a real failure —
+  # keying the skip off the individual file would let a deletion or rename pass
+  # silently, which is the same blind spot this spec exists to close.
+  before do
+    skip "clients/web is not checked out" unless SOURCE_DIR.directory?
+  end
+
   RUNTIME_FILES.each do |filename|
     it "serves the same #{filename} that clients/web develops" do
       source = SOURCE_DIR.join(filename)
       served = SERVED_DIR.join(filename)
 
-      skip "clients/web is not checked out" unless source.exist?
+      expect(source).to exist,
+        "clients/web/#{filename} is missing. If it was deleted or renamed, " \
+        "update RUNTIME_FILES and the WEB_CLIENT_FILES list in the Makefile."
       expect(served).to exist
 
       expect(served.read).to eq(source.read),

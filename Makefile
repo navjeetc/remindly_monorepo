@@ -42,8 +42,9 @@ dev: ## Run both backend and frontend (requires tmux or run in separate terminal
 	fi
 
 sync-web-client: ## Copy the voice web client into backend/public/client (clients/web is authoritative)
-	@for f in $(WEB_CLIENT_FILES); do \
-		cp $(WEB_CLIENT_SRC)/$$f $(WEB_CLIENT_DEST)/$$f; \
+	@mkdir -p "$(WEB_CLIENT_DEST)"
+	@set -e; for f in $(WEB_CLIENT_FILES); do \
+		cp "$(WEB_CLIENT_SRC)/$$f" "$(WEB_CLIENT_DEST)/$$f"; \
 		echo "synced $$f"; \
 	done
 
