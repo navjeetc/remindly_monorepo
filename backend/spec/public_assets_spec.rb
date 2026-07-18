@@ -9,6 +9,11 @@ RSpec.describe "public/ directory hygiene" do
   # Rails' own error pages are meant to be public.
   ALLOWED_HTML = %w[400.html 404.html 406-unsupported-browser.html 422.html 500.html].freeze
 
+  it "only serves Rails error pages as top-level HTML" do
+    html = Dir.glob(PUBLIC_ROOT.join("*.html")).map { |p| File.basename(p) }.sort
+    expect(html).to eq(ALLOWED_HTML.sort)
+  end
+
   it "serves no Markdown files" do
     markdown = Dir.glob(PUBLIC_ROOT.join("**", "*.md")).map { |p| relative(p) }
 
