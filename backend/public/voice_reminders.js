@@ -7,7 +7,6 @@ class VoiceRemindersApp {
         this.synth = window.speechSynthesis;
         this.checkInterval = null;
         this.speechInitialized = false;
-        this.voiceUnlockPrompted = false;
         this.voiceUnlocked = this.hasPriorUserActivation();
         this.voiceUnlockListener = null;
         // Only surface the 🔊 prompt once speech has actually been refused, so
@@ -40,6 +39,7 @@ class VoiceRemindersApp {
         this.updateStatus('online');
         this.maybeShowVoiceUnlockPrompt();
         this.setupVoiceUnlockListeners();
+        this.showTapToStart();
     }
     
     initializeSpeech() {
@@ -518,9 +518,9 @@ class VoiceRemindersApp {
             try {
                 await this.performVoiceUnlockSequence();
                 this.voiceUnlocked = true;
-                this.voiceUnlockPrompted = false;
                 this.voiceBlocked = false;
                 this.hideBanner();
+                this.hideTapToStart();
                 if (!silent) this.showBanner('Voice announcements enabled', { autoHideMs: 3000 });
                 this.removeVoiceUnlockListeners();
                 this.replayPendingVoiceAnnouncements();
@@ -576,6 +576,67 @@ class VoiceRemindersApp {
         button.style.display = needsPrompt ? 'inline-flex' : 'none';
     }
 
+    // A page that cannot speak looks identical to one that has nothing to say.
+    // The small 🔊 button was not enough: an iPad that reloads itself in the
+    // background goes silent, and nobody watching it would know why. This makes
+    // the requirement impossible to miss and impossible to ignore, because the
+    // page is not usable until it is dismissed.
+    //
+    // Only shown when voice is genuinely locked, so anyone who arrived by
+    // clicking a link — which already counts as the gesture — never sees it.
+    showTapToStart() {
+        if (!this.synth) return;              // nothing to unlock
+        if (this.voiceUnlocked) return;
+        if (document.getElementById("tapToStart")) return;
+
+        const overlay = document.createElement("div");
+        overlay.id = "tapToStart";
+        overlay.setAttribute("role", "dialog");
+        overlay.setAttribute("aria-modal", "true");
+        overlay.setAttribute("aria-labelledby", "tapToStartHeading");
+        overlay.style.cssText =
+            "position:fixed;inset:0;z-index:10000;display:flex;align-items:center;" +
+            "justify-content:center;background:#1e3a8a;color:#fff;text-align:center;padding:2rem;cursor:pointer";
+
+        overlay.innerHTML =
+            '<div style="max-width:34rem">' +
+              '<h2 id="tapToStartHeading" style="font-size:2.5rem;line-height:1.15;font-weight:800;margin:0 0 1rem">Tap to start</h2>' +
+              '<p style="font-size:1.5rem;line-height:1.4;margin:0 0 2rem">' +
+                "Your browser needs one tap before Remindly can speak reminders out loud." +
+              "</p>" +
+              '<button type="button" id="tapToStartButton" style="font-size:1.5rem;font-weight:700;padding:1rem 2.5rem;' +
+                'border-radius:0.75rem;border:0;background:#fff;color:#1e3a8a;cursor:pointer">Turn on voice</button>' +
+              '<p id="tapToStartError" style="font-size:1.125rem;margin:1.5rem 0 0;display:none"></p>' +
+            "</div>";
+
+        // The whole surface responds, so a senior does not have to find the
+        // button — but the button is real, for keyboard and screen reader users.
+        const unlock = async (event) => {
+            event.preventDefault();
+            const ok = await this.handleVoiceUnlock({ silent: true });
+
+            if (ok) {
+                this.hideTapToStart();
+            } else {
+                const error = document.getElementById("tapToStartError");
+                if (error) {
+                    error.textContent = "That did not work. Please tap again.";
+                    error.style.display = "block";
+                }
+            }
+        };
+
+        overlay.addEventListener("click", unlock);
+        overlay.addEventListener("touchend", unlock, { passive: false });
+
+        document.body.appendChild(overlay);
+        document.getElementById("tapToStartButton")?.focus();
+    }
+
+    hideTapToStart() {
+        document.getElementById("tapToStart")?.remove();
+    }
+
     // Every modern browser gates speechSynthesis behind a user gesture, not just
     // iOS — Chrome's autoplay policy rejects speak() with 'not-allowed' on a page
     // the user has never interacted with. A senior's browser left open on a desk,
@@ -605,10 +666,9 @@ class VoiceRemindersApp {
         }
         this.setupVoiceUnlockListeners();
         this.maybeShowVoiceUnlockPrompt();
-        if (!this.voiceUnlockPrompted) {
-            this.showBanner('Tap anywhere to enable voice announcements');
-            this.voiceUnlockPrompted = true;
-        }
+        // Speech was refused, so voice is locked again — put the overlay back
+        // rather than relying on a banner the reader has to notice.
+        this.showTapToStart();
     }
 
     // Speak anything refused while voice was locked, driven by the unlock rather
