@@ -12,12 +12,12 @@ RSpec.describe CaregiverInvitationMailer, type: :mailer do
     end
 
     it 'sends to the caregiver email' do
-      expect(mail.to).to eq([caregiver.email])
+      expect(mail.to).to eq([ caregiver.email ])
     end
 
     it 'sends from the default mailer address' do
       from_address = Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
-      expect(mail.from).to eq([from_address])
+      expect(mail.from).to eq([ from_address ])
     end
 
     it 'includes the inviter name in the body' do

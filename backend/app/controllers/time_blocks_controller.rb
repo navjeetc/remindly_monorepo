@@ -2,8 +2,8 @@ class TimeBlocksController < WebController
   before_action :authenticate!
   before_action :set_senior
   before_action :authorize_senior_access!
-  before_action :set_time_block, only: [:edit, :update, :destroy]
-  layout 'dashboard'
+  before_action :set_time_block, only: [ :edit, :update, :destroy ]
+  layout "dashboard"
 
   # GET /dashboard/senior/:senior_id/time_blocks
   def index

@@ -3,7 +3,7 @@ class ApplicationController < ActionController::API
   def version
     render json: { version: APP_VERSION }
   end
-  
+
   private
 
   def current_user

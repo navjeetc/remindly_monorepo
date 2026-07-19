@@ -2,14 +2,14 @@ class MagicController < ApplicationController
   def request_link
     user  = User.find_or_create_by!(email: params.require(:email))
     token = user.signed_id(purpose: :magic_login, expires_in: 30.minutes)
-    
+
     # Detect if request is from voice web client (not the dashboard login)
     # Use explicit client parameter to avoid fragile referer-based detection
-    is_web_client = params[:client] == 'web'
+    is_web_client = params[:client] == "web"
 
     # Send magic link email
     MagicMailer.magic_link_email(user, token, web: is_web_client, origin: request.base_url).deliver_now
-    
+
     render json: { status: "sent" }
   end
 
@@ -18,11 +18,11 @@ class MagicController < ApplicationController
     # POST is preferred for security (token not in URL/logs)
     # Rails automatically parses JSON request bodies into params
     token = params[:token]
-    
+
     return head :bad_request if token.blank?
-    
+
     user = User.find_signed(token, purpose: :magic_login)
-    
+
     unless user
       # Track failed login attempt
       ahoy.track "Login Failed", {
@@ -31,7 +31,7 @@ class MagicController < ApplicationController
         ip: request.remote_ip,
         user_agent: request.user_agent
       }
-      
+
       # If it's a browser request, redirect to login with error
       if request.format.html?
         redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
@@ -40,10 +40,10 @@ class MagicController < ApplicationController
       end
       return
     end
-    
+
     # Authenticate user with Ahoy
     ahoy.authenticate(user)
-    
+
     # Track successful login
     ahoy.track "Login Success", {
       method: "magic_link",
@@ -51,7 +51,7 @@ class MagicController < ApplicationController
       ip: request.remote_ip,
       user_agent: request.user_agent
     }
-    
+
     # If it's a browser request (HTML), set session and redirect to dashboard
     if request.format.html?
       payload = { uid: user.id, exp: 30.days.from_now.to_i }
@@ -67,10 +67,10 @@ class MagicController < ApplicationController
   def dev_exchange
     return head :forbidden unless Rails.env.development?
     user = User.find_or_create_by!(email: params.require(:email))
-    
+
     # Authenticate user with Ahoy
     ahoy.authenticate(user)
-    
+
     # Track dev login
     ahoy.track "Login Success", {
       method: "dev_exchange",
@@ -78,7 +78,7 @@ class MagicController < ApplicationController
       ip: request.remote_ip,
       user_agent: request.user_agent
     }
-    
+
     render plain: issue_jwt(user:)
   end
 

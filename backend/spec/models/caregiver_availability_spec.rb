@@ -12,12 +12,12 @@ RSpec.describe CaregiverAvailability, type: :model do
 
     it 'validates end_time is after start_time' do
       caregiver = create(:user, role: :caregiver)
-      availability = build(:caregiver_availability, 
+      availability = build(:caregiver_availability,
         caregiver: caregiver,
         start_time: Time.parse('14:00'),
         end_time: Time.parse('10:00')
       )
-      
+
       expect(availability).not_to be_valid
       expect(availability.errors[:end_time]).to include('must be after start time')
     end
@@ -29,7 +29,7 @@ RSpec.describe CaregiverAvailability, type: :model do
         start_time: Time.parse('10:00'),
         end_time: Time.parse('14:00')
       )
-      
+
       expect(availability).to be_valid
     end
   end
@@ -43,7 +43,7 @@ RSpec.describe CaregiverAvailability, type: :model do
     it 'returns availability for a specific caregiver' do
       other_caregiver = create(:user, role: :caregiver)
       other_availability = create(:caregiver_availability, caregiver: other_caregiver)
-      
+
       expect(CaregiverAvailability.for_caregiver(caregiver.id)).to include(today_availability)
       expect(CaregiverAvailability.for_caregiver(caregiver.id)).not_to include(other_availability)
     end

@@ -3,13 +3,13 @@ class Recurrence
     tz   = ActiveSupport::TimeZone[reminder.tz]
     now  = tz.now
     stop = now + horizon_hours.hours
-    
+
     Rails.logger.info "🔄 Expanding reminder #{reminder.id}: '#{reminder.title}'"
     Rails.logger.info "📅 RRULE: #{reminder.rrule}"
     Rails.logger.info "🕐 Now: #{now}, Stop: #{stop}"
-    
+
     rule = IceCube::Rule.from_ical(reminder.rrule)
-    
+
     # Determine the start time for the schedule
     if reminder.start_time.present?
       # Use the stored start_time (for hourly reminders)
@@ -20,14 +20,14 @@ class Recurrence
       start_time = now.beginning_of_day
       Rails.logger.info "⏰ Using beginning_of_day: #{start_time}"
     end
-    
+
     schedule = IceCube::Schedule.new(start_time)
     schedule.add_recurrence_rule(rule)
-    
+
     # Find occurrences from start_time onwards
     all_occurrences = schedule.occurrences_between(start_time, stop)
     Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
-    
+
     today_start = now.beginning_of_day
 
     # Decide which occurrences to materialize.
@@ -64,20 +64,20 @@ class Recurrence
 
   def self.expand_task(task, horizon_days: 30)
     return unless task.rrule.present?
-    
+
     # Fallback: task.tz -> senior.tz -> Time.zone (app default)
-    tz = ActiveSupport::TimeZone[task.tz] || 
-         ActiveSupport::TimeZone[task.senior.tz] || 
+    tz = ActiveSupport::TimeZone[task.tz] ||
+         ActiveSupport::TimeZone[task.senior.tz] ||
          Time.zone
     now = tz.now
     stop = now + horizon_days.days
-    
+
     Rails.logger.info "🔄 Expanding recurring task #{task.id}: '#{task.title}'"
     Rails.logger.info "📅 RRULE: #{task.rrule}"
     Rails.logger.info "🕐 Now: #{now}, Stop: #{stop}"
-    
+
     rule = IceCube::Rule.from_ical(task.rrule)
-    
+
     if task.start_time.present?
       start_time = task.start_time.in_time_zone(tz)
       Rails.logger.info "⏰ Using stored start_time: #{start_time}"
@@ -85,16 +85,16 @@ class Recurrence
       start_time = now.beginning_of_day
       Rails.logger.info "⏰ Using beginning_of_day: #{start_time}"
     end
-    
+
     schedule = IceCube::Schedule.new(start_time)
     schedule.add_recurrence_rule(rule)
-    
+
     all_occurrences = schedule.occurrences_between(start_time, stop)
     Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
-    
+
     all_occurrences.each_with_index do |scheduled_at, idx|
       Rails.logger.info "  [#{idx}] #{scheduled_at} (#{scheduled_at >= now ? 'WILL CREATE' : 'SKIP - past'})"
-      
+
       if scheduled_at >= now
         child_task = task.child_tasks.find_or_create_by!(scheduled_at: scheduled_at) do |t|
           t.senior = task.senior

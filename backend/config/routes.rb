@@ -1,33 +1,33 @@
 Rails.application.routes.draw do
   # Root - redirect to dashboard
   root "dashboard#index"
-  
+
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
   post "login/magic",        to: "sessions#request_magic_link", as: :request_magic_link
   get  "login/verify",       to: "sessions#verify_magic_link", as: :verify_magic_link
   get  "dev_login",          to: "sessions#dev_login", as: :dev_login
   delete "logout",           to: "sessions#destroy", as: :logout
-  
+
   # Magic link authentication (API)
   get  "magic/request",      to: "magic#request_link"
   get  "magic/verify",       to: "magic#verify"  # Keep GET for email links
   post "magic/verify",       to: "magic#verify"  # POST for better security
   get  "magic/dev_exchange", to: "magic#dev_exchange"
-  
+
   # Admin panel
   namespace :admin do
-    resources :users, only: [:index] do
+    resources :users, only: [ :index ] do
       member do
         patch :update_role
       end
     end
-    resources :audit_logs, only: [:index, :show]
+    resources :audit_logs, only: [ :index, :show ]
   end
-  
+
   # Public pages (no authentication required)
   get  "how_to",             to: "pages#how_to", as: :how_to
-  
+
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard
   get  "voice_reminders",    to: "dashboard#voice_reminders", as: :voice_reminders
@@ -48,7 +48,7 @@ Rails.application.routes.draw do
   delete "dashboard/unlink/:id", to: "dashboard#unlink", as: :unlink_dashboard
   get  "dashboard/senior/:senior_id/invite_caregiver", to: "dashboard#invite_caregiver", as: :invite_caregiver_dashboard
   post "dashboard/senior/:senior_id/invite_caregiver", to: "dashboard#process_invite_caregiver"
-  
+
   resources :reminders do
     collection do
       get :today
@@ -56,7 +56,7 @@ Rails.application.routes.draw do
       delete :bulk_destroy
     end
   end
-  
+
   # The standalone voice client at /client/ was retired — /voice_reminders
   # superseded it and it served no traffic. Kept as a redirect rather than a 404
   # so any bookmark or old magic link still lands somewhere useful.
@@ -79,44 +79,44 @@ Rails.application.routes.draw do
   get "client", to: redirect(&retired_client)
   get "client/*rest", to: redirect(&retired_client)
 
-  resources :acknowledgements, only: [:create] do
+  resources :acknowledgements, only: [ :create ] do
     collection do
       post :snooze
     end
   end
-  
+
   # Caregiver pairing
-  resources :caregiver_links, only: [:index, :destroy] do
+  resources :caregiver_links, only: [ :index, :destroy ] do
     collection do
       post :generate_token
       post :pair
     end
   end
-  
+
   # Caregiver dashboard
-  get 'caregiver_dashboard/:senior_id/activity', to: 'caregiver_dashboard#activity'
-  get 'caregiver_dashboard/:senior_id/today', to: 'caregiver_dashboard#today'
-  get 'caregiver_dashboard/:senior_id/missed_count', to: 'caregiver_dashboard#missed_count'
-  
+  get "caregiver_dashboard/:senior_id/activity", to: "caregiver_dashboard#activity"
+  get "caregiver_dashboard/:senior_id/today", to: "caregiver_dashboard#today"
+  get "caregiver_dashboard/:senior_id/missed_count", to: "caregiver_dashboard#missed_count"
+
   # Tasks (web interface)
   resources :seniors, only: [] do
-    resources :time_blocks, except: [:show]
-    
+    resources :time_blocks, except: [ :show ]
+
     resources :tasks do
       member do
         post :complete
         post :assign
         post :unassign
       end
-      resources :comments, controller: 'task_comments', only: [:create, :destroy]
+      resources :comments, controller: "task_comments", only: [ :create, :destroy ]
     end
-    
+
     # Scheduling integrations
-    resources :scheduling_integrations, only: [:index, :new, :create]
+    resources :scheduling_integrations, only: [ :index, :new, :create ]
   end
-  
+
   # Scheduling integrations (not scoped to senior)
-  resources :scheduling_integrations, only: [:show, :edit, :update, :destroy] do
+  resources :scheduling_integrations, only: [ :show, :edit, :update, :destroy ] do
     member do
       post :sync
     end
@@ -124,22 +124,22 @@ Rails.application.routes.draw do
       post :verify
     end
   end
-  
+
   # Native scheduling (feature flagged)
-  resources :caregiver_availabilities, only: [:index, :new, :create, :edit, :update, :destroy] do
+  resources :caregiver_availabilities, only: [ :index, :new, :create, :edit, :update, :destroy ] do
     collection do
       get :bulk_new
       post :bulk_create
     end
   end
-  
+
   # Senior coverage view for caregivers
   resources :seniors, only: [] do
-    resource :coverage, only: [:show], controller: 'senior_coverage'
+    resource :coverage, only: [ :show ], controller: "senior_coverage"
   end
-  
+
   # Notifications
-  resources :notifications, only: [:index] do
+  resources :notifications, only: [ :index ] do
     member do
       post :mark_read
     end
@@ -147,13 +147,13 @@ Rails.application.routes.draw do
       post :mark_all_read
     end
   end
-  
+
   # DEV ONLY: Quick user switching and testing
   if Rails.env.development?
-    get '/dev/switch_user', to: 'dev#switch_user'
-    post '/dev/trigger_coverage_check', to: 'dev#trigger_coverage_check', as: :trigger_coverage_check_dev
+    get "/dev/switch_user", to: "dev#switch_user"
+    post "/dev/trigger_coverage_check", to: "dev#trigger_coverage_check", as: :trigger_coverage_check_dev
   end
-  
+
   # API routes
   namespace :api do
     resources :tasks do
@@ -161,14 +161,14 @@ Rails.application.routes.draw do
         post :assign
         post :claim
       end
-      resources :comments, controller: 'task_comments', only: [:index, :create, :destroy]
+      resources :comments, controller: "task_comments", only: [ :index, :create, :destroy ]
     end
-    
-    resources :availability, controller: 'caregiver_availabilities', only: [:index, :create, :update, :destroy]
+
+    resources :availability, controller: "caregiver_availabilities", only: [ :index, :create, :update, :destroy ]
   end
-  
+
   # Version endpoint
   get "version", to: "application#version"
-  
+
   get "up" => "rails/health#show", as: :rails_health_check
 end

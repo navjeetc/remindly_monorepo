@@ -41,7 +41,7 @@ class TimeBlock < ApplicationRecord
 
   def end_time_after_start_time
     return if end_time.blank? || start_time.blank?
-    
+
     if end_time <= start_time
       errors.add(:end_time, "must be after start time")
     end
@@ -49,12 +49,12 @@ class TimeBlock < ApplicationRecord
 
   def no_overlapping_blocks
     return if start_time.blank? || end_time.blank?
-    
+
     overlapping = TimeBlock.active
       .where(user_id: user_id)
       .where.not(id: id)
       .overlapping(start_time, end_time)
-    
+
     if overlapping.exists?
       errors.add(:base, "This time block overlaps with an existing block")
     end

@@ -61,6 +61,22 @@ jobs:
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
 
-  # Lint is intentionally absent for now: RuboCop currently reports 683 offenses
-  # (620 auto-correctable), so enabling it would fail every PR. Clearing those is
-  # its own piece of work; add the job back here once the codebase is clean.
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: backend/.ruby-version
+          bundler-cache: true
+          working-directory: backend
+
+      # The codebase was 604 offenses from clean until they were autocorrected.
+      # Keeping this job green is the point: style drifts silently otherwise, the
+      # same way the two web-client copies drifted while nothing compared them.
+      - name: Lint code for consistent style
+        run: bin/rubocop -f github

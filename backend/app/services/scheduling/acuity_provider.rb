@@ -1,5 +1,5 @@
-require 'net/http'
-require 'json'
+require "net/http"
+require "json"
 
 module Scheduling
   class AcuityProvider < BaseProvider
@@ -72,10 +72,10 @@ module Scheduling
 
       response.map do |type|
         {
-          id: type['id'],
-          name: type['name'],
-          duration: type['duration'],
-          description: type['description']
+          id: type["id"],
+          name: type["name"],
+          duration: type["duration"],
+          description: type["description"]
         }
       end
     rescue => e
@@ -85,7 +85,7 @@ module Scheduling
 
     def verify_credentials
       response = get("/me")
-      response.is_a?(Hash) && response['id'].present?
+      response.is_a?(Hash) && response["id"].present?
     rescue => e
       Rails.logger.error "Acuity verify_credentials error: #{e.message}"
       false
@@ -97,29 +97,29 @@ module Scheduling
       return nil unless data.is_a?(Hash)
 
       {
-        id: data['id'].to_s,
-        title: data['type'] || 'Appointment',
-        type: data['type'],
-        datetime: Time.parse(data['datetime']),
-        duration: data['duration'].to_i,
+        id: data["id"].to_s,
+        title: data["type"] || "Appointment",
+        type: data["type"],
+        datetime: Time.parse(data["datetime"]),
+        duration: data["duration"].to_i,
         location: parse_location(data),
-        notes: data['notes'],
-        status: data['canceled'] ? 'canceled' : 'scheduled',
+        notes: data["notes"],
+        status: data["canceled"] ? "canceled" : "scheduled",
         client_name: "#{data['firstName']} #{data['lastName']}".strip,
-        client_email: data['email'],
-        client_phone: data['phone'],
-        calendar_url: data['confirmationPage'],
+        client_email: data["email"],
+        client_phone: data["phone"],
+        calendar_url: data["confirmationPage"],
         raw_data: data
       }
     end
 
     def parse_location(data)
-      if data['location'].present?
-        data['location']
-      elsif data['calendar'].present?
-        data['calendar']
+      if data["location"].present?
+        data["location"]
+      elsif data["calendar"].present?
+        data["calendar"]
       else
-        'Not specified'
+        "Not specified"
       end
     end
 
@@ -137,7 +137,7 @@ module Scheduling
     def post(path, body = {})
       uri = URI("#{BASE_URL}#{path}")
       request = Net::HTTP::Post.new(uri)
-      request['Content-Type'] = 'application/json'
+      request["Content-Type"] = "application/json"
       add_auth_headers(request)
       request.body = body.to_json
 
@@ -148,7 +148,7 @@ module Scheduling
     def put(path, body = {})
       uri = URI("#{BASE_URL}#{path}")
       request = Net::HTTP::Put.new(uri)
-      request['Content-Type'] = 'application/json'
+      request["Content-Type"] = "application/json"
       add_auth_headers(request)
       request.body = body.to_json if body.any?
 

@@ -1,13 +1,13 @@
 if Rails.env.development?
   puts "Creating seed data..."
-  
+
   # Create admin user
   admin = User.find_or_create_by!(email: "navjeet@anakhsoft.com") do |u|
     u.role = :admin
     u.tz = "America/New_York"
   end
   puts "✓ Created admin: #{admin.email}"
-  
+
   # Create test users with roles
   senior = User.find_or_create_by!(email: "senior@example.com") do |u|
     u.role = :senior
@@ -17,25 +17,25 @@ if Rails.env.development?
     u.role = :caregiver
     u.tz = "America/New_York"
   end
-  
+
   # Create a user without role (pending approval)
   pending = User.find_or_create_by!(email: "pending@example.com") do |u|
     u.role = nil
     u.tz = "America/New_York"
   end
-  
+
   puts "✓ Created users: #{User.count}"
   puts "  - Admin: navjeet@anakhsoft.com"
   puts "  - Senior: senior@example.com"
   puts "  - Caregiver: caregiver@example.com"
   puts "  - Pending: pending@example.com (no role)"
-  
+
   # Create caregiver link
   link = CaregiverLink.find_or_create_by!(senior: senior, caregiver: caregiver) do |l|
     l.status = :active
   end
   puts "✓ Linked caregiver to senior"
-  
+
   # Create sample tasks
   Task.find_or_create_by!(
     senior: senior,
@@ -52,7 +52,7 @@ if Rails.env.development?
     t.assigned_to = caregiver
     t.status = :assigned
   end
-  
+
   Task.find_or_create_by!(
     senior: senior,
     created_by: caregiver,
@@ -67,7 +67,7 @@ if Rails.env.development?
     t.notes = "Get milk, bread, eggs, and vegetables"
     t.status = :pending
   end
-  
+
   Task.find_or_create_by!(
     senior: senior,
     created_by: caregiver,
@@ -82,7 +82,7 @@ if Rails.env.development?
     t.assigned_to = caregiver
     t.status = :in_progress
   end
-  
+
   Task.find_or_create_by!(
     senior: senior,
     created_by: caregiver,
@@ -96,9 +96,9 @@ if Rails.env.development?
     t.description = "Weekly senior fitness class"
     t.status = :pending
   end
-  
+
   puts "✓ Created #{Task.count} sample tasks"
-  
+
   # Add comments to tasks
   doctor_task = Task.find_by(title: "Doctor Appointment")
   if doctor_task
@@ -109,7 +109,7 @@ if Rails.env.development?
     )
     puts "✓ Added task comments"
   end
-  
+
   # Add caregiver availability
   CaregiverAvailability.find_or_create_by!(
     caregiver: caregiver,
@@ -119,7 +119,7 @@ if Rails.env.development?
     a.end_time = Time.parse('17:00')
     a.notes = "Available all day"
   end
-  
+
   CaregiverAvailability.find_or_create_by!(
     caregiver: caregiver,
     date: Date.tomorrow
@@ -128,7 +128,7 @@ if Rails.env.development?
     a.end_time = Time.parse('13:00')
     a.notes = "Morning only"
   end
-  
+
   puts "✓ Created #{CaregiverAvailability.count} availability entries"
   puts "\n✅ Seed data complete!"
 end

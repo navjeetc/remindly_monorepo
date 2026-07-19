@@ -1,6 +1,6 @@
 class WebController < ActionController::Base
   protect_from_forgery with: :exception
-  
+
   private
 
   def current_user
@@ -17,22 +17,22 @@ class WebController < ActionController::Base
   def authenticate!
     unless current_user
       redirect_to login_path
-      return
+      nil
     end
   end
 
   def hmac_secret = ENV.fetch("JWT_SECRET", "dev_secret_change_me")
-  
+
   # DEV ONLY: Get users grouped by role for dev switcher
   def dev_users_by_role
     return {} unless Rails.env.development?
-    
+
     @dev_users_by_role ||= {
       admins: User.where(role: :admin).order(:name),
       caregivers: User.where(role: :caregiver).order(:name),
       seniors: User.where(role: :senior).order(:name)
     }
   end
-  
+
   helper_method :current_user, :dev_users_by_role
 end

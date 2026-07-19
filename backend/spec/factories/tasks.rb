@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :task do
     association :senior, factory: :user, role: :senior
     association :created_by, factory: :user, role: :caregiver
-    
+
     title { "Doctor Appointment" }
     description { "Annual checkup with Dr. Smith" }
     task_type { :appointment }

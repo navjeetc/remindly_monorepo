@@ -6,9 +6,9 @@ class ContactMailer < ApplicationMailer
     @email = email
     @description = description
     @submitted_at = Time.current
-    
+
     admin_email = Rails.application.credentials.admin_email || ENV.fetch("ADMIN_EMAIL", "admin@remindly.app")
-    
+
     mail(
       to: admin_email,
       subject: "New Contact Form Submission from #{name}",

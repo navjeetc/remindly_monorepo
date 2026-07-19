@@ -1,8 +1,8 @@
 namespace :audit do
   # Helper method to resolve recipient email from various sources
   def self.resolve_audit_recipient_email(provided_email = nil)
-    provided_email.presence || 
-      ENV['AUDIT_REPORT_EMAIL'] || 
+    provided_email.presence ||
+      ENV["AUDIT_REPORT_EMAIL"] ||
       Rails.application.credentials.audit_report_email ||
       Rails.application.credentials.admin_email
   end
@@ -19,7 +19,7 @@ namespace :audit do
     date = Date.yesterday
 
     event_count = Ahoy::Event
-      .where(name: ["Login Success", "Login Failed", "Logout"])
+      .where(name: [ "Login Success", "Login Failed", "Logout" ])
       .where(time: date.beginning_of_day..date.end_of_day)
       .count
 
@@ -44,7 +44,7 @@ namespace :audit do
   end
 
   desc "Send audit report for a specific date (usage: rake audit:report_for_date[2025-01-15,email@example.com])"
-  task :report_for_date, [:date, :email] => :environment do |t, args|
+  task :report_for_date, [ :date, :email ] => :environment do |t, args|
     date = Date.parse(args[:date])
     recipient_email = self.resolve_audit_recipient_email(args[:email])
 
@@ -74,7 +74,7 @@ namespace :audit do
     date = Date.yesterday
     events = Ahoy::Event
       .includes(:user, :visit)
-      .where(name: ["Login Success", "Login Failed", "Logout"])
+      .where(name: [ "Login Success", "Login Failed", "Logout" ])
       .where(time: date.beginning_of_day..date.end_of_day)
       .order(time: :desc)
 
@@ -97,7 +97,7 @@ namespace :audit do
       events.limit(10).each do |event|
         puts "  #{event.time.strftime('%I:%M %p')} | #{event.user&.email || 'Unknown'} | #{event.name}"
       end
-      puts "\n  ... and #{[events.count - 10, 0].max} more events" if events.count > 10
+      puts "\n  ... and #{[ events.count - 10, 0 ].max} more events" if events.count > 10
     else
       puts "\n  No events recorded for this date"
     end

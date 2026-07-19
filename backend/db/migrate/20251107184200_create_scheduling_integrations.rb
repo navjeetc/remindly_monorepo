@@ -19,7 +19,7 @@ class CreateSchedulingIntegrations < ActiveRecord::Migration[8.0]
 
     add_index :scheduling_integrations, :provider
     add_index :scheduling_integrations, :status
-    add_index :scheduling_integrations, [:user_id, :provider]
-    add_index :scheduling_integrations, [:senior_id, :provider]
+    add_index :scheduling_integrations, [ :user_id, :provider ]
+    add_index :scheduling_integrations, [ :senior_id, :provider ]
   end
 end

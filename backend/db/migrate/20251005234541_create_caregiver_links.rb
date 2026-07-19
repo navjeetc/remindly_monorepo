@@ -7,6 +7,6 @@ class CreateCaregiverLinks < ActiveRecord::Migration[8.0]
     end
     add_foreign_key :caregiver_links, :users, column: :senior_id
     add_foreign_key :caregiver_links, :users, column: :caregiver_id
-    add_index :caregiver_links, [:senior_id, :caregiver_id], unique: true
+    add_index :caregiver_links, [ :senior_id, :caregiver_id ], unique: true
   end
 end

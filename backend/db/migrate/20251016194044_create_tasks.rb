@@ -21,7 +21,7 @@ class CreateTasks < ActiveRecord::Migration[8.0]
     add_index :tasks, :task_type
     add_index :tasks, :status
     add_index :tasks, :scheduled_at
-    add_index :tasks, [:senior_id, :scheduled_at]
-    add_index :tasks, [:assigned_to_id, :status]
+    add_index :tasks, [ :senior_id, :scheduled_at ]
+    add_index :tasks, [ :assigned_to_id, :status ]
   end
 end

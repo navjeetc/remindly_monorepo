@@ -1,9 +1,9 @@
 class SchedulingIntegrationsController < WebController
   before_action :authenticate!
-  before_action :set_senior, only: [:index, :new, :create]
-  before_action :authorize_senior_access!, only: [:index, :new, :create]
-  before_action :set_integration, only: [:show, :edit, :update, :destroy, :sync]
-  layout 'dashboard'
+  before_action :set_senior, only: [ :index, :new, :create ]
+  before_action :authorize_senior_access!, only: [ :index, :new, :create ]
+  before_action :set_integration, only: [ :show, :edit, :update, :destroy, :sync ]
+  layout "dashboard"
 
   # GET /dashboard/senior/:senior_id/scheduling_integrations
   def index
@@ -24,7 +24,7 @@ class SchedulingIntegrationsController < WebController
 
     # Verify credentials before saving
     if verify_and_save
-      redirect_to senior_scheduling_integrations_path(@senior), 
+      redirect_to senior_scheduling_integrations_path(@senior),
                   notice: "Integration connected successfully!"
     else
       render :new, status: :unprocessable_entity
@@ -43,7 +43,7 @@ class SchedulingIntegrationsController < WebController
   # PATCH /dashboard/scheduling_integrations/:id
   def update
     if @integration.update(integration_params)
-      redirect_to scheduling_integration_path(@integration), 
+      redirect_to scheduling_integration_path(@integration),
                   notice: "Integration updated successfully"
     else
       render :edit, status: :unprocessable_entity
@@ -53,7 +53,7 @@ class SchedulingIntegrationsController < WebController
   # DELETE /dashboard/scheduling_integrations/:id
   def destroy
     @integration.destroy
-    redirect_to senior_scheduling_integrations_path(@integration.senior), 
+    redirect_to senior_scheduling_integrations_path(@integration.senior),
                 notice: "Integration disconnected"
   end
 
@@ -66,7 +66,7 @@ class SchedulingIntegrationsController < WebController
       message = "Synced #{results[:created]} new and #{results[:updated]} updated appointments"
       redirect_to scheduling_integration_path(@integration), notice: message
     else
-      redirect_to scheduling_integration_path(@integration), 
+      redirect_to scheduling_integration_path(@integration),
                   alert: "Sync failed: #{results[:error]}"
     end
   end
@@ -99,7 +99,7 @@ class SchedulingIntegrationsController < WebController
 
   def authorize_senior_access!
     return if @senior.nil?
-    
+
     unless current_user == @senior || current_user.caregivers.include?(@senior) || @senior.caregivers.include?(current_user)
       redirect_to dashboard_path, alert: "Access denied"
     end

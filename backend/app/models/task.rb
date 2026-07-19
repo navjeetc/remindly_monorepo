@@ -37,7 +37,7 @@ class Task < ApplicationRecord
   validates :priority, presence: true
   validates :duration_minutes, numericality: { greater_than: 0, allow_nil: true }
   validate :not_during_blocked_time, if: :scheduled_at?
-  
+
   # Recurring task validations
   validates :tz, presence: true, if: :rrule?
   validates :start_time, presence: true, if: :rrule?
@@ -53,17 +53,17 @@ class Task < ApplicationRecord
   scope :by_type, ->(task_type) { where(task_type: task_type) }
   scope :by_priority, ->(priority) { where(priority: priority) }
   scope :in_date_range, ->(start_date, end_date) { where(scheduled_at: start_date..end_date) }
-  
+
   # Scopes for open-ended tasks
   scope :open_ended, -> { where(scheduled_at: nil) }
   scope :scheduled, -> { where.not(scheduled_at: nil) }
-  
+
   # Scopes for external scheduling integrations
   scope :synced_from_external, -> { where.not(external_source: nil) }
   scope :manually_created, -> { where(external_source: nil) }
-  scope :from_acuity, -> { where(external_source: 'acuity') }
-  scope :from_calendly, -> { where(external_source: 'calendly') }
-  
+  scope :from_acuity, -> { where(external_source: "acuity") }
+  scope :from_calendly, -> { where(external_source: "calendly") }
+
   # Scopes for recurring tasks
   scope :recurring_templates, -> { where.not(rrule: nil) }
   scope :one_time_or_instances, -> { where(rrule: nil) }
@@ -81,11 +81,11 @@ class Task < ApplicationRecord
   # Get link to view appointment in external system
   def external_link
     return nil unless external_appointment?
-    
+
     case external_source
-    when 'acuity'
+    when "acuity"
       "https://secure.acuityscheduling.com/appointments/#{external_id}"
-    when 'calendly'
+    when "calendly"
       external_url
     else
       external_url
@@ -141,19 +141,19 @@ class Task < ApplicationRecord
 
   def not_during_blocked_time
     return unless scheduled_at.present? && senior_id.present?
-    
+
     # Calculate task end time if duration is specified
     task_end = if duration_minutes.present?
       scheduled_at + duration_minutes.minutes
     else
       scheduled_at + 1.hour # Default 1 hour if no duration
     end
-    
+
     # Check for overlapping time blocks
     blocked = TimeBlock.active
       .for_user(senior_id)
       .overlapping(scheduled_at, task_end)
-    
+
     if blocked.exists?
       block = blocked.first
       errors.add(:scheduled_at, "conflicts with blocked time: #{block.reason || 'Unavailable'} (#{block.start_time.strftime('%I:%M %p')} - #{block.end_time.strftime('%I:%M %p')})")
@@ -162,7 +162,7 @@ class Task < ApplicationRecord
 
   def valid_timezone
     return if tz.blank?
-    
+
     unless ActiveSupport::TimeZone[tz]
       errors.add(:tz, "is not a valid timezone")
     end

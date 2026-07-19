@@ -10,7 +10,7 @@ class CreateCaregiverAvailabilities < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :caregiver_availabilities, [:caregiver_id, :date]
+    add_index :caregiver_availabilities, [ :caregiver_id, :date ]
     add_index :caregiver_availabilities, :date
   end
 end

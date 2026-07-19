@@ -24,7 +24,7 @@ RSpec.describe TaskComment, type: :model do
     it 'returns comments for a specific task' do
       other_task = create(:task)
       other_comment = create(:task_comment, task: other_task)
-      
+
       expect(TaskComment.for_task(task.id)).to include(old_comment, new_comment)
       expect(TaskComment.for_task(task.id)).not_to include(other_comment)
     end

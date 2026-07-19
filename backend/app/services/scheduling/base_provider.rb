@@ -83,13 +83,13 @@ module Scheduling
     # @return [Symbol] Internal task status
     def map_status(external_status)
       case external_status&.downcase
-      when 'scheduled', 'confirmed', 'booked'
+      when "scheduled", "confirmed", "booked"
         :assigned
-      when 'completed', 'done'
+      when "completed", "done"
         :completed
-      when 'canceled', 'cancelled'
+      when "canceled", "cancelled"
         :cancelled
-      when 'no-show', 'missed'
+      when "no-show", "missed"
         :cancelled
       else
         :pending

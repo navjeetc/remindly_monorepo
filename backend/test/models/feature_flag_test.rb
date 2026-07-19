@@ -60,6 +60,6 @@ class FeatureFlagTest < ActiveSupport::TestCase
   private
 
   def assert_boolean(value)
-    assert [true, false].include?(value), "Expected boolean, got #{value.class}"
+    assert [ true, false ].include?(value), "Expected boolean, got #{value.class}"
   end
 end
