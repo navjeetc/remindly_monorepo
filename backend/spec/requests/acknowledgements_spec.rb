@@ -46,13 +46,41 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    # Skipping CSRF for *any* Authorization header would also disable it for a
-    # Basic credential injected by a reverse proxy, which is not this client.
-    it "does not skip CSRF protection for a non-Bearer Authorization scheme" do
-      post "/acknowledgements",
-        params: { occurrence_id: occurrence.id, kind: "taken" },
-        headers: { "Authorization" => "Basic #{Base64.strict_encode64('user:pass')}" }
-      expect(response).not_to have_http_status(:created)
+    # Forgery protection is off in the test environment, so these examples turn it
+    # on deliberately. Without that they pass for the wrong reason — the request
+    # fails on authentication before CSRF is ever consulted, which proves nothing
+    # about whether the skip condition is correct.
+    describe "CSRF skip condition" do
+      around do |example|
+        original = ActionController::Base.allow_forgery_protection
+        ActionController::Base.allow_forgery_protection = true
+        example.run
+        ActionController::Base.allow_forgery_protection = original
+      end
+
+      it "skips CSRF for a Bearer request, which carries no CSRF token" do
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: auth_headers
+        expect(response).to have_http_status(:created)
+      end
+
+      # A Basic credential injected by a reverse proxy is not this client, and
+      # must not disable forgery protection for it.
+      it "enforces CSRF for a non-Bearer Authorization scheme" do
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: { "Authorization" => "Basic #{Base64.strict_encode64('user:pass')}" }
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      # RFC 7235 scheme names are case-insensitive.
+      it "treats a lowercase bearer scheme as Bearer" do
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: { "Authorization" => "bearer #{jwt}" }
+        expect(response).to have_http_status(:created)
+      end
     end
 
     it "does not let one user acknowledge another user's occurrence" do

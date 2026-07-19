@@ -69,8 +69,16 @@ class AcknowledgementsController < WebController
     @current_user = bearer_scheme? ? bearer_user : super
   end
 
+  # RFC 7235 makes auth scheme names case-insensitive, so "bearer <token>" is as
+  # valid as "Bearer <token>". A case-sensitive check would treat the lowercase
+  # form as a session request: CSRF would apply and it would fail with 422
+  # instead of the intended 401.
   def bearer_scheme?
-    request.authorization.to_s.start_with?("Bearer ")
+    bearer_parts.first&.casecmp?("Bearer") || false
+  end
+
+  def bearer_parts
+    @bearer_parts ||= request.authorization.to_s.split(/\s+/, 2)
   end
 
   def bearer_user
@@ -78,7 +86,7 @@ class AcknowledgementsController < WebController
     return @bearer_user = nil unless bearer_scheme?
 
     @bearer_user = begin
-      token = request.authorization&.split(" ")&.last
+      token = bearer_parts.last
       payload = token && JWT.decode(token, hmac_secret, true, { algorithm: "HS256" }).first
       User.find_by(id: payload&.fetch("uid", nil))
     rescue JWT::DecodeError
