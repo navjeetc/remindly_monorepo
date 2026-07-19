@@ -143,6 +143,47 @@ RSpec.describe "Acknowledgements", type: :request do
     end
   end
 
+  # The senior UI shows Snooze before the scheduled time, so this is reachable by
+  # tapping the button early — not an edge case.
+  describe "snoozing never moves a reminder earlier" do
+    def snooze!(occ, minutes: nil)
+      params = { occurrence_id: occ.id }
+      params[:minutes] = minutes unless minutes.nil?
+      post "/acknowledgements/snooze", params: params, headers: auth_headers
+      Occurrence.find(JSON.parse(response.body)["snoozed_occurrence_id"])
+    end
+
+    it "delays from the scheduled time when snoozed before it is due" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      new_occ = snooze!(future, minutes: 10)
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
+      expect(new_occ.scheduled_at).to be > future.scheduled_at
+    end
+
+    it "delays from now when snoozed after it is due" do
+      past = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 20.minutes.ago, status: :pending)
+
+      new_occ = snooze!(past, minutes: 10)
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(10.minutes.from_now)
+    end
+
+    it "does not accept a negative delay" do
+      new_occ = snooze!(occurrence, minutes: -30)
+      expect(new_occ.scheduled_at).to be > occurrence.scheduled_at
+    end
+
+    it "falls back to the default when minutes is missing or unparseable" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      new_occ = snooze!(future, minutes: "not-a-number")
+
+      expect(new_occ.scheduled_at).to be > future.scheduled_at
+    end
+  end
+
   describe "POST /acknowledgements/snooze" do
     it "accepts a Bearer-authenticated snooze and schedules a new occurrence" do
       expect {

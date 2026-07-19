@@ -28,20 +28,31 @@ class AcknowledgementsController < WebController
     head :created
   end
 
+  # Snoozing must never move a reminder earlier. The senior UI shows Snooze before
+  # the scheduled time, so "10 minutes from now" would reschedule a 10:25 reminder
+  # tapped at 10:00 to 10:10 — 15 minutes *earlier* than it was already going to
+  # arrive, which is the opposite of what the word means.
+  SNOOZE_DEFAULT_MINUTES = 10
+  SNOOZE_MIN_MINUTES = 1
+
   def snooze
     occ = Occurrence.joins(:reminder).where(reminders: { user_id: current_user.id }).find(params.require(:occurrence_id))
-    minutes = params.fetch(:minutes, 10).to_i # Default 10 minutes
-    
+    minutes = snooze_minutes
+
     # Create acknowledgement for snooze tracking
     Acknowledgement.create!(occurrence: occ, kind: 'snooze', at: Time.current)
-    
-    # Create new occurrence for snoozed time
+
+    # Measure from whichever is later: the time it was due, or now. Before the due
+    # time that delays the original; after it, it delays from the moment the
+    # senior asked.
+    base = [ occ.scheduled_at, Time.current ].max
+
     new_occ = Occurrence.create!(
       reminder: occ.reminder,
-      scheduled_at: minutes.minutes.from_now,
+      scheduled_at: base + minutes.minutes,
       status: :pending
     )
-    
+
     # Mark original as acknowledged
     occ.update!(status: :acknowledged)
     
@@ -53,6 +64,14 @@ class AcknowledgementsController < WebController
   end
 
   private
+
+  # A non-numeric or negative value would otherwise become 0 or a negative offset
+  # via to_i, which is the same "reminder moves earlier" failure by another route.
+  def snooze_minutes
+    raw = params[:minutes]
+    minutes = raw.presence ? raw.to_i : SNOOZE_DEFAULT_MINUTES
+    [ minutes, SNOOZE_MIN_MINUTES ].max
+  end
 
   # A Bearer header is a claim about who is acting, so it decides the outcome on
   # its own: if it is present but invalid, the request is unauthenticated, not
