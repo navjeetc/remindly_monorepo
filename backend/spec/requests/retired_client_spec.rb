@@ -22,10 +22,17 @@ RSpec.describe "retired standalone client", type: :request do
       let(:user) { User.create!(email: "legacy@example.com", tz: "America/New_York", name: "Legacy") }
       let(:token) { user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
 
+      # Compare the path and parameters rather than the whole URL: query ordering
+      # carries no meaning and varies with how the URL is built.
       it "carries the token through to the session login" do
         get "/client/", params: { token: token }
 
-        expect(response).to redirect_to("/login/verify?next=voice_reminders&token=#{CGI.escape(token)}")
+        redirect = URI.parse(response.headers["Location"])
+        expect(redirect.path).to eq("/login/verify")
+        expect(Rack::Utils.parse_query(redirect.query)).to eq(
+          "token" => token,
+          "next" => "voice_reminders"
+        )
       end
 
       it "still signs the user in when followed" do
@@ -47,7 +54,13 @@ RSpec.describe "retired standalone client", type: :request do
     def link_for(web:)
       mail = MagicMailer.magic_link_email(user, token, web: web, origin: "https://remindly.care")
       body = (mail.html_part || mail.text_part || mail.body).decoded
-      body[%r{https://remindly\.care[^"\s<]*}]
+      link = body[%r{https://remindly\.care[^"\s<]*}]
+
+      # Fail here rather than letting nil reach the caller, where it surfaces as
+      # NoMethodError on include and says nothing about what went wrong.
+      raise "no magic link found in email body:\n#{body}" if link.nil?
+
+      link
     end
 
     # /magic/verify returns a JWT, which a browser cannot use on its own. The

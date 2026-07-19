@@ -136,8 +136,11 @@ class SessionsController < ActionController::Base
   # already signed in and trusting the page.
   POST_LOGIN_DESTINATIONS = { "voice_reminders" => :voice_reminders_path }.freeze
 
+  # public_send, not send: the allowlist is the only thing standing between a URL
+  # parameter and a method call here, so it should not be able to reach a private
+  # method if someone adds an entry carelessly later.
   def post_login_path
     helper = POST_LOGIN_DESTINATIONS[params[:next].to_s]
-    helper ? send(helper) : dashboard_path
+    helper ? public_send(helper) : dashboard_path
   end
 end
