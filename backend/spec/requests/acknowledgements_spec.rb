@@ -37,6 +37,58 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # An expired token should log the user out, not produce a forgery error. This
+    # returned 422 when CSRF was skipped only for tokens that resolved to a user.
+    it "returns 401, not 422, for an invalid Bearer token" do
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: { "Authorization" => "Bearer not-a-real-jwt" }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    # Forgery protection is off in the test environment, so these examples turn it
+    # on deliberately. Without that they pass for the wrong reason — the request
+    # fails on authentication before CSRF is ever consulted, which proves nothing
+    # about whether the skip condition is correct.
+    describe "CSRF skip condition" do
+      around do |example|
+        original = ActionController::Base.allow_forgery_protection
+        ActionController::Base.allow_forgery_protection = true
+        begin
+          example.run
+        ensure
+          # Without ensure, anything raising out of the example leaves forgery
+          # protection globally enabled and every later spec fails somewhere
+          # unrelated to the actual cause.
+          ActionController::Base.allow_forgery_protection = original
+        end
+      end
+
+      it "skips CSRF for a Bearer request, which carries no CSRF token" do
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: auth_headers
+        expect(response).to have_http_status(:created)
+      end
+
+      # A Basic credential injected by a reverse proxy is not this client, and
+      # must not disable forgery protection for it.
+      it "enforces CSRF for a non-Bearer Authorization scheme" do
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: { "Authorization" => "Basic #{Base64.strict_encode64('user:pass')}" }
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      # RFC 7235 scheme names are case-insensitive.
+      it "treats a lowercase bearer scheme as Bearer" do
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: { "Authorization" => "bearer #{jwt}" }
+        expect(response).to have_http_status(:created)
+      end
+    end
+
     it "does not let one user acknowledge another user's occurrence" do
       other = User.create!(email: "intruder@example.com", tz: "America/New_York")
       other_jwt = JWT.encode({ uid: other.id, exp: 1.hour.from_now.to_i }, ENV.fetch("JWT_SECRET", "dev_secret_change_me"), "HS256")
@@ -76,6 +128,18 @@ RSpec.describe "Acknowledgements", type: :request do
       post "/acknowledgements/snooze", params: { occurrence_id: occurrence.id, minutes: 15 }
 
       expect(response).to have_http_status(:created)
+    end
+
+    # A same-origin fetch sends the session cookie alongside the Bearer header, so
+    # an expired token must not quietly succeed as whoever owns the session.
+    it "rejects an invalid Bearer token even when a valid session exists" do
+      sign_in(user)
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: { "Authorization" => "Bearer expired-or-invalid" }
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(occurrence.reload.status).to eq("pending")
     end
   end
 
