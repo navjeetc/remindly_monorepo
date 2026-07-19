@@ -2,10 +2,6 @@ Rails.application.routes.draw do
   # Root - redirect to dashboard
   root "dashboard#index"
   
-  # Web Client (Voice Announcements)
-  # Note: Access at /client/ (with trailing slash) for proper CSS loading
-  # Rails serves static files from public/client/ automatically
-  
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
   post "login/magic",        to: "sessions#request_magic_link", as: :request_magic_link
@@ -61,6 +57,28 @@ Rails.application.routes.draw do
     end
   end
   
+  # The standalone voice client at /client/ was retired — /voice_reminders
+  # superseded it and it served no traffic. Kept as a redirect rather than a 404
+  # so any bookmark or old magic link still lands somewhere useful.
+  #
+  # Magic links in already-sent emails look like /client/?token=... and stay valid
+  # for 30 minutes. A plain redirect would drop the token, land the user
+  # unauthenticated on /voice_reminders and bounce them to the login page — the
+  # link would appear broken. Token-bearing requests go through /login/verify
+  # instead, which is where those links point from now on anyway.
+  retired_client = lambda do |_params, request|
+    token = request.params[:token]
+
+    if token.present?
+      "/login/verify?#{{ token: token, next: 'voice_reminders' }.to_query}"
+    else
+      "/voice_reminders"
+    end
+  end
+
+  get "client", to: redirect(&retired_client)
+  get "client/*rest", to: redirect(&retired_client)
+
   resources :acknowledgements, only: [:create] do
     collection do
       post :snooze

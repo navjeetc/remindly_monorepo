@@ -16,12 +16,15 @@ class MagicMailer < ApplicationMailer
   private
 
   def generate_magic_link(token, web: false, origin: nil)
-    # For web client (voice announcements), use /client/ path
-    # For API/macOS app, use /magic/verify or custom URL scheme
+    # Voice clients go through the session login and land on /voice_reminders.
+    # This used to point at /client/, the standalone JS client, which has been
+    # retired — it was superseded by /voice_reminders and received no traffic.
+    # /login/verify establishes the session that page needs; /magic/verify only
+    # returns a JWT, which a browser cannot use on its own.
     app_url = origin_app_url(origin) || configured_app_url
 
     base_url = if web
-      "#{app_url}/client/"
+      "#{app_url}/login/verify"
     elsif ENV["MAGIC_LINK_SCHEME"] == "remindly"
       "remindly://magic/verify"
     else
@@ -30,7 +33,12 @@ class MagicMailer < ApplicationMailer
 
     # Use URI to properly encode the token parameter
     uri = URI.parse(base_url)
-    uri.query = URI.encode_www_form(token: token)
+    params = { token: token }
+    # Send voice-client logins straight to the reminders page rather than the
+    # caregiver dashboard. A senior following this link wants their reminders,
+    # not a navigation step.
+    params[:next] = "voice_reminders" if web
+    uri.query = URI.encode_www_form(params)
     uri.to_s
   end
 

@@ -2,7 +2,7 @@ require "rails_helper"
 
 # Everything under public/ is served to anyone who asks, with no auth and no
 # robots.txt enforcement. Docs and manifests landed there once by being copied
-# wholesale from clients/web — this keeps them from coming back.
+# wholesale from a client directory — this keeps them from coming back.
 RSpec.describe "public/ directory hygiene" do
   PUBLIC_ROOT = Rails.root.join("public")
 
@@ -19,7 +19,7 @@ RSpec.describe "public/ directory hygiene" do
 
     expect(markdown).to be_empty,
       "Markdown under public/ is world-readable. Move it to the source directory " \
-      "(clients/web/ or docs/) instead:\n  #{markdown.join("\n  ")}"
+      "(docs/ instead):\n  #{markdown.join("\n  ")}"
   end
 
   it "serves no package manifests or lockfiles" do
@@ -30,10 +30,11 @@ RSpec.describe "public/ directory hygiene" do
       "Dependency manifests under public/ disclose the stack and versions:\n  #{manifests.join("\n  ")}"
   end
 
-  it "keeps the web client to its runtime files" do
-    client_files = Dir.glob(PUBLIC_ROOT.join("client", "*")).map { |p| File.basename(p) }.sort
-
-    expect(client_files).to eq(%w[app.js index.html styles.css])
+  # The standalone client that lived here was retired in favour of
+  # /voice_reminders. Nothing should reintroduce a directory under public/ that
+  # ships a second copy of the voice logic.
+  it "no longer serves the retired standalone client" do
+    expect(PUBLIC_ROOT.join("client")).not_to exist
   end
 
   def self.relative(path) = Pathname(path).relative_path_from(Rails.root).to_s

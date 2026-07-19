@@ -2,11 +2,6 @@ SHELL := /bin/bash
 
 # ---- Variables ----
 BACKEND_DIR := backend
-WEB_CLIENT_SRC := clients/web
-WEB_CLIENT_DEST := $(BACKEND_DIR)/public/client
-# Only these are served; docs and manifests stay out of public/ (see
-# backend/spec/public_assets_spec.rb).
-WEB_CLIENT_FILES := app.js index.html styles.css
 JWT_SECRET ?= please_change_me
 RAILS_ENV ?= development
 # Rails binds to localhost by default, so a phone on the LAN cannot reach the dev
@@ -15,7 +10,7 @@ BIND ?= 127.0.0.1
 PORT ?= 5000
 
 # ---- Phonies ----
-.PHONY: setup backend-setup backend-db backend-up backend-up-lan frontend-up dev rspec lint ci macos-build tauri-build clean sync-web-client
+.PHONY: setup backend-setup backend-db backend-up backend-up-lan dev rspec lint ci macos-build tauri-build clean
 
 setup: backend-setup ## Install backend deps
 	@echo 'Done.'
@@ -32,31 +27,16 @@ backend-up: ## Run Rails API server
 
 backend-up-lan: ## Run Rails API server reachable from phones/tablets on the LAN
 	@ip=$$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $$1}'); \
-	echo "Voice client: http://$$ip:$(PORT)/client/"; \
+	echo "Voice reminders: http://$$ip:$(PORT)/voice_reminders"; \
 	echo "Rails allows any IP Host in development; *.local is allowed in development.rb."
 	$(MAKE) backend-up BIND=0.0.0.0
 
-frontend-up: ## Run web client
-	cd clients/web && npm run dev
-
-dev: ## Run both backend and frontend (requires tmux or run in separate terminals)
-	@echo "Starting backend and frontend..."
-	@echo "Backend will run on http://localhost:5000"
-	@echo "Frontend will run on http://localhost:8080"
-	@if command -v tmux >/dev/null 2>&1; then \
-		tmux new-session -d -s remindly 'cd $(BACKEND_DIR) && JWT_SECRET=$(JWT_SECRET) bin/rails s -p $(PORT)' \; \
-		split-window -h 'cd clients/web && npm run dev' \; \
-		attach-session -t remindly; \
-	else \
-		echo "tmux not found. Please run 'make backend-up' and 'make frontend-up' in separate terminals."; \
-	fi
-
-sync-web-client: ## Copy the voice web client into backend/public/client (clients/web is authoritative)
-	@mkdir -p "$(WEB_CLIENT_DEST)"
-	@set -e; for f in $(WEB_CLIENT_FILES); do \
-		cp "$(WEB_CLIENT_SRC)/$$f" "$(WEB_CLIENT_DEST)/$$f"; \
-		echo "synced $$f"; \
-	done
+# There is no separate frontend process any more: Rails serves the voice client
+# at /voice_reminders. `make dev` is kept as an alias for the backend.
+dev: ## Run the app (Rails serves the dashboard and the voice client)
+	@echo "Dashboard:       http://localhost:$(PORT)/dashboard"
+	@echo "Voice reminders: http://localhost:$(PORT)/voice_reminders"
+	$(MAKE) backend-up
 
 rspec: ## Run Rails specs
 	cd $(BACKEND_DIR) && bundle exec rspec

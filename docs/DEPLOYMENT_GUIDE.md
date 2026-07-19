@@ -1,202 +1,108 @@
-# Deployment Guide - Web Client Integration
+# Deployment Guide
 
-## Summary
+Remindly deploys as a single Rails application: one container, one host. Rails
+serves the caregiver dashboard, the voice client at `/voice_reminders`, and the
+API. There is no separate frontend to build or deploy.
 
-The web client has been integrated into the Rails application and is ready for production deployment.
-
-## What Was Integrated
-
-- **Web Client** with voice announcements
-- Accessible at `/client` URL
-- Served from `backend/public/client/`
-- No separate deployment needed
-
-## Production URLs
-
-After deployment, the web client will be available at:
-
-```
-http://remindly.anakahsoft.com/client
-```
-
-Other URLs remain unchanged:
-- **Caregiver Dashboard**: `http://remindly.anakahsoft.com/dashboard`
-- **API**: `http://remindly.anakahsoft.com/reminders/today`
-- **Login**: `http://remindly.anakahsoft.com/login`
-
-## Deployment Steps
-
-### 1. Push to GitHub (if not done)
+## Deploying
 
 ```bash
-git push origin feature/integrate-web-client-into-rails
+./deploy.sh
 ```
 
-### 2. Merge to Main
+That runs `kamal deploy` from `backend/`, which builds an image from the current
+**committed** state (Kamal clones the repo — uncommitted work is not included),
+pushes it to the registry, boots a new container, health-checks it, and switches
+traffic over. Migrations run automatically from the Docker entrypoint.
 
-Create PR and merge, or merge locally:
+Deploy from `main` unless you intend otherwise, and check that `git status` is
+clean first — a dirty tree is a sign that what you tested is not what ships.
+
+## Verifying a deploy
 
 ```bash
-git checkout main
-git merge feature/integrate-web-client-into-rails
-git push origin main
+curl -s https://remindly.anakhsoft.com/version          # expect the new version
+curl -s -o /dev/null -w '%{http_code}\n' \
+  https://remindly.anakhsoft.com/voice_reminders        # 302 -> login when logged out
 ```
 
-### 3. Deploy to Production
+`GET /version` is the quickest confirmation that the new image is live. If it
+reports the old version, the deploy did not take effect — see below.
 
-Use your existing deployment process. For example:
+For a client-side change, confirm the served asset actually contains it rather
+than trusting the version string:
 
 ```bash
-# If using Heroku
-git push heroku main
-
-# If using Kamal or other deployment tool
-# Use your standard deployment command
+curl -s https://remindly.anakhsoft.com/voice_reminders.js | grep -c 'someNewFunction'
 ```
 
-### 4. Verify Deployment
-
-After deployment, test:
-
-1. **Visit**: `http://remindly.anakahsoft.com/client`
-2. **Check**: Page loads with styling
-3. **Login**: Click "Quick Dev Login"
-4. **Test**: Create reminders and test voice announcements
-
-## Files Deployed
-
-The following files are included in the deployment:
-
-```
-backend/
-├── public/
-│   └── client/              # Web client (automatically deployed)
-│       ├── index.html
-│       ├── app.js
-│       ├── styles.css
-│       └── *.md (docs)
-├── config/
-│   └── routes.rb            # Route: /client -> /client/index.html
-└── lib/
-    └── tasks/
-        └── client.rake      # Rake task for syncing
-```
-
-## Testing in Production
-
-### Quick Test
-
-```bash
-# 1. Check if web client is accessible
-curl -I http://remindly.anakahsoft.com/client
-
-# Should return: HTTP/1.1 302 Found (redirect)
-
-# 2. Check if index.html loads
-curl -I http://remindly.anakahsoft.com/client/index.html
-
-# Should return: HTTP/1.1 200 OK
-```
-
-### Full Test
-
-1. Open your web browser
-2. Go to: `http://remindly.anakahsoft.com/client`
-3. Click "Quick Dev Login"
-4. Create test reminders using Rails console:
-   ```bash
-   rails runner create_test_reminders.rb
-   ```
-5. Wait for voice announcements
-
-## Browser Compatibility
-
-Voice announcements work across all modern browsers:
-- ✅ **Safari** - Excellent voice quality
-- ✅ **Chrome** - Fully supported
-- ✅ **Firefox** - Fully supported
-
-## Troubleshooting
-
-### CSS Not Loading
-
-If styling doesn't load:
-1. Check that files exist in `public/client/`
-2. Hard refresh browser (Cmd+Shift+R)
-3. Check browser console for 404 errors
-
-### Voice Not Working
-
-1. Check browser supports Web Speech API
-2. Check macOS System Settings → Accessibility → Spoken Content
-3. Enable "Speak selection"
-4. Test voice in Settings panel
-
-### 404 on /client
-
-1. Verify route exists in `config/routes.rb`
-2. Check that `public/client/index.html` exists
-3. Restart Rails server
-
-## Updating the Web Client
-
-If you make changes to the standalone web client (`clients/web/`):
-
-```bash
-# Sync changes to Rails public directory
-cd backend
-rails client:sync
-
-# Commit and deploy
-git add public/client/
-git commit -m "Update web client"
-git push origin main
-# Deploy to production
-```
+Anything user-facing on the senior path is worth exercising in a browser as well:
+sign in, let a reminder come due, confirm it announces, and confirm **Done**
+clears the card. Server-side checks cannot tell you whether a session-
+authenticated action works — only a real session can.
 
 ## Rollback
 
-If you need to rollback:
+Kamal keeps the previous container:
 
 ```bash
-# Remove the web client
-git revert <commit-hash>
-git push origin main
-# Deploy
+cd backend
+bundle exec kamal rollback
 ```
 
-Or manually:
+To undo a specific change instead, revert the commit and deploy again.
+
+Do **not** remove the `/client/*` redirect as part of a rollback. It is
+deliberate: it carries legacy magic-link tokens through to `/login/verify` and
+sends old bookmarks to `/voice_reminders`. Removing it would 404 links that are
+still valid.
+
+## Troubleshooting
+
+### The deploy seemed to work but nothing changed
+
+Check `GET /version` first. If it is stale, the container did not switch —
+re-run the deploy and watch for "First web container is healthy".
+
+If the version is right but a client change is missing, it is a cached asset.
+`voice_reminders.js` is requested with a cache-busting timestamp, so a hard
+refresh (Cmd+Shift+R) should be enough.
+
+### Voice announcements are silent
+
+Usually not a deployment problem. Browsers refuse `speechSynthesis` until the
+user has interacted with the page, and **on iOS that means one tap after every
+page load**. See "Voice Announcements" in the root `README.md` for the full
+behaviour and its limits.
+
+Otherwise check the device is not muted or on silent, and look for a
+`SpeechSynthesisErrorEvent` in the browser console.
+
+### 404 or an unexpected redirect
+
+`/voice_reminders` is a Rails view behind the session login, not a static file —
+a logged-out request correctly returns 302 to `/login`. `/client/*` redirects by
+design.
+
+## Testing on a real device
+
+The iOS voice path cannot be verified on desktop: a user-agent override
+exercises the branch but not WebKit's actual gesture requirement. The dev server
+binds to localhost by default, so to reach it from a phone:
+
 ```bash
-# Remove files
-rm -rf backend/public/client/
-
-# Remove route from config/routes.rb
-# Line: get "client", to: redirect("/client/index.html", status: 302)
-
-# Commit and deploy
+make backend-up-lan     # binds 0.0.0.0 and prints the LAN URL
 ```
 
-## Support
+The dev-login button is hidden on non-localhost hosts, so sign in with a
+magic-link URL rather than the button.
 
-- **Documentation**: `backend/public/client/README.md`
-- **Integration Guide**: `backend/public/client/INTEGRATION.md`
-- **Quick Start**: `backend/public/client/QUICKSTART.md`
+## Environment
 
-## Success Criteria
+Secrets live in `backend/.kamal/secrets` (`KAMAL_REGISTRY_PASSWORD`,
+`RAILS_MASTER_KEY`). `JWT_SECRET` is required at runtime. SQLite persists on a
+Docker volume at `/rails/storage/production.sqlite3`, so it survives deploys —
+and is not backed up by the deploy process.
 
-✅ Web client accessible at `/client`
-✅ Styling loads correctly
-✅ Authentication works
-✅ Voice announcements work
-✅ Browser notifications appear
-✅ All actions work (Taken, Snooze, Skip)
-✅ No CORS errors
-✅ Caregiver dashboard still works at `/dashboard`
-
----
-
-**Ready for Production Deployment!** 🚀
-
-Branch: `feature/integrate-web-client-into-rails`
-Commit: `602a8bc`
-Date: October 21, 2025
+The app is served on three hosts: `remindly.anakhsoft.com`, `remindly.care`, and
+`www.remindly.care`. Canonical URLs point at `www.remindly.care`.

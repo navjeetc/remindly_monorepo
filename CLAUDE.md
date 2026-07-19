@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Remindly is a desktop-first, caregiver-aware reminder system for seniors. The monorepo contains:
 - **`backend/`** — Rails 8 API (Ruby 3.3.5, SQLite3, JWT magic-link auth, IceCube recurrence)
-- **`clients/web/`** — Vanilla JS/HTML voice reminder interface for seniors (no framework)
 - **`clients/macos-swiftui/`** — SwiftUI macOS app (Xcode project)
 - **`shared/locales/`** — i18n translation files
 
@@ -15,14 +14,12 @@ Remindly is a desktop-first, caregiver-aware reminder system for seniors. The mo
 ### Setup
 ```bash
 make backend-setup          # bundle install + db:create + db:migrate
-cd clients/web && npm install
 ```
 
 ### Running
 ```bash
 ./start_backend.sh          # Backend on http://localhost:5000
-cd clients/web && npm run dev  # Web client on http://localhost:8080
-make dev                    # Both via tmux (requires tmux)
+make dev                    # Rails serves the dashboard and the voice client
 ```
 
 ### Testing & Linting
@@ -67,7 +64,7 @@ Configured in `config/recurring.yml`. `CheckCoverageGapsJob` runs daily at 8am t
 Backend runs on port 5000 (not the default 3000). CORS is enabled via `rack-cors` for cross-origin clients. `JWT_SECRET` env var is required at runtime (defaults to `please_change_me` in dev).
 
 ### Clients
-- **Web client** talks to Rails REST API; `apiBaseUrl` is configurable via localStorage (defaults to `localhost:5000` or current domain origin)
+- **Voice client for seniors** is `/voice_reminders` — a Rails page whose announcements are driven by `backend/public/voice_reminders.js`. It authenticates with the Rails **session**, not a Bearer token, and is linked from the dashboard nav. A standalone JS client at `clients/web/` (served at `/client/`) was superseded by this page and removed; `/client/` redirects to it.
 - **macOS client** configures `APIClient.base` in Xcode; uses `AVSpeechSynthesizer` for TTS
 
 ### Deployment

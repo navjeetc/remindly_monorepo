@@ -26,12 +26,15 @@ RSpec.describe "Magic link", type: :request do
       expect(magic_link_in_last_email).to start_with("https://remindly.anakhsoft.com/magic/verify")
     end
 
-    it "uses the /client/ path for web client requests" do
+    # Was /client/ until that standalone client was retired. The voice client
+    # needs a session, which /login/verify establishes; /magic/verify only hands
+    # back a JWT, which a browser cannot use on its own.
+    it "sends web client requests through the session login" do
       get "/magic/request",
         params: { email: "user@example.com", client: "web" },
         headers: { "HOST" => "remindly.care", "X-Forwarded-Proto" => "https" }
 
-      expect(magic_link_in_last_email).to start_with("https://remindly.care/client/")
+      expect(magic_link_in_last_email).to start_with("https://remindly.care/login/verify")
     end
 
     it "falls back to the configured base_url when the request host is not allowed" do
