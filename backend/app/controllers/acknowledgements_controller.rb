@@ -8,9 +8,15 @@
 # client, because its current_user only reads the Authorization header (401).
 # Either choice breaks one of them, so this accepts both.
 class AcknowledgementsController < WebController
-  # Only skip forgery protection for requests that carry a Bearer token, which a
-  # browser will not send cross-site. Session requests keep CSRF protection.
-  skip_forgery_protection if: -> { bearer_user.present? }
+  # Skip forgery protection for any request carrying an Authorization header — a
+  # browser will not send one cross-site, so its presence is a safe signal.
+  # Session requests keep CSRF protection.
+  #
+  # Keying this on bearer_user.present? instead would mean an expired or invalid
+  # JWT falls through to the CSRF check and returns 422, when the honest answer
+  # is 401. Presence of the header decides whether CSRF applies; validity of the
+  # token decides whether the request is authenticated.
+  skip_forgery_protection if: -> { request.authorization.present? }
 
   before_action :authenticate!
 

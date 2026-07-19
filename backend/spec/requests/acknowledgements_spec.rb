@@ -37,6 +37,15 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # An expired token should log the user out, not produce a forgery error. This
+    # returned 422 when CSRF was skipped only for tokens that resolved to a user.
+    it "returns 401, not 422, for an invalid Bearer token" do
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: { "Authorization" => "Bearer not-a-real-jwt" }
+      expect(response).to have_http_status(:unauthorized)
+    end
+
     it "does not let one user acknowledge another user's occurrence" do
       other = User.create!(email: "intruder@example.com", tz: "America/New_York")
       other_jwt = JWT.encode({ uid: other.id, exp: 1.hour.from_now.to_i }, ENV.fetch("JWT_SECRET", "dev_secret_change_me"), "HS256")
