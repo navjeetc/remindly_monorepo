@@ -6,9 +6,9 @@ The web client has been integrated into the Rails application and is ready for p
 
 ## What Was Integrated
 
-- **Web Client** with voice announcements
-- Accessible at `/client` URL
-- Served from `backend/public/voice_reminders.js` at `/voice_reminders`
+- **Voice client** with spoken announcements, at `/voice_reminders`
+- Rendered by Rails; announcements driven by `backend/public/voice_reminders.js`
+- `/client/*` is a redirect kept for old bookmarks and already-sent magic links
 - No separate deployment needed
 
 ## Production URLs
@@ -121,7 +121,7 @@ Voice announcements work across all modern browsers:
 ### CSS Not Loading
 
 If styling doesn't load:
-1. Check that `public/voice_reminders.js` exists
+1. Check that `backend/public/voice_reminders.js` exists
 2. Hard refresh browser (Cmd+Shift+R)
 3. Check browser console for 404 errors
 

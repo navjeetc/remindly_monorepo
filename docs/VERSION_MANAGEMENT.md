@@ -4,8 +4,13 @@
 The current version is stored in the `VERSION` file at the root of the repository.
 
 ## Version Display Locations
-- **Voice Web Client**: Top right corner of header (`/client/`)
-- **Caregiver Dashboard**: Top right corner of navigation bar
+Every one of these renders `<%= APP_VERSION %>`, so none of them needs editing
+when the version changes:
+
+- **Dashboard and Voice Reminders**: navigation bar (`layouts/dashboard.html.erb`)
+- **Login**: below the sign-in form (`sessions/new.html.erb`)
+- **Contact** and **How To** pages
+- **`GET /version`**: returns it as JSON, which is how a deploy can be checked
 
 ## How to Bump Version
 
@@ -16,16 +21,21 @@ The current version is stored in the `VERSION` file at the root of the repositor
 This will prompt you for the new version and update all necessary files.
 
 ### Option 2: Manual Update
-1. Update the `VERSION` file with the new version number
-2. Update version in these files:
-   - `backend/app/views/layouts/dashboard.html.erb` (line with `<span class="version">`)
-   - `backend/app/views/layouts/dashboard.html.erb` (line with version span)
+Views render `<%= APP_VERSION %>`, which `backend/config/initializers/version.rb`
+reads from the `VERSION` file — no view hardcodes a version string. Three files
+hold the value:
 
-3. Commit the changes:
+1. `VERSION` at the repo root
+2. `backend/VERSION`, a copy the production image reads
+3. `backend/config/deploy.yml`, which pins `APP_VERSION` for the deployed container
+
 ```bash
-git add VERSION backend/app/views/layouts/dashboard.html.erb
+git add VERSION backend/VERSION backend/config/deploy.yml
 git commit -m "Bump version to X.Y"
 ```
+
+The script above updates all three; doing it by hand and missing `deploy.yml` is
+how production ends up reporting a stale version at `/version`.
 
 ## Version Numbering
 - **Major.Minor** format (e.g., 0.1, 0.2, 1.0)
