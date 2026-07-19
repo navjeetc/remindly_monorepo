@@ -17,7 +17,13 @@ class VoiceRemindersApp {
         // Reminders whose speech was refused, kept as id -> text so they can be
         // spoken once voice unlocks. Separate from announcedReminders, which is
         // persisted to localStorage and also gates the browser notification.
-        this.pendingVoiceAnnouncements = new Map();
+        //
+        // Persisted too: announcedReminders is written the moment a reminder is
+        // announced, so if this queue were in-memory only, a reload before the
+        // user unlocks would lose the text while the id stays marked announced —
+        // the reminder would never speak again. Starting every browser locked
+        // makes that reachable outside iOS, so it has to survive a reload.
+        this.pendingVoiceAnnouncements = this.loadPendingVoiceAnnouncements();
     }
 
     init() {
@@ -462,12 +468,12 @@ class VoiceRemindersApp {
 
     async handleVoiceUnlock({ silent = false } = {}) {
         if (this.voiceUnlocked) {
-            if (!silent) alert('Voice is already enabled.');
+            if (!silent) this.showBanner('Voice is already enabled', { autoHideMs: 3000 });
             this.maybeShowVoiceUnlockPrompt();
             return true;
         }
         if (!this.synth) {
-            if (!silent) alert('Voice synthesis is not available on this device.');
+            if (!silent) this.showBanner('Voice is not available on this device');
             return false;
         }
         // One tap fires both touchend and click, and the 🔊 button adds a third
@@ -485,12 +491,12 @@ class VoiceRemindersApp {
                 this.voiceUnlockPrompted = false;
                 this.voiceBlocked = false;
                 this.hideBanner();
-                if (!silent) alert('Voice announcements enabled.');
+                if (!silent) this.showBanner('Voice announcements enabled', { autoHideMs: 3000 });
                 this.removeVoiceUnlockListeners();
                 this.replayPendingVoiceAnnouncements();
             } catch (error) {
                 console.error('❌ Failed to unlock voice:', error);
-                if (!silent) alert('Unable to enable voice. Please try again.');
+                if (!silent) this.showBanner('Could not enable voice — tap anywhere to try again');
                 this.setupVoiceUnlockListeners();
             } finally {
                 this.voiceUnlockInFlight = null;
@@ -565,6 +571,7 @@ class VoiceRemindersApp {
         this.voiceBlocked = true;
         if (reminderId !== null && text) {
             this.pendingVoiceAnnouncements.set(reminderId, text);
+            this.savePendingVoiceAnnouncements();
         }
         this.setupVoiceUnlockListeners();
         this.maybeShowVoiceUnlockPrompt();
@@ -582,13 +589,20 @@ class VoiceRemindersApp {
 
         const pending = [...this.pendingVoiceAnnouncements.entries()];
         this.pendingVoiceAnnouncements.clear();
+        this.savePendingVoiceAnnouncements();
 
         pending.forEach(([reminderId, text]) => {
-            // Skip anything acknowledged while voice was locked — a senior who
-            // already took their medication shouldn't be told to.
+            // Skip anything acknowledged or snoozed while voice was locked — a
+            // senior who already took their medication shouldn't be told to.
+            //
+            // An absent reminder counts as no longer pending: today_reminders_json
+            // returns only pending occurrences, so acting on one removes it from
+            // this.reminders entirely. Requiring `current` to exist would speak it
+            // anyway — and the usual case is the worst one, since the tap on Done
+            // is often the same gesture that unlocks voice.
             const current = this.reminders.find(r => r.id === reminderId);
-            if (current && current.acknowledged_at) {
-                console.log(`⏭️  Not replaying ${reminderId} — already acknowledged`);
+            if (!current || current.acknowledged_at) {
+                console.log(`⏭️  Not replaying ${reminderId} — no longer pending`);
                 return;
             }
             console.log(`🔁 Replaying blocked announcement: ${text}`);
@@ -598,20 +612,41 @@ class VoiceRemindersApp {
 
     // Non-blocking notice. alert() would itself need dismissing before anything
     // else could happen, which is the opposite of what a senior needs here.
-    showBanner(message) {
-        const existing = document.getElementById('voiceUnlockBanner');
-        if (existing) return;
+    //
+    // role=status + aria-live announces it to a screen reader, which matters
+    // rather a lot when the message is "voice is not working". An existing banner
+    // is updated in place rather than ignored, so a later message is not lost
+    // behind an earlier one.
+    showBanner(message, { autoHideMs = null } = {}) {
+        let banner = document.getElementById('voiceUnlockBanner');
 
-        const banner = document.createElement('div');
-        banner.id = 'voiceUnlockBanner';
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'voiceUnlockBanner';
+            banner.setAttribute('role', 'status');
+            banner.setAttribute('aria-live', 'assertive');
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;' +
+                'background:#facc15;color:#1f2937;font-size:1.25rem;font-weight:700;' +
+                'text-align:center;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,.2)';
+            document.body.appendChild(banner);
+        }
+
         banner.textContent = message;
-        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;' +
-            'background:#facc15;color:#1f2937;font-size:1.25rem;font-weight:700;' +
-            'text-align:center;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,.2)';
-        document.body.appendChild(banner);
+
+        if (this.bannerTimeout) {
+            clearTimeout(this.bannerTimeout);
+            this.bannerTimeout = null;
+        }
+        if (autoHideMs) {
+            this.bannerTimeout = setTimeout(() => this.hideBanner(), autoHideMs);
+        }
     }
 
     hideBanner() {
+        if (this.bannerTimeout) {
+            clearTimeout(this.bannerTimeout);
+            this.bannerTimeout = null;
+        }
         document.getElementById('voiceUnlockBanner')?.remove();
     }
 
@@ -781,6 +816,30 @@ class VoiceRemindersApp {
 
     saveAnnouncedList() {
         localStorage.setItem('voiceReminders_announced', JSON.stringify([...this.announcedReminders]));
+    }
+
+    // Kept alongside announcedReminders so the two survive a reload together.
+    // Storing only the announced ids would leave a reminder marked delivered with
+    // no text to replay, which is silent permanent loss.
+    loadPendingVoiceAnnouncements() {
+        try {
+            const raw = localStorage.getItem('voiceReminders_pendingVoice');
+            return new Map(raw ? JSON.parse(raw) : []);
+        } catch (error) {
+            console.error('Could not read pending voice announcements:', error);
+            return new Map();
+        }
+    }
+
+    savePendingVoiceAnnouncements() {
+        try {
+            localStorage.setItem(
+                'voiceReminders_pendingVoice',
+                JSON.stringify([...this.pendingVoiceAnnouncements])
+            );
+        } catch (error) {
+            console.error('Could not save pending voice announcements:', error);
+        }
     }
 }
 

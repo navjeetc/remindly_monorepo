@@ -8,15 +8,15 @@
 # client, because its current_user only reads the Authorization header (401).
 # Either choice breaks one of them, so this accepts both.
 class AcknowledgementsController < WebController
-  # Skip forgery protection for any request carrying an Authorization header — a
-  # browser will not send one cross-site, so its presence is a safe signal.
-  # Session requests keep CSRF protection.
+  # Skip forgery protection only for the Bearer scheme this API uses. Matching any
+  # Authorization header would also disable CSRF for Basic auth injected by a
+  # reverse proxy, which has nothing to do with this client.
   #
   # Keying this on bearer_user.present? instead would mean an expired or invalid
-  # JWT falls through to the CSRF check and returns 422, when the honest answer
-  # is 401. Presence of the header decides whether CSRF applies; validity of the
-  # token decides whether the request is authenticated.
-  skip_forgery_protection if: -> { request.authorization.present? }
+  # JWT falls through to the CSRF check and returns 422, when the honest answer is
+  # 401. The scheme decides whether CSRF applies; the token's validity decides
+  # whether the request is authenticated.
+  skip_forgery_protection if: -> { bearer_scheme? }
 
   before_action :authenticate!
 
@@ -54,14 +54,28 @@ class AcknowledgementsController < WebController
 
   private
 
-  # Bearer first (the JS client), falling back to WebController's session lookup
-  # (the /voice_reminders page).
+  # A Bearer header is a claim about who is acting, so it decides the outcome on
+  # its own: if it is present but invalid, the request is unauthenticated, not
+  # session-authenticated.
+  #
+  # Falling back to the session here would be wrong in a way that is easy to miss.
+  # A same-origin fetch from /client sends the session cookie alongside its Bearer
+  # header, so an expired token would quietly succeed as whoever owns the browser
+  # session instead of returning 401 — no stale-token logout, and one user's
+  # stale action applied to another's account.
   def current_user
-    @current_user ||= bearer_user || super
+    return @current_user if defined?(@current_user)
+
+    @current_user = bearer_scheme? ? bearer_user : super
+  end
+
+  def bearer_scheme?
+    request.authorization.to_s.start_with?("Bearer ")
   end
 
   def bearer_user
     return @bearer_user if defined?(@bearer_user)
+    return @bearer_user = nil unless bearer_scheme?
 
     @bearer_user = begin
       token = request.authorization&.split(" ")&.last

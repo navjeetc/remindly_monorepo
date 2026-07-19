@@ -46,6 +46,15 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # Skipping CSRF for *any* Authorization header would also disable it for a
+    # Basic credential injected by a reverse proxy, which is not this client.
+    it "does not skip CSRF protection for a non-Bearer Authorization scheme" do
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: { "Authorization" => "Basic #{Base64.strict_encode64('user:pass')}" }
+      expect(response).not_to have_http_status(:created)
+    end
+
     it "does not let one user acknowledge another user's occurrence" do
       other = User.create!(email: "intruder@example.com", tz: "America/New_York")
       other_jwt = JWT.encode({ uid: other.id, exp: 1.hour.from_now.to_i }, ENV.fetch("JWT_SECRET", "dev_secret_change_me"), "HS256")
@@ -85,6 +94,18 @@ RSpec.describe "Acknowledgements", type: :request do
       post "/acknowledgements/snooze", params: { occurrence_id: occurrence.id, minutes: 15 }
 
       expect(response).to have_http_status(:created)
+    end
+
+    # A same-origin fetch sends the session cookie alongside the Bearer header, so
+    # an expired token must not quietly succeed as whoever owns the session.
+    it "rejects an invalid Bearer token even when a valid session exists" do
+      sign_in(user)
+      post "/acknowledgements",
+        params: { occurrence_id: occurrence.id, kind: "taken" },
+        headers: { "Authorization" => "Bearer expired-or-invalid" }
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(occurrence.reload.status).to eq("pending")
     end
   end
 
