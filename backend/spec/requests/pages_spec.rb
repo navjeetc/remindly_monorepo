@@ -44,6 +44,13 @@ RSpec.describe "Pages", type: :request do
         expect(doc.css("a").map { |a| a["href"] }).to include("mailto:hello@remindly.care")
       end
 
+      # Signing in creates the account but leaves role nil, which lands the user
+      # on pending_approval. Saying so up front stops that reading as a failure.
+      it "explains that a new account needs approving" do
+        get "/"
+        expect(response.body).to include("waiting for approval")
+      end
+
       # The dashboard layout loads Tailwind from a CDN. This page is the one
       # search engines index, so it must not block on a third-party request.
       it "loads no third-party assets" do
