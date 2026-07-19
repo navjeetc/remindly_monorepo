@@ -600,47 +600,54 @@ class VoiceRemindersApp {
     // loop will never revisit them.
     async replayPendingVoiceAnnouncements() {
         if (this.pendingVoiceAnnouncements.size === 0) return;
+        // Guards the whole drain, not just the fetch. The snapshot and clear below
+        // happen to be synchronous today, so concurrent callers cannot currently
+        // duplicate speech — but that is an unstated invariant, and inserting an
+        // await between them would silently reintroduce the race. loadReminders()
+        // also calls back into this method on success, which this covers.
         if (this.replayInFlight) return;
+        this.replayInFlight = true;
 
-        // The queue is only safe to drain once reminder state is known. On a fresh
-        // page the unlock tap routinely lands before the first fetch returns, and
-        // an empty this.reminders would make every entry look "no longer pending"
-        // — discarding it permanently, since announcedReminders blocks any
-        // re-announcement. Wait for the fetch, and keep the queue if it fails.
-        if (!this.remindersLoaded) {
-            this.replayInFlight = true;
-            try {
-                await this.loadReminders();
-            } finally {
-                this.replayInFlight = false;
-            }
+        try {
+            // The queue is only safe to drain once reminder state is known. On a
+            // fresh page the unlock tap routinely lands before the first fetch
+            // returns, and an empty this.reminders would make every entry look "no
+            // longer pending" — discarding it permanently, since announcedReminders
+            // blocks any re-announcement. Wait for the fetch, and keep the queue if
+            // it fails.
             if (!this.remindersLoaded) {
-                console.log('⏸️  Deferring replay — reminders not loaded yet');
-                return;
+                await this.loadReminders();
+                if (!this.remindersLoaded) {
+                    console.log('⏸️  Deferring replay — reminders not loaded yet');
+                    return;
+                }
             }
+
+            const pending = [...this.pendingVoiceAnnouncements.entries()];
+            this.pendingVoiceAnnouncements.clear();
+            this.savePendingVoiceAnnouncements();
+
+            pending.forEach(([reminderId, text]) => {
+                // Skip anything acknowledged or snoozed while voice was locked — a
+                // senior who already took their medication shouldn't be told to.
+                //
+                // An absent reminder counts as no longer pending:
+                // today_reminders_json returns only pending occurrences, so acting
+                // on one removes it from this.reminders entirely. Requiring
+                // `current` to exist would speak it anyway — and the usual case is
+                // the worst one, since the tap on Done is often the same gesture
+                // that unlocks voice.
+                const current = this.reminders.find(r => r.id === reminderId);
+                if (!current || current.acknowledged_at) {
+                    console.log(`⏭️  Not replaying ${reminderId} — no longer pending`);
+                    return;
+                }
+                console.log(`🔁 Replaying blocked announcement: ${text}`);
+                this.speak(text, reminderId);
+            });
+        } finally {
+            this.replayInFlight = false;
         }
-
-        const pending = [...this.pendingVoiceAnnouncements.entries()];
-        this.pendingVoiceAnnouncements.clear();
-        this.savePendingVoiceAnnouncements();
-
-        pending.forEach(([reminderId, text]) => {
-            // Skip anything acknowledged or snoozed while voice was locked — a
-            // senior who already took their medication shouldn't be told to.
-            //
-            // An absent reminder counts as no longer pending: today_reminders_json
-            // returns only pending occurrences, so acting on one removes it from
-            // this.reminders entirely. Requiring `current` to exist would speak it
-            // anyway — and the usual case is the worst one, since the tap on Done
-            // is often the same gesture that unlocks voice.
-            const current = this.reminders.find(r => r.id === reminderId);
-            if (!current || current.acknowledged_at) {
-                console.log(`⏭️  Not replaying ${reminderId} — no longer pending`);
-                return;
-            }
-            console.log(`🔁 Replaying blocked announcement: ${text}`);
-            this.speak(text, reminderId);
-        });
     }
 
     // Non-blocking notice. alert() would itself need dismissing before anything
