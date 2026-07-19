@@ -50,6 +50,35 @@ RSpec.describe "Acknowledgements", type: :request do
     end
   end
 
+  # /voice_reminders is the page seniors actually use, and it authenticates with
+  # the Rails session rather than a Bearer token. The original fix here moved the
+  # controller to ApplicationController, whose current_user only reads the
+  # Authorization header — which fixed the JS client and silently broke this one.
+  # Nothing covered the session path, so the swap looked green.
+  describe "session-authenticated requests (the /voice_reminders page)" do
+    def sign_in(user)
+      jwt = JWT.encode({ uid: user.id, exp: 1.hour.from_now.to_i }, ENV.fetch("JWT_SECRET", "dev_secret_change_me"), "HS256")
+      # Mirrors how the dashboard establishes a session after magic-link verify.
+      post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+      jwt
+    end
+
+    it "accepts a session-authenticated acknowledgement" do
+      sign_in(user)
+      post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }
+
+      expect(response).to have_http_status(:created)
+      expect(occurrence.reload.status).to eq("acknowledged")
+    end
+
+    it "accepts a session-authenticated snooze" do
+      sign_in(user)
+      post "/acknowledgements/snooze", params: { occurrence_id: occurrence.id, minutes: 15 }
+
+      expect(response).to have_http_status(:created)
+    end
+  end
+
   describe "POST /acknowledgements/snooze" do
     it "accepts a Bearer-authenticated snooze and schedules a new occurrence" do
       expect {
