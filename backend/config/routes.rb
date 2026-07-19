@@ -61,6 +61,12 @@ Rails.application.routes.draw do
     end
   end
   
+  # The standalone voice client at /client/ was retired — /voice_reminders
+  # superseded it and it served no traffic. Kept as a redirect rather than a 404
+  # so any bookmark or old magic link still lands somewhere useful.
+  get "client", to: redirect("/voice_reminders")
+  get "client/*rest", to: redirect("/voice_reminders")
+
   resources :acknowledgements, only: [:create] do
     collection do
       post :snooze

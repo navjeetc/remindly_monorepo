@@ -30,10 +30,11 @@ RSpec.describe "public/ directory hygiene" do
       "Dependency manifests under public/ disclose the stack and versions:\n  #{manifests.join("\n  ")}"
   end
 
-  it "keeps the web client to its runtime files" do
-    client_files = Dir.glob(PUBLIC_ROOT.join("client", "*")).map { |p| File.basename(p) }.sort
-
-    expect(client_files).to eq(%w[app.js index.html styles.css])
+  # The standalone client that lived here was retired in favour of
+  # /voice_reminders. Nothing should reintroduce a directory under public/ that
+  # ships a second copy of the voice logic.
+  it "no longer serves the retired standalone client" do
+    expect(PUBLIC_ROOT.join("client")).not_to exist
   end
 
   def self.relative(path) = Pathname(path).relative_path_from(Rails.root).to_s

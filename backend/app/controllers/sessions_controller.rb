@@ -44,7 +44,7 @@ class SessionsController < ActionController::Base
       if user.name.blank?
         redirect_to profile_path, notice: "Welcome! Please complete your profile to continue."
       else
-        redirect_to dashboard_path, notice: "Successfully signed in as #{user.display_name}"
+        redirect_to post_login_path, notice: "Successfully signed in as #{user.display_name}"
       end
     else
       # Track failed login
@@ -125,5 +125,19 @@ class SessionsController < ActionController::Base
   
   def hmac_secret
     ENV.fetch("JWT_SECRET", "dev_secret_change_me")
+  end
+
+  # Where to land after a magic-link login. Voice-client emails ask for the
+  # reminders page so a senior does not have to navigate there themselves.
+  #
+  # An allowlist of names, not a path from the parameter: taking a URL here would
+  # let anyone send a Remindly login link that lands the user on a site they
+  # chose, which is worth more to an attacker than it sounds — the victim arrives
+  # already signed in and trusting the page.
+  POST_LOGIN_DESTINATIONS = { "voice_reminders" => :voice_reminders_path }.freeze
+
+  def post_login_path
+    helper = POST_LOGIN_DESTINATIONS[params[:next].to_s]
+    helper ? send(helper) : dashboard_path
   end
 end

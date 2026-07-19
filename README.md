@@ -18,35 +18,26 @@ remindly/
 
 ### Starting the Application
 
-**Terminal 1 - Backend (Rails 8 API):**
 ```bash
 # From repo root
 ./start_backend.sh
 ```
-The backend will start on `http://localhost:5000`
-
-**Terminal 2 - Web Client (Voice Reminders):**
-```bash
-cd clients/web
-npm run dev
-```
-The web client will start on `http://localhost:8080`
+Everything runs on `http://localhost:5000` — Rails serves both the caregiver
+dashboard and the voice client. There is no separate frontend process.
 
 ### Accessing the Application
 
 - **Caregiver Dashboard**: `http://localhost:5000/dashboard`
   - Quick dev login: `http://localhost:5000/dev_login`
   - Manage tasks, invite caregivers, view seniors
-  
-- **Voice Reminders (for Seniors)**: `http://localhost:8080`
-  - Web-based voice announcement interface
-  - Quick dev login button available
 
-### Alternative: Start Both with tmux
-```bash
-make dev
-```
-This starts both backend and frontend in a split tmux session (requires tmux installed).
+- **Voice Reminders (for Seniors)**: `http://localhost:5000/voice_reminders`
+  - Rendered by Rails, announcements driven by `backend/public/voice_reminders.js`
+  - Linked from the dashboard nav; this is the page seniors use
+
+A standalone client used to exist at `clients/web/`, served at `/client/`. It was
+superseded by `/voice_reminders` and has been removed; `/client/` now redirects
+there.
 
 ### First Time Setup
 
@@ -55,12 +46,6 @@ This starts both backend and frontend in a split tmux session (requires tmux ins
 make backend-setup
 ```
 This will install gems and set up the database.
-
-**Web Client Setup:**
-```bash
-cd clients/web
-npm install
-```
 
 ### API Endpoints
 - `POST /reminders` `{ title, notes?, rrule, tz, category? }`
