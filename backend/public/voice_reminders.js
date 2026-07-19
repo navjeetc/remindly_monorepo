@@ -209,9 +209,23 @@ class VoiceRemindersApp {
         });
         
         const isCompleted = reminder.acknowledged_at;
-        const bgColor = isCompleted ? 'bg-green-50' : 'bg-yellow-50';
-        const borderColor = isCompleted ? 'border-green-300' : 'border-yellow-300';
-        
+        // A reminder that has not come due yet is not asking for anything, so it
+        // is shown plainly. The yellow highlight is reserved for "this is due
+        // now", which is what makes it worth noticing.
+        const isDue = scheduledDate <= new Date();
+
+        let bgColor, borderColor;
+        if (isCompleted) {
+            bgColor = 'bg-green-50';
+            borderColor = 'border-green-300';
+        } else if (isDue) {
+            bgColor = 'bg-yellow-50';
+            borderColor = 'border-yellow-300';
+        } else {
+            bgColor = 'bg-white';
+            borderColor = 'border-gray-200';
+        }
+
         return `
             <div class="p-6 rounded-xl border-4 ${borderColor} ${bgColor} shadow-lg">
                 <div class="flex justify-between items-start mb-4">
@@ -224,9 +238,11 @@ class VoiceRemindersApp {
                         <button id="ack-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-transparent shadow-lg text-xl font-bold rounded-xl text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300" title="Mark as done">
                             ✓ Done
                         </button>
+                        ${isDue ? `
                         <button id="snooze-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-gray-400 shadow-lg text-xl font-bold rounded-xl text-gray-800 bg-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-300" title="Snooze for 10 minutes">
                             ⏰ Snooze
                         </button>
+                        ` : ''}
                     ` : `
                         <span class="inline-flex items-center px-6 py-4 text-2xl font-bold text-green-700">
                             ✓ Completed
