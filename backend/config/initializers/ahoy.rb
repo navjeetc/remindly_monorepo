@@ -33,9 +33,9 @@ Ahoy.geocode = false
 # Visit duration - create new visit after 4 hours of inactivity
 Ahoy.visit_duration = 4.hours
 
-# Visitor duration - create new visitor token after 2 years
-# How long the visitor identifier lives. Two years (the Ahoy default) means a
-# cookie that follows someone across sessions for longer than most of them will
-# use the product. Long enough to recognise a returning caregiver, short enough
-# not to be a durable identifier.
+# Visitor duration - create a new visitor token after 30 days.
+# Two years (the Ahoy default, and what this was) means a cookie that follows
+# someone across sessions for longer than most of them will use the product.
+# Long enough to recognise a returning caregiver, short enough not to be a
+# durable identifier.
 Ahoy.visitor_duration = 30.days
