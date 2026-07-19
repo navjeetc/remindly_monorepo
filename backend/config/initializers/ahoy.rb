@@ -1,4 +1,15 @@
 class Ahoy::Store < Ahoy::DatabaseStore
+  # Pages anyone can read without signing in. Someone looking at the marketing
+  # page has not asked for an account, and logging their IP to find out that a
+  # stranger read a public page is not worth the record.
+  #
+  # Everything behind the login is still tracked: that is where the useful
+  # signal is, and those visitors have an account with us.
+  PUBLIC_PATHS = [ "/", "/how_to" ].freeze
+
+  def exclude?
+    super || PUBLIC_PATHS.include?(request&.path)
+  end
 end
 
 # set to true for JavaScript tracking
@@ -23,4 +34,8 @@ Ahoy.geocode = false
 Ahoy.visit_duration = 4.hours
 
 # Visitor duration - create new visitor token after 2 years
-Ahoy.visitor_duration = 2.years
+# How long the visitor identifier lives. Two years (the Ahoy default) means a
+# cookie that follows someone across sessions for longer than most of them will
+# use the product. Long enough to recognise a returning caregiver, short enough
+# not to be a durable identifier.
+Ahoy.visitor_duration = 30.days

@@ -7,6 +7,64 @@ RSpec.describe "Pages", type: :request do
     Nokogiri::HTML(response.body).at_css("link[rel='canonical']")&.[]("href")
   end
 
+  describe "GET / (marketing homepage)" do
+    def doc = Nokogiri::HTML(response.body)
+
+    context "when logged out" do
+      it "renders the marketing page instead of redirecting to login" do
+        get "/"
+
+        expect(response).to have_http_status(:ok)
+        expect(doc.at_css("h1").text).to include("Reminders that speak up")
+      end
+
+      # The site previously had no indexable homepage at all: / was
+      # dashboard#index behind authenticate!, so it 302'd to /login.
+      it "points the canonical URL at the root of www.remindly.care" do
+        get "/", headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+        expect(doc.at_css("link[rel='canonical']")&.[]("href")).to eq("https://www.remindly.care/")
+      end
+
+      it "carries a meta description for search results" do
+        get "/"
+        expect(doc.at_css("meta[name='description']")&.[]("content")).to be_present
+      end
+
+      # /how_to is otherwise an orphan - nothing links to it, so nothing finds it.
+      it "links to the guide and to sign in" do
+        get "/"
+
+        hrefs = doc.css("a").map { |a| a["href"] }
+        expect(hrefs).to include("/how_to")
+        expect(hrefs).to include("/login")
+      end
+
+      it "offers a way to make contact" do
+        get "/"
+        expect(doc.css("a").map { |a| a["href"] }).to include("mailto:hello@remindly.care")
+      end
+
+      # The dashboard layout loads Tailwind from a CDN. This page is the one
+      # search engines index, so it must not block on a third-party request.
+      it "loads no third-party assets" do
+        get "/"
+
+        external = doc.css("script[src], link[rel='stylesheet']").map { |n| n["src"] || n["href"] }.compact
+        expect(external.select { |u| u.start_with?("http") }).to be_empty
+      end
+    end
+
+    context "when signed in" do
+      it "redirects to the dashboard so daily use is unchanged" do
+        user = User.create!(email: "caregiver@example.com", tz: "America/New_York", name: "Cara")
+        post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+
+        get "/"
+        expect(response).to redirect_to(dashboard_path)
+      end
+    end
+  end
+
   describe "GET /how_to" do
     it "renders without authentication" do
       get "/how_to"

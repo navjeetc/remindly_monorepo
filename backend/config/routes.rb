@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
-  # Root - redirect to dashboard
-  root "dashboard#index"
+  # Root - marketing page for logged-out visitors, dashboard for signed-in users.
+  # Was dashboard#index behind authenticate!, which meant / redirected to /login
+  # and the site had no indexable homepage at all.
+  root "pages#home"
 
   # Web authentication
   get  "login",              to: "sessions#new", as: :login
