@@ -28,22 +28,51 @@ class AcknowledgementsController < WebController
     head :created
   end
 
+  # Snoozing must never move a reminder earlier. The senior UI shows Snooze before
+  # the scheduled time, so "10 minutes from now" would reschedule a 10:25 reminder
+  # tapped at 10:00 to 10:10 — 15 minutes *earlier* than it was already going to
+  # arrive, which is the opposite of what the word means.
+  SNOOZE_DEFAULT_MINUTES = 10
+  SNOOZE_MIN_MINUTES = 1
+
   def snooze
     occ = Occurrence.joins(:reminder).where(reminders: { user_id: current_user.id }).find(params.require(:occurrence_id))
-    minutes = params.fetch(:minutes, 10).to_i # Default 10 minutes
-    
-    # Create acknowledgement for snooze tracking
-    Acknowledgement.create!(occurrence: occ, kind: 'snooze', at: Time.current)
-    
-    # Create new occurrence for snoozed time
-    new_occ = Occurrence.create!(
-      reminder: occ.reminder,
-      scheduled_at: minutes.minutes.from_now,
-      status: :pending
-    )
-    
-    # Mark original as acknowledged
-    occ.update!(status: :acknowledged)
+    minutes = snooze_minutes
+
+    # A retry — a lost response, a double tap — must land on the same snoozed
+    # occurrence rather than creating another one or failing.
+    #
+    # The snooze time is derived from the first snooze acknowledgement for this
+    # occurrence, not from Time.current. Measuring from "now" is only stable
+    # before the scheduled time; once it has passed, every retry would compute a
+    # later target and create another occurrence. Reusing the acknowledgement
+    # makes both sides of the due time deterministic, and keeps a retry from
+    # stacking up duplicate snooze acknowledgements.
+    new_occ = nil
+    target = nil
+
+    ActiveRecord::Base.transaction do
+      ack = occ.acknowledgements.find_by(kind: :snooze) ||
+            Acknowledgement.create!(occurrence: occ, kind: "snooze", at: Time.current)
+
+      # Whichever is later: the time it was due, or the moment it was snoozed.
+      base = [ occ.scheduled_at, ack.at ].max
+      target = base + minutes.minutes
+
+      # Occurrences are unique on (reminder_id, scheduled_at), so the target may
+      # already exist — from a retry, or from an already-materialised recurrence.
+      # find_or_create_by is a SELECT then an INSERT, so a concurrent double tap
+      # can still lose the race; the rescue takes the row the other request won.
+      new_occ = begin
+        Occurrence.find_or_create_by!(reminder: occ.reminder, scheduled_at: target) do |o|
+          o.status = :pending
+        end
+      rescue ActiveRecord::RecordNotUnique
+        Occurrence.find_by!(reminder: occ.reminder, scheduled_at: target)
+      end
+
+      occ.update!(status: :acknowledged)
+    end
     
     render json: {
       snoozed_occurrence_id: new_occ.id,
@@ -53,6 +82,18 @@ class AcknowledgementsController < WebController
   end
 
   private
+
+  # Strict parsing, because to_i turns "not-a-number" into 0 — which then clamps to
+  # one minute rather than falling back to the default, quietly making the snooze
+  # far shorter than the senior expected. Anything unparseable or missing means we
+  # do not know what was asked for, so use the default; a value we can read but
+  # that is too small is a different case and gets clamped.
+  def snooze_minutes
+    parsed = Integer(params[:minutes].to_s, exception: false)
+    return SNOOZE_DEFAULT_MINUTES if parsed.nil?
+
+    [ parsed, SNOOZE_MIN_MINUTES ].max
+  end
 
   # A Bearer header is a claim about who is acting, so it decides the outcome on
   # its own: if it is present but invalid, the request is unauthenticated, not

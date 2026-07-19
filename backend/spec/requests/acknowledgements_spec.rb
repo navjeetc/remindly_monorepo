@@ -143,6 +143,115 @@ RSpec.describe "Acknowledgements", type: :request do
     end
   end
 
+  # The senior UI shows Snooze before the scheduled time, so this is reachable by
+  # tapping the button early — not an edge case.
+  describe "snoozing never moves a reminder earlier" do
+    # Assert the response before parsing it. Without this, an unrelated failure —
+    # auth, a routing change — surfaces as a JSON parse error on an error page,
+    # which hides what actually broke.
+    def snooze!(occ, minutes: nil)
+      params = { occurrence_id: occ.id }
+      params[:minutes] = minutes unless minutes.nil?
+      post "/acknowledgements/snooze", params: params, headers: auth_headers
+
+      expect(response).to have_http_status(:created), "snooze failed: #{response.status} #{response.body}"
+      Occurrence.find(JSON.parse(response.body).fetch("snoozed_occurrence_id"))
+    end
+
+    it "delays from the scheduled time when snoozed before it is due" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      new_occ = snooze!(future, minutes: 10)
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
+      expect(new_occ.scheduled_at).to be > future.scheduled_at
+    end
+
+    it "delays from now when snoozed after it is due" do
+      past = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 20.minutes.ago, status: :pending)
+
+      new_occ = snooze!(past, minutes: 10)
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(10.minutes.from_now)
+    end
+
+    it "clamps a negative delay to the minimum rather than scheduling earlier" do
+      new_occ = snooze!(occurrence, minutes: -30)
+      expect(new_occ.scheduled_at).to be > occurrence.scheduled_at
+    end
+
+    # Asserting the exact delay, not merely "later". A loose assertion passed while
+    # an unparseable value was silently clamping to one minute instead of using the
+    # default — the spec agreed with the bug.
+    it "uses the default delay when minutes is omitted" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      new_occ = snooze!(future)
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
+    end
+
+    # The target time is deterministic now, so a retried request asks for exactly
+    # the same occurrence. Occurrences are unique on (reminder_id, scheduled_at),
+    # which would raise RecordNotUnique and return 500 for a snooze that had
+    # already succeeded.
+    it "is idempotent when the same snooze is retried" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      first = snooze!(future, minutes: 10)
+      expect(response).to have_http_status(:created)
+
+      expect {
+        second = snooze!(future, minutes: 10)
+        expect(response).to have_http_status(:created)
+        expect(second.id).to eq(first.id)
+      }.not_to change { Occurrence.where(reminder_id: occurrence.reminder.id).count }
+    end
+
+    # The before-due case was idempotent because the scheduled time anchored the
+    # target. After the due time the anchor was Time.current, so every retry
+    # computed a later target and created another occurrence.
+    it "is idempotent when a snooze is retried after the reminder was due" do
+      past = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 20.minutes.ago, status: :pending)
+
+      first = snooze!(past, minutes: 10)
+
+      expect {
+        second = snooze!(past, minutes: 10)
+        expect(second.id).to eq(first.id)
+      }.not_to change { Occurrence.where(reminder_id: occurrence.reminder.id).count }
+    end
+
+    it "does not stack up snooze acknowledgements on retry" do
+      past = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 20.minutes.ago, status: :pending)
+
+      snooze!(past, minutes: 10)
+
+      expect {
+        snooze!(past, minutes: 10)
+      }.not_to change { past.acknowledgements.where(kind: :snooze).count }
+    end
+
+    it "does not leave an acknowledgement behind when the occurrence cannot be created" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+      allow(Occurrence).to receive(:find_or_create_by!).and_raise(ActiveRecord::RecordInvalid.new(Occurrence.new))
+
+      expect {
+        post "/acknowledgements/snooze",
+          params: { occurrence_id: future.id, minutes: 10 },
+          headers: auth_headers
+      }.not_to change { Acknowledgement.count }
+    end
+
+    it "uses the default delay when minutes cannot be parsed" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      new_occ = snooze!(future, minutes: "not-a-number")
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
+    end
+  end
+
   describe "POST /acknowledgements/snooze" do
     it "accepts a Bearer-authenticated snooze and schedules a new occurrence" do
       expect {
