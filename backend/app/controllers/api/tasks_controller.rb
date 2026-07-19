@@ -1,8 +1,8 @@
 module Api
   class TasksController < ApplicationController
     before_action :authenticate_user!
-    before_action :set_task, only: [:show, :update, :destroy, :assign, :claim]
-    before_action :authorize_task_access, only: [:show, :update, :destroy]
+    before_action :set_task, only: [ :show, :update, :destroy, :assign, :claim ]
+    before_action :authorize_task_access, only: [ :show, :update, :destroy ]
 
     # GET /api/tasks
     def index
@@ -42,9 +42,9 @@ module Api
 
       render json: {
         tasks: @tasks.as_json(include: {
-          senior: { only: [:id, :email, :name] },
-          assigned_to: { only: [:id, :email, :name] },
-          created_by: { only: [:id, :email, :name] }
+          senior: { only: [ :id, :email, :name ] },
+          assigned_to: { only: [ :id, :email, :name ] },
+          created_by: { only: [ :id, :email, :name ] }
         }),
         meta: {
           current_page: @tasks.current_page,
@@ -57,12 +57,12 @@ module Api
     # GET /api/tasks/:id
     def show
       render json: @task.as_json(include: {
-        senior: { only: [:id, :email, :name] },
-        assigned_to: { only: [:id, :email, :name] },
-        created_by: { only: [:id, :email, :name] },
+        senior: { only: [ :id, :email, :name ] },
+        assigned_to: { only: [ :id, :email, :name ] },
+        created_by: { only: [ :id, :email, :name ] },
         task_comments: {
           include: {
-            user: { only: [:id, :email, :name] }
+            user: { only: [ :id, :email, :name ] }
           }
         }
       })

@@ -54,7 +54,7 @@ class MagicMailer < ApplicationMailer
   end
 
   def configured_app_url
-    app_url = Rails.application.credentials.base_url || ENV.fetch('APP_URL', 'http://localhost:5000')
-    app_url.start_with?('http') ? app_url : "https://#{app_url}"
+    app_url = Rails.application.credentials.base_url || ENV.fetch("APP_URL", "http://localhost:5000")
+    app_url.start_with?("http") ? app_url : "https://#{app_url}"
   end
 end

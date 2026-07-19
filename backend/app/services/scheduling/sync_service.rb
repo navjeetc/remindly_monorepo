@@ -31,9 +31,9 @@ module Scheduling
             Rails.logger.info "Skipping appointment #{appointment[:id]} - doesn't match senior #{integration.senior_id}"
             next
           end
-          
+
           task = sync_appointment(appointment)
-          
+
           # Check if task was created or updated based on the return value
           if task.previously_new_record?
             results[:created] += 1
@@ -101,7 +101,7 @@ module Scheduling
     def sync_appointment_by_id(external_id)
       provider = ProviderFactory.create(integration)
       appointment = provider.get_appointment(external_id)
-      
+
       return nil unless appointment
 
       sync_appointment(appointment)
@@ -111,13 +111,13 @@ module Scheduling
 
     def map_external_status(external_status)
       case external_status&.downcase
-      when 'scheduled', 'confirmed', 'booked'
+      when "scheduled", "confirmed", "booked"
         :assigned
-      when 'completed', 'done'
+      when "completed", "done"
         :completed
-      when 'canceled', 'cancelled'
+      when "canceled", "cancelled"
         :cancelled
-      when 'no-show', 'missed'
+      when "no-show", "missed"
         :cancelled
       else
         :pending
@@ -144,22 +144,22 @@ module Scheduling
 
       client_email = appointment[:client_email]&.downcase&.strip
       client_name = appointment[:client_name]&.downcase&.strip
-      
+
       # Match by email (most reliable)
       if client_email.present? && senior.email.present?
         return true if senior.email.downcase.strip == client_email
       end
-      
+
       # Match by full name (fallback)
       if client_name.present? && senior.name.present?
         return true if senior.name.downcase.strip == client_name
       end
-      
+
       # Match by nickname (additional fallback)
       if client_name.present? && senior.nickname.present?
         return true if senior.nickname.downcase.strip == client_name
       end
-      
+
       # If no match found, log for debugging
       Rails.logger.info "No match for appointment #{appointment[:id]}: client='#{client_email}' vs senior='#{senior.email}'"
       false

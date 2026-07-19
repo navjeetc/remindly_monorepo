@@ -82,7 +82,7 @@ RSpec.describe SchedulingIntegration, type: :model do
 
     it 'marks integration as error with message' do
       integration.mark_error!('Test error')
-      
+
       expect(integration.status).to eq('error')
       expect(integration.settings['last_error']).to eq('Test error')
       expect(integration.settings['last_error_at']).to be_present

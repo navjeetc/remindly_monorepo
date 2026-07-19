@@ -8,6 +8,6 @@ class CreateTaskComments < ActiveRecord::Migration[8.0]
       t.timestamps
     end
 
-    add_index :task_comments, [:task_id, :created_at]
+    add_index :task_comments, [ :task_id, :created_at ]
   end
 end

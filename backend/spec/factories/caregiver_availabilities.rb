@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :caregiver_availability do
     association :caregiver, factory: :user, role: :caregiver
-    
+
     date { Date.current }
     start_time { Time.parse('09:00') }
     end_time { Time.parse('17:00') }

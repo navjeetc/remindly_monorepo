@@ -8,13 +8,13 @@ class CaregiverAvailabilitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "parse_bulk_dates handles valid dates" do
     controller = CaregiverAvailabilitiesController.new
-    
+
     # Test with array
-    dates = controller.send(:parse_bulk_dates, ["2025-11-15", "2025-11-16"])
+    dates = controller.send(:parse_bulk_dates, [ "2025-11-15", "2025-11-16" ])
     assert_equal 2, dates.length
     assert_equal Date.parse("2025-11-15"), dates[0]
     assert_equal Date.parse("2025-11-16"), dates[1]
-    
+
     # Test with comma-separated string
     dates = controller.send(:parse_bulk_dates, "2025-11-15,2025-11-16")
     assert_equal 2, dates.length
@@ -24,10 +24,10 @@ class CaregiverAvailabilitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "parse_bulk_dates handles invalid dates gracefully" do
     controller = CaregiverAvailabilitiesController.new
-    
+
     # Mix of valid and invalid dates
-    dates = controller.send(:parse_bulk_dates, ["2025-11-15", "invalid-date", "2025-11-16"])
-    
+    dates = controller.send(:parse_bulk_dates, [ "2025-11-15", "invalid-date", "2025-11-16" ])
+
     # Should skip invalid and return only valid dates
     assert_equal 2, dates.length
     assert_equal Date.parse("2025-11-15"), dates[0]
@@ -36,7 +36,7 @@ class CaregiverAvailabilitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "parse_bulk_dates returns empty array for blank input" do
     controller = CaregiverAvailabilitiesController.new
-    
+
     assert_equal [], controller.send(:parse_bulk_dates, nil)
     assert_equal [], controller.send(:parse_bulk_dates, "")
     assert_equal [], controller.send(:parse_bulk_dates, [])
@@ -44,10 +44,10 @@ class CaregiverAvailabilitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "parse_bulk_dates logs warning for invalid dates" do
     controller = CaregiverAvailabilitiesController.new
-    
+
     # Capture log output
     assert_logs_match(/Invalid date format: invalid-date/) do
-      controller.send(:parse_bulk_dates, ["invalid-date"])
+      controller.send(:parse_bulk_dates, [ "invalid-date" ])
     end
   end
 
@@ -63,9 +63,9 @@ class CaregiverAvailabilitiesControllerTest < ActionDispatch::IntegrationTest
     old_logger = Rails.logger
     log_output = StringIO.new
     Rails.logger = Logger.new(log_output)
-    
+
     yield
-    
+
     assert_match pattern, log_output.string
   ensure
     Rails.logger = old_logger

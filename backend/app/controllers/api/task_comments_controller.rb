@@ -9,7 +9,7 @@ module Api
       @comments = @task.task_comments.recent.includes(:user)
 
       render json: @comments.as_json(include: {
-        user: { only: [:id, :email, :name] }
+        user: { only: [ :id, :email, :name ] }
       })
     end
 
@@ -21,7 +21,7 @@ module Api
       if @comment.save
         # TODO: Send notification to other caregivers
         render json: @comment.as_json(include: {
-          user: { only: [:id, :email, :name] }
+          user: { only: [ :id, :email, :name ] }
         }), status: :created
       else
         render json: { errors: @comment.errors.full_messages }, status: :unprocessable_entity

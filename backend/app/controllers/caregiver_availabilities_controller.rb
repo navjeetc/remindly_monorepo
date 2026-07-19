@@ -2,14 +2,14 @@ class CaregiverAvailabilitiesController < WebController
   before_action :authenticate!
   before_action :check_feature_enabled!
   before_action :require_caregiver!
-  before_action :set_availability, only: [:edit, :update, :destroy]
-  layout 'dashboard'
+  before_action :set_availability, only: [ :edit, :update, :destroy ]
+  layout "dashboard"
 
   # GET /caregiver_availabilities
   def index
     @availabilities = current_user.caregiver_availabilities
                                   .order(:date, :start_time)
-    
+
     # Group by date for display
     @availabilities_by_date = @availabilities.group_by(&:date)
   end
@@ -33,7 +33,7 @@ class CaregiverAvailabilitiesController < WebController
     if @availability.save
       # Check if this fills a coverage gap for any seniors
       check_gap_filled(@availability)
-      
+
       redirect_to caregiver_availabilities_path, notice: "Availability added successfully"
     else
       render :new, status: :unprocessable_entity
@@ -66,7 +66,7 @@ class CaregiverAvailabilitiesController < WebController
     if failed.empty?
       redirect_to caregiver_availabilities_path, notice: "Added availability for #{successful.count} days"
     else
-      redirect_to bulk_new_caregiver_availabilities_path, 
+      redirect_to bulk_new_caregiver_availabilities_path,
                   alert: "Added #{successful.count} days, but #{failed.count} failed (check for overlaps or past dates)"
     end
   end
@@ -119,10 +119,10 @@ class CaregiverAvailabilitiesController < WebController
 
   def parse_bulk_dates(dates_param)
     return [] if dates_param.blank?
-    
+
     # dates_param can be an array of date strings or a comma-separated string
-    dates = dates_param.is_a?(Array) ? dates_param : dates_param.split(',')
-    
+    dates = dates_param.is_a?(Array) ? dates_param : dates_param.split(",")
+
     dates.map do |d|
       begin
         Date.parse(d.strip)
@@ -132,7 +132,7 @@ class CaregiverAvailabilitiesController < WebController
       end
     end.compact
   end
-  
+
   def check_gap_filled(availability)
     # Check all seniors this caregiver is linked to
     current_user.seniors.each do |senior|

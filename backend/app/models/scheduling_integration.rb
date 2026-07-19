@@ -31,8 +31,8 @@ class SchedulingIntegration < ApplicationRecord
   scope :active, -> { where(status: :active) }
   scope :for_provider, ->(provider) { where(provider: provider) }
   scope :sync_enabled, -> { where(sync_enabled: true) }
-  scope :needs_sync, -> { 
-    active.sync_enabled.where("last_synced_at IS NULL OR last_synced_at < ?", 1.hour.ago) 
+  scope :needs_sync, -> {
+    active.sync_enabled.where("last_synced_at IS NULL OR last_synced_at < ?", 1.hour.ago)
   }
 
   # Check if integration is healthy

@@ -22,13 +22,13 @@ class FeatureFlag
     # @return [Boolean] True if feature is enabled
     def enabled?(feature)
       return false unless FEATURES.key?(feature)
-      
+
       feature_config = FEATURES[feature]
-      
+
       # Check environment variable first
       env_value = ENV[feature_config[:env_var]]
       return env_value == "true" if env_value.present?
-      
+
       # Fall back to default
       feature_config[:default]
     end
@@ -44,11 +44,11 @@ class FeatureFlag
     # @return [Hash] Features with enabled status
     def all
       FEATURES.map do |feature_key, config|
-        [feature_key, {
+        [ feature_key, {
           name: config[:name],
           description: config[:description],
           enabled: enabled?(feature_key)
-        }]
+        } ]
       end.to_h
     end
 

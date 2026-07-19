@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :scheduling_integration do
     association :user
     association :senior, factory: :user
-    
+
     provider { :acuity }
     status { :active }
     provider_user_id { "12345" }

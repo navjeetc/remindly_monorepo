@@ -1,5 +1,5 @@
 class CoverageGapMailer < ApplicationMailer
-  default from: 'notifications@remindly.app'
+  default from: "notifications@remindly.app"
 
   # Send coverage gap notification email
   # @param caregiver [User] The caregiver to notify
@@ -11,7 +11,7 @@ class CoverageGapMailer < ApplicationMailer
     @gaps = gaps
     @coverage_url = senior_coverage_url(senior)
     @availability_url = caregiver_availabilities_url
-    
+
     mail(
       to: caregiver.email,
       subject: "Coverage Gap Alert for #{senior.display_name}"

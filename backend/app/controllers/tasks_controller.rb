@@ -2,8 +2,8 @@ class TasksController < WebController
   before_action :authenticate!
   before_action :set_senior
   before_action :authorize_senior_access!
-  before_action :set_task, only: [:show, :edit, :update, :destroy, :complete, :assign, :unassign]
-  layout 'dashboard'
+  before_action :set_task, only: [ :show, :edit, :update, :destroy, :complete, :assign, :unassign ]
+  layout "dashboard"
 
   # GET /dashboard/senior/:senior_id/tasks
   def index
@@ -15,7 +15,7 @@ class TasksController < WebController
     @tasks = @tasks.by_priority(params[:priority]) if params[:priority].present?
     @tasks = @tasks.assigned_to_user(params[:assigned_to]) if params[:assigned_to].present?
     @tasks = @tasks.unassigned if params[:unassigned] == "true"
-    
+
     # External source filter
     if params[:external_source].present?
       if params[:external_source] == "manual"
@@ -37,10 +37,10 @@ class TasksController < WebController
     end
 
     @tasks = @tasks.page(params[:page]).per(20)
-    
+
     # Get open-ended tasks separately for display
     @open_ended_tasks = @senior.tasks_as_senior.open_ended.where.not(status: :completed).order(created_at: :desc).limit(10)
-    
+
     # Get caregivers for filter dropdown
     @caregivers = @senior.caregivers
   end
@@ -67,7 +67,7 @@ class TasksController < WebController
     if @task.save
       # Expand recurring task if rrule is present
       @task.expand! if @task.recurring_template?
-      
+
       redirect_to senior_tasks_path(@senior), notice: "Task created successfully"
     else
       @caregivers = @senior.caregivers
@@ -83,7 +83,7 @@ class TasksController < WebController
   # PATCH /dashboard/senior/:senior_id/tasks/:id
   def update
     was_recurring = @task.recurring_template?
-    
+
     if @task.update(task_params)
       # If this is still a recurring template, regenerate future instances
       if @task.recurring_template?
@@ -93,7 +93,7 @@ class TasksController < WebController
       elsif was_recurring
         @task.child_tasks.upcoming.where(status: :pending).destroy_all
       end
-      
+
       redirect_to senior_task_path(@senior, @task), notice: "Task updated successfully"
     else
       @caregivers = @senior.caregivers
@@ -119,7 +119,7 @@ class TasksController < WebController
   # POST /dashboard/senior/:senior_id/tasks/:id/assign
   def assign
     caregiver = User.find(params[:caregiver_id])
-    
+
     unless @senior.caregivers.include?(caregiver)
       redirect_to senior_task_path(@senior, @task), alert: "Invalid caregiver"
       return
@@ -132,7 +132,7 @@ class TasksController < WebController
       else
         "Open-ended task (no specific date)"
       end
-      
+
       # Always notify the assigned caregiver
       Notification.create!(
         user: caregiver,
@@ -146,7 +146,7 @@ class TasksController < WebController
           assigned_by: current_user.display_name
         }
       )
-      
+
       # Notify other caregivers who opted in
       @senior.caregivers.where(notify_on_task_assigned_to_others: true).where.not(id: caregiver.id).each do |other_caregiver|
         Notification.create!(
@@ -162,7 +162,7 @@ class TasksController < WebController
           }
         )
       end
-      
+
       redirect_to senior_task_path(@senior, @task), notice: "Task assigned to #{caregiver.email}"
     else
       redirect_to senior_task_path(@senior, @task), alert: "Could not assign task"
@@ -195,7 +195,7 @@ class TasksController < WebController
           }
         )
       end
-      
+
       redirect_to senior_task_path(@senior, @task), notice: "You have unassigned yourself from this task. Other caregivers have been notified."
     else
       redirect_to senior_task_path(@senior, @task), alert: "Could not unassign task"

@@ -6,6 +6,6 @@ class CreateOccurrences < ActiveRecord::Migration[8.0]
       t.integer :status, default: 0, null: false
       t.timestamps
     end
-    add_index :occurrences, [:reminder_id, :scheduled_at], unique: true
+    add_index :occurrences, [ :reminder_id, :scheduled_at ], unique: true
   end
 end

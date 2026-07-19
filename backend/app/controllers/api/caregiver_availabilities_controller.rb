@@ -1,7 +1,7 @@
 module Api
   class CaregiverAvailabilitiesController < ApplicationController
     before_action :authenticate_user!
-    before_action :set_availability, only: [:update, :destroy]
+    before_action :set_availability, only: [ :update, :destroy ]
 
     # GET /api/availability
     def index
@@ -32,7 +32,7 @@ module Api
       @availabilities = @availabilities.order(:date, :start_time)
 
       render json: @availabilities.as_json(include: {
-        caregiver: { only: [:id, :email, :name] }
+        caregiver: { only: [ :id, :email, :name ] }
       })
     end
 

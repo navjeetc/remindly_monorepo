@@ -4,15 +4,15 @@ class CheckCoverageGapsJob < ApplicationJob
   # Check all seniors for coverage gaps and notify caregivers
   def perform
     Rails.logger.info "🔍 Checking coverage gaps..."
-    
+
     # Get all seniors who have at least one caregiver
     seniors_with_caregivers = User.where(role: :senior)
       .joins(:senior_links)
       .where.not(caregiver_links: { caregiver_id: nil })
-      .group('users.id')
-      .having('COUNT(caregiver_links.id) > 0')
+      .group("users.id")
+      .having("COUNT(caregiver_links.id) > 0")
       .distinct
-    
+
     seniors_with_caregivers.each do |senior|
       begin
         # Check next 2 weeks for gaps
@@ -25,7 +25,7 @@ class CheckCoverageGapsJob < ApplicationJob
         Rails.logger.error "Failed to check coverage for senior #{senior.id}: #{e.message}"
       end
     end
-    
+
     Rails.logger.info "✅ Coverage gap check complete"
   end
 end

@@ -18,7 +18,7 @@ class TaskCommentsController < WebController
   # DELETE /dashboard/senior/:senior_id/tasks/:task_id/comments/:id
   def destroy
     @comment = @task.task_comments.find(params[:id])
-    
+
     # Only the comment author can delete
     if @comment.user == current_user
       @comment.destroy

@@ -4,7 +4,7 @@ class RoleChangeMailer < ApplicationMailer
     @old_role = old_role || "none"
     @new_role = new_role || "none"
     @changed_by = changed_by
-    
+
     mail(
       to: @user.email,
       subject: "Your Remindly account role has been updated"

@@ -5,8 +5,8 @@ class AddSchedulingIntegrationToTasks < ActiveRecord::Migration[8.0]
     add_column :tasks, :external_id, :string
     add_column :tasks, :external_url, :string
     add_column :tasks, :sync_metadata, :json, default: {}
-    
-    add_index :tasks, [:external_source, :external_id], unique: true, where: "external_source IS NOT NULL"
+
+    add_index :tasks, [ :external_source, :external_id ], unique: true, where: "external_source IS NOT NULL"
     add_index :tasks, :external_source
   end
 end

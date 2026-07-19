@@ -3,7 +3,7 @@
 # Learn more: http://github.com/javan/whenever
 
 # Set the environment
-set :environment, ENV['RAILS_ENV'] || 'production'
+set :environment, ENV["RAILS_ENV"] || "production"
 
 # Set output to log file
 set :output, "log/cron.log"
@@ -14,7 +14,7 @@ set :output, "log/cron.log"
 #   ENV['TZ'] = 'America/New_York'
 # Note: The 'at:' argument accepts 12-hour format (e.g., '10:00 pm'), but whenever will
 # generate the actual cron expression in 24-hour format (e.g., '0 22 * * *' for 10 PM).
-every 1.day, at: '10:00 pm' do
+every 1.day, at: "10:00 pm" do
   rake "audit:daily_report"
 end
 

@@ -76,7 +76,7 @@ RSpec.describe Task, type: :model do
     it 'returns tasks for a specific senior' do
       other_senior = create(:user, role: :senior)
       other_task = create(:task, senior: other_senior)
-      
+
       expect(Task.for_senior(senior.id)).to include(upcoming_task, past_task)
       expect(Task.for_senior(senior.id)).not_to include(other_task)
     end
@@ -116,7 +116,7 @@ RSpec.describe Task, type: :model do
       it 'changes status to assigned when a caregiver is assigned' do
         task = create(:task, senior: senior, created_by: creator, status: :pending, assigned_to: nil)
         task.update(assigned_to: caregiver)
-        
+
         expect(task.status).to eq('assigned')
       end
 
@@ -124,7 +124,7 @@ RSpec.describe Task, type: :model do
         task = create(:task, senior: senior, created_by: creator, status: :in_progress, assigned_to: caregiver)
         new_caregiver = create(:user, role: :caregiver)
         task.update(assigned_to: new_caregiver)
-        
+
         expect(task.status).to eq('in_progress')
       end
     end
@@ -133,14 +133,14 @@ RSpec.describe Task, type: :model do
       it 'sets completed_at when status changes to completed' do
         task = create(:task, senior: senior, created_by: creator, status: :in_progress)
         task.update(status: :completed)
-        
+
         expect(task.completed_at).to be_present
       end
 
       it 'clears completed_at when status changes from completed' do
         task = create(:task, senior: senior, created_by: creator, status: :completed, completed_at: Time.current)
         task.update(status: :in_progress)
-        
+
         expect(task.completed_at).to be_nil
       end
     end

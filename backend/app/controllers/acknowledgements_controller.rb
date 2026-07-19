@@ -73,7 +73,7 @@ class AcknowledgementsController < WebController
 
       occ.update!(status: :acknowledged)
     end
-    
+
     render json: {
       snoozed_occurrence_id: new_occ.id,
       scheduled_at: new_occ.scheduled_at,

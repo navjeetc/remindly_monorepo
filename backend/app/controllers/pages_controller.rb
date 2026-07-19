@@ -1,7 +1,7 @@
 class PagesController < WebController
   # Public pages - no authentication required
-  layout 'dashboard'
-  
+  layout "dashboard"
+
   def how_to
   end
 end

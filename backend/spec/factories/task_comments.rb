@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :task_comment do
     association :task
     association :user, factory: :user, role: :caregiver
-    
+
     content { "This is a comment on the task" }
 
     trait :long_comment do

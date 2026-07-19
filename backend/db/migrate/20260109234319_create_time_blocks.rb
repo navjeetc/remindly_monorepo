@@ -11,8 +11,8 @@ class CreateTimeBlocks < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
-    add_index :time_blocks, [:user_id, :start_time, :end_time]
+
+    add_index :time_blocks, [ :user_id, :start_time, :end_time ]
     add_index :time_blocks, :active
   end
 end
