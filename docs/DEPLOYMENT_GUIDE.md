@@ -8,7 +8,7 @@ The web client has been integrated into the Rails application and is ready for p
 
 - **Web Client** with voice announcements
 - Accessible at `/client` URL
-- Served from `backend/public/client/`
+- Served from `backend/public/voice_reminders.js` at `/voice_reminders`
 - No separate deployment needed
 
 ## Production URLs
@@ -121,7 +121,7 @@ Voice announcements work across all modern browsers:
 ### CSS Not Loading
 
 If styling doesn't load:
-1. Check that files exist in `public/client/`
+1. Check that `public/voice_reminders.js` exists
 2. Hard refresh browser (Cmd+Shift+R)
 3. Check browser console for 404 errors
 
@@ -135,24 +135,17 @@ If styling doesn't load:
 ### 404 on /client
 
 1. Verify route exists in `config/routes.rb`
-2. Check that `public/client/index.html` exists
+2. Check that `/voice_reminders` renders (it is a Rails view, not a static file)
 3. Restart Rails server
 
-## Updating the Web Client
+## Updating the Voice Client
 
-If you make changes to the standalone web client (`clients/web/`):
+The voice client is `backend/public/voice_reminders.js`, served by Rails at
+`/voice_reminders`. Edit it in place, commit, and deploy — there is no sync step.
 
-```bash
-# Sync changes to Rails public directory
-cd backend
-rails client:sync
-
-# Commit and deploy
-git add public/client/
-git commit -m "Update web client"
-git push origin main
-# Deploy to production
-```
+A standalone client at `clients/web/` used to be copied into `public/client/` by
+`rails client:sync`. It was superseded by `/voice_reminders` and removed; the
+rake task and the duplicate copies are gone, and `/client/` redirects.
 
 ## Rollback
 
@@ -168,7 +161,7 @@ git push origin main
 Or manually:
 ```bash
 # Remove files
-rm -rf backend/public/client/
+rm -rf backend/tmp/cache/
 
 # Remove route from config/routes.rb
 # Line: get "client", to: redirect("/client/index.html", status: 302)
@@ -178,9 +171,8 @@ rm -rf backend/public/client/
 
 ## Support
 
-- **Documentation**: `backend/public/client/README.md`
-- **Integration Guide**: `backend/public/client/INTEGRATION.md`
-- **Quick Start**: `backend/public/client/QUICKSTART.md`
+- **Voice client behaviour and its limits**: see "Voice Announcements" in the
+  root `README.md`
 
 ## Success Criteria
 

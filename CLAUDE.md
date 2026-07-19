@@ -19,7 +19,7 @@ make backend-setup          # bundle install + db:create + db:migrate
 ### Running
 ```bash
 ./start_backend.sh          # Backend on http://localhost:5000
-make dev                    # Both via tmux (requires tmux)
+make dev                    # Rails serves the dashboard and the voice client
 ```
 
 ### Testing & Linting

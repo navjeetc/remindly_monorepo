@@ -2,7 +2,7 @@ require "rails_helper"
 
 # Everything under public/ is served to anyone who asks, with no auth and no
 # robots.txt enforcement. Docs and manifests landed there once by being copied
-# wholesale from clients/web — this keeps them from coming back.
+# wholesale from a client directory — this keeps them from coming back.
 RSpec.describe "public/ directory hygiene" do
   PUBLIC_ROOT = Rails.root.join("public")
 
@@ -19,7 +19,7 @@ RSpec.describe "public/ directory hygiene" do
 
     expect(markdown).to be_empty,
       "Markdown under public/ is world-readable. Move it to the source directory " \
-      "(clients/web/ or docs/) instead:\n  #{markdown.join("\n  ")}"
+      "(docs/ instead):\n  #{markdown.join("\n  ")}"
   end
 
   it "serves no package manifests or lockfiles" do

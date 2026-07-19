@@ -10,11 +10,30 @@ RSpec.describe "retired standalone client", type: :request do
       expect(response).to redirect_to("/voice_reminders")
     end
 
-    # Old magic links looked like /client/?token=... — a 404 would strand anyone
-    # following one from an old email or a bookmark.
     it "redirects a nested path" do
       get "/client/index.html"
       expect(response).to redirect_to("/voice_reminders")
+    end
+
+    # Emails already sent contain /client/?token=... and stay valid for 30
+    # minutes. Dropping the token would land the user unauthenticated on
+    # /voice_reminders and bounce them to login, so the link would look broken.
+    context "with a legacy magic-link token" do
+      let(:user) { User.create!(email: "legacy@example.com", tz: "America/New_York", name: "Legacy") }
+      let(:token) { user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+
+      it "carries the token through to the session login" do
+        get "/client/", params: { token: token }
+
+        expect(response).to redirect_to("/login/verify?next=voice_reminders&token=#{CGI.escape(token)}")
+      end
+
+      it "still signs the user in when followed" do
+        get "/client/", params: { token: token }
+        follow_redirect!
+
+        expect(response).to redirect_to(voice_reminders_path)
+      end
     end
   end
 

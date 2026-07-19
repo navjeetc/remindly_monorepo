@@ -7,9 +7,10 @@
 # unbroken block under the User-agent line or it silently applies to nobody.
 User-agent: *
 # Auth flows — magic-link URLs are single-use credentials, never crawl them.
-# /client/ belongs here too: MagicMailer sends web logins to /client/?token=...
-# and app.js exchanges that token for a JWT on load, so a crawler fetching the
-# link would burn the credential.
+# /client/ belongs here too: the standalone client it served was retired, but the
+# path still redirects, and a legacy magic link at /client/?token=... is carried
+# through to /login/verify — so a crawler fetching one would still burn a
+# single-use credential.
 Disallow: /login
 Disallow: /logout
 Disallow: /magic/
