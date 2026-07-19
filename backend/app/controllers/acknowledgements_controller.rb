@@ -39,26 +39,36 @@ class AcknowledgementsController < WebController
     occ = Occurrence.joins(:reminder).where(reminders: { user_id: current_user.id }).find(params.require(:occurrence_id))
     minutes = snooze_minutes
 
-    # Measure from whichever is later: the time it was due, or now. Before the due
-    # time that delays the original; after it, it delays from the moment the
-    # senior asked.
-    base = [ occ.scheduled_at, Time.current ].max
-    target = base + minutes.minutes
-
-    # Making the target deterministic also makes a retry collide: occurrences are
-    # unique on (reminder_id, scheduled_at), so a second request for the same
-    # snooze — a lost response, a double tap — would raise RecordNotUnique and
-    # return 500 for a snooze that had already succeeded. The same collision
-    # occurs when the target lands on an already-materialised recurrence.
+    # A retry — a lost response, a double tap — must land on the same snoozed
+    # occurrence rather than creating another one or failing.
     #
-    # find_or_create_by makes the retry idempotent, and the transaction keeps a
-    # failure from leaving the acknowledgement behind without its occurrence.
+    # The snooze time is derived from the first snooze acknowledgement for this
+    # occurrence, not from Time.current. Measuring from "now" is only stable
+    # before the scheduled time; once it has passed, every retry would compute a
+    # later target and create another occurrence. Reusing the acknowledgement
+    # makes both sides of the due time deterministic, and keeps a retry from
+    # stacking up duplicate snooze acknowledgements.
     new_occ = nil
-    ActiveRecord::Base.transaction do
-      Acknowledgement.create!(occurrence: occ, kind: 'snooze', at: Time.current)
+    target = nil
 
-      new_occ = Occurrence.find_or_create_by!(reminder: occ.reminder, scheduled_at: target) do |o|
-        o.status = :pending
+    ActiveRecord::Base.transaction do
+      ack = occ.acknowledgements.find_by(kind: :snooze) ||
+            Acknowledgement.create!(occurrence: occ, kind: "snooze", at: Time.current)
+
+      # Whichever is later: the time it was due, or the moment it was snoozed.
+      base = [ occ.scheduled_at, ack.at ].max
+      target = base + minutes.minutes
+
+      # Occurrences are unique on (reminder_id, scheduled_at), so the target may
+      # already exist — from a retry, or from an already-materialised recurrence.
+      # find_or_create_by is a SELECT then an INSERT, so a concurrent double tap
+      # can still lose the race; the rescue takes the row the other request won.
+      new_occ = begin
+        Occurrence.find_or_create_by!(reminder: occ.reminder, scheduled_at: target) do |o|
+          o.status = :pending
+        end
+      rescue ActiveRecord::RecordNotUnique
+        Occurrence.find_by!(reminder: occ.reminder, scheduled_at: target)
       end
 
       occ.update!(status: :acknowledged)

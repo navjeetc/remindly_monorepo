@@ -208,6 +208,30 @@ RSpec.describe "Acknowledgements", type: :request do
       }.not_to change { Occurrence.where(reminder_id: occurrence.reminder.id).count }
     end
 
+    # The before-due case was idempotent because the scheduled time anchored the
+    # target. After the due time the anchor was Time.current, so every retry
+    # computed a later target and created another occurrence.
+    it "is idempotent when a snooze is retried after the reminder was due" do
+      past = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 20.minutes.ago, status: :pending)
+
+      first = snooze!(past, minutes: 10)
+
+      expect {
+        second = snooze!(past, minutes: 10)
+        expect(second.id).to eq(first.id)
+      }.not_to change { Occurrence.where(reminder_id: occurrence.reminder.id).count }
+    end
+
+    it "does not stack up snooze acknowledgements on retry" do
+      past = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 20.minutes.ago, status: :pending)
+
+      snooze!(past, minutes: 10)
+
+      expect {
+        snooze!(past, minutes: 10)
+      }.not_to change { past.acknowledgements.where(kind: :snooze).count }
+    end
+
     it "does not leave an acknowledgement behind when the occurrence cannot be created" do
       future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
       allow(Occurrence).to receive(:find_or_create_by!).and_raise(ActiveRecord::RecordInvalid.new(Occurrence.new))
