@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= yield(:title).presence || "Remindly — spoken reminders for seniors, set up by the people who care for them" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="<%= yield(:description).presence || "Remindly speaks reminders aloud at the right time, so a senior does not have to read a screen or open an app. Caregivers set them up from anywhere." %>">
+    <link rel="canonical" href="<%= canonical_url %>">
+    <%= csp_meta_tag %>
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="<%= yield(:title).presence || "Remindly — spoken reminders for seniors" %>">
+    <meta property="og:description" content="<%= yield(:description).presence || "Spoken reminders for seniors, set up by the people who care for them." %>">
+    <meta property="og:url" content="<%= canonical_url %>">
+
+    <%#
+      Styles are inlined rather than linked. There is no asset pipeline in this app,
+      the dashboard pulls Tailwind from a CDN (~400KB of JS that Tailwind itself
+      warns against in production), and this is the one page meant to rank — so it
+      should not block rendering on a third-party request. Small enough to read.
+    %>
+    <style>
+      :root {
+        --ink: #1f2933;
+        --muted: #52606d;
+        --line: #e4e7eb;
+        --brand: #2f5bea;
+        --brand-dark: #1e40af;
+        --bg: #ffffff;
+        --bg-soft: #f5f7fa;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 400 1.125rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem; }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        padding: 1.25rem 0;
+      }
+      header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      .logo { font-size: 1.5rem; font-weight: 700; color: var(--brand); text-decoration: none; }
+
+      h1 {
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        line-height: 1.15;
+        margin: 2.5rem 0 1rem;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 1.5rem;
+        margin: 2.5rem 0 0.75rem;
+        letter-spacing: -0.01em;
+      }
+      p { margin: 0 0 1rem; }
+      .lead { font-size: 1.25rem; color: var(--muted); }
+
+      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 2rem 0 3rem; }
+
+      /* Generous hit areas: some visitors here are the seniors themselves. */
+      .btn {
+        display: inline-block;
+        padding: 0.9rem 1.5rem;
+        border-radius: 0.6rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: 2px solid transparent;
+      }
+      .btn-primary { background: var(--brand); color: #fff; }
+      .btn-primary:hover { background: var(--brand-dark); }
+      .btn-secondary { border-color: var(--line); color: var(--ink); }
+      .btn-secondary:hover { background: var(--bg-soft); }
+
+      .btn:focus-visible, a:focus-visible {
+        outline: 3px solid var(--brand);
+        outline-offset: 2px;
+      }
+
+      ol.steps { padding-left: 1.25rem; margin: 0 0 1.5rem; }
+      ol.steps li { margin-bottom: 0.75rem; }
+
+      .note {
+        background: var(--bg-soft);
+        border-left: 4px solid var(--brand);
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.4rem 0.4rem 0;
+        margin: 2rem 0;
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        margin-top: 4rem;
+        padding: 2rem 0 3rem;
+        color: var(--muted);
+        font-size: 1rem;
+      }
+      footer a { color: var(--muted); }
+      footer .links { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1rem; }
+
+      a { color: var(--brand); }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e6e9ee;
+          --muted: #a7b0bb;
+          --line: #2c333d;
+          --brand: #7f9cf5;
+          --brand-dark: #a3b8f8;
+          --bg: #14181e;
+          --bg-soft: #1b212a;
+        }
+        .btn-primary { color: #14181e; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="wrap">
+        <a class="logo" href="/">Remindly</a>
+        <a href="<%= login_path %>">Sign in</a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <%= yield %>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="links">
+          <a href="<%= how_to_path %>">How Remindly works</a>
+          <a href="<%= login_path %>">Sign in</a>
+          <a href="mailto:hello@remindly.care">hello@remindly.care</a>
+        </div>
+        <p>© <%= Date.current.year %> Remindly</p>
+      </div>
+    </footer>
+  </body>
+</html>

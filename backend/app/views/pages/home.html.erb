@@ -1,0 +1,75 @@
+<% content_for :title, "Remindly — spoken reminders for seniors, set up by the people who care for them" %>
+<% content_for :description, "Remindly speaks reminders aloud at the right time, so a senior does not have to read a screen or open an app. Caregivers set them up from anywhere and can see what has been done." %>
+
+<h1>Reminders that speak up</h1>
+
+<p class="lead">
+  Remindly says reminders out loud at the right time — take your medication,
+  drink some water, the nurse comes today — so nobody has to remember to check a
+  screen.
+</p>
+
+<div class="actions">
+  <a class="btn btn-primary" href="<%= login_path %>">Sign in</a>
+  <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works</a>
+</div>
+
+<h2>How it works</h2>
+
+<ol class="steps">
+  <li>
+    <strong>A caregiver sets up the reminders.</strong> From their own phone or
+    computer, wherever they are.
+  </li>
+  <li>
+    <strong>The senior leaves the page open.</strong> On a tablet or computer,
+    usually somewhere they already spend time.
+  </li>
+  <li>
+    <strong>Remindly speaks each reminder when it is due</strong>, and they tap
+    one large button to say it is done — or snooze it.
+  </li>
+</ol>
+
+<h2>Built for the person using it</h2>
+
+<p>
+  The reminder screen is deliberately plain: large text, two buttons, no menus to
+  get lost in. There is nothing to install and no password to remember — signing
+  in is a link sent by email.
+</p>
+
+<p>
+  Caregivers get their own view showing what was acknowledged and what was
+  missed, so checking in does not mean a phone call every time.
+</p>
+
+<div class="note">
+  <p>
+    <strong>One thing worth knowing:</strong> browsers will not play audio until
+    someone has touched the page, so on an iPad the screen needs a single tap
+    after it loads before reminders can be spoken aloud. Remindly asks for that
+    tap and remembers anything it could not say, then speaks it once you do.
+  </p>
+</div>
+
+<h2>Getting started</h2>
+
+<p>
+  Enter your email on the <a href="<%= login_path %>">sign-in page</a> and
+  Remindly sends you a link. There is no password to choose or remember, and
+  nothing to install.
+</p>
+
+<p>
+  New accounts start without a role, so the first thing you will see is a page
+  saying your account is waiting for approval. That is expected. Write to
+  <a href="mailto:hello@remindly.care">hello@remindly.care</a> and say whether
+  you are a caregiver setting Remindly up for someone else, or you will be
+  receiving the reminders yourself, and we will enable the right access.
+</p>
+
+<p>
+  The <a href="<%= how_to_path %>">guide</a> walks through setting up a first
+  reminder once you are in.
+</p>
