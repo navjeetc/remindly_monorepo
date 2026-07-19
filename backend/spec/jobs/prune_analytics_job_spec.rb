@@ -39,6 +39,25 @@ RSpec.describe PruneAnalyticsJob do
     expect(Ahoy::Event.where(visit_id: expired.id)).to be_empty
   end
 
+  # started_at and time are nullable. A row with no timestamp can never satisfy
+  # "recent enough to keep", and would otherwise hold an IP address forever.
+  it "removes an undated visit" do
+    undated = Ahoy::Visit.create!(visit_token: SecureRandom.uuid, visitor_token: SecureRandom.uuid,
+                                  ip: "203.0.113.9", started_at: nil)
+
+    described_class.perform_now
+
+    expect(Ahoy::Visit.exists?(undated.id)).to be(false)
+  end
+
+  it "removes an undated event" do
+    undated = Ahoy::Event.create!(name: "Login Success", time: nil, visit: visit(1.day.ago))
+
+    described_class.perform_now
+
+    expect(Ahoy::Event.exists?(undated.id)).to be(false)
+  end
+
   it "reports what it removed" do
     visit(120.days.ago)
 

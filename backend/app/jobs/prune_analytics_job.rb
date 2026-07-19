@@ -15,21 +15,29 @@ class PruneAnalyticsJob < ApplicationJob
 
   def perform(retention: RETENTION)
     cutoff = retention.ago
-    expired_visits = Ahoy::Visit.where(started_at: ...cutoff)
 
-    # Events first, and by two rules: older than the cutoff, or belonging to a
+    # An undated row counts as expired. started_at and time are both nullable, so
+    # a row with no timestamp would otherwise never match a "before the cutoff"
+    # filter and would keep its IP address indefinitely — which is exactly what
+    # this job exists to prevent. There is no version of "recent enough to keep"
+    # that a row without a date can satisfy.
+    expired_visits = Ahoy::Visit.where(started_at: ...cutoff).or(Ahoy::Visit.where(started_at: nil))
+
+    # Events go by three rules: older than the cutoff, undated, or belonging to a
     # visit that is about to go. An event records its own time, so a recent event
     # attached to an expired visit would otherwise survive and point at a row
     # that no longer exists.
     events = Ahoy::Event
       .where(time: ...cutoff)
+      .or(Ahoy::Event.where(time: nil))
       .or(Ahoy::Event.where(visit_id: expired_visits.select(:id)))
       .delete_all
 
     visits = expired_visits.delete_all
 
     Rails.logger.info(
-      "PruneAnalyticsJob: removed #{visits} visits and #{events} events older than #{cutoff.to_date}"
+      "PruneAnalyticsJob: removed #{visits} visits and #{events} events " \
+      "(before #{cutoff.to_date}, undated, or attached to a removed visit)"
     )
 
     { visits: visits, events: events }

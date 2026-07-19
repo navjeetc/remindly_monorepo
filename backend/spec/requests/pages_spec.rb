@@ -51,6 +51,24 @@ RSpec.describe "Pages", type: :request do
         expect(response.body).to include("waiting for approval")
       end
 
+      # Excluding the path in Ahoy::Store stops the visit row, but Ahoy still
+      # sets its cookies — so an anonymous reader went away carrying a
+      # month-long identifier anyway. Half a privacy fix.
+      it "leaves no analytics cookie on an anonymous visitor" do
+        get "/"
+
+        %w[ahoy_visit ahoy_visitor].each do |name|
+          expect(response.cookies[name]).to be_blank, "#{name} was left set"
+        end
+      end
+
+      # Adding csrf_meta_tags here would touch the session and start issuing a
+      # session cookie to every anonymous reader of a public page.
+      it "issues no session cookie" do
+        get "/"
+        expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+      end
+
       # The dashboard layout loads Tailwind from a CDN. This page is the one
       # search engines index, so it must not block on a third-party request.
       it "loads no third-party assets" do
