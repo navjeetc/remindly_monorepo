@@ -186,6 +186,34 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
     end
 
+    # The target time is deterministic now, so a retried request asks for exactly
+    # the same occurrence. Occurrences are unique on (reminder_id, scheduled_at),
+    # which would raise RecordNotUnique and return 500 for a snooze that had
+    # already succeeded.
+    it "is idempotent when the same snooze is retried" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      first = snooze!(future, minutes: 10)
+      expect(response).to have_http_status(:created)
+
+      expect {
+        second = snooze!(future, minutes: 10)
+        expect(response).to have_http_status(:created)
+        expect(second.id).to eq(first.id)
+      }.not_to change { Occurrence.where(reminder_id: occurrence.reminder.id).count }
+    end
+
+    it "does not leave an acknowledgement behind when the occurrence cannot be created" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+      allow(Occurrence).to receive(:find_or_create_by!).and_raise(ActiveRecord::RecordInvalid.new(Occurrence.new))
+
+      expect {
+        post "/acknowledgements/snooze",
+          params: { occurrence_id: future.id, minutes: 10 },
+          headers: auth_headers
+      }.not_to change { Acknowledgement.count }
+    end
+
     it "uses the default delay when minutes cannot be parsed" do
       future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
 

@@ -39,22 +39,30 @@ class AcknowledgementsController < WebController
     occ = Occurrence.joins(:reminder).where(reminders: { user_id: current_user.id }).find(params.require(:occurrence_id))
     minutes = snooze_minutes
 
-    # Create acknowledgement for snooze tracking
-    Acknowledgement.create!(occurrence: occ, kind: 'snooze', at: Time.current)
-
     # Measure from whichever is later: the time it was due, or now. Before the due
     # time that delays the original; after it, it delays from the moment the
     # senior asked.
     base = [ occ.scheduled_at, Time.current ].max
+    target = base + minutes.minutes
 
-    new_occ = Occurrence.create!(
-      reminder: occ.reminder,
-      scheduled_at: base + minutes.minutes,
-      status: :pending
-    )
+    # Making the target deterministic also makes a retry collide: occurrences are
+    # unique on (reminder_id, scheduled_at), so a second request for the same
+    # snooze — a lost response, a double tap — would raise RecordNotUnique and
+    # return 500 for a snooze that had already succeeded. The same collision
+    # occurs when the target lands on an already-materialised recurrence.
+    #
+    # find_or_create_by makes the retry idempotent, and the transaction keeps a
+    # failure from leaving the acknowledgement behind without its occurrence.
+    new_occ = nil
+    ActiveRecord::Base.transaction do
+      Acknowledgement.create!(occurrence: occ, kind: 'snooze', at: Time.current)
 
-    # Mark original as acknowledged
-    occ.update!(status: :acknowledged)
+      new_occ = Occurrence.find_or_create_by!(reminder: occ.reminder, scheduled_at: target) do |o|
+        o.status = :pending
+      end
+
+      occ.update!(status: :acknowledged)
+    end
     
     render json: {
       snoozed_occurrence_id: new_occ.id,
