@@ -75,7 +75,10 @@ RSpec.describe "Pages", type: :request do
         get "/"
 
         external = doc.css("script[src], link[rel='stylesheet']").map { |n| n["src"] || n["href"] }.compact
-        expect(external.select { |u| u.start_with?("http") }).to be_empty
+
+        # "//cdn.example.com/x.js" fetches over the page's own scheme, so a check
+        # for "http" alone would pass while the browser still made the request.
+        expect(external.select { |u| u.start_with?("http", "//") }).to be_empty
       end
     end
 
