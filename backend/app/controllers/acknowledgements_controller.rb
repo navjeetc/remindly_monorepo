@@ -65,12 +65,16 @@ class AcknowledgementsController < WebController
 
   private
 
-  # A non-numeric or negative value would otherwise become 0 or a negative offset
-  # via to_i, which is the same "reminder moves earlier" failure by another route.
+  # Strict parsing, because to_i turns "not-a-number" into 0 — which then clamps to
+  # one minute rather than falling back to the default, quietly making the snooze
+  # far shorter than the senior expected. Anything unparseable or missing means we
+  # do not know what was asked for, so use the default; a value we can read but
+  # that is too small is a different case and gets clamped.
   def snooze_minutes
-    raw = params[:minutes]
-    minutes = raw.presence ? raw.to_i : SNOOZE_DEFAULT_MINUTES
-    [ minutes, SNOOZE_MIN_MINUTES ].max
+    parsed = Integer(params[:minutes].to_s, exception: false)
+    return SNOOZE_DEFAULT_MINUTES if parsed.nil?
+
+    [ parsed, SNOOZE_MIN_MINUTES ].max
   end
 
   # A Bearer header is a claim about who is acting, so it decides the outcome on

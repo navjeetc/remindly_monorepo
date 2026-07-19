@@ -175,12 +175,23 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(new_occ.scheduled_at).to be > occurrence.scheduled_at
     end
 
-    it "falls back to the default when minutes is missing or unparseable" do
+    # Asserting the exact delay, not merely "later". A loose assertion passed while
+    # an unparseable value was silently clamping to one minute instead of using the
+    # default — the spec agreed with the bug.
+    it "uses the default delay when minutes is omitted" do
+      future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
+
+      new_occ = snooze!(future)
+
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
+    end
+
+    it "uses the default delay when minutes cannot be parsed" do
       future = Occurrence.create!(reminder: occurrence.reminder, scheduled_at: 25.minutes.from_now, status: :pending)
 
       new_occ = snooze!(future, minutes: "not-a-number")
 
-      expect(new_occ.scheduled_at).to be > future.scheduled_at
+      expect(new_occ.scheduled_at).to be_within(5.seconds).of(future.scheduled_at + 10.minutes)
     end
   end
 
