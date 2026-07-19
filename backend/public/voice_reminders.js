@@ -24,6 +24,12 @@ class VoiceRemindersApp {
         // the reminder would never speak again. Starting every browser locked
         // makes that reachable outside iOS, so it has to survive a reload.
         this.pendingVoiceAnnouncements = this.loadPendingVoiceAnnouncements();
+        // Whether this.reminders reflects a completed fetch. Replay needs it to
+        // tell "already acknowledged" from "not fetched yet" — those look
+        // identical in an empty array, and treating the second as the first
+        // would discard the queue.
+        this.remindersLoaded = false;
+        this.replayInFlight = false;
     }
 
     init() {
@@ -147,10 +153,18 @@ class VoiceRemindersApp {
             
             const data = await response.json();
             this.reminders = data;
+            this.remindersLoaded = true;
             this.renderReminders();
             this.updateStats();
             this.announceNewReminders();
             this.updateStatus('online');
+
+            // Retry a replay that was deferred because reminder state was unknown
+            // when the user unlocked. The periodic poll calls through here, so a
+            // deferred queue is picked up on the next cycle rather than stranded.
+            if (this.voiceUnlocked && this.pendingVoiceAnnouncements.size > 0) {
+                this.replayPendingVoiceAnnouncements();
+            }
         } catch (error) {
             console.error('Error loading reminders:', error);
             this.updateStatus('offline');
@@ -584,8 +598,27 @@ class VoiceRemindersApp {
     // Speak anything refused while voice was locked, driven by the unlock rather
     // than the polling loop — announcedReminders already contains these, so the
     // loop will never revisit them.
-    replayPendingVoiceAnnouncements() {
+    async replayPendingVoiceAnnouncements() {
         if (this.pendingVoiceAnnouncements.size === 0) return;
+        if (this.replayInFlight) return;
+
+        // The queue is only safe to drain once reminder state is known. On a fresh
+        // page the unlock tap routinely lands before the first fetch returns, and
+        // an empty this.reminders would make every entry look "no longer pending"
+        // — discarding it permanently, since announcedReminders blocks any
+        // re-announcement. Wait for the fetch, and keep the queue if it fails.
+        if (!this.remindersLoaded) {
+            this.replayInFlight = true;
+            try {
+                await this.loadReminders();
+            } finally {
+                this.replayInFlight = false;
+            }
+            if (!this.remindersLoaded) {
+                console.log('⏸️  Deferring replay — reminders not loaded yet');
+                return;
+            }
+        }
 
         const pending = [...this.pendingVoiceAnnouncements.entries()];
         this.pendingVoiceAnnouncements.clear();
