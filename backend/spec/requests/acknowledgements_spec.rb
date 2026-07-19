@@ -54,8 +54,14 @@ RSpec.describe "Acknowledgements", type: :request do
       around do |example|
         original = ActionController::Base.allow_forgery_protection
         ActionController::Base.allow_forgery_protection = true
-        example.run
-        ActionController::Base.allow_forgery_protection = original
+        begin
+          example.run
+        ensure
+          # Without ensure, anything raising out of the example leaves forgery
+          # protection globally enabled and every later spec fails somewhere
+          # unrelated to the actual cause.
+          ActionController::Base.allow_forgery_protection = original
+        end
       end
 
       it "skips CSRF for a Bearer request, which carries no CSRF token" do
