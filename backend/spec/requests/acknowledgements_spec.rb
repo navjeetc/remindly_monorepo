@@ -146,11 +146,16 @@ RSpec.describe "Acknowledgements", type: :request do
   # The senior UI shows Snooze before the scheduled time, so this is reachable by
   # tapping the button early — not an edge case.
   describe "snoozing never moves a reminder earlier" do
+    # Assert the response before parsing it. Without this, an unrelated failure —
+    # auth, a routing change — surfaces as a JSON parse error on an error page,
+    # which hides what actually broke.
     def snooze!(occ, minutes: nil)
       params = { occurrence_id: occ.id }
       params[:minutes] = minutes unless minutes.nil?
       post "/acknowledgements/snooze", params: params, headers: auth_headers
-      Occurrence.find(JSON.parse(response.body)["snoozed_occurrence_id"])
+
+      expect(response).to have_http_status(:created), "snooze failed: #{response.status} #{response.body}"
+      Occurrence.find(JSON.parse(response.body).fetch("snoozed_occurrence_id"))
     end
 
     it "delays from the scheduled time when snoozed before it is due" do
@@ -170,7 +175,7 @@ RSpec.describe "Acknowledgements", type: :request do
       expect(new_occ.scheduled_at).to be_within(5.seconds).of(10.minutes.from_now)
     end
 
-    it "does not accept a negative delay" do
+    it "clamps a negative delay to the minimum rather than scheduling earlier" do
       new_occ = snooze!(occurrence, minutes: -30)
       expect(new_occ.scheduled_at).to be > occurrence.scheduled_at
     end
