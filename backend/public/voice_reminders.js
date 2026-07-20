@@ -586,6 +586,15 @@ class VoiceRemindersApp {
     // clicking a link — which already counts as the gesture — never sees it.
     showTapToStart() {
         if (!this.synth) return;              // nothing to unlock
+        // Someone who turned voice announcements off in settings should not be
+        // met by a full-screen demand to turn them on. speak() already returns
+        // early for them, so there is nothing to unlock either.
+        //
+        // Explicitly false, not merely falsy: loadSettings returns whatever is in
+        // localStorage, so a stored object written before this key existed would
+        // read as undefined and suppress the overlay for someone who never chose
+        // to turn voice off.
+        if (this.settings.voiceEnabled === false) return;
         if (this.voiceUnlocked) return;
         if (document.getElementById("tapToStart")) return;
 
@@ -606,7 +615,7 @@ class VoiceRemindersApp {
               "</p>" +
               '<button type="button" id="tapToStartButton" style="font-size:1.5rem;font-weight:700;padding:1rem 2.5rem;' +
                 'border-radius:0.75rem;border:0;background:#fff;color:#1e3a8a;cursor:pointer">Turn on voice</button>' +
-              '<p id="tapToStartError" style="font-size:1.125rem;margin:1.5rem 0 0;display:none"></p>' +
+              '<p id="tapToStartError" role="status" aria-live="assertive" style="font-size:1.125rem;margin:1.5rem 0 0;display:none"></p>' +
             "</div>";
 
         // The whole surface responds, so a senior does not have to find the
@@ -628,6 +637,17 @@ class VoiceRemindersApp {
 
         overlay.addEventListener("click", unlock);
         overlay.addEventListener("touchend", unlock, { passive: false });
+
+        // aria-modal tells assistive tech the rest of the page is inert, but it
+        // does not stop Tab reaching it. Without this a keyboard user tabs to
+        // controls they cannot see behind the overlay and loses the focus ring.
+        // The overlay holds one control, so keeping focus on it is the whole trap.
+        overlay.addEventListener("keydown", (event) => {
+            if (event.key === "Tab") {
+                event.preventDefault();
+                document.getElementById("tapToStartButton")?.focus();
+            }
+        });
 
         document.body.appendChild(overlay);
         document.getElementById("tapToStartButton")?.focus();
