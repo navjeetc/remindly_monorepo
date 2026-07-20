@@ -16,8 +16,20 @@ module ApplicationHelper
   # @param path [String] the link target, compared against the current request
   # @return [String] class attribute for a top navigation link
   def nav_link_class(path)
-    state = request.path == path ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE
-    "#{state} #{NAV_LINK_BASE}"
+    "#{nav_section_active?(path) ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE} #{NAV_LINK_BASE}"
+  end
+
+  # A nav link stands for a section, not a single URL. Comparing paths exactly
+  # left Dashboard unhighlighted on /dashboard/senior/5 and Audit Logs
+  # unhighlighted on /admin/audit_logs/5 — the pages someone is most likely to be
+  # on when they look up to see where they are.
+  #
+  # The trailing slash matters: without it "/contact" would also claim
+  # "/contacts_export". Root is excluded because every path starts with "/".
+  def nav_section_active?(path)
+    return request.path == path if path == "/"
+
+    request.path == path || request.path.start_with?("#{path}/")
   end
 
   # The app answers on remindly.anakhsoft.com, remindly.care and www.remindly.care,
