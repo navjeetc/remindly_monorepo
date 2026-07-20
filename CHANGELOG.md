@@ -5,6 +5,84 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-19
+
+### Added
+- **Marketing homepage at `/`**: the site had no indexable homepage — `/` was
+  `dashboard#index` behind `authenticate!`, so it redirected to `/login` and
+  Search Console reported it as "Page with redirect". Logged-out visitors now
+  get a marketing page; signed-in users still go straight to `/dashboard`. It
+  uses its own layout with inlined CSS, so it loads no third-party assets and
+  sets no session cookie. It also links `/how_to`, which nothing linked to
+  before.
+- **Tap-to-start overlay when voice is locked**: browsers refuse
+  `speechSynthesis` until the user has interacted with the page, and on iOS that
+  applies after every load — including reloads iOS performs on its own. A page
+  that cannot speak looked identical to one with nothing to say. The overlay
+  makes the requirement explicit and is skipped for anyone who has turned voice
+  announcements off.
+- **`PruneAnalyticsJob`**: 90-day retention for Ahoy visits and events, nightly.
+  `visitor_duration` only governed the cookie, so nothing removed the rows and
+  the oldest visit in production held an IP address 270 days old. Undated rows
+  count as expired, since a row with no timestamp can never be shown to be
+  recent.
+- **CI that actually runs**: tests, Brakeman and RuboCop on every PR. The
+  workflow had lived at `backend/.github/workflows/ci.yml`, a directory GitHub
+  Actions never reads, so no pull request in this repository had ever reported a
+  check.
+
+### Changed
+- **Retired the standalone voice client**: three copies of the voice logic
+  existed (`clients/web/`, `backend/public/client/`, and
+  `backend/public/voice_reminders.js`). Only the last is reachable by seniors,
+  and the duplication caused a day of voice fixes to land in a client nobody
+  used. `/client/*` now redirects, carrying legacy magic-link tokens through to
+  `/login/verify` so links in already-sent emails keep working.
+- **Public pages no longer identify anonymous readers**: `/` and `/how_to`
+  record no analytics visit and leave no tracking cookie. Everything behind the
+  login still tracks. `visitor_duration` drops from 2 years to 30 days.
+- **Cleared 604 RuboCop offenses** and enabled the lint job, so the rule holds
+  from here rather than drifting.
+- README, CLAUDE.md and the deployment guide rewritten: they described
+  `clients/web` on port 8080 as the senior interface, which is not what is
+  deployed and cost a day of work aimed at the wrong client.
+
+### Fixed
+- **Seniors could not acknowledge reminders**: `AcknowledgementsController`
+  inherited from `WebController`, whose CSRF check rejected the voice client's
+  Bearer request with 422 before it reached the database. Moving to
+  `ApplicationController` then broke the session-authenticated page instead. It
+  now accepts either credential, with CSRF skipped only for the Bearer scheme.
+- **Voice announcements failed silently on desktop**: unlock was gated on
+  `isIOSDevice()`, but Chrome's autoplay policy refuses speech on any untouched
+  page. Voice now starts locked everywhere, and a refused announcement is queued
+  and spoken once the user interacts rather than being lost — it was marked
+  delivered before `speak()` was called.
+- **Snooze could move a reminder earlier**: the delay was measured from `now`
+  regardless of when the reminder was due, so snoozing a 10:25 reminder at 10:00
+  rescheduled it to 10:10. It is now measured from the later of the scheduled
+  time and now, and is idempotent on retry.
+- **Snooze is hidden until a reminder is due**, and the highlight is reserved
+  for reminders that are actually due rather than applied to every card.
+- **The dashboard nav was invisible on phones**: it was `hidden sm:flex` with no
+  mobile menu, so a senior on a phone saw only Profile and Sign Out and could
+  not reach their own reminders page.
+- **Canonical URLs** across `remindly.anakhsoft.com`, `remindly.care` and
+  `www.remindly.care`, resolving the duplicate-content report that prompted this
+  work.
+- The pending-approval screen said "contact an administrator" without naming
+  one, leaving new users with no way to get their account enabled.
+
+### Security
+- **Internal documentation is no longer served from `public/`**: six files,
+  roughly 1,100 lines of architecture and integration detail, were publicly
+  readable. A spec now fails if any Markdown or dependency manifest reappears
+  there.
+- **The post-login redirect takes a destination from an allowlist**, not a URL,
+  so a genuine Remindly login link cannot be crafted to deliver a signed-in user
+  to somewhere else.
+
+
 ## [0.4.3] - 2026-05-03
 
 ### Fixed
