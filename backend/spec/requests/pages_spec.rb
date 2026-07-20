@@ -15,7 +15,7 @@ RSpec.describe "Pages", type: :request do
         get "/"
 
         expect(response).to have_http_status(:ok)
-        expect(doc.at_css("h1").text).to include("Reminders that speak up")
+        expect(doc.at_css("h1").text).to include("Caring for a parent")
       end
 
       # The site previously had no indexable homepage at all: / was
