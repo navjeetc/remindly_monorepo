@@ -1,5 +1,4 @@
 module ApplicationHelper
-
   # Shared styling for the top navigation links. Six links repeated the same long
   # class string with only the active/inactive branch differing, so a change to
   # the nav meant six edits that had to stay in step.
