@@ -1,4 +1,21 @@
 module ApplicationHelper
+
+  # Shared styling for the top navigation links. Six links repeated the same long
+  # class string with only the active/inactive branch differing, so a change to
+  # the nav meant six edits that had to stay in step.
+  #
+  # Larger text and taller hit areas below the breakpoint: the people using this
+  # are often reading it on a phone or tablet.
+  NAV_LINK_BASE = "inline-flex items-center px-1 py-2 border-b-2 text-base sm:text-sm font-medium".freeze
+  NAV_LINK_ACTIVE = "border-blue-500 text-gray-900".freeze
+  NAV_LINK_INACTIVE = "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700".freeze
+
+  # @param path [String] the link target, compared against the current request
+  # @return [String] class attribute for a top navigation link
+  def nav_link_class(path = nil)
+    state = path && request.path == path ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE
+    "#{state} #{NAV_LINK_BASE}"
+  end
   # The app answers on remindly.anakhsoft.com, remindly.care and www.remindly.care,
   # so every page is reachable at three URLs. Point search engines at one of them.
   CANONICAL_HOST = "https://www.remindly.care".freeze
