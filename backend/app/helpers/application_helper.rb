@@ -9,12 +9,17 @@ module ApplicationHelper
   NAV_LINK_ACTIVE = "border-blue-500 text-gray-900".freeze
   NAV_LINK_INACTIVE = "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700".freeze
 
+  # Required rather than defaulting to nil: an optional path meant a bare call
+  # silently rendered as permanently inactive, which is how the admin links ended
+  # up never highlighting on their own pages.
+  #
   # @param path [String] the link target, compared against the current request
   # @return [String] class attribute for a top navigation link
-  def nav_link_class(path = nil)
-    state = path && request.path == path ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE
+  def nav_link_class(path)
+    state = request.path == path ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE
     "#{state} #{NAV_LINK_BASE}"
   end
+
   # The app answers on remindly.anakhsoft.com, remindly.care and www.remindly.care,
   # so every page is reachable at three URLs. Point search engines at one of them.
   CANONICAL_HOST = "https://www.remindly.care".freeze
