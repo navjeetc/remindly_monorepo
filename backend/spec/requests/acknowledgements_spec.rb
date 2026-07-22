@@ -286,6 +286,17 @@ RSpec.describe "Acknowledgements", type: :request do
       }.not_to change { Notification.count }
     end
 
+    # ...and must not leave a duplicate acknowledgement row behind either.
+    it "records the acknowledgement only once when taken is submitted twice" do
+      post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+
+      expect {
+        post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+      }.not_to change { occurrence.acknowledgements.count }
+
+      expect(response).to have_http_status(:created)
+    end
+
     # A dose the sweep already marked missed, then taken late, should correct the
     # record and tell caregivers it was completed after all.
     it "notifies when a missed occurrence is taken late" do
