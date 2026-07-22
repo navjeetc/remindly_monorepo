@@ -34,6 +34,7 @@ class MarkMissedOccurrencesJob < ApplicationJob
     Occurrence
       .status_pending
       .where(scheduled_at: (now - MARK_LOOKBACK)..cutoff)
+      .includes(:reminder)
       .find_each do |occ|
       # Compare-and-swap: only the run that actually flips pending -> missed
       # proceeds. If an acknowledgement moved the row first, update_all matches
@@ -43,16 +44,13 @@ class MarkMissedOccurrencesJob < ApplicationJob
       next if changed.zero?
 
       # Marked missed for the dashboard's sake, but only alert on recently-due
-      # misses.
+      # medication misses. The notification runs in its own retryable job, which
+      # re-checks the status before sending — so a late take that flips this row
+      # back to acknowledged before the job runs suppresses the missed alert.
       next if occ.scheduled_at < now - NOTIFY_WINDOW
+      next unless occ.reminder.category_medication?
 
-      # Re-read before alerting: a late acknowledgement arriving between the swap
-      # above and here would have flipped the row back out of missed, and we
-      # should not email that it was missed.
-      occ.reload
-      next unless occ.status_missed?
-
-      ReminderNotificationService.notify_missed(occ)
+      ReminderNotificationJob.perform_later(occ.id, "missed")
     rescue => e
       Rails.logger.error "Failed to mark occurrence #{occ.id} missed: #{e.full_message}"
     end

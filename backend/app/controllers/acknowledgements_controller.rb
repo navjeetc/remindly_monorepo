@@ -45,8 +45,9 @@ class AcknowledgementsController < WebController
 
     # Only a genuine "taken" tells caregivers the medication was actually taken;
     # a skip is a deliberate non-dose and stays silent in this first version.
-    # Sent outside the transaction so mail is never enqueued for a rolled-back swap.
-    ReminderNotificationService.notify_acknowledged(occ) if kind == "taken" && first_ack
+    # Enqueued (not called inline) after the transaction commits, so a delivery
+    # failure can't 500 the senior's request or lose the alert — the job retries.
+    ReminderNotificationJob.perform_later(occ.id, "acknowledged") if kind == "taken" && first_ack
 
     head :created
   end

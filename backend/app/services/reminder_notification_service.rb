@@ -9,6 +9,11 @@
 # the dashboard reads) and an email (so the caregiver is *told*, not merely able
 # to find out). Email goes out with deliver_later so a senior's acknowledgement
 # request never waits on mail delivery.
+#
+# This runs inside ReminderNotificationJob, which retries on failure. To make a
+# retry safe, per-caregiver delivery is idempotent: if this caregiver has already
+# been notified about this occurrence, we skip them, so a retry after a partial
+# failure doesn't double-notify the caregivers who already got through.
 class ReminderNotificationService
   # A senior tapped "taken" on a medication reminder.
   def self.notify_acknowledged(occurrence)
@@ -34,9 +39,21 @@ class ReminderNotificationService
 
     # find_each is a no-op on an empty relation, so no separate emptiness check.
     senior.caregivers.where(notify_on_reminder_activity: true).find_each do |caregiver|
+      next if already_notified?(caregiver, occurrence, kind)
+
       create_notification(caregiver, senior, reminder, occurrence, kind)
       deliver_email(caregiver, senior, reminder, occurrence, kind)
     end
+  end
+
+  # Has this caregiver already been notified about this occurrence? SQLite has no
+  # JSON operators, so — as elsewhere in the app — filter this caregiver's recent
+  # same-type notifications in Ruby by the occurrence_id we stashed in metadata.
+  def self.already_notified?(caregiver, occurrence, kind)
+    Notification
+      .where(user: caregiver, notification_type: notification_type(kind))
+      .where(created_at: 2.days.ago..)
+      .any? { |n| n.metadata["occurrence_id"] == occurrence.id }
   end
 
   def self.create_notification(caregiver, senior, reminder, occurrence, kind)
@@ -87,6 +104,6 @@ class ReminderNotificationService
     end
   end
 
-  private_class_method :notify, :create_notification, :deliver_email,
+  private_class_method :notify, :already_notified?, :create_notification, :deliver_email,
                        :notification_type, :title, :message
 end

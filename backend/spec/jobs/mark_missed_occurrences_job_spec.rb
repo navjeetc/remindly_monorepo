@@ -44,25 +44,24 @@ RSpec.describe MarkMissedOccurrencesJob do
   end
 
   describe "alerting" do
-    it "notifies caregivers about a recently-due medication miss" do
+    it "enqueues a retryable notification for a recently-due medication miss" do
       occ = occurrence_at(90.minutes.ago)
-      expect(ReminderNotificationService).to receive(:notify_missed).with(occ)
-      described_class.perform_now
+      expect { described_class.perform_now }
+        .to have_enqueued_job(ReminderNotificationJob).with(occ.id, "missed")
     end
 
     # Marked missed for the dashboard, but too stale to be worth an email.
     it "does not alert about a miss older than the notify window" do
       occ = occurrence_at(2.days.ago)
-      expect(ReminderNotificationService).not_to receive(:notify_missed)
-      described_class.perform_now
+      expect { described_class.perform_now }.not_to have_enqueued_job(ReminderNotificationJob)
       expect(occ.reload.status).to eq("missed")
     end
 
-    it "marks a non-medication occurrence missed but sends no email" do
+    it "marks a non-medication occurrence missed but enqueues no notification" do
       occ = occurrence_at(90.minutes.ago, category: :hydration)
-      # The service itself is the medication gate; the sweep still records the
-      # state so the dashboard's missed counters are accurate.
-      expect { described_class.perform_now }.not_to have_enqueued_mail(ReminderActivityMailer, :missed)
+      # The sweep still records the state so the dashboard's missed counters are
+      # accurate, but only medication misses are worth alerting a caregiver about.
+      expect { described_class.perform_now }.not_to have_enqueued_job(ReminderNotificationJob)
       expect(occ.reload.status).to eq("missed")
     end
   end

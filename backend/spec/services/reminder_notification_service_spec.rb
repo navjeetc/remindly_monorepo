@@ -59,6 +59,18 @@ RSpec.describe ReminderNotificationService do
       expect { described_class.notify_acknowledged(occurrence_for) }
         .not_to change { Notification.count }
     end
+
+    # The job that calls this retries on failure, so a second run over the same
+    # occurrence must not notify a caregiver who already got through.
+    it "does not notify the same caregiver twice about the same occurrence" do
+      link!(caregiver)
+      occ = occurrence_for
+
+      described_class.notify_acknowledged(occ)
+
+      expect { described_class.notify_acknowledged(occ) }
+        .not_to change { Notification.count }
+    end
   end
 
   describe ".notify_missed" do
