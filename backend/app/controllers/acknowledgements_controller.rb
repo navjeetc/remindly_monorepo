@@ -25,6 +25,11 @@ class AcknowledgementsController < WebController
     kind = params.require(:kind)
     Acknowledgement.create!(occurrence: occ, kind:, at: Time.current)
     occ.update!(status: :acknowledged)
+
+    # Only a genuine "taken" tells caregivers the medication was actually taken;
+    # a skip is a deliberate non-dose and stays silent in this first version.
+    ReminderNotificationService.notify_acknowledged(occ) if kind == "taken"
+
     head :created
   end
 

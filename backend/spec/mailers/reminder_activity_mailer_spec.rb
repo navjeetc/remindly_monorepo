@@ -1,0 +1,42 @@
+require "rails_helper"
+
+RSpec.describe ReminderActivityMailer, type: :mailer do
+  let(:senior) { create(:user, :senior, name: "Mom") }
+  let(:caregiver) { create(:user, :caregiver, email: "kid@example.com", name: "Jane") }
+  let(:reminder) { Reminder.create!(user: senior, title: "Metformin", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
+  let(:occurrence) { Occurrence.create!(reminder: reminder, scheduled_at: Time.zone.local(2026, 7, 21, 9, 0), status: :acknowledged) }
+
+  def mail_for(action)
+    described_class
+      .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence)
+      .public_send(action)
+  end
+
+  describe "#completed" do
+    let(:mail) { mail_for(:completed) }
+
+    it "addresses the caregiver" do
+      expect(mail.to).to eq([ caregiver.email ])
+    end
+
+    it "names the senior and the medication in the subject" do
+      expect(mail.subject).to eq("Mom took Metformin")
+    end
+
+    it "mentions the senior and reminder in the body" do
+      expect(mail.body.encoded).to include("Mom").and include("Metformin")
+    end
+  end
+
+  describe "#missed" do
+    let(:mail) { mail_for(:missed) }
+
+    it "names the senior and the medication in the subject" do
+      expect(mail.subject).to eq("Mom missed Metformin")
+    end
+
+    it "says the medication was not taken" do
+      expect(mail.body.encoded).to include("has not taken")
+    end
+  end
+end

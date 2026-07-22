@@ -7,7 +7,9 @@ class Notification < ApplicationRecord
     coverage_filled: "coverage_filled",
     availability_changed: "availability_changed",
     task_available: "task_available",
-    task_assigned: "task_assigned"
+    task_assigned: "task_assigned",
+    reminder_acknowledged: "reminder_acknowledged",
+    reminder_missed: "reminder_missed"
   }.freeze
 
   validates :notification_type, presence: true, inclusion: { in: TYPES.values }

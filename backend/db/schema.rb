@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_02_041152) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_022919) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -219,6 +219,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_02_041152) do
     t.string "email", null: false
     t.string "name"
     t.string "nickname"
+    t.boolean "notify_on_reminder_activity", default: true, null: false
     t.boolean "notify_on_task_assigned_to_others", default: false
     t.integer "role"
     t.string "tz", default: "America/New_York"

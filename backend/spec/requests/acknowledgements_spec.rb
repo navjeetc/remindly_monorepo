@@ -252,6 +252,31 @@ RSpec.describe "Acknowledgements", type: :request do
     end
   end
 
+  # A senior tapping "taken" is what tells a caregiver the medication was actually
+  # taken — the emotional centre of the product. Nothing fired here before.
+  describe "caregiver notification on acknowledgement" do
+    let!(:caregiver) { User.create!(email: "kid@example.com", role: :caregiver, tz: "America/New_York") }
+    let!(:link) { CaregiverLink.create!(senior: user, caregiver: caregiver) }
+
+    it "notifies a linked caregiver when the senior marks a medication reminder taken" do
+      expect {
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: auth_headers
+      }.to change { caregiver.notifications.count }.by(1)
+
+      expect(caregiver.notifications.last.notification_type).to eq(Notification::TYPES[:reminder_acknowledged])
+    end
+
+    it "does not notify on a skip" do
+      expect {
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "skip" },
+          headers: auth_headers
+      }.not_to change { Notification.count }
+    end
+  end
+
   describe "POST /acknowledgements/snooze" do
     it "accepts a Bearer-authenticated snooze and schedules a new occurrence" do
       expect {
