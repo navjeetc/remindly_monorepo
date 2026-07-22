@@ -275,6 +275,28 @@ RSpec.describe "Acknowledgements", type: :request do
           headers: auth_headers
       }.not_to change { Notification.count }
     end
+
+    # A double tap, or a retry after the first response was lost, must not send a
+    # second notification and email to every caregiver.
+    it "notifies only once when the same taken is submitted twice" do
+      post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+
+      expect {
+        post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+      }.not_to change { Notification.count }
+    end
+
+    # A dose the sweep already marked missed, then taken late, should correct the
+    # record and tell caregivers it was completed after all.
+    it "notifies when a missed occurrence is taken late" do
+      occurrence.update!(status: :missed)
+
+      expect {
+        post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+      }.to change { caregiver.notifications.count }.by(1)
+
+      expect(occurrence.reload.status).to eq("acknowledged")
+    end
   end
 
   describe "POST /acknowledgements/snooze" do

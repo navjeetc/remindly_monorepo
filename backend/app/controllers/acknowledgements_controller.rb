@@ -24,11 +24,25 @@ class AcknowledgementsController < WebController
     occ  = Occurrence.joins(:reminder).where(reminders: { user_id: current_user.id }).find(params.require(:occurrence_id))
     kind = params.require(:kind)
     Acknowledgement.create!(occurrence: occ, kind:, at: Time.current)
-    occ.update!(status: :acknowledged)
+
+    # Compare-and-swap the status rather than an unconditional update, and let the
+    # affected-row count decide whether this request is the one that acknowledged
+    # the occurrence. This gives us two things at once:
+    #   - idempotency: a double tap or a retry after a lost response finds the row
+    #     already acknowledged, changes nothing, and does not fire a second
+    #     notification and email to every caregiver;
+    #   - a clean hand-off with the missed sweep: whichever of the two flips the
+    #     row first wins; the loser sees no matching row and stays quiet, so a dose
+    #     taken right as the sweep runs cannot produce a contradictory missed alert.
+    # "Not already acknowledged" (rather than "pending") also lets a late take
+    # correct a row the sweep already marked missed.
+    first_ack = Occurrence.where(id: occ.id).where.not(status: :acknowledged)
+                          .update_all(status: Occurrence.statuses[:acknowledged], updated_at: Time.current)
+                          .positive?
 
     # Only a genuine "taken" tells caregivers the medication was actually taken;
     # a skip is a deliberate non-dose and stays silent in this first version.
-    ReminderNotificationService.notify_acknowledged(occ) if kind == "taken"
+    ReminderNotificationService.notify_acknowledged(occ) if kind == "taken" && first_ack
 
     head :created
   end

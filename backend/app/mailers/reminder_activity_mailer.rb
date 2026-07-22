@@ -22,7 +22,9 @@ class ReminderActivityMailer < ApplicationMailer
     @senior = params[:senior]
     @reminder = params[:reminder]
     @occurrence = params[:occurrence]
-    @scheduled_at = @occurrence.scheduled_at
+    # Present the due time in the senior's zone; the raw timestamp is UTC and the
+    # templates strftime it, so an Eastern 9:00 AM dose would otherwise read 1:00 PM.
+    @scheduled_at = @occurrence.scheduled_at&.in_time_zone(@reminder.tz)
     @dashboard_url = senior_dashboard_url(@senior)
   end
 end

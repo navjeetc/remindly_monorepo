@@ -32,10 +32,8 @@ class ReminderNotificationService
     senior = reminder.user
     return unless senior
 
-    caregivers = senior.caregivers.where(notify_on_reminder_activity: true)
-    return if caregivers.empty?
-
-    caregivers.find_each do |caregiver|
+    # find_each is a no-op on an empty relation, so no separate emptiness check.
+    senior.caregivers.where(notify_on_reminder_activity: true).find_each do |caregiver|
       create_notification(caregiver, senior, reminder, occurrence, kind)
       deliver_email(caregiver, senior, reminder, occurrence, kind)
     end
@@ -53,7 +51,7 @@ class ReminderNotificationService
         reminder_id: reminder.id,
         reminder_title: reminder.title,
         occurrence_id: occurrence.id,
-        scheduled_at: occurrence.scheduled_at&.iso8601
+        scheduled_at: occurrence.scheduled_at&.iso8601 # UTC, for machine use
       }
     )
   end
@@ -78,7 +76,10 @@ class ReminderNotificationService
   end
 
   def self.message(reminder, occurrence, kind)
-    when_due = occurrence.scheduled_at&.strftime("%A, %B %d at %I:%M %p")
+    # Occurrences are stored in UTC but the reminder carries the senior's zone.
+    # Formatting the raw timestamp would report a 9:00 AM dose as 1:00 PM for an
+    # Eastern user, since the app leaves Time.zone at UTC.
+    when_due = occurrence.scheduled_at&.in_time_zone(reminder.tz)&.strftime("%A, %B %d at %I:%M %p")
     if kind == :acknowledged
       "#{reminder.title} was marked taken#{when_due ? " (due #{when_due})" : ''}."
     else

@@ -26,6 +26,13 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     it "mentions the senior and reminder in the body" do
       expect(mail.body.encoded).to include("Mom").and include("Metformin")
     end
+
+    # scheduled_at is 9:00 UTC; the reminder's zone is Eastern, so the caregiver
+    # should read the local morning time, not the UTC afternoon.
+    it "shows the due time in the reminder's zone, not UTC" do
+      expect(mail.body.encoded).to include("05:00 AM")
+      expect(mail.body.encoded).not_to include("09:00 AM")
+    end
   end
 
   describe "#missed" do
