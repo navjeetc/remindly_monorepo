@@ -1,5 +1,8 @@
 class ReminderActivityMailer < ApplicationMailer
-  default from: "notifications@remindly.app"
+  # Use the account's verified Postmark sender (as MagicMailer does). The old
+  # hardcoded notifications@remindly.app is not a confirmed Sender Signature, so
+  # Postmark rejected every send with ApiInputError.
+  default from: Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
 
   # A senior completed a medication reminder.
   # Params: caregiver, senior, reminder, occurrence
