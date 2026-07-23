@@ -1,5 +1,6 @@
 class CoverageGapMailer < ApplicationMailer
-  default from: "notifications@remindly.app"
+  # Branded sender on the DKIM-verified remindly.care domain (see ReminderActivityMailer).
+  default from: "Remindly <hello@remindly.care>"
 
   # Send coverage gap notification email
   # @param caregiver [User] The caregiver to notify

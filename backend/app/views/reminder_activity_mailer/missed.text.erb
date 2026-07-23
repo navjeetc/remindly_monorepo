@@ -1,0 +1,11 @@
+Hi <%= @caregiver.display_name %>,
+
+<%= @senior.display_name %> has not taken <%= @reminder.title %>.
+<% if @scheduled_at %>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and was not acknowledged.
+<% end %>
+View <%= @senior.display_name %>'s dashboard: <%= @dashboard_url %>
+
+--
+Remindly - Caregiver Coordination
+You're receiving this because you're a caregiver for <%= @senior.display_name %>. You can turn these off in your notification settings.

@@ -67,9 +67,11 @@ Rails.application.configure do
   config.action_mailer.default_options = {
     from: Rails.application.credentials.admin_email || "noreply@remindly.anakhsoft.com"
   }
-  # Deliver emails immediately instead of queuing them
-  config.action_mailer.deliver_later_queue_name = nil
-  config.action_mailer.delivery_job = nil
+  # NB: do not set `config.action_mailer.delivery_job = nil` here. A Rails 8.1
+  # `app:update` restore reintroduced it once, and a nil delivery_job makes every
+  # `deliver_later` raise `NoMethodError: undefined method 'set' for nil` — i.e.
+  # no queued mail is ever sent. Leaving these at their defaults
+  # (delivery_job = ActionMailer::MailDeliveryJob) is what makes deliver_later work.
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

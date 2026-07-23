@@ -252,6 +252,64 @@ RSpec.describe "Acknowledgements", type: :request do
     end
   end
 
+  # A senior tapping "taken" is what tells a caregiver the medication was actually
+  # taken — the emotional centre of the product. Nothing fired here before.
+  describe "caregiver notification on acknowledgement" do
+    let!(:caregiver) { User.create!(email: "kid@example.com", role: :caregiver, tz: "America/New_York") }
+    let!(:link) { CaregiverLink.create!(senior: user, caregiver: caregiver) }
+
+    # Delivery is enqueued (and retryable) rather than run inline, so a caregiver
+    # email failure can't 500 the senior's request or lose the alert.
+    it "enqueues a caregiver notification when the senior marks a medication reminder taken" do
+      expect {
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "taken" },
+          headers: auth_headers
+      }.to have_enqueued_job(ReminderNotificationJob).with(occurrence.id, "acknowledged")
+    end
+
+    it "does not enqueue a notification on a skip" do
+      expect {
+        post "/acknowledgements",
+          params: { occurrence_id: occurrence.id, kind: "skip" },
+          headers: auth_headers
+      }.not_to have_enqueued_job(ReminderNotificationJob)
+    end
+
+    # A double tap, or a retry after the first response was lost, must not enqueue
+    # a second round of notifications.
+    it "enqueues only once when the same taken is submitted twice" do
+      post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+
+      expect {
+        post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+      }.not_to have_enqueued_job(ReminderNotificationJob)
+    end
+
+    # ...and must not leave a duplicate acknowledgement row behind either.
+    it "records the acknowledgement only once when taken is submitted twice" do
+      post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+
+      expect {
+        post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+      }.not_to change { occurrence.acknowledgements.count }
+
+      expect(response).to have_http_status(:created)
+    end
+
+    # A dose the sweep already marked missed, then taken late, should correct the
+    # record and tell caregivers it was completed after all.
+    it "enqueues a completion notification when a missed occurrence is taken late" do
+      occurrence.update!(status: :missed)
+
+      expect {
+        post "/acknowledgements", params: { occurrence_id: occurrence.id, kind: "taken" }, headers: auth_headers
+      }.to have_enqueued_job(ReminderNotificationJob).with(occurrence.id, "acknowledged")
+
+      expect(occurrence.reload.status).to eq("acknowledged")
+    end
+  end
+
   describe "POST /acknowledgements/snooze" do
     it "accepts a Bearer-authenticated snooze and schedules a new occurrence" do
       expect {

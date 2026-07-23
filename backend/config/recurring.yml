@@ -23,3 +23,8 @@ production:
     class: CheckCoverageGapsJob
     queue: default
     schedule: every day at 8am
+
+  mark_missed_occurrences:
+    class: MarkMissedOccurrencesJob
+    queue: default
+    schedule: every 15 minutes

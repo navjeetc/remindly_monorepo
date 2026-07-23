@@ -23,8 +23,32 @@ class AcknowledgementsController < WebController
   def create
     occ  = Occurrence.joins(:reminder).where(reminders: { user_id: current_user.id }).find(params.require(:occurrence_id))
     kind = params.require(:kind)
-    Acknowledgement.create!(occurrence: occ, kind:, at: Time.current)
-    occ.update!(status: :acknowledged)
+
+    # Compare-and-swap the status, and let the affected-row count decide whether
+    # this request is the one that actually resolved the occurrence. Everything
+    # else hangs off that single fact, so the endpoint is idempotent end to end:
+    # a double tap or a retry after a lost response finds the row already
+    # acknowledged, writes no second acknowledgement row, and notifies no caregiver
+    # twice. The swap and the acknowledgement row move together in one transaction
+    # so we never leave an acknowledged occurrence with no record of who/when.
+    # It also hands off cleanly with the missed sweep: whichever of the two flips
+    # the row first wins and the loser matches nothing. "Not already acknowledged"
+    # (rather than "pending") lets a late take correct a row the sweep already
+    # marked missed.
+    first_ack = false
+    ActiveRecord::Base.transaction do
+      first_ack = Occurrence.where(id: occ.id).where.not(status: :acknowledged)
+                            .update_all(status: Occurrence.statuses[:acknowledged], updated_at: Time.current)
+                            .positive?
+      Acknowledgement.create!(occurrence: occ, kind:, at: Time.current) if first_ack
+    end
+
+    # Only a genuine "taken" tells caregivers the medication was actually taken;
+    # a skip is a deliberate non-dose and stays silent in this first version.
+    # Enqueued (not called inline) after the transaction commits, so a delivery
+    # failure can't 500 the senior's request or lose the alert — the job retries.
+    ReminderNotificationJob.perform_later(occ.id, "acknowledged") if kind == "taken" && first_ack
+
     head :created
   end
 

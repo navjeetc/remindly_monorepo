@@ -29,6 +29,13 @@ env:
     RAILS_ENV: "production"
     APP_VERSION: "0.5.0"
     ENABLE_NATIVE_SCHEDULING: "true"
+    # Run the Solid Queue supervisor (worker + dispatcher + recurring scheduler)
+    # inside Puma. This single-server box has no separate job role, so without
+    # this nothing drains the queue: recurring jobs (missed sweep, coverage-gap
+    # check, analytics prune) never fire, and every deliver_later email sits in
+    # the queue undelivered. See config/puma.rb, which loads the plugin only when
+    # this is set.
+    SOLID_QUEUE_IN_PUMA: "true"
   secret:
     - RAILS_MASTER_KEY
 
