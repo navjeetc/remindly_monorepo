@@ -61,8 +61,10 @@ RSpec.describe ReminderNotificationService do
       link!(caregiver)
       occ = occurrence_for(category: :hydration, title: "Water")
 
+      # Both channels, same as the medication path — an in-app record and an email.
       expect { described_class.notify_acknowledged(occ) }
         .to change { caregiver.notifications.count }.by(1)
+        .and have_enqueued_mail(ReminderActivityMailer, :completed)
     end
 
     it "notifies only the caregivers opted into this reminder's category" do
