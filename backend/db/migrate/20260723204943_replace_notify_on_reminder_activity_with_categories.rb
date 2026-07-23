@@ -16,8 +16,10 @@ class ReplaceNotifyOnReminderActivityWithCategories < ActiveRecord::Migration[8.
 
   def down
     add_column :users, :notify_on_reminder_activity, :boolean, default: true, null: false
-    # Medication was the only category the old flag represented.
-    execute "UPDATE users SET notify_on_reminder_activity = (instr(notify_reminder_categories, 'medication') > 0)"
+    # Medication was the only category the old flag represented. Match the quoted
+    # JSON token so a future category that merely contains "medication" as a
+    # substring can't trip this.
+    execute %(UPDATE users SET notify_on_reminder_activity = (instr(notify_reminder_categories, '"medication"') > 0))
     remove_column :users, :notify_reminder_categories
   end
 end

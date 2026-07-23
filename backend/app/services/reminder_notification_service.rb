@@ -1,10 +1,10 @@
 # Notifies caregivers when a senior completes or misses a reminder.
 #
-# Which reminders reach a given caregiver is that caregiver's choice: each has a
-# per-category preference (notify_medication / notify_hydration / notify_routine),
-# and only caregivers who opted in to the reminder's category are notified.
-# Medication defaults on; hydration and routine default off, since they fire many
-# times a day and a caregiver has to ask for that firehose.
+# Which reminders reach a given caregiver is that caregiver's choice: each keeps a
+# set of opted-in reminder categories (notify_reminder_categories), and only
+# caregivers whose set includes the reminder's category are notified. Medication is
+# in the set by default; hydration and routine are not, since they fire many times
+# a day and a caregiver has to ask for that firehose.
 #
 # Every notification is delivered two ways: an in-app Notification record (what
 # the dashboard reads) and an email (so the caregiver is *told*, not merely able

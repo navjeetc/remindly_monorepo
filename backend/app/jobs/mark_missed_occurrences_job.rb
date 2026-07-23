@@ -34,7 +34,9 @@ class MarkMissedOccurrencesJob < ApplicationJob
     Occurrence
       .status_pending
       .where(scheduled_at: (now - MARK_LOOKBACK)..cutoff)
-      .includes(:reminder)
+      # Eager-load what recipients() reads, so checking who opted in doesn't fire a
+      # per-occurrence query for the owner and their caregivers.
+      .includes(reminder: { user: :caregivers })
       .find_each do |occ|
       # Compare-and-swap: only the run that actually flips pending -> missed
       # proceeds. If an acknowledgement moved the row first, update_all matches
