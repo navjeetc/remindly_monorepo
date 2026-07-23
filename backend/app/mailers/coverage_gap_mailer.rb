@@ -1,7 +1,6 @@
 class CoverageGapMailer < ApplicationMailer
-  # Verified Postmark sender (see ReminderActivityMailer). notifications@remindly.app
-  # is not a confirmed Sender Signature and was rejected on every send.
-  default from: Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
+  # Branded sender on the DKIM-verified remindly.care domain (see ReminderActivityMailer).
+  default from: "Remindly <hello@remindly.care>"
 
   # Send coverage gap notification email
   # @param caregiver [User] The caregiver to notify

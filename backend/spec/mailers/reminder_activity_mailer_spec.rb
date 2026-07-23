@@ -19,11 +19,11 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(mail.to).to eq([ caregiver.email ])
     end
 
-    # Must be the account's verified Postmark sender, not the old hardcoded
+    # Branded sender on the DKIM-verified remindly.care domain, not the old
     # notifications@remindly.app, which Postmark rejected as an unconfirmed signature.
-    it "sends from the verified sender address" do
-      expected = Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
-      expect(mail.from).to eq([ expected ])
+    it "sends from the verified remindly.care sender" do
+      expect(mail.from).to eq([ "hello@remindly.care" ])
+      expect(mail[:from].value).to eq("Remindly <hello@remindly.care>")
     end
 
     it "names the senior and the medication in the subject" do
