@@ -110,7 +110,7 @@ class ReminderNotificationService
     if kind == :acknowledged
       "#{reminder.title} was marked done#{when_due ? " (due #{when_due})" : ''}."
     else
-      "#{reminder.title} was not acknowledged#{when_due ? " (due #{when_due})" : ''}."
+      "#{reminder.title} was not completed#{when_due ? " (due #{when_due})" : ''}."
     end
   end
 

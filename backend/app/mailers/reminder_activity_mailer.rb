@@ -4,14 +4,14 @@ class ReminderActivityMailer < ApplicationMailer
   # was rejected on every send.)
   default from: "Remindly <hello@remindly.care>"
 
-  # A senior completed a medication reminder.
+  # A senior completed a reminder (of a category the caregiver opted into).
   # Params: caregiver, senior, reminder, occurrence
   def completed
     setup
     mail(to: @caregiver.email, subject: "#{@senior.display_name} completed #{@reminder.title}")
   end
 
-  # A senior missed a medication reminder (the sweep marked it missed).
+  # A senior missed a reminder (the sweep marked it missed).
   # Params: caregiver, senior, reminder, occurrence
   def missed
     setup

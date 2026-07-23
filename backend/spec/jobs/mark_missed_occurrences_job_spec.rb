@@ -61,7 +61,7 @@ RSpec.describe MarkMissedOccurrencesJob do
       expect(occ.reload.status).to eq("missed")
     end
 
-    it "marks a miss missed but enqueues no notification when no caregiver opted into its category" do
+    it "marks the occurrence missed but enqueues no notification when no caregiver opted into its category" do
       # The one caregiver has hydration off by default, so a hydration miss still
       # gets recorded (dashboard counts) but reaches nobody.
       occ = occurrence_at(90.minutes.ago, category: :hydration)

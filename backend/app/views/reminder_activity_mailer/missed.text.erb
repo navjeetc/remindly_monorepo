@@ -2,7 +2,7 @@ Hi <%= @caregiver.display_name %>,
 
 <%= @senior.display_name %> has not completed <%= @reminder.title %>.
 <% if @scheduled_at %>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and was not acknowledged.
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and was not completed.
 <% end %>
 View <%= @senior.display_name %>'s dashboard: <%= @dashboard_url %>
 
