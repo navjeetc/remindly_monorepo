@@ -108,7 +108,7 @@ class ReminderNotificationService
     # Eastern user, since the app leaves Time.zone at UTC.
     when_due = occurrence.scheduled_at&.in_time_zone(reminder.tz)&.strftime("%A, %B %d at %I:%M %p")
     if kind == :acknowledged
-      "#{reminder.title} was marked taken#{when_due ? " (due #{when_due})" : ''}."
+      "#{reminder.title} was marked done#{when_due ? " (due #{when_due})" : ''}."
     else
       "#{reminder.title} was not acknowledged#{when_due ? " (due #{when_due})" : ''}."
     end

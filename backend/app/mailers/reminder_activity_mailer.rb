@@ -8,7 +8,7 @@ class ReminderActivityMailer < ApplicationMailer
   # Params: caregiver, senior, reminder, occurrence
   def completed
     setup
-    mail(to: @caregiver.email, subject: "#{@senior.display_name} took #{@reminder.title}")
+    mail(to: @caregiver.email, subject: "#{@senior.display_name} completed #{@reminder.title}")
   end
 
   # A senior missed a medication reminder (the sweep marked it missed).
