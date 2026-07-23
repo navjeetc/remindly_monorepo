@@ -43,10 +43,11 @@ class AcknowledgementsController < WebController
       Acknowledgement.create!(occurrence: occ, kind:, at: Time.current) if first_ack
     end
 
-    # Only a genuine "taken" tells caregivers the medication was actually taken;
-    # a skip is a deliberate non-dose and stays silent in this first version.
-    # Enqueued (not called inline) after the transaction commits, so a delivery
-    # failure can't 500 the senior's request or lose the alert — the job retries.
+    # Only a genuine "taken" tells caregivers it was actually done; a skip is a
+    # deliberate non-completion and stays silent in this first version. The job
+    # decides who (if anyone) opted in to this reminder's category. Enqueued (not
+    # called inline) after the transaction commits, so a delivery failure can't 500
+    # the senior's request or lose the alert — the job retries.
     ReminderNotificationJob.perform_later(occ.id, "acknowledged") if kind == "taken" && first_ack
 
     head :created

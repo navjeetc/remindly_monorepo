@@ -44,11 +44,12 @@ class MarkMissedOccurrencesJob < ApplicationJob
       next if changed.zero?
 
       # Marked missed for the dashboard's sake, but only alert on recently-due
-      # medication misses. The notification runs in its own retryable job, which
-      # re-checks the status before sending — so a late take that flips this row
-      # back to acknowledged before the job runs suppresses the missed alert.
+      # misses that at least one caregiver opted in to for this category — no point
+      # enqueuing a job nobody will be notified by. The notification runs in its own
+      # retryable job, which re-checks the status before sending, so a late take that
+      # flips this row back to acknowledged before the job runs suppresses the alert.
       next if occ.scheduled_at < now - NOTIFY_WINDOW
-      next unless occ.reminder.category_medication?
+      next unless ReminderNotificationService.recipients(occ.reminder).any?
 
       ReminderNotificationJob.perform_later(occ.id, "missed")
     rescue => e

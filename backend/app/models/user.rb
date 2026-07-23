@@ -57,4 +57,15 @@ class User < ApplicationRecord
   def friendly_name
     nickname.presence || name.presence || email.split("@").first
   end
+
+  # Reminder categories this caregiver wants completion/miss notifications for.
+  # Keep only real categories, deduped, so a stray or stale value from the form
+  # (or a category later removed from the enum) can't sit in the set.
+  def notify_reminder_categories=(values)
+    super(Array(values).map(&:to_s).select { |c| Reminder.categories.key?(c) }.uniq)
+  end
+
+  def notified_for?(category)
+    notify_reminder_categories.include?(category.to_s)
+  end
 end

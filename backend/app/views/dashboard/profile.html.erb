@@ -84,18 +84,29 @@
                 </div>
               </div>
 
-              <div class="relative flex items-start">
-                <div class="flex items-center h-5">
-                  <%= f.check_box :notify_on_reminder_activity,
-                    class: "focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" %>
-                </div>
-                <div class="ml-3 text-sm">
-                  <%= f.label :notify_on_reminder_activity, class: "font-medium text-gray-700" do %>
-                    Notify me when a medication reminder is completed or missed
+              <fieldset>
+                <legend class="font-medium text-gray-700">Tell me when a reminder is completed or missed</legend>
+                <p class="text-gray-500 text-sm mb-3">Get an email and a dashboard alert when someone you care for takes a reminder, or misses it. Choose which kinds — hydration and routine reminders happen many times a day, so leave those off unless you want every one.</p>
+
+                <%# An empty hidden value so unchecking every box submits an empty set. %>
+                <%= hidden_field_tag "user[notify_reminder_categories][]", "" %>
+
+                <div class="space-y-3">
+                  <% Reminder.categories.keys.each do |category| %>
+                    <div class="relative flex items-start">
+                      <div class="flex items-center h-5">
+                        <%= check_box_tag "user[notify_reminder_categories][]", category,
+                          current_user.notify_reminder_categories.include?(category),
+                          id: "notify_category_#{category}",
+                          class: "focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" %>
+                      </div>
+                      <div class="ml-3 text-sm">
+                        <%= label_tag "notify_category_#{category}", category.titleize, class: "font-medium text-gray-700" %>
+                      </div>
+                    </div>
                   <% end %>
-                  <p class="text-gray-500">Get an email and a dashboard alert when someone you care for takes their medication, or misses it.</p>
                 </div>
-              </div>
+              </fieldset>
             </div>
           </div>
         <% end %>

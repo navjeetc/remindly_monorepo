@@ -1,9 +1,10 @@
 # Notifies caregivers when a senior completes or misses a reminder.
 #
-# Scope is deliberately narrow: only the medication category, and only caregivers
-# who have left notify_on_reminder_activity on. Hydration and routine reminders
-# fire many times a day and would drown the signal that actually matters — "did
-# Mom take her medication?" — so they stay silent here.
+# Which reminders reach a given caregiver is that caregiver's choice: each has a
+# per-category preference (notify_medication / notify_hydration / notify_routine),
+# and only caregivers who opted in to the reminder's category are notified.
+# Medication defaults on; hydration and routine default off, since they fire many
+# times a day and a caregiver has to ask for that firehose.
 #
 # Every notification is delivered two ways: an in-app Notification record (what
 # the dashboard reads) and an email (so the caregiver is *told*, not merely able
@@ -15,30 +16,39 @@
 # been notified about this occurrence, we skip them, so a retry after a partial
 # failure doesn't double-notify the caregivers who already got through.
 class ReminderNotificationService
-  # A senior tapped "taken" on a medication reminder.
+  # A senior tapped "taken" on a reminder.
   def self.notify_acknowledged(occurrence)
     notify(occurrence, kind: :acknowledged)
   end
 
-  # The missed sweep transitioned a medication occurrence to missed.
+  # The missed sweep transitioned an occurrence to missed.
   def self.notify_missed(occurrence)
     notify(occurrence, kind: :missed)
+  end
+
+  # The caregivers who should hear about this reminder — the senior's caregivers
+  # who chose this reminder's category. Public so the missed sweep can skip
+  # enqueuing work nobody opted in to. Returns [] for an owner-less reminder.
+  #
+  # Filtered in Ruby rather than SQL: the chosen categories live in a JSON column
+  # (SQLite has no JSON operators here), and a senior has only a handful of
+  # caregivers. The reminder's owner is the senior by definition — we don't gate on
+  # role, since a senior whose role flag was never set still owns real reminders and
+  # caregiver links; the caregiver set is the gate.
+  def self.recipients(reminder)
+    senior = reminder.user
+    return [] unless senior
+
+    category = reminder.category
+    senior.caregivers.select { |caregiver| caregiver.notified_for?(category) }
   end
 
   # kind is :acknowledged or :missed.
   def self.notify(occurrence, kind:)
     reminder = occurrence.reminder
-    return unless reminder.category_medication?
-
-    # The reminder's owner is the senior by definition — that's who the reminder is
-    # for. We don't gate on role here: a senior whose role flag was never set still
-    # owns real reminders and real caregiver links, and the caregivers scope below
-    # is the actual gate (no links, no notifications).
     senior = reminder.user
-    return unless senior
 
-    # find_each is a no-op on an empty relation, so no separate emptiness check.
-    senior.caregivers.where(notify_on_reminder_activity: true).find_each do |caregiver|
+    recipients(reminder).each do |caregiver|
       next if already_notified?(caregiver, occurrence, kind)
 
       create_notification(caregiver, senior, reminder, occurrence, kind)
