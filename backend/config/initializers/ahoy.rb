@@ -5,7 +5,7 @@ class Ahoy::Store < Ahoy::DatabaseStore
   #
   # Everything behind the login is still tracked: that is where the useful
   # signal is, and those visitors have an account with us.
-  PUBLIC_PATHS = [ "/", "/how_to" ].freeze
+  PUBLIC_PATHS = [ "/", "/how_to", "/privacy", "/terms" ].freeze
 
   def exclude?
     super || PUBLIC_PATHS.include?(request&.path)

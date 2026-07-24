@@ -12,9 +12,10 @@ class PagesController < WebController
   # daily use is unchanged and only logged-out visitors — and search engines —
   # see the marketing page.
   #
-  # It uses its own layout: the dashboard one pulls Tailwind from a CDN, roughly
-  # 400KB of JavaScript, on the single page most likely to be a first impression
-  # and the only one search engines are allowed to index.
+  # It uses the marketing layout (like the other public pages here — privacy,
+  # terms): the dashboard one pulls Tailwind from a CDN, roughly 400KB of
+  # JavaScript, which shouldn't block the pages a first-time visitor and search
+  # engines actually see.
   def home
     return redirect_to dashboard_path if current_user
 
@@ -22,6 +23,16 @@ class PagesController < WebController
   end
 
   def how_to
+  end
+
+  # Legal pages, public to everyone (signed in or not) and served with the light
+  # marketing layout rather than the CDN-heavy dashboard one.
+  def privacy
+    render layout: "marketing"
+  end
+
+  def terms
+    render layout: "marketing"
   end
 
   private
