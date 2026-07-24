@@ -40,6 +40,7 @@ Rails.application.routes.draw do
   post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile
   patch "profile",           to: "dashboard#update_profile"
+  patch "select_role",       to: "dashboard#select_role", as: :select_role
   get  "dashboard/pair",     to: "dashboard#pair", as: :pair_dashboard
   post "dashboard/pair",     to: "dashboard#process_pair"
   get  "dashboard/generate", to: "dashboard#generate_token", as: :generate_token_dashboard
