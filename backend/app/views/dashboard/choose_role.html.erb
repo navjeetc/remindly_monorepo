@@ -1,0 +1,27 @@
+<div class="max-w-2xl mx-auto text-center py-12 px-4">
+  <h2 class="text-3xl font-bold text-gray-900">Welcome to Remindly</h2>
+  <p class="mt-4 text-lg text-gray-600">
+    One quick question so we can set things up the right way for you.
+  </p>
+
+  <div class="mt-10 grid gap-4 sm:grid-cols-2 text-left">
+    <%= button_to select_role_path, method: :patch, params: { role: "caregiver" },
+        class: "block w-full h-full rounded-lg border-2 border-gray-200 bg-white p-6 hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" do %>
+      <span class="block text-lg font-semibold text-gray-900">I'm setting Remindly up for someone</span>
+      <span class="mt-2 block text-sm text-gray-600">Caregiver — you'll create reminders for a parent or loved one and see when they're done.</span>
+    <% end %>
+
+    <%= button_to select_role_path, method: :patch, params: { role: "senior" },
+        class: "block w-full h-full rounded-lg border-2 border-gray-200 bg-white p-6 hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" do %>
+      <span class="block text-lg font-semibold text-gray-900">I'll be receiving the reminders</span>
+      <span class="mt-2 block text-sm text-gray-600">Senior — Remindly will speak your reminders aloud at the right time.</span>
+    <% end %>
+  </div>
+
+  <p class="mt-8 text-sm text-gray-500">You can change this later in your profile.</p>
+
+  <div class="mt-6 text-sm text-gray-500">
+    Signed in as <strong><%= current_user.email %></strong> ·
+    <%= button_to "Sign out", logout_path, method: :delete, class: "text-blue-600 underline bg-transparent border-0 p-0 cursor-pointer" %>
+  </div>
+</div>
