@@ -29,6 +29,8 @@ Rails.application.routes.draw do
 
   # Public pages (no authentication required)
   get  "how_to",             to: "pages#how_to", as: :how_to
+  get  "privacy",            to: "pages#privacy", as: :privacy
+  get  "terms",              to: "pages#terms", as: :terms
 
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard

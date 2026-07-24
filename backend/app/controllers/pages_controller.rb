@@ -24,6 +24,16 @@ class PagesController < WebController
   def how_to
   end
 
+  # Legal pages, public to everyone (signed in or not) and served with the light
+  # marketing layout rather than the CDN-heavy dashboard one.
+  def privacy
+    render layout: "marketing"
+  end
+
+  def terms
+    render layout: "marketing"
+  end
+
   private
 
   def drop_analytics_cookies_for_anonymous_visitors

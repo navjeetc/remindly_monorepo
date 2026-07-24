@@ -93,6 +93,65 @@ RSpec.describe "Pages", type: :request do
     end
   end
 
+  # The marketing footer is the one place these legal pages are linked from, so
+  # nothing finds them if the links are missing.
+  describe "footer links from the homepage" do
+    it "links to the privacy policy and terms" do
+      get "/"
+      hrefs = Nokogiri::HTML(response.body).css("footer a").map { |a| a["href"] }
+      expect(hrefs).to include("/privacy").and include("/terms")
+    end
+  end
+
+  describe "GET /privacy" do
+    it "renders the privacy policy without authentication" do
+      get "/privacy"
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Privacy")
+    end
+
+    it "points the canonical URL at www.remindly.care even from the legacy subdomain" do
+      get "/privacy", headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+      expect(canonical_href).to eq("https://www.remindly.care/privacy")
+    end
+
+    it "states the deletion-on-request commitment" do
+      get "/privacy"
+      expect(response.body).to match(/delete/i)
+    end
+
+    # It is the indexable set of pages, so it must not block on a third-party asset.
+    it "loads no third-party assets" do
+      get "/privacy"
+      external = Nokogiri::HTML(response.body).css("script[src], link[rel='stylesheet']").map { |n| n["src"] || n["href"] }.compact
+      expect(external.select { |u| u.start_with?("http", "//") }).to be_empty
+    end
+  end
+
+  describe "GET /terms" do
+    it "renders the terms without authentication" do
+      get "/terms"
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Terms")
+    end
+
+    it "points the canonical URL at www.remindly.care" do
+      get "/terms"
+      expect(canonical_href).to eq("https://www.remindly.care/terms")
+    end
+
+    # The honest centerpiece — Remindly is not a medical device — must be present.
+    it "carries the medical disclaimer" do
+      get "/terms"
+      expect(response.body).to match(/not a medical device/i)
+    end
+
+    it "links to the privacy policy" do
+      get "/terms"
+      expect(Nokogiri::HTML(response.body).css("a").map { |a| a["href"] }).to include("/privacy")
+    end
+  end
+
   describe "GET /how_to" do
     it "renders without authentication" do
       get "/how_to"
