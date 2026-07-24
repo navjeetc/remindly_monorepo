@@ -78,13 +78,26 @@ class User < ApplicationRecord
   end
 
   # Let a user set their own role during onboarding or when switching later. Only
-  # the non-privileged roles are allowed, and an existing admin can't be demoted
-  # through here. update_column skips the name-presence-on-update validation — a
-  # brand-new user has no name yet, and picking a role must not require one.
+  # the non-privileged roles are allowed, and an existing admin is never changed
+  # through here.
+  #
+  # The admin guard and the write are one atomic statement — a compare-and-swap
+  # that excludes admins in its WHERE — so a concurrent promotion can't slip in
+  # between a stale in-memory read and the write and get clobbered. update_all
+  # also skips the name-presence-on-update validation a brand-new user can't yet
+  # satisfy.
   def assign_self_role(new_role)
-    return false if role_admin?
-    return false unless SELF_ASSIGNABLE_ROLES.include?(new_role.to_s)
+    new_role = new_role.to_s
+    return false unless SELF_ASSIGNABLE_ROLES.include?(new_role)
 
-    update_column(:role, new_role.to_s)
+    # "role IS NULL OR role <> admin" — brand-new users have a NULL role, and a
+    # bare `role <> admin` would exclude them (NULL comparisons are never true).
+    changed = self.class.where(id: id)
+      .where("role IS NULL OR role <> ?", self.class.roles[:admin])
+      .update_all(role: self.class.roles.fetch(new_role))
+    return false if changed.zero?
+
+    self.role = new_role # keep this in-memory instance in sync with the DB
+    true
   end
 end

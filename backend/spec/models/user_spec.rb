@@ -54,6 +54,17 @@ RSpec.describe User do
       expect(admin.assign_self_role("caregiver")).to be(false)
       expect(admin.reload.role).to eq("admin")
     end
+
+    # The guard must read the database, not a possibly-stale in-memory role — so a
+    # concurrent promotion to admin can't be overwritten.
+    it "refuses based on the persisted role even if the loaded object is stale" do
+      admin = create(:user, :admin, name: "Boss")
+      stale = User.find(admin.id)
+      stale.role = "caregiver" # pretend this instance predates the promotion
+
+      expect(stale.assign_self_role("senior")).to be(false)
+      expect(admin.reload.role).to eq("admin")
+    end
   end
 
   describe "#notified_for?" do
