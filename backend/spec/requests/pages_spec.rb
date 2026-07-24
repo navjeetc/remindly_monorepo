@@ -44,11 +44,11 @@ RSpec.describe "Pages", type: :request do
         expect(doc.css("a").map { |a| a["href"] }).to include("mailto:hello@remindly.care")
       end
 
-      # Signing in creates the account but leaves role nil, which lands the user
-      # on pending_approval. Saying so up front stops that reading as a failure.
-      it "explains that a new account needs approving" do
+      # Onboarding is self-serve now: first sign-in asks which role you are and
+      # takes you straight in, so the homepage sets that expectation.
+      it "explains the self-serve first-sign-in flow" do
         get "/"
-        expect(response.body).to include("waiting for approval")
+        expect(response.body).to include("asks one question")
       end
 
       # Excluding the path in Ahoy::Store stops the visit row, but Ahoy still

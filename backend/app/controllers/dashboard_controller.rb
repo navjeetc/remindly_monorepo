@@ -1,6 +1,6 @@
 class DashboardController < WebController
   before_action :authenticate!
-  before_action :check_role!, except: [ :profile, :update_profile, :how_to, :contact, :submit_contact, :voice_reminders ]
+  before_action :check_role!, except: [ :profile, :update_profile, :select_role, :how_to, :contact, :submit_contact, :voice_reminders ]
   layout "dashboard"
 
   # Landing page - show pairing or dashboard
@@ -112,10 +112,21 @@ class DashboardController < WebController
   # Update profile
   def update_profile
     if current_user.update(profile_params)
-      # Redirect back to dashboard (which will show pending_approval if no role)
+      # Redirect back to dashboard (which shows the role chooser if no role yet)
       redirect_to dashboard_path, notice: "Profile updated successfully"
     else
       render :profile, status: :unprocessable_entity
+    end
+  end
+
+  # Self-serve onboarding: a user with no role yet picks whether they receive
+  # reminders or set them up for someone, instead of waiting on an admin. Also
+  # reached from the profile to switch later. The model refuses admin here.
+  def select_role
+    if current_user.assign_self_role(params[:role])
+      redirect_to dashboard_path, notice: "You're all set as a #{current_user.role}."
+    else
+      redirect_to dashboard_path, alert: "Please choose whether you receive reminders or set them up for someone."
     end
   end
 
@@ -444,9 +455,7 @@ class DashboardController < WebController
   private
 
   def check_role!
-    if current_user.role.nil?
-      render "pending_approval", layout: "dashboard"
-    end
+    render "choose_role", layout: "dashboard" if current_user.role.nil?
   end
 
   def reminder_params

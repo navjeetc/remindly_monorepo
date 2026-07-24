@@ -1,6 +1,11 @@
 class User < ApplicationRecord
   enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
 
+  # Roles a user may choose for themselves — at onboarding, or later from their
+  # profile. Admin is deliberately excluded: it is never self-granted, and this
+  # path also refuses to touch an existing admin's role.
+  SELF_ASSIGNABLE_ROLES = %w[senior caregiver].freeze
+
   has_many :reminders, dependent: :destroy
 
   # Caregiver relationships
@@ -70,5 +75,29 @@ class User < ApplicationRecord
 
   def notified_for?(category)
     notify_reminder_categories.include?(category.to_s)
+  end
+
+  # Let a user set their own role during onboarding or when switching later. Only
+  # the non-privileged roles are allowed, and an existing admin is never changed
+  # through here.
+  #
+  # The admin guard and the write are one atomic statement — a compare-and-swap
+  # that excludes admins in its WHERE — so a concurrent promotion can't slip in
+  # between a stale in-memory read and the write and get clobbered. update_all
+  # also skips the name-presence-on-update validation a brand-new user can't yet
+  # satisfy.
+  def assign_self_role(new_role)
+    new_role = new_role.to_s
+    return false unless SELF_ASSIGNABLE_ROLES.include?(new_role)
+
+    # "role IS NULL OR role <> admin" — brand-new users have a NULL role, and a
+    # bare `role <> admin` would exclude them (NULL comparisons are never true).
+    changed = self.class.where(id: id)
+      .where("role IS NULL OR role <> ?", self.class.roles[:admin])
+      .update_all(role: self.class.roles.fetch(new_role))
+    return false if changed.zero?
+
+    self.role = new_role # keep this in-memory instance in sync with the DB
+    true
   end
 end
