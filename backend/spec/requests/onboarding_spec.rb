@@ -32,7 +32,7 @@ RSpec.describe "Self-serve role onboarding", type: :request do
 
   it "lets a user switch their role later" do
     sign_in(new_user)
-    new_user.update_column(:role, "senior")
+    new_user.update_column(:role, User.roles.fetch(:senior)) # integer-backed enum
 
     expect {
       patch "/select_role", params: { role: "caregiver" }
