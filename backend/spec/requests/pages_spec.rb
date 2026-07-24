@@ -120,6 +120,12 @@ RSpec.describe "Pages", type: :request do
       expect(response.body).to match(/delete/i)
     end
 
+    # The policy says analytics aren't collected on public pages, so this page must
+    # not persist an Ahoy visit for an anonymous reader.
+    it "records no analytics visit for an anonymous visitor" do
+      expect { get "/privacy" }.not_to change { Ahoy::Visit.count }
+    end
+
     # It is the indexable set of pages, so it must not block on a third-party asset.
     it "loads no third-party assets" do
       get "/privacy"
@@ -149,6 +155,10 @@ RSpec.describe "Pages", type: :request do
     it "links to the privacy policy" do
       get "/terms"
       expect(Nokogiri::HTML(response.body).css("a").map { |a| a["href"] }).to include("/privacy")
+    end
+
+    it "records no analytics visit for an anonymous visitor" do
+      expect { get "/terms" }.not_to change { Ahoy::Visit.count }
     end
   end
 
