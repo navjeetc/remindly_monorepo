@@ -44,7 +44,11 @@ RSpec.describe MarkMissedOccurrencesJob do
   end
 
   describe "alerting" do
-    it "enqueues a retryable notification for a recently-due medication miss" do
+    # A caregiver opted into medication (the default), so a medication miss has
+    # someone to alert.
+    let!(:caregiver) { create(:user, :caregiver, name: "Kid").tap { |c| CaregiverLink.create!(senior: senior, caregiver: c) } }
+
+    it "enqueues a retryable notification for a recently-due miss someone opted into" do
       occ = occurrence_at(90.minutes.ago)
       expect { described_class.perform_now }
         .to have_enqueued_job(ReminderNotificationJob).with(occ.id, "missed")
@@ -57,12 +61,19 @@ RSpec.describe MarkMissedOccurrencesJob do
       expect(occ.reload.status).to eq("missed")
     end
 
-    it "marks a non-medication occurrence missed but enqueues no notification" do
+    it "marks the occurrence missed but enqueues no notification when no caregiver opted into its category" do
+      # The one caregiver has hydration off by default, so a hydration miss still
+      # gets recorded (dashboard counts) but reaches nobody.
       occ = occurrence_at(90.minutes.ago, category: :hydration)
-      # The sweep still records the state so the dashboard's missed counters are
-      # accurate, but only medication misses are worth alerting a caregiver about.
       expect { described_class.perform_now }.not_to have_enqueued_job(ReminderNotificationJob)
       expect(occ.reload.status).to eq("missed")
+    end
+
+    it "enqueues for a non-medication miss when a caregiver opted into that category" do
+      caregiver.update!(notify_reminder_categories: %w[medication hydration])
+      occ = occurrence_at(90.minutes.ago, category: :hydration)
+      expect { described_class.perform_now }
+        .to have_enqueued_job(ReminderNotificationJob).with(occ.id, "missed")
     end
   end
 end

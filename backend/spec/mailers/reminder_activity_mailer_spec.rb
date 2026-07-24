@@ -26,12 +26,17 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(mail[:from].value).to eq("Remindly <hello@remindly.care>")
     end
 
-    it "names the senior and the medication in the subject" do
-      expect(mail.subject).to eq("Mom took Metformin")
+    it "names the senior and the reminder in the subject" do
+      expect(mail.subject).to eq("Mom completed Metformin")
     end
 
     it "mentions the senior and reminder in the body" do
       expect(mail.body.encoded).to include("Mom").and include("Metformin")
+    end
+
+    # Copy must be category-neutral now that hydration/routine can notify too.
+    it "does not describe the reminder as medication" do
+      expect(mail.body.encoded).not_to match(/medication/i)
     end
 
     # scheduled_at is 9:00 UTC; the reminder's zone is Eastern, so the caregiver
@@ -45,12 +50,16 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
   describe "#missed" do
     let(:mail) { mail_for(:missed) }
 
-    it "names the senior and the medication in the subject" do
+    it "names the senior and the reminder in the subject" do
       expect(mail.subject).to eq("Mom missed Metformin")
     end
 
-    it "says the medication was not taken" do
-      expect(mail.body.encoded).to include("has not taken")
+    it "says the reminder was not completed" do
+      expect(mail.body.encoded).to include("has not completed")
+    end
+
+    it "does not describe the reminder as medication" do
+      expect(mail.body.encoded).not_to match(/medication/i)
     end
   end
 end

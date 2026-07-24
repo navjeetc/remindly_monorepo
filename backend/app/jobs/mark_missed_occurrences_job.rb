@@ -34,7 +34,9 @@ class MarkMissedOccurrencesJob < ApplicationJob
     Occurrence
       .status_pending
       .where(scheduled_at: (now - MARK_LOOKBACK)..cutoff)
-      .includes(:reminder)
+      # Eager-load what recipients() reads, so checking who opted in doesn't fire a
+      # per-occurrence query for the owner and their caregivers.
+      .includes(reminder: { user: :caregivers })
       .find_each do |occ|
       # Compare-and-swap: only the run that actually flips pending -> missed
       # proceeds. If an acknowledgement moved the row first, update_all matches
@@ -44,11 +46,12 @@ class MarkMissedOccurrencesJob < ApplicationJob
       next if changed.zero?
 
       # Marked missed for the dashboard's sake, but only alert on recently-due
-      # medication misses. The notification runs in its own retryable job, which
-      # re-checks the status before sending — so a late take that flips this row
-      # back to acknowledged before the job runs suppresses the missed alert.
+      # misses that at least one caregiver opted in to for this category — no point
+      # enqueuing a job nobody will be notified by. The notification runs in its own
+      # retryable job, which re-checks the status before sending, so a late take that
+      # flips this row back to acknowledged before the job runs suppresses the alert.
       next if occ.scheduled_at < now - NOTIFY_WINDOW
-      next unless occ.reminder.category_medication?
+      next unless ReminderNotificationService.recipients(occ.reminder).any?
 
       ReminderNotificationJob.perform_later(occ.id, "missed")
     rescue => e

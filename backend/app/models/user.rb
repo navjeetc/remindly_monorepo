@@ -57,4 +57,18 @@ class User < ApplicationRecord
   def friendly_name
     nickname.presence || name.presence || email.split("@").first
   end
+
+  # Reminder categories this caregiver wants completion/miss notifications for.
+  # Normalized on write: only real, deduped categories are stored, so a stray
+  # value from the form is dropped. A category later removed from the enum is
+  # cleaned from a user's stored set the next time they save preferences, not
+  # retroactively — though a removed category would no longer match any reminder
+  # anyway, so it can't produce a notification in the meantime.
+  def notify_reminder_categories=(values)
+    super(Array(values).map(&:to_s).select { |c| Reminder.categories.key?(c) }.uniq)
+  end
+
+  def notified_for?(category)
+    notify_reminder_categories.include?(category.to_s)
+  end
 end

@@ -38,21 +38,44 @@ RSpec.describe ReminderNotificationService do
         .to change { Notification.count }.by(2)
     end
 
-    it "skips a caregiver who turned reminder activity off" do
-      caregiver.update!(notify_on_reminder_activity: false)
+    it "skips a caregiver who chose no categories" do
+      caregiver.update!(notify_reminder_categories: [])
       link!(caregiver)
 
       expect { described_class.notify_acknowledged(occurrence_for) }
         .not_to change { Notification.count }
     end
 
-    it "does nothing for a non-medication reminder" do
+    it "does not notify for a category the caregiver has not opted into" do
+      # Hydration is off by default.
       link!(caregiver)
       occ = occurrence_for(category: :hydration, title: "Water")
 
       expect {
         expect { described_class.notify_acknowledged(occ) }.not_to change { Notification.count }
       }.not_to have_enqueued_mail(ReminderActivityMailer, :completed)
+    end
+
+    it "notifies for a non-medication category the caregiver opted into" do
+      caregiver.update!(notify_reminder_categories: %w[medication hydration])
+      link!(caregiver)
+      occ = occurrence_for(category: :hydration, title: "Water")
+
+      # Both channels, same as the medication path — an in-app record and an email.
+      expect { described_class.notify_acknowledged(occ) }
+        .to change { caregiver.notifications.count }.by(1)
+        .and have_enqueued_mail(ReminderActivityMailer, :completed)
+    end
+
+    it "notifies only the caregivers opted into this reminder's category" do
+      link!(caregiver) # medication only (default)
+      hydration_fan = create(:user, :caregiver, email: "water@example.com", notify_reminder_categories: %w[hydration])
+      link!(hydration_fan)
+
+      # A medication reminder reaches the medication caregiver, not the hydration one.
+      expect { described_class.notify_acknowledged(occurrence_for(category: :medication)) }
+        .to change { caregiver.notifications.count }.by(1)
+        .and change { hydration_fan.notifications.count }.by(0)
     end
 
     it "does nothing when the senior has no caregivers" do
