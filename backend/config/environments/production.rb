@@ -61,8 +61,12 @@ Rails.application.configure do
   config.action_mailer.postmark_settings = {
     api_token: Rails.application.credentials.postmark_api_token
   }
+  # Links in emails must point at the canonical, branded host (matches
+  # CANONICAL_HOST in ApplicationHelper), not the legacy remindly.anakhsoft.com.
+  # Hardcoded rather than read from the base_url credential, which was stale and
+  # kept sending caregivers to the old domain.
   config.action_mailer.default_url_options = {
-    host: Rails.application.credentials.base_url || "remindly.anakhsoft.com"
+    host: "www.remindly.care"
   }
   config.action_mailer.default_options = {
     from: Rails.application.credentials.admin_email || "noreply@remindly.anakhsoft.com"
