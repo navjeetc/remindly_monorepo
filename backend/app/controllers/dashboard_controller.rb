@@ -178,11 +178,31 @@ class DashboardController < WebController
   end
 
   # Remove a link
+  # Either side can end a caregiver link: a caregiver removes themselves from a
+  # senior (their caregiver_links), or a senior revokes a caregiver's access to
+  # their own reminders and care history (their senior_links). Looking only in the
+  # current user's own links on both sides IS the authorization — you can end a
+  # link only if you are party to it. The senior dashboard's "Remove Access" button
+  # pointed here already, but the action only checked caregiver_links, so a senior
+  # clicking it got a 404 and the caregiver kept access.
   def unlink
-    link = current_user.caregiver_links.find(params[:id])
-    senior_email = link.senior.email
-    link.destroy!
-    redirect_to dashboard_path, notice: "Unlinked from #{senior_email}"
+    link = current_user.caregiver_links.find_by(id: params[:id]) ||
+           current_user.senior_links.find_by(id: params[:id])
+
+    unless link
+      redirect_to dashboard_path, alert: "That link could not be found."
+      return
+    end
+
+    if link.senior_id == current_user.id
+      removed = link.caregiver&.email || "the caregiver"
+      link.destroy!
+      redirect_to dashboard_path, notice: "Removed #{removed}'s access."
+    else
+      senior_email = link.senior.email
+      link.destroy!
+      redirect_to dashboard_path, notice: "Unlinked from #{senior_email}."
+    end
   end
 
   # New reminder form for senior
