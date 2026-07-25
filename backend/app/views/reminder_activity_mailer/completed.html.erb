@@ -8,7 +8,7 @@
     .header { background-color: #16a34a; color: white; padding: 20px; text-align: center; }
     .content { background-color: #f9fafb; padding: 20px; }
     .highlight { background-color: #dcfce7; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0; }
-    .button { display: inline-block; padding: 12px 24px; background-color: #16a34a; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+    .button { display: inline-block; padding: 12px 24px; background-color: #16a34a; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
     .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
   </style>
 </head>
@@ -30,7 +30,7 @@
       <% end %>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="<%= @dashboard_url %>" class="button">View <%= @senior.display_name %>'s dashboard</a>
+        <a href="<%= @dashboard_url %>" class="button" style="color: #ffffff; text-decoration: none;">View <%= @senior.display_name %>'s dashboard</a>
       </div>
 
       <p style="color: #6b7280; font-size: 14px;">

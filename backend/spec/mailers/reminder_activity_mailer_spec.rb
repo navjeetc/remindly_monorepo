@@ -45,6 +45,12 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(mail.body.encoded).to include("05:00 AM")
       expect(mail.body.encoded).not_to include("09:00 AM")
     end
+
+    # Gmail overrides <a> link colors set only in a <style> block, so the dashboard
+    # button needs inline white text to stay legible on its colored background.
+    it "gives the dashboard button inline white text" do
+      expect((mail.html_part || mail.body).decoded).to match(/<a\b[^>]*class="button"[^>]*style="color: #ffffff/)
+    end
   end
 
   describe "#missed" do
@@ -60,6 +66,10 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
 
     it "does not describe the reminder as medication" do
       expect(mail.body.encoded).not_to match(/medication/i)
+    end
+
+    it "gives the dashboard button inline white text" do
+      expect((mail.html_part || mail.body).decoded).to match(/<a\b[^>]*class="button"[^>]*style="color: #ffffff/)
     end
   end
 end
