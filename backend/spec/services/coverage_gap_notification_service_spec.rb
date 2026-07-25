@@ -30,4 +30,33 @@ RSpec.describe CoverageGapNotificationService do
           .with(hash_including(caregiver: opted_out))
     end
   end
+
+  describe ".notify_gap_filled" do
+    let(:date) { Date.new(2026, 8, 6) }
+
+    def stale_gap_notice_for(caregiver)
+      Notification.create!(
+        user: caregiver,
+        notification_type: Notification::TYPES[:coverage_gap],
+        title: "Coverage gaps", message: "gap",
+        metadata: { senior_id: senior.id, gap_dates: [ date.to_s ] }
+      )
+    end
+
+    it "sends a gap-filled notice to opted-in caregivers" do
+      expect { described_class.notify_gap_filled(senior, date) }
+        .to change { opted_in.notifications.where(notification_type: Notification::TYPES[:coverage_filled]).count }.by(1)
+    end
+
+    # Even someone who opted out after previously getting alerts should have their
+    # now-outdated gap notice cleared — they just don't get a new one.
+    it "clears an opted-out caregiver's stale gap notice but sends them no new notice" do
+      stale = stale_gap_notice_for(opted_out)
+
+      expect { described_class.notify_gap_filled(senior, date) }
+        .to change { stale.reload.read_at }.from(nil)
+
+      expect(opted_out.notifications.where(notification_type: Notification::TYPES[:coverage_filled]).count).to eq(0)
+    end
+  end
 end
