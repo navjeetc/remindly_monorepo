@@ -22,7 +22,12 @@ class PagesController < WebController
     render layout: "marketing"
   end
 
+  # Served with the light marketing layout (like home, privacy, terms): inlined
+  # CSS instead of ~400KB of CDN Tailwind, and no csrf_meta_tags — so an anonymous
+  # reader of this public, indexable page gets no session cookie and no
+  # third-party request.
   def how_to
+    render layout: "marketing"
   end
 
   # Legal pages, public to everyone (signed in or not) and served with the light
