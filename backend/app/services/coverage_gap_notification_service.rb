@@ -6,7 +6,7 @@ class CoverageGapNotificationService
   def self.check_and_notify(senior, start_date = Date.current, end_date = Date.current + 14.days)
     return unless senior.role_senior?
 
-    caregivers = senior.caregivers
+    caregivers = senior.caregivers.where(notify_on_coverage_gaps: true)
     return if caregivers.empty?
 
     # Find coverage gaps
@@ -35,6 +35,10 @@ class CoverageGapNotificationService
   def self.notify_gap_filled(senior, date)
     return unless senior.role_senior?
 
+    # Iterate all caregivers, not just opted-in ones: clearing an outdated gap
+    # notification is cleanup that should happen even for someone who has since
+    # turned coverage-gap alerts off, so they aren't left with a stale "gap" notice.
+    # Only the new "gap filled" notification is gated on the opt-in below.
     caregivers = senior.caregivers
     return if caregivers.empty?
 
@@ -48,6 +52,9 @@ class CoverageGapNotificationService
 
       # Use update_all for efficient bulk update instead of N+1 updates
       Notification.where(id: gap_notifications.map(&:id)).update_all(read_at: Time.current)
+
+      # A caregiver who opted out gets the cleanup above but no new notice.
+      next unless caregiver.notify_on_coverage_gaps?
 
       # Create new "gap filled" notification
       Notification.create!(
