@@ -182,6 +182,18 @@ RSpec.describe "Pages", type: :request do
       expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
     end
 
+    # A signed-in user reaching the guide from their dashboard must not see the
+    # marketing "Sign in" nav — they get a way back to their dashboard instead.
+    it "shows a signed-in user a dashboard link, not a sign-in prompt" do
+      user = User.create!(email: "cara@example.com", role: :caregiver, tz: "America/New_York", name: "Cara")
+      post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+
+      get "/how_to"
+      nav_hrefs = Nokogiri::HTML(response.body).css("header a, footer a").map { |a| a["href"] }
+      expect(nav_hrefs).to include(dashboard_path)
+      expect(nav_hrefs).not_to include(login_path)
+    end
+
     it "points the canonical URL at www.remindly.care" do
       get "/how_to"
       expect(canonical_href).to eq("https://www.remindly.care/how_to")
