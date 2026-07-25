@@ -84,6 +84,19 @@
                 </div>
               </div>
 
+              <div class="relative flex items-start">
+                <div class="flex items-center h-5">
+                  <%= f.check_box :notify_on_coverage_gaps,
+                    class: "focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" %>
+                </div>
+                <div class="ml-3 text-sm">
+                  <%= f.label :notify_on_coverage_gaps, class: "font-medium text-gray-700" do %>
+                    Email me about coverage gaps
+                  <% end %>
+                  <p class="text-gray-500">Get the daily alert (and in-app notice) when dates for someone you care for have no caregiver availability. Turn this off to stop those emails.</p>
+                </div>
+              </div>
+
               <fieldset>
                 <legend class="font-medium text-gray-700">Tell me when a reminder is completed or missed</legend>
                 <p class="text-gray-500 text-sm mb-3">Get an email and a dashboard alert when someone you care for completes a reminder, or misses it. Choose which kinds — hydration and routine reminders happen many times a day, so leave those off unless you want every one.</p>
