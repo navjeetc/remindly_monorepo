@@ -6,6 +6,9 @@
     <p class="text-lg text-gray-700 mb-4">
       Welcome to Remindly! This guide will help you understand the main features of our application and show you how to get started.
     </p>
+    <p class="text-gray-700">
+      There is no password to remember — you sign in by entering your email and following a one-time link. The first time you sign in, Remindly asks whether you are a caregiver setting things up for someone or the person who will receive the reminders, and takes you straight in. You can change that choice later from your profile.
+    </p>
   </div>
 
   <!-- Main Functionalities -->
@@ -26,9 +29,31 @@
           <ul class="list-disc list-inside text-gray-700 space-y-2 ml-4">
             <li><strong>Custom schedules:</strong> Daily, weekly, or custom frequencies</li>
             <li><strong>Specific times:</strong> Set exact times for each reminder</li>
-            <li><strong>Categories:</strong> Organize by medication, meal, appointment, or routine</li>
+            <li><strong>Categories:</strong> Organize by medication, hydration, or routine</li>
             <li><strong>Voice announcements:</strong> Seniors receive spoken reminders on their devices</li>
-            <li><strong>Acknowledgment tracking:</strong> Care receivers can acknowledge reminders or snooze them, and caregivers can see which reminders were completed</li>
+            <li><strong>Acknowledgment tracking:</strong> Care receivers mark reminders done or snooze them, and caregivers can see what was completed and what was missed (see <em>Keeping caregivers informed</em> below)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications Section -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="flex items-start mb-4">
+        <div class="flex-shrink-0">
+          <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+          </svg>
+        </div>
+        <div class="ml-4 flex-1">
+          <h2 class="text-2xl font-bold text-gray-900 mb-3">Keeping caregivers informed</h2>
+          <p class="text-gray-700 mb-4">
+            You don't have to open the app to know how things are going. When a reminder is completed — or missed — Remindly tells the caregivers linked to that senior, both in the app and by email.
+          </p>
+          <ul class="list-disc list-inside text-gray-700 space-y-2 ml-4">
+            <li><strong>Completed and missed:</strong> A message goes out when a reminder is marked done, and again if one is missed.</li>
+            <li><strong>Your choice of categories:</strong> Each caregiver picks which kinds of reminders notify them — medication, hydration, or routine — from their profile. Medication is on by default; hydration and routine happen many times a day, so they start off.</li>
+            <li><strong>In the app and by email:</strong> Alerts appear on your dashboard and arrive in your inbox.</li>
           </ul>
         </div>
       </div>
@@ -56,6 +81,27 @@
             <li><strong>Status tracking:</strong> Monitor pending, in-progress, and completed tasks</li>
           </ul>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connecting Section -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <div class="flex items-start mb-4">
+      <div class="flex-shrink-0">
+        <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+        </svg>
+      </div>
+      <div class="ml-4 flex-1">
+        <h2 class="text-2xl font-bold text-gray-900 mb-3">Connecting — and ending a connection</h2>
+        <p class="text-gray-700 mb-4">
+          A caregiver and a senior are linked with a one-time pairing code (the videos below walk through it). Once linked, the caregiver can set up reminders and see how the senior is doing.
+        </p>
+        <ul class="list-disc list-inside text-gray-700 space-y-2 ml-4">
+          <li><strong>Pairing:</strong> The senior generates a code and shares it; the caregiver enters it to connect.</li>
+          <li><strong>Ending it, from either side:</strong> A senior can end a caregiver's access at any time with <strong>Remove Access</strong> on their dashboard, and a caregiver can remove themselves from a senior. Access ends right away.</li>
+        </ul>
       </div>
     </div>
   </div>
