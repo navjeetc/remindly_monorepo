@@ -15,4 +15,9 @@ RSpec.describe CoverageGapMailer, type: :mailer do
   it "gives both CTA buttons explicit inline white text" do
     expect(mail.body.encoded.scan('style="color: #ffffff').size).to eq(2)
   end
+
+  it "tells the caregiver how to turn these emails off" do
+    expect(mail.body.encoded).to match(/turn these coverage-gap emails off/i)
+    expect(mail.body.encoded).to include("/profile") # links to notification settings
+  end
 end

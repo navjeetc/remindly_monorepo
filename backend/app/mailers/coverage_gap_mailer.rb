@@ -12,6 +12,7 @@ class CoverageGapMailer < ApplicationMailer
     @gaps = gaps
     @coverage_url = senior_coverage_url(senior)
     @availability_url = caregiver_availabilities_url
+    @settings_url = profile_url
 
     mail(
       to: caregiver.email,
