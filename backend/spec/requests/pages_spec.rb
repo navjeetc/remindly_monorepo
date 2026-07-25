@@ -166,15 +166,16 @@ RSpec.describe "Pages", type: :request do
     it "renders the guide without authentication" do
       get "/how_to"
       expect(response).to have_http_status(:ok)
-      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("How to use Remindly")
+      expect(Nokogiri::HTML(response.body).at_css("h1")&.text.to_s).to include("How to use Remindly")
     end
 
     # The point of serving this on the marketing layout: no CDN Tailwind, and no
     # session cookie for an anonymous, indexable page.
     it "loads no third-party assets" do
       get "/how_to"
-      external = Nokogiri::HTML(response.body).css("script[src], link[rel='stylesheet']").map { |n| n["src"] || n["href"] }.compact
-      expect(external.select { |u| u.start_with?("http", "//") }).to be_empty
+      refs = Nokogiri::HTML(response.body).css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
+        .map { |n| n["src"] || n["href"] }.compact
+      expect(refs.select { |u| u.start_with?("http", "//") }).to be_empty
     end
 
     it "issues no session cookie to an anonymous visitor" do
