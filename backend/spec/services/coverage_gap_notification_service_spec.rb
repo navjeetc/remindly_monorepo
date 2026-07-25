@@ -14,7 +14,7 @@ RSpec.describe CoverageGapNotificationService do
   describe ".check_and_notify" do
     it "creates an in-app gap notification only for caregivers who left the alerts on" do
       expect { described_class.check_and_notify(senior) }
-        .to change { opted_in.notifications.count }.by_at_least(1)
+        .to change { opted_in.notifications.count }.by(1)
         .and change { opted_out.notifications.count }.by(0)
     end
 

@@ -10,9 +10,9 @@ RSpec.describe CoverageGapMailer, type: :mailer do
   end
 
   # Gmail and others override <a> link colors, which left the blue CTA buttons with
-  # dark, hard-to-read text. Force white with an inline style on each button.
-  it "gives the CTA buttons explicit white text" do
-    expect(mail.body.encoded).to include('style="color: #ffffff')
-    expect(mail.body.encoded.scan("color: #ffffff").size).to be >= 2
+  # dark, hard-to-read text. Force white with an *inline* style on each button —
+  # exactly one per button, so this can't be satisfied by the .button CSS rule alone.
+  it "gives both CTA buttons explicit inline white text" do
+    expect(mail.body.encoded.scan('style="color: #ffffff').size).to eq(2)
   end
 end
