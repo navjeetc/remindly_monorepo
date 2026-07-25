@@ -125,7 +125,11 @@
     <header>
       <div class="wrap">
         <a class="logo" href="/">Remindly</a>
-        <a href="<%= login_path %>">Sign in</a>
+        <% if current_user %>
+          <a href="<%= dashboard_path %>">Dashboard</a>
+        <% else %>
+          <a href="<%= login_path %>">Sign in</a>
+        <% end %>
       </div>
     </header>
 
@@ -139,7 +143,11 @@
           <a href="<%= how_to_path %>">How Remindly works</a>
           <a href="<%= privacy_path %>">Privacy</a>
           <a href="<%= terms_path %>">Terms</a>
-          <a href="<%= login_path %>">Sign in</a>
+          <% if current_user %>
+            <a href="<%= dashboard_path %>">Dashboard</a>
+          <% else %>
+            <a href="<%= login_path %>">Sign in</a>
+          <% end %>
           <a href="mailto:hello@remindly.care">hello@remindly.care</a>
         </div>
         <p>© <%= Date.current.year %> Remindly</p>
