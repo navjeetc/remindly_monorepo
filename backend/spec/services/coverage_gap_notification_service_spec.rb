@@ -18,10 +18,16 @@ RSpec.describe CoverageGapNotificationService do
         .and change { opted_out.notifications.count }.by(0)
     end
 
-    it "emails only the opted-in caregivers" do
-      # opted_in -> one email; opted_out -> none.
+    it "emails the opted-in caregiver and no one else" do
       expect { described_class.check_and_notify(senior) }
-        .to have_enqueued_mail(CoverageGapMailer, :notify_gap).once
+        .to have_enqueued_mail(CoverageGapMailer, :notify_gap)
+          .with(hash_including(caregiver: opted_in)).once
+    end
+
+    it "does not email a caregiver who opted out" do
+      expect { described_class.check_and_notify(senior) }
+        .not_to have_enqueued_mail(CoverageGapMailer, :notify_gap)
+          .with(hash_including(caregiver: opted_out))
     end
   end
 end
