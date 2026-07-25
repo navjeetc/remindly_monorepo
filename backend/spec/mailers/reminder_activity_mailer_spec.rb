@@ -49,7 +49,8 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     # Gmail overrides <a> link colors set only in a <style> block, so the dashboard
     # button needs inline white text to stay legible on its colored background.
     it "gives the dashboard button inline white text" do
-      expect((mail.html_part || mail.body).decoded).to match(/<a\b[^>]*class="button"[^>]*style="color: #ffffff/)
+      button = Nokogiri::HTML((mail.html_part || mail.body).decoded).at_css("a.button")
+      expect(button["style"]).to match(/color:\s*#ffffff/i)
     end
   end
 
@@ -69,7 +70,8 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     end
 
     it "gives the dashboard button inline white text" do
-      expect((mail.html_part || mail.body).decoded).to match(/<a\b[^>]*class="button"[^>]*style="color: #ffffff/)
+      button = Nokogiri::HTML((mail.html_part || mail.body).decoded).at_css("a.button")
+      expect(button["style"]).to match(/color:\s*#ffffff/i)
     end
   end
 end

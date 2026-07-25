@@ -16,7 +16,8 @@ RSpec.describe MagicMailer, type: :mailer do
     # Gmail overrides <a> link colors set only in a <style> block, so the sign-in
     # button needs inline white text to stay legible on its blue background.
     it "gives the sign-in button inline white text" do
-      expect((mail.html_part || mail.body).decoded).to match(/<a\b[^>]*class="button"[^>]*style="color: #ffffff/)
+      button = Nokogiri::HTML((mail.html_part || mail.body).decoded).at_css("a.button")
+      expect(button["style"]).to match(/color:\s*#ffffff/i)
     end
 
     # The link is a plain URL string, not trusted HTML — it must be rendered
