@@ -39,5 +39,12 @@ RSpec.describe CaregiverInvitationMailer, type: :mailer do
     it 'includes information about what caregivers can do' do
       expect(mail.body.encoded).to include('View and manage tasks')
     end
+
+    # Gmail overrides <a> link colors set only in a <style> block, so the sign-in
+    # button needs inline white text to stay legible on its blue background.
+    it 'gives the sign-in button inline white text' do
+      button = Nokogiri::HTML((mail.html_part || mail.body).decoded).at_css("a.button")
+      expect(button["style"]).to match(/color:\s*#ffffff/i)
+    end
   end
 end

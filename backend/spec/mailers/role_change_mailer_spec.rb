@@ -9,6 +9,13 @@ RSpec.describe RoleChangeMailer, type: :mailer do
     expect(mail.to).to eq([ user.email ])
   end
 
+  # Gmail overrides <a> link colors set only in a <style> block, so the CTA
+  # button needs inline white text to stay legible on its indigo background.
+  it "gives the dashboard button inline white text" do
+    button = Nokogiri::HTML((mail.html_part || mail.body).decoded).at_css("a.button")
+    expect(button["style"]).to match(/color:\s*#ffffff/i)
+  end
+
   # The button used to hardcode https://remindly.anakhsoft.com/dashboard; it must
   # now follow default_url_options — an absolute https URL on the canonical host,
   # never a relative path (which drops the host) and never the legacy domain.
