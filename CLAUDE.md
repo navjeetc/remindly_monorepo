@@ -27,7 +27,7 @@ make dev                    # Rails serves the dashboard and the voice client
 make rspec                                    # Run all backend specs
 cd backend && bundle exec rspec spec/path/to/spec.rb  # Run single spec file
 cd backend && bin/brakeman --no-pager         # Security scan (run in CI)
-cd backend && bin/rubocop -f github           # Linting (run in CI)
+cd backend && bundle exec rubocop             # Linting (CI runs bin/rubocop -f github)
 ```
 
 ### Database
@@ -71,13 +71,14 @@ Backend runs on port 5000 (not the default 3000). CORS is enabled via `rack-cors
 Kamal + Docker targeting a single DigitalOcean server (`161.35.104.56`). SQLite3 persists on a Docker volume at `/rails/storage/production.sqlite3`. The Docker entrypoint runs migrations automatically on deploy. SSL via Let's Encrypt at `remindly.anakhsoft.com`. Secrets (`KAMAL_REGISTRY_PASSWORD`, `RAILS_MASTER_KEY`) live in `.kamal/secrets`.
 
 ### CI (GitHub Actions)
-Two jobs on PRs and pushes to `main`, defined in `.github/workflows/ci.yml`:
+Three jobs on PRs and pushes to `main`, defined in `.github/workflows/ci.yml`:
 - **`test`** — runs the full RSpec suite, including the guard specs that enforce repo invariants (`web_client_sync_spec.rb` for client drift, `public_assets_spec.rb` for files served from `public/`)
 - **`scan_ruby`** — Brakeman security scan
+- **`lint`** — `bin/rubocop -f github`
 
 The workflow **must stay at the repository root**. It previously lived at `backend/.github/workflows/ci.yml`, where GitHub Actions never reads, so it had never run — no PR reported a check until 2026-07-18.
 
-Rubocop is deliberately not wired up yet: it reports ~683 offenses (~620 auto-correctable), so enabling it would fail every PR. `.github/workflows/ci.yml` marks where the job goes once that is cleaned up.
+The `lint` job is green and expected to stay that way: the backlog of ~604 offenses was autocorrected before the job was enabled. Run `bundle exec rubocop` on the files you touch before pushing — style drifts silently otherwise. Note `bin/rubocop` may fail to load outside `bundle exec` depending on the local Ruby setup.
 
 `bin/brakeman` prepends `--ensure-latest`, so the scan fails when the gem falls behind the latest release — update the gem rather than removing the flag.
 
