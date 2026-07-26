@@ -37,9 +37,24 @@ class Admin::AuditLogsController < WebController
     events = Ahoy::Event.order(time: :desc)
     events = events.where(name: @event_filter) if @event_filter.present?
     events = events.where(user_id: @user_filter) if @user_filter.present?
-    events = events.where("time >= ?", Date.parse(@date_from).beginning_of_day) if @date_from.present?
-    events = events.where("time <= ?", Date.parse(@date_to).end_of_day) if @date_to.present?
+
+    from = parse_filter_date(@date_from)
+    to = parse_filter_date(@date_to)
+    events = events.where("time >= ?", from.beginning_of_day) if from
+    events = events.where("time <= ?", to.end_of_day) if to
     events
+  end
+
+  # A hand-edited query string should not take the page down. Date.parse raises
+  # on anything it cannot read, so an unparseable bound is dropped and the
+  # remaining filters still apply.
+  def parse_filter_date(value)
+    return nil if value.blank?
+
+    Date.parse(value)
+  rescue ArgumentError
+    Rails.logger.warn "Admin::AuditLogsController: ignoring unparseable date filter #{value.inspect}"
+    nil
   end
 
   def require_admin!

@@ -68,6 +68,30 @@ RSpec.describe "Admin audit log filters (admin/audit_logs#index)", type: :reques
     expect(tile("Failed Logins")).to eq(0)
   end
 
+  # Date.parse raises on anything it cannot read, so a hand-edited query string
+  # used to 500 the page.
+  it "ignores an unparseable date filter instead of erroring" do
+    get "/admin/audit_logs", params: { date_from: "not-a-date" }
+
+    expect(response).to have_http_status(:ok)
+    expect(tile("Total Events")).to eq(5)
+  end
+
+  it "still applies the other filters when one date is unparseable" do
+    get "/admin/audit_logs", params: { date_from: "garbage", user_id: admin.id }
+
+    expect(response).to have_http_status(:ok)
+    expect(tile("Total Events")).to eq(1)
+    expect(tile("Successful Logins")).to eq(1)
+  end
+
+  it "keeps a valid date bound when the other one is unparseable" do
+    get "/admin/audit_logs", params: { date_from: 7.days.ago.to_date.to_s, date_to: "13/13/2026" }
+
+    expect(response).to have_http_status(:ok)
+    expect(tile("Total Events")).to eq(3)
+  end
+
   it "keeps the tiles consistent with the paginated list total" do
     get "/admin/audit_logs", params: { user_id: caregiver.id }
 
