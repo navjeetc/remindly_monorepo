@@ -10,15 +10,18 @@ class Admin::AuditLogsController < WebController
     @date_to = params[:date_to]
 
     filtered = filtered_events
+    @events = filtered.includes(:user, :visit).page(params[:page]).per(50)
 
     # The summary tiles count the same rows the table lists. Counting all events
     # here instead would put an all-time total next to a filtered list, and the
     # three numbers would not add up whenever a filter is applied.
-    @total_events = filtered.count
+    #
+    # The total comes off the paginated relation because the pagination footer
+    # needs it anyway and Kaminari memoises it; counting `filtered` separately
+    # ran the identical COUNT twice per request.
+    @total_events = @events.total_count
     @successful_logins = filtered.where(name: "Login Success").count
     @failed_logins = filtered.where(name: "Login Failed").count
-
-    @events = filtered.includes(:user, :visit).page(params[:page]).per(50)
 
     # Get unique event names for filter dropdown
     @event_names = Ahoy::Event.distinct.pluck(:name).sort
