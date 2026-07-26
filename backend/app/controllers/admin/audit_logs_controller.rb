@@ -9,28 +9,19 @@ class Admin::AuditLogsController < WebController
     @date_from = params[:date_from]
     @date_to = params[:date_to]
 
-    # Base query with user association
-    @events = Ahoy::Event.includes(:user, :visit).order(time: :desc)
+    filtered = filtered_events
+    @events = filtered.includes(:user, :visit).page(params[:page]).per(50)
 
-    # Apply filters
-    if @event_filter.present?
-      @events = @events.where(name: @event_filter)
-    end
-
-    if @user_filter.present?
-      @events = @events.where(user_id: @user_filter)
-    end
-
-    if @date_from.present?
-      @events = @events.where("time >= ?", Date.parse(@date_from).beginning_of_day)
-    end
-
-    if @date_to.present?
-      @events = @events.where("time <= ?", Date.parse(@date_to).end_of_day)
-    end
-
-    # Paginate results
-    @events = @events.page(params[:page]).per(50)
+    # The summary tiles count the same rows the table lists. Counting all events
+    # here instead would put an all-time total next to a filtered list, and the
+    # three numbers would not add up whenever a filter is applied.
+    #
+    # The total comes off the paginated relation because the pagination footer
+    # needs it anyway and Kaminari memoises it; counting `filtered` separately
+    # ran the identical COUNT twice per request.
+    @total_events = @events.total_count
+    @successful_logins = filtered.where(name: "Login Success").count
+    @failed_logins = filtered.where(name: "Login Failed").count
 
     # Get unique event names for filter dropdown
     @event_names = Ahoy::Event.distinct.pluck(:name).sort
@@ -44,6 +35,30 @@ class Admin::AuditLogsController < WebController
   end
 
   private
+
+  def filtered_events
+    events = Ahoy::Event.order(time: :desc)
+    events = events.where(name: @event_filter) if @event_filter.present?
+    events = events.where(user_id: @user_filter) if @user_filter.present?
+
+    from = parse_filter_date(@date_from)
+    to = parse_filter_date(@date_to)
+    events = events.where("time >= ?", from.beginning_of_day) if from
+    events = events.where("time <= ?", to.end_of_day) if to
+    events
+  end
+
+  # A hand-edited query string should not take the page down. Date.parse raises
+  # on anything it cannot read, so an unparseable bound is dropped and the
+  # remaining filters still apply.
+  def parse_filter_date(value)
+    return nil if value.blank?
+
+    Date.parse(value)
+  rescue ArgumentError
+    Rails.logger.warn "Admin::AuditLogsController: ignoring unparseable date filter #{value.inspect}"
+    nil
+  end
 
   def require_admin!
     unless current_user&.role_admin?
