@@ -9,28 +9,16 @@ class Admin::AuditLogsController < WebController
     @date_from = params[:date_from]
     @date_to = params[:date_to]
 
-    # Base query with user association
-    @events = Ahoy::Event.includes(:user, :visit).order(time: :desc)
+    filtered = filtered_events
 
-    # Apply filters
-    if @event_filter.present?
-      @events = @events.where(name: @event_filter)
-    end
+    # The summary tiles count the same rows the table lists. Counting all events
+    # here instead would put an all-time total next to a filtered list, and the
+    # three numbers would not add up whenever a filter is applied.
+    @total_events = filtered.count
+    @successful_logins = filtered.where(name: "Login Success").count
+    @failed_logins = filtered.where(name: "Login Failed").count
 
-    if @user_filter.present?
-      @events = @events.where(user_id: @user_filter)
-    end
-
-    if @date_from.present?
-      @events = @events.where("time >= ?", Date.parse(@date_from).beginning_of_day)
-    end
-
-    if @date_to.present?
-      @events = @events.where("time <= ?", Date.parse(@date_to).end_of_day)
-    end
-
-    # Paginate results
-    @events = @events.page(params[:page]).per(50)
+    @events = filtered.includes(:user, :visit).page(params[:page]).per(50)
 
     # Get unique event names for filter dropdown
     @event_names = Ahoy::Event.distinct.pluck(:name).sort
@@ -44,6 +32,15 @@ class Admin::AuditLogsController < WebController
   end
 
   private
+
+  def filtered_events
+    events = Ahoy::Event.order(time: :desc)
+    events = events.where(name: @event_filter) if @event_filter.present?
+    events = events.where(user_id: @user_filter) if @user_filter.present?
+    events = events.where("time >= ?", Date.parse(@date_from).beginning_of_day) if @date_from.present?
+    events = events.where("time <= ?", Date.parse(@date_to).end_of_day) if @date_to.present?
+    events
+  end
 
   def require_admin!
     unless current_user&.role_admin?
