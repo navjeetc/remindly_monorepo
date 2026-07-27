@@ -271,6 +271,12 @@ RSpec.describe "Pages", type: :request do
       end
     end
 
+    # Not a page anyone reads — it exists to be fetched by a machine, so it is
+    # not in STATIC_PATHS and was tracked until it was named explicitly.
+    it "records no visit for the sitemap" do
+      expect { get "/sitemap.xml", headers: BROWSER }.not_to change { Ahoy::Visit.count }
+    end
+
     it "records no visit when someone joins the mailing list" do
       expect {
         post "/subscribers", params: { email: "quiet@example.com" }, headers: BROWSER

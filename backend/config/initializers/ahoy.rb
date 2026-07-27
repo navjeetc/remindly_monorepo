@@ -15,6 +15,13 @@ class Ahoy::Store < Ahoy::DatabaseStore
 
   private
 
+  # Endpoints that are not pages at all. STATIC_PATHS is the list of things a
+  # person reads, so the sitemap — which only ever exists to be fetched by a
+  # machine — is not in it and would otherwise be tracked. Bots are already
+  # excluded outside development, but that only helps for crawlers Ahoy
+  # recognises as bots.
+  MACHINE_PATHS = [ "/sitemap.xml", "/robots.txt" ].freeze
+
   # PagesController::STATIC_PATHS is the same constant the sitemap is built
   # from, so a page is either public in both places or in neither.
   #
@@ -26,6 +33,7 @@ class Ahoy::Store < Ahoy::DatabaseStore
     return false if path.blank?
 
     PagesController::STATIC_PATHS.include?(path) ||
+      MACHINE_PATHS.include?(path) ||
       path.start_with?("/blog/") ||
       path == "/subscribers"
   end

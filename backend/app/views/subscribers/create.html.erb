@@ -23,15 +23,29 @@
 <% else %>
   <h1>You're on the list</h1>
 
+  <%#
+    This page must be true in three different situations, only one of which
+    sends an email: a genuinely new subscriber, someone already on the list, and
+    a bot that filled the honeypot. It used to say the sheet was "on its way to
+    your inbox" and to go and check the spam folder — which sent the second
+    group hunting for a message that was never sent.
+
+    So it promises nothing about email and hands over the sheet directly, which
+    is the thing they actually came for and is public anyway. It also cannot
+    tell anyone whether their address was already on the list.
+  %>
   <p class="lead">
-    The routine sheet is on its way to your inbox. If it hasn't arrived in a few
-    minutes, check the spam folder — and if it isn't there either, email
-    <a href="mailto:hello@remindly.care">hello@remindly.care</a> and I'll sort it out.
+    Here is the routine sheet —
+    <a href="<%= routine_sheet_path %>">open it and print it</a>. One page for
+    the fridge door, and you do not have to wait for an email to get hold of it.
   </p>
 
   <p>
-    You can print the sheet right now without waiting:
-    <a href="<%= routine_sheet_path %>">open the daily routine sheet</a>.
+    The monthly note will arrive when there is one worth sending: one useful
+    thing about caring for a parent at a distance, and a line on what has
+    changed in Remindly. Reply to any of them to come off the list, or write to
+    <a href="mailto:hello@remindly.care">hello@remindly.care</a> if something
+    looks wrong.
   </p>
 
   <div class="actions">

@@ -76,6 +76,17 @@ RSpec.describe "Subscribers", type: :request do
       end
     end
 
+    # The page has to be true in all three cases below, and only the first sends
+    # an email. It used to say the sheet was "on its way to your inbox", which
+    # sent a returning subscriber hunting through their spam folder for a
+    # message that was never sent.
+    it "promises no email, because two of the three outcomes do not send one" do
+      post "/subscribers", params: { email: "ann@example.com" }
+
+      expect(response.body).not_to match(/on its way|check the spam/i)
+      expect(doc.css("a").map { |a| a["href"] }).to include("/routine_sheet")
+    end
+
     # A filled honeypot gets the success page and no record, so a bot has
     # nothing to learn from the difference.
     context "when the honeypot is filled" do

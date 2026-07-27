@@ -5,13 +5,24 @@
 # mean a dormant User row and a magic-link identity for someone who never asked
 # for one.
 class Subscriber < ApplicationRecord
-  # Deliberately permissive. The strict-looking regexes people reach for here
-  # reject valid addresses (plus signs, new TLDs, apostrophes) and the only
-  # thing that actually proves an address works is sending to it.
+  # Deliberately permissive about *shape*. The strict-looking regexes people
+  # reach for here reject valid addresses (plus signs, new TLDs, apostrophes)
+  # and the only thing that actually proves an address works is sending to it.
+  #
+  # Length is a different question, and not a cosmetic one: both of these
+  # columns are written straight from an unauthenticated public form, and the
+  # format regex above is happy with a hundred-thousand-character address.
+  # Without a ceiling, the cheapest possible request bloats the table. 254 is
+  # the longest address SMTP will carry, so nothing deliverable is refused.
   validates :email,
     presence: true,
+    length: { maximum: 254 },
     format: { with: /\A[^@\s]+@[^@\s]+\.[^@\s]+\z/, message: "doesn't look like an email address" },
     uniqueness: { case_sensitive: false }
+
+  # Set by our own forms, never typed — but it arrives as a request parameter,
+  # so it is only as trustworthy as anything else a stranger can send.
+  validates :source, length: { maximum: 60 }, allow_nil: true
 
   # "  Ann@Example.COM " and "ann@example.com" are one person. Normalising on
   # the way in is what makes the unique index mean anything.

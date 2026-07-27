@@ -32,6 +32,29 @@ RSpec.describe Subscriber do
       expect(subscriber.errors[:email]).to be_present
     end
 
+    # Both columns are written straight from an unauthenticated public form, and
+    # the format check is happy with an address of any length — so the cheapest
+    # possible request could bloat the table.
+    it "refuses an absurdly long address" do
+      subscriber = described_class.subscribe(email: "#{"a" * 300}@example.com")
+
+      expect(subscriber).not_to be_persisted
+      expect(subscriber.errors[:email]).to be_present
+    end
+
+    it "still accepts the longest address SMTP will actually carry" do
+      local = "a" * (254 - "@example.com".length)
+
+      expect(described_class.subscribe(email: "#{local}@example.com")).to be_persisted
+    end
+
+    it "refuses an oversized source, which only our own forms should set" do
+      subscriber = described_class.subscribe(email: "ann@example.com", source: "x" * 200)
+
+      expect(subscriber).not_to be_persisted
+      expect(subscriber.errors[:source]).to be_present
+    end
+
     # Two requests for the same address — a double-clicked button is enough —
     # can both pass the lookup and the uniqueness validation before either
     # commits, and then the database index rejects the second insert. The save
