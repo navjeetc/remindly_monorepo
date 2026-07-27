@@ -28,7 +28,12 @@ class SubscribersController < WebController
       source: params[:source].presence
     )
 
-    SubscriberMailer.welcome(subscriber).deliver_later if subscriber.previously_new_record?
+    # Both only for a genuinely new record — a repeat signup is silent, so
+    # neither the person nor we get a second copy of anything.
+    if subscriber.previously_new_record?
+      SubscriberMailer.welcome(subscriber).deliver_later
+      SubscriberMailer.new_subscriber(subscriber).deliver_later
+    end
 
     render :create, locals: { subscriber: subscriber },
       status: subscriber.persisted? ? :ok : :unprocessable_entity

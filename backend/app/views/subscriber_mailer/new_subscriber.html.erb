@@ -1,0 +1,20 @@
+<h2>New subscriber</h2>
+
+<p style="font-size:1.1em"><strong><%= @subscriber.email %></strong></p>
+
+<table cellpadding="4" style="border-collapse:collapse">
+  <tr>
+    <td><strong>From</strong></td>
+    <td><%= @subscriber.source.presence || "unknown page" %></td>
+  </tr>
+  <tr>
+    <td><strong>Joined</strong></td>
+    <td><%= @subscriber.created_at.strftime("%B %-d, %Y at %-I:%M %p %Z") %></td>
+  </tr>
+  <tr>
+    <td><strong>Total</strong></td>
+    <td><%= @total %> <%= "subscriber".pluralize(@total) %></td>
+  </tr>
+</table>
+
+<p>Reply to this email to write to them directly.</p>

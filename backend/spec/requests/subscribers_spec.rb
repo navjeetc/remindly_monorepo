@@ -14,12 +14,52 @@ RSpec.describe "Subscribers", type: :request do
       expect(Subscriber.last.source).to eq("home")
     end
 
+    # A signup sends two: the sheet to them, and the notification to us. These
+    # find the one they mean by subject rather than trusting delivery order,
+    # so adding a third never quietly re-points an assertion at the wrong mail.
+    def welcome_email = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.include?("routine sheet") }
+
     it "sends the routine sheet to a new subscriber" do
       expect {
         perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
-      }.to change { ActionMailer::Base.deliveries.count }.by(1)
+      }.to change { ActionMailer::Base.deliveries.count }.by(2)
 
-      expect(ActionMailer::Base.deliveries.last.to).to eq([ "ann@example.com" ])
+      expect(welcome_email.to).to eq([ "ann@example.com" ])
+    end
+
+    describe "the notification to us" do
+      def notification = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.start_with?("New Remindly subscriber") }
+
+      it "tells us who joined and which page earned them" do
+        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com", source: "post:some-slug" } }
+
+        expect(notification).to be_present
+        expect(notification.subject).to include("ann@example.com")
+        expect(notification.body.encoded).to include("post:some-slug")
+      end
+
+      # Replying to the notification should write to the person, not to us.
+      it "replies to the subscriber" do
+        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+
+        expect(notification.reply_to).to eq([ "ann@example.com" ])
+      end
+
+      it "says nothing when an existing subscriber signs up again" do
+        Subscriber.create!(email: "ann@example.com")
+
+        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+
+        expect(notification).to be_nil
+      end
+
+      it "says nothing when a bot fills the honeypot" do
+        perform_enqueued_jobs do
+          post "/subscribers", params: { email: "bot@example.com", website: "http://spam.example" }
+        end
+
+        expect(notification).to be_nil
+      end
     end
 
     # The email tells people to reply in order to stop, and there is no
@@ -28,7 +68,7 @@ RSpec.describe "Subscribers", type: :request do
     it "points replies at a mailbox a person actually reads" do
       perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
 
-      expect(ActionMailer::Base.deliveries.last.reply_to).to eq([ "hello@remindly.care" ])
+      expect(welcome_email.reply_to).to eq([ "hello@remindly.care" ])
     end
 
     # Normalising on the way in is what makes the unique index mean anything.

@@ -21,4 +21,22 @@ class SubscriberMailer < ApplicationMailer
       subject: "Your printable daily routine sheet"
     )
   end
+
+  # Tells us when someone joins. At this size that is worth knowing as it
+  # happens — a list of one is a person, not a metric — and the source is the
+  # part that pays: it says which page earned the address, which is the only
+  # honest way to find out which writing is worth doing more of.
+  #
+  # reply_to is the subscriber, so answering the notification writes to them
+  # directly. For a list this small that is a feature, not a slip.
+  def new_subscriber(subscriber)
+    @subscriber = subscriber
+    @total = Subscriber.count
+
+    mail(
+      to: Rails.application.credentials.admin_email || ENV.fetch("ADMIN_EMAIL", "admin@remindly.app"),
+      reply_to: subscriber.email,
+      subject: "New Remindly subscriber: #{subscriber.email}"
+    )
+  end
 end
