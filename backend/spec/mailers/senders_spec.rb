@@ -29,6 +29,19 @@ RSpec.describe "Mailer senders" do
     end
   end
 
+  # The value being right everywhere is not the same as it being defined once.
+  # Two mailers had already been corrected by hand and agreed with the new
+  # default by coincidence — which is exactly the state that let six others
+  # drift without anyone noticing. A second definition is a second thing to
+  # remember, so ApplicationMailer is the only place allowed to set it.
+  it "declares the sender in exactly one place" do
+    definers = Rails.root.glob("app/mailers/**/*.rb").select { |path|
+      path.read.lines.any? { |line| line.match?(/^\s*default from:/) }
+    }.map { |path| path.basename.to_s }
+
+    expect(definers).to eq([ "application_mailer.rb" ])
+  end
+
   # The domain that was rejected on every send. Nothing may use it again, in a
   # sender, a recipient, or a fallback.
   #

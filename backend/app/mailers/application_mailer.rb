@@ -3,8 +3,10 @@ class ApplicationMailer < ActionMailer::Base
   # Postmark sender. Mail from anything else is rejected outright — that is not
   # theoretical: notifications@remindly.app was silently rejected on every send
   # until someone noticed, and the same invalid remindly.app fallback then
-  # survived in six mailers. It is defined once here so there is nowhere left
-  # for a second sender to hide.
+  # survived in six mailers. Two others had been corrected by hand and happened
+  # to agree, which is not the same as being right — it is the state that let
+  # the other six drift unnoticed. This is now the only place allowed to set a
+  # sender, and senders_spec fails on any mailer that declares its own.
   #
   # Deliberately not read from credentials. admin_email is navjeet@anakhsoft.com
   # — a personal address on a different domain, which several mailers were using
