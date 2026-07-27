@@ -32,7 +32,15 @@ class Subscriber < ApplicationRecord
     # this point, so the lookup matches however the address was typed.
     record = new(email: email, source: source)
     existing = find_by(email: record.email) if record.email.present?
+    return existing if existing
 
-    existing || record.tap(&:save)
+    record.tap(&:save)
+  rescue ActiveRecord::RecordNotUnique
+    # Lost a race. Two requests for the same address — a double-clicked button
+    # is enough — can both get past the lookup and the uniqueness validation
+    # before either has committed, and then the database index rejects the
+    # second insert. Without this the loser gets a 500 on what is, from the
+    # person's point of view, a perfectly ordinary signup.
+    find_by(email: record.email) || record
   end
 end

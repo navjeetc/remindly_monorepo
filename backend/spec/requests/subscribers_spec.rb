@@ -22,6 +22,15 @@ RSpec.describe "Subscribers", type: :request do
       expect(ActionMailer::Base.deliveries.last.to).to eq([ "ann@example.com" ])
     end
 
+    # The email tells people to reply in order to stop, and there is no
+    # unsubscribe link. If replies go to the default noreply@ sender, the only
+    # opt-out on offer goes nowhere.
+    it "points replies at a mailbox a person actually reads" do
+      perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+
+      expect(ActionMailer::Base.deliveries.last.reply_to).to eq([ "hello@remindly.care" ])
+    end
+
     # Normalising on the way in is what makes the unique index mean anything.
     it "stores the address downcased and stripped" do
       post "/subscribers", params: { email: "  Ann@Example.COM " }

@@ -15,6 +15,17 @@ RSpec.describe "Pages", type: :request do
     raw && JSON.parse(raw)
   end
 
+  # Ahoy skips anything it thinks is a bot, and a request spec sends no
+  # User-Agent at all — so an analytics assertion made without one passes no
+  # matter what the code does. Two specs here were green for exactly that
+  # reason while /faq, /routine_sheet and the blog were recording a visit row
+  # for every anonymous reader. Any spec about tracking has to send this.
+  BROWSER = {
+    "HTTP_USER_AGENT" =>
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+      "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  }.freeze
+
   describe "GET / (marketing homepage)" do
     def doc = Nokogiri::HTML(response.body)
 
@@ -208,7 +219,7 @@ RSpec.describe "Pages", type: :request do
     # The policy says analytics aren't collected on public pages, so this page must
     # not persist an Ahoy visit for an anonymous reader.
     it "records no analytics visit for an anonymous visitor" do
-      expect { get "/privacy" }.not_to change { Ahoy::Visit.count }
+      expect { get "/privacy", headers: BROWSER }.not_to change { Ahoy::Visit.count }
     end
 
     # It is the indexable set of pages, so it must not block on a third-party asset.
@@ -243,7 +254,39 @@ RSpec.describe "Pages", type: :request do
     end
 
     it "records no analytics visit for an anonymous visitor" do
-      expect { get "/terms" }.not_to change { Ahoy::Visit.count }
+      expect { get "/terms", headers: BROWSER }.not_to change { Ahoy::Visit.count }
+    end
+  end
+
+  # The privacy policy tells anonymous readers that public pages are not
+  # tracked. Ahoy's exclusion list was four hardcoded paths, so every public
+  # page added after it was written recorded an IP, referrer and device for
+  # every stranger who read it — with nothing failing to say so.
+  describe "analytics on public pages" do
+    def public_paths = PagesController::STATIC_PATHS + Post.all.map(&:path)
+
+    it "records no visit on any public page" do
+      public_paths.each do |path|
+        expect { get path, headers: BROWSER }.not_to(change { Ahoy::Visit.count }, "#{path} recorded a visit")
+      end
+    end
+
+    it "records no visit when someone joins the mailing list" do
+      expect {
+        post "/subscribers", params: { email: "quiet@example.com" }, headers: BROWSER
+      }.not_to change { Ahoy::Visit.count }
+    end
+
+    # The counterpart: signed-in activity is still tracked, which is where the
+    # useful signal is and where people do have an account with us. Without
+    # this, "exclude everything" would pass the specs above.
+    it "still records visits for signed-in activity" do
+      user = User.create!(email: "tracked@example.com", role: :caregiver, tz: "America/New_York", name: "Tracked")
+
+      expect {
+        post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) },
+          headers: BROWSER
+      }.to change { Ahoy::Visit.count }.by(1)
     end
   end
 

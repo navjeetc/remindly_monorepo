@@ -146,10 +146,12 @@ Publishing is adding a Markdown file to `backend/content/posts` with `title`,
 the index, the sitemap and the structured data all pick it up. A `published_on`
 in the future is a draft and stays out of both the index and the sitemap.
 
-The `mattpocock` skills at `~/dev/skills/mattpocock` are worth using to write the
-remaining five: `writing-fragments` interviews you to mine raw material,
-`writing-shape` turns the pile into an article, `edit-article` tightens a draft.
-That pipeline gets your voice onto the page instead of mine.
+For the remaining five, an interview-driven writing pipeline beats drafting them
+outright — it gets the author's voice onto the page rather than a plausible
+imitation of it. Matt Pocock's agent skills ([github.com/mattpocock/skills](https://github.com/mattpocock/skills),
+installable with `npx skills@latest add mattpocock/skills`) do this in three
+steps: `writing-fragments` interviews you to mine raw material, `writing-shape`
+turns the pile into an article, and `edit-article` tightens the draft.
 
 ## Content: educate, inspire, entertain
 
