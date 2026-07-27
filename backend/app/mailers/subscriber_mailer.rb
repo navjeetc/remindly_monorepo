@@ -32,7 +32,7 @@ class SubscriberMailer < ApplicationMailer
     @total = Subscriber.count
 
     mail(
-      to: OFFICIAL_EMAIL,
+      to: self.class.admin_recipient,
       reply_to: subscriber.email,
       subject: "New Remindly subscriber: #{subscriber.email}"
     )

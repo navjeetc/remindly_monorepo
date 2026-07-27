@@ -5,7 +5,7 @@ class ContactMailer < ApplicationMailer
     @description = description
     @submitted_at = Time.current
 
-    admin_email = OFFICIAL_EMAIL
+    admin_email = self.class.admin_recipient
 
     mail(
       to: admin_email,

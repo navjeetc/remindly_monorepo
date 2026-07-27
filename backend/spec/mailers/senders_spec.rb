@@ -44,6 +44,60 @@ RSpec.describe "Mailer senders" do
       "remindly.app is not a confirmed sender and mail using it is rejected:\n  #{offenders.join("\n  ")}"
   end
 
+  # The sender and the recipient are different problems, and conflating them
+  # was a real mistake here: hardcoding the recipient alongside the sender
+  # silently redirected contact-form submissions away from whichever inbox a
+  # deployment had configured to receive them.
+  #
+  # The From address must be the one verified sender or Postmark rejects the
+  # message. Who hears about a contact form is a deployment's choice.
+  describe "mail addressed to us" do
+    around do |example|
+      original = ENV["ADMIN_EMAIL"]
+      example.run
+      ENV["ADMIN_EMAIL"] = original
+    end
+
+    it "honours a configured admin address" do
+      allow(Rails.application.credentials).to receive(:admin_email).and_return("support@example.com")
+
+      expect(ApplicationMailer.admin_recipient).to eq("support@example.com")
+    end
+
+    it "honours ADMIN_EMAIL when no credential is set" do
+      allow(Rails.application.credentials).to receive(:admin_email).and_return(nil)
+      ENV["ADMIN_EMAIL"] = "ops@example.com"
+
+      expect(ApplicationMailer.admin_recipient).to eq("ops@example.com")
+    end
+
+    # Only the fallback changed. It used to be the invalid admin@remindly.app.
+    it "falls back to the official address rather than an unverified one" do
+      allow(Rails.application.credentials).to receive(:admin_email).and_return(nil)
+      ENV.delete("ADMIN_EMAIL")
+
+      expect(ApplicationMailer.admin_recipient).to eq(OFFICIAL)
+    end
+
+    it "routes contact submissions to the configured address" do
+      allow(Rails.application.credentials).to receive(:admin_email).and_return("support@example.com")
+
+      mail = ContactMailer.contact_form_submission(name: "Ann", email: "ann@example.com", description: "Hello")
+
+      expect(mail.to).to eq([ "support@example.com" ])
+      expect(mail.from).to eq([ OFFICIAL ])
+    end
+
+    it "routes new-subscriber notices to the configured address" do
+      allow(Rails.application.credentials).to receive(:admin_email).and_return("support@example.com")
+
+      mail = SubscriberMailer.new_subscriber(Subscriber.create!(email: "ann@example.com"))
+
+      expect(mail.to).to eq([ "support@example.com" ])
+      expect(mail.from).to eq([ OFFICIAL ])
+    end
+  end
+
   # admin_email is a personal address on a different domain. Product mail should
   # come from the product, and several mailers were using it as their From.
   it "does not fall back to the personal admin credential for the sender" do

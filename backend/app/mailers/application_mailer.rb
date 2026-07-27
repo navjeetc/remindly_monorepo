@@ -14,4 +14,17 @@ class ApplicationMailer < ActionMailer::Base
 
   default from: BRANDED_SENDER
   layout "mailer"
+
+  # Where mail *to us* goes — contact submissions, new-subscriber notices.
+  #
+  # Deliberately still configurable, unlike the sender above. The two are
+  # different problems that got conflated: the From address has to be the one
+  # verified sender or Postmark rejects the message, but the recipient is a
+  # deployment's choice about who handles support, and hardcoding it silently
+  # redirected contact submissions away from the inbox someone was watching.
+  #
+  # Only the fallback changed, from the invalid admin@remindly.app.
+  def self.admin_recipient
+    Rails.application.credentials.admin_email || ENV.fetch("ADMIN_EMAIL", OFFICIAL_EMAIL)
+  end
 end
