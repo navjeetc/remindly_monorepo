@@ -1,8 +1,9 @@
 class ReminderActivityMailer < ApplicationMailer
-  # Branded sender on the DKIM-verified remindly.care domain. (Earlier this was
-  # notifications@remindly.app, which was never a confirmed Postmark sender and so
-  # was rejected on every send.)
-  default from: "Remindly <hello@remindly.care>"
+  # This was the one mailer with a correct sender — it had the same
+  # remindly.app bug and was fixed here alone, which is why every other mailer
+  # kept the broken fallback. The branded sender now lives on ApplicationMailer
+  # and this inherits it, so there is one definition rather than one good one
+  # and six bad ones.
 
   # A senior completed a reminder (of a category the caregiver opted into).
   # Params: caregiver, senior, reminder, occurrence

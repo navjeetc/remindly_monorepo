@@ -1,6 +1,4 @@
 class CaregiverInvitationMailer < ApplicationMailer
-  default from: Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
-
   def invitation_email(caregiver:, senior:, inviter:)
     @caregiver = caregiver
     @senior = senior
