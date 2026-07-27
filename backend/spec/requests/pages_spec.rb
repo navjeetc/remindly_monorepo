@@ -49,6 +49,29 @@ RSpec.describe "Pages", type: :request do
         expect(doc.at_css("meta[name='description']")&.[]("content")).to be_present
       end
 
+      # The FAQ carries the long-tail search content and the FAQPage graph, and
+      # was reachable from here only through one link in the closing paragraph
+      # and the footer — both below everything on the page.
+      it "links to the questions page from where cost is discussed, not only at the foot" do
+        get "/"
+
+        # Walk only as far as the next heading. Taking every following sibling
+        # would sweep up the closing paragraph's link and pass with or without
+        # a link in this section, which is the thing being tested.
+        heading = doc.at_css("h2:contains('What it costs')")
+        expect(heading).to be_present, "the 'What it costs' section is gone"
+
+        section = []
+        node = heading.next_element
+        while node && node.name != "h2"
+          section << node
+          node = node.next_element
+        end
+
+        hrefs = section.flat_map { |n| n.css("a").map { |a| a["href"] } }
+        expect(hrefs).to include("/faq"), "nothing links to the FAQ from the section about cost"
+      end
+
       # /how_to is otherwise an orphan - nothing links to it, so nothing finds it.
       it "links to the guide and to sign in" do
         get "/"
@@ -255,6 +278,46 @@ RSpec.describe "Pages", type: :request do
 
     it "records no analytics visit for an anonymous visitor" do
       expect { get "/terms", headers: BROWSER }.not_to change { Ahoy::Visit.count }
+    end
+  end
+
+  # Costing nothing is the fact most likely to decide whether a caregiver
+  # comparing options clicks through, and for a while only the homepage carried
+  # it. The homepage is also the least likely landing page for the long-tail
+  # searches this site is written for.
+  describe "saying that it is free" do
+    def doc = Nokogiri::HTML(response.body)
+
+    # The <title> is the blue link text in a search result, so a page that
+    # ranks without it in the title never gets to make the point at all.
+    it "carries it in the title of every page written to be landed on" do
+      %w[/ /faq /how_to /routine_sheet].each do |path|
+        get path
+
+        expect(doc.at_css("title").text).to match(/free/i), "#{path} title does not mention it"
+      end
+    end
+
+    # Someone arriving on the FAQ or a blog post from a search could otherwise
+    # read several pages without ever learning it.
+    it "shows the badge on every public page, including the blog" do
+      [ "/", "/faq", "/how_to", "/routine_sheet", "/blog", Post.all.first.path ].each do |path|
+        get path
+
+        expect(doc.at_css("header .badge-free")&.text).to eq("Free"), "no badge on #{path}"
+      end
+    end
+
+    # The question a wary reader actually has. Answering it is worth more than
+    # repeating the word, and it is itself a thing people search for.
+    it "answers what the catch is, as a question search engines can surface" do
+      get "/faq"
+
+      questions = structured_data["mainEntity"].map { |q| q["name"] }
+      expect(questions).to include(a_string_matching(/why is remindly free/i))
+
+      answer = structured_data["mainEntity"].find { |q| q["name"].match?(/why is remindly free/i) }
+      expect(answer.dig("acceptedAnswer", "text")).to match(/no catch/i)
     end
   end
 
