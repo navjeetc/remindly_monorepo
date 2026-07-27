@@ -313,10 +313,20 @@ RSpec.describe "Pages", type: :request do
       get "/sitemap.xml", headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
 
       locs = Nokogiri::XML(response.body).css("url loc").map(&:text)
+      expected = PagesController::STATIC_PATHS + Post.all.map(&:path)
 
-      expect(locs).to match_array(
-        %w[/ /how_to /faq /privacy /terms].map { |p| "https://www.remindly.care#{p}" }
-      )
+      expect(locs).to match_array(expected.map { |path| "https://www.remindly.care#{path}" })
+    end
+
+    # A post is only worth writing if it can be found, and a new file on disk is
+    # the whole of "publishing" here — nothing else has to be remembered.
+    it "picks up blog posts from disk without anything else being edited" do
+      get "/sitemap.xml"
+
+      locs = Nokogiri::XML(response.body).css("url loc").map(&:text)
+
+      expect(Post.all).not_to be_empty, "no posts on disk, so this proves nothing"
+      expect(locs).to include("https://www.remindly.care#{Post.all.first.path}")
     end
 
     # Listing a page that robots.txt forbids tells a crawler to fetch something

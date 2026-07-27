@@ -1,0 +1,78 @@
+<% content_for :title, "Printable daily routine sheet for an elderly parent" %>
+<% content_for :description, "A free one-page daily routine sheet to print and put on the fridge: medication times, meals, and the phone numbers worth having to hand. No signup needed." %>
+
+<div class="no-print">
+  <h1>A daily routine sheet you can print</h1>
+
+  <p class="lead">
+    One page for the fridge door. Fill it in by hand, print a fresh one when the
+    routine changes, and leave it somewhere it will actually be seen. Useful on
+    its own — there is nothing to sign up for.
+  </p>
+
+  <p>
+    <button type="button" class="btn btn-primary" onclick="window.print()">Print this sheet</button>
+    <span class="print-hint">or press Ctrl+P — ⌘P on a Mac.</span>
+  </p>
+
+  <hr class="rule">
+</div>
+
+<%#
+  Everything below is what actually prints: large type, generous rules to write
+  on, and no navigation. The print stylesheet in the marketing layout hides the
+  site header, footer and .no-print blocks.
+%>
+<section class="sheet">
+  <h2 class="sheet-title">Daily routine for <span class="fill fill-name"></span></h2>
+
+  <table class="sheet-table">
+    <thead>
+      <tr><th>Time</th><th>What happens</th><th>Done</th></tr>
+    </thead>
+    <tbody>
+      <% 8.times do %>
+        <tr><td class="fill"></td><td class="fill"></td><td class="tick"></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h3 class="sheet-heading">Medication</h3>
+  <table class="sheet-table">
+    <thead>
+      <tr><th>Medicine</th><th>Dose</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <% 6.times do %>
+        <tr><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h3 class="sheet-heading">If something is wrong, ring</h3>
+  <table class="sheet-table">
+    <thead>
+      <tr><th>Who</th><th>Number</th></tr>
+    </thead>
+    <tbody>
+      <% 4.times do %>
+        <tr><td class="fill"></td><td class="fill"></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+
+<div class="no-print">
+  <hr class="rule">
+
+  <p>
+    If keeping the sheet up to date turns into its own chore,
+    <a href="<%= login_path %>">Remindly</a> does the same job out loud: you set
+    the times from your own phone, it speaks each one at their end, and it emails
+    you when a dose is taken or missed. It is free.
+    <a href="<%= faq_path %>">The questions page</a> covers what it does and does
+    not do.
+  </p>
+
+  <%= render "shared/subscribe_form", source: "routine_sheet" %>
+</div>

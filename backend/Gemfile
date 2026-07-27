@@ -62,3 +62,7 @@ end
 gem "letter_opener", "~> 1.10"
 gem "ahoy_matey", "~> 5.2"
 gem "whenever", "~> 1.0", require: false
+
+# Blog posts are written as Markdown files under content/posts. Kramdown is pure
+# Ruby with no dependencies, so it adds nothing to the Docker build.
+gem "kramdown", "~> 2.4"

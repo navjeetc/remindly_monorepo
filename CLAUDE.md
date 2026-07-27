@@ -63,6 +63,25 @@ Configured in `config/recurring.yml`. `CheckCoverageGapsJob` runs daily at 8am t
 ### Rails Server Configuration
 Backend runs on port 5000 (not the default 3000). CORS is enabled via `rack-cors` for cross-origin clients. `JWT_SECRET` env var is required at runtime (defaults to `please_change_me` in dev).
 
+Note on macOS: the AirPlay Receiver (`ControlCenter`) squats on port 5000 when it is enabled, so `rails server -p 5000` may lose the bind. Either turn AirPlay Receiver off in System Settings → General → AirDrop & Handoff, or run on another port.
+
+### Public marketing site
+Everything a logged-out stranger can reach is served by `PagesController`, `PostsController` and `SubscribersController`, all of which include the `PublicPage` concern. That concern is what guarantees the two properties the request specs assert on every one of these pages:
+
+- **The `marketing` layout, not `dashboard`** — the dashboard layout pulls Tailwind from a CDN (~400KB of JS). The marketing layout inlines its CSS and loads nothing third-party, because these are the pages search engines index.
+- **No cookies for anonymous visitors** — Ahoy's cookies are dropped, and the layout deliberately omits `csrf_meta_tags` so no session cookie is issued either. Adding a `form_with` to any of these pages breaks that, which is why the mailing-list form is a plain `form_tag` and `SubscribersController` skips forgery protection (see the comment there for why that is safe on that specific endpoint).
+
+Pages: `/` `/how_to` `/faq` `/routine_sheet` `/blog` `/privacy` `/terms`. `PagesController::STATIC_PATHS` is the authoritative list — `robots.txt` disallows everything else, and `/sitemap.xml` is rendered from that constant plus the posts on disk.
+
+`ApplicationHelper::CANONICAL_HOST` exists because the app answers on three hostnames (`remindly.anakhsoft.com`, `remindly.care`, `www.remindly.care`). Canonical tags, `og:image` and sitemap entries all pin to one of them.
+
+### Blog
+Posts are Markdown files in `backend/content/posts`, parsed by `Post` (a plain model, no database table) — see the class comment for why files rather than a table. Publishing is adding a file with `title`, `description` and `published_on` front matter; the index, sitemap and Article structured data all pick it up with nothing else edited. **A `published_on` in the future is a draft** and stays out of both the index and the sitemap. Malformed front matter raises at load rather than rendering a post with a blank heading.
+
+Post bodies are rendered with `html_safe` — sound only because posts are repo files reviewed in a PR. If posts ever come from anywhere else, sanitize first.
+
+`docs/MARKETING_PLAN.md` sets out what this is all for.
+
 ### Clients
 - **Voice client for seniors** is `/voice_reminders` — a Rails page whose announcements are driven by `backend/public/voice_reminders.js`. It authenticates with the Rails **session**, not a Bearer token, and is linked from the dashboard nav. A standalone JS client at `clients/web/` (served at `/client/`) was superseded by this page and removed; `/client/` redirects to it.
 - **macOS client** configures `APIClient.base` in Xcode; uses `AVSpeechSynthesizer` for TTS

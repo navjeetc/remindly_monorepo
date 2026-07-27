@@ -1,0 +1,39 @@
+<% content_for :title, "#{@post.title} — Remindly" %>
+<% content_for :description, @post.description %>
+
+<%#
+  Article structured data. datePublished is the part that earns anything: it is
+  what lets a result show a date, and a caregiver deciding whether advice is
+  current uses that date.
+%>
+<% content_for :structured_data, json_ld(
+     "@context" => "https://schema.org",
+     "@type" => "Article",
+     "headline" => @post.title,
+     "description" => @post.description,
+     "datePublished" => @post.published_on.iso8601,
+     "mainEntityOfPage" => canonical_url,
+     "publisher" => { "@type" => "Organization", "name" => "Remindly", "url" => canonical_host }
+   ) %>
+
+<article class="post">
+  <h1><%= @post.title %></h1>
+
+  <p class="post-meta">
+    <time datetime="<%= @post.published_on.iso8601 %>"><%= @post.published_on.strftime("%-d %B %Y") %></time>
+  </p>
+
+  <%= @post.html %>
+</article>
+
+<hr class="rule">
+
+<p>
+  <strong>Remindly</strong> speaks reminders aloud at the right time for someone
+  living on their own, and tells you when a dose is taken or missed. It is
+  <a href="<%= faq_path %>">free to use</a>.
+  <a href="<%= login_path %>">Try it</a>, or read
+  <a href="<%= blog_path %>">the rest of the writing</a>.
+</p>
+
+<%= render "shared/subscribe_form", source: "post:#{@post.slug}" %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_113620) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_025245) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -145,6 +145,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_113620) do
     t.index ["status"], name: "index_scheduling_integrations_on_status"
     t.index ["user_id", "provider"], name: "index_scheduling_integrations_on_user_id_and_provider"
     t.index ["user_id"], name: "index_scheduling_integrations_on_user_id"
+  end
+
+  create_table "subscribers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.string "source"
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_subscribers_on_email", unique: true
   end
 
   create_table "task_comments", force: :cascade do |t|

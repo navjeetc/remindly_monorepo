@@ -1,0 +1,39 @@
+<%#
+  The mailing list signup.
+
+  A plain form_tag rather than form_with: form_with emits an authenticity token,
+  which has to live in the session, which would issue a session cookie to every
+  anonymous reader of every public page. SubscribersController explains why
+  that trade is the right way round here.
+
+  locals:
+    source — the page this appeared on, so we can tell which writing earns
+             addresses. Without it every signup looks the same.
+%>
+<section class="subscribe">
+  <h2>The monthly note</h2>
+
+  <p>
+    One useful thing a month about caring for a parent at a distance, and a line
+    on what has changed in Remindly. You will also get the
+    <a href="<%= routine_sheet_path %>">printable daily routine sheet</a> —
+    though that one is free to anybody, list or no list.
+  </p>
+
+  <form action="<%= subscribers_path %>" method="post" class="subscribe-form">
+    <input type="hidden" name="source" value="<%= source %>">
+
+    <%# Hidden from people, irresistible to bots. Left unlabelled on purpose. %>
+    <div class="honeypot" aria-hidden="true">
+      <label for="website">Leave this empty</label>
+      <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+    </div>
+
+    <label for="subscribe-email">Your email address</label>
+    <div class="subscribe-row">
+      <input type="email" name="email" id="subscribe-email" required
+             autocomplete="email" placeholder="you@example.com">
+      <button type="submit" class="btn btn-primary">Send it to me</button>
+    </div>
+  </form>
+</section>

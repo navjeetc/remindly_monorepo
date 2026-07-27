@@ -84,9 +84,15 @@ many people search for the problem, at 11pm, after a bad phone call.
   structured data so answers can surface directly in results
 - `SoftwareApplication` structured data declaring price 0, which is what lets a
   result carry a "free" label
-- `/sitemap.xml`, generated from the routes, advertised in `robots.txt`
+- `/sitemap.xml`, generated from the routes and from the posts on disk,
+  advertised in `robots.txt`
 - `og:image` + `twitter:card`, so shared links stop rendering as grey boxes
 - "Free to use" in the title, meta description, CTA and a "What it costs" section
+- `/blog` — Markdown files in `backend/content/posts`, with Article structured
+  data. Publishing is adding a file; a future `published_on` is a draft.
+- `/routine_sheet` — a printable one-page daily routine sheet, public rather
+  than gated, so it can rank on its own
+- `/subscribers` — the mailing list, with the routine sheet sent on signup
 
 ### Manual step, do this first — nothing else matters until it is done
 
@@ -129,8 +135,21 @@ Six posts, one every two weeks, three months. Each answers a question a
 caregiver actually asks, and each is genuinely useful to someone who never signs
 up. Product mention at the bottom, once.
 
-This needs a `/blog` — currently there is nowhere for these to live. That is the
-next build task if this plan is approved.
+Post 1 is written and published — *How to know whether your parent actually took
+their medication*. **It is a draft in your voice, not mine: read it before you
+promote it anywhere.** It names a real limitation of Remindly and points readers
+at a dedicated device when that suits them better, which is deliberate, but it
+is your name on it. Five remain.
+
+Publishing is adding a Markdown file to `backend/content/posts` with `title`,
+`description` and `published_on` front matter. Nothing else has to be touched —
+the index, the sitemap and the structured data all pick it up. A `published_on`
+in the future is a draft and stays out of both the index and the sitemap.
+
+The `mattpocock` skills at `~/dev/skills/mattpocock` are worth using to write the
+remaining five: `writing-fragments` interviews you to mine raw material,
+`writing-shape` turns the pile into an article, `edit-article` tightens a draft.
+That pipeline gets your voice onto the page instead of mine.
 
 ## Content: educate, inspire, entertain
 
@@ -157,15 +176,24 @@ followers do not, and a subreddit can change its rules on a Tuesday.
 
 - **The offer:** a printable one-page daily routine sheet — medication times,
   meals, contacts — that a family can stick on the fridge. Useful whether or not
-  they ever use Remindly, which is the point. That is worth an email address in
-  a way "subscribe to our newsletter" is not.
-- **Where:** homepage and every blog post.
+  they ever use Remindly, which is the point.
+- **Where:** homepage, blog index, every post, and the sheet itself. Each form
+  records which page it came from, so after a few months the `source` column
+  answers "which writing is worth doing more of" without guessing.
 - **What to send:** monthly, short, one useful thing about caring for a parent
   at a distance, plus one line on what changed in Remindly. Same educate /
   inspire split as above.
 
-This needs building — there is no email capture and no list. Second build task
-after `/blog`.
+Built. One deliberate choice worth knowing: **the routine sheet is not gated.**
+It sits at `/routine_sheet`, free to anyone, and the form says so. Gating it
+would collect more addresses in the short run and trade away a page that can
+rank on "printable medication schedule for elderly parent" — plus the goodwill
+of a group that is used to being milked for an email before anyone helps them.
+
+There is no unsubscribe link, by design: replies come to a human at this size.
+That stops being acceptable somewhere around a few hundred subscribers, and it
+is also roughly where bulk-sender rules start requiring one-click unsubscribe.
+Revisit before the list gets there.
 
 ## Build in public
 
@@ -197,10 +225,10 @@ the money is better spent on the people already using it.
 
 | Weeks | Track A | Track B |
 |---|---|---|
-| 1–2 | Ten people you know. Watch them set it up. | **Search Console + sitemap submitted.** |
-| 3–4 | Sit with three seniors for a week. | Build `/blog` + email capture. |
-| 5–8 | Join two caregiver communities. Contribute only. | Posts 1–2 (medication reminders; knowing if they took it). |
-| 9–12 | Answer where relevant; mention Remindly only as an answer. | Posts 3–4 (Reminder Rosie alternative; memory loss). Check Search Console for real queries. |
+| 1–2 | Ten people you know. Watch them set it up. | **Search Console + sitemap submitted.** Read and edit post 1. |
+| 3–4 | Sit with three seniors for a week. | Post 2 — the talking-clock comparison. |
+| 5–8 | Join two caregiver communities. Contribute only. | Posts 3–4. First monthly note to the list. |
+| 9–12 | Answer where relevant; mention Remindly only as an answer. | Posts 5–6. Check Search Console for the queries people actually used — they will not match the table above. |
 
 Review at 90 days against one number: **households using Remindly in a normal
 week.** Not signups, not visitors, not impressions.

@@ -8,7 +8,7 @@
   here would know about, and a date that is always "today" is worse than none.
 %>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<% PagesController::PUBLIC_PATHS.each do |path| %>
+<% @paths.each do |path| %>
   <url>
     <loc><%= "#{canonical_host}#{path}" %></loc>
   </url>

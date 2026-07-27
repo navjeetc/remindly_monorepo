@@ -1,0 +1,41 @@
+<%#
+  One view, both outcomes. A redirect with a flash message would be the usual
+  shape, but flash is stored in the session — and issuing a session cookie is
+  the thing these public pages go out of their way not to do.
+
+  subscriber is nil when the honeypot was filled: a bot gets the same page a
+  person does, and learns nothing.
+%>
+<% failed = subscriber&.errors&.any? %>
+
+<% content_for :title, failed ? "That address didn't look right — Remindly" : "You're on the list — Remindly" %>
+
+<% if failed %>
+  <h1>That address didn't look right</h1>
+
+  <p class="lead">
+    <%= subscriber.errors.full_messages.to_sentence %>. Have another go — or
+    just email <a href="mailto:hello@remindly.care">hello@remindly.care</a> and
+    I'll add you by hand.
+  </p>
+
+  <%= render "shared/subscribe_form", source: "retry" %>
+<% else %>
+  <h1>You're on the list</h1>
+
+  <p class="lead">
+    The routine sheet is on its way to your inbox. If it hasn't arrived in a few
+    minutes, check the spam folder — and if it isn't there either, email
+    <a href="mailto:hello@remindly.care">hello@remindly.care</a> and I'll sort it out.
+  </p>
+
+  <p>
+    You can print the sheet right now without waiting:
+    <a href="<%= routine_sheet_path %>">open the daily routine sheet</a>.
+  </p>
+
+  <div class="actions">
+    <a class="btn btn-primary" href="<%= login_path %>">Try Remindly — it's free</a>
+    <a class="btn btn-secondary" href="<%= blog_path %>">Read something first</a>
+  </div>
+<% end %>
