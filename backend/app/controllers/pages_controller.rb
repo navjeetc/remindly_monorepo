@@ -40,6 +40,26 @@ class PagesController < WebController
     render layout: "marketing"
   end
 
+  # Answers the questions people type into a search engine before they know a
+  # product like this exists ("how do I remind my mother to take her tablets").
+  # Those searches never match a homepage; they match a page that asks the
+  # question back.
+  def faq
+    render layout: "marketing"
+  end
+
+  # Every public page, in the order a person would meet them. This is also the
+  # authoritative list of what is indexable: robots.txt disallows everything
+  # else, so a page missing here is a page search engines have no route to
+  # except an inbound link.
+  PUBLIC_PATHS = %w[/ /how_to /faq /privacy /terms].freeze
+
+  # Rendered rather than a static file so it cannot drift from the routes.
+  # No layout — a sitemap is XML, and the marketing layout would wrap it in HTML.
+  def sitemap
+    render "sitemap", formats: :xml, layout: false
+  end
+
   private
 
   def drop_analytics_cookies_for_anonymous_visitors

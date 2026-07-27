@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<%#
+  Absolute URLs on CANONICAL_HOST, matching the canonical tag on each page. A
+  sitemap listing one hostname while the pages claim another is a conflicting
+  signal, and the app answers on three.
+
+  No <lastmod>: these pages change when the copy changes, which no timestamp
+  here would know about, and a date that is always "today" is worse than none.
+%>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<% PagesController::PUBLIC_PATHS.each do |path| %>
+  <url>
+    <loc><%= "#{canonical_host}#{path}" %></loc>
+  </url>
+<% end %>
+</urlset>

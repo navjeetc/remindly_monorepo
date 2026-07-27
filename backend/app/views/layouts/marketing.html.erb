@@ -8,9 +8,33 @@
     <%= csp_meta_tag %>
 
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Remindly">
     <meta property="og:title" content="<%= yield(:title).presence || "Remindly — spoken reminders for seniors" %>">
     <meta property="og:description" content="<%= yield(:description).presence || "Spoken reminders for seniors, set up by the people who care for them." %>">
     <meta property="og:url" content="<%= canonical_url %>">
+
+    <%#
+      Shared links to this site are how most people will first hear of it, and a
+      link with no image is rendered as a bare grey box by Facebook, LinkedIn,
+      WhatsApp and iMessage alike. The absolute URL is required — these scrapers
+      do not resolve relative paths — and it stays on CANONICAL_HOST so the card
+      is identical no matter which of the three hostnames was shared.
+    %>
+    <meta property="og:image" content="<%= canonical_host %>/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Remindly — spoken reminders for a parent living on their own. Free to use.">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <%#
+      Structured data. Pages opt in with content_for :structured_data; without it
+      nothing is emitted, so a page that has nothing meaningful to declare does
+      not ship an empty graph. Rendered as a JSON-LD data block, which browsers
+      never execute — it exists for search engines.
+    %>
+    <% if content_for?(:structured_data) %>
+      <script type="application/ld+json"><%= yield(:structured_data) %></script>
+    <% end %>
 
     <%#
       Styles are inlined rather than linked. There is no asset pipeline in this app,
@@ -83,6 +107,10 @@
         outline-offset: 2px;
       }
 
+      /* Sits directly under the call to action, so it reads as part of it. */
+      .free-note { color: var(--muted); margin: -1.5rem 0 3rem; }
+      .free-note strong { color: var(--ink); }
+
       ol.steps { padding-left: 1.25rem; margin: 0 0 1.5rem; }
       ol.steps li { margin-bottom: 0.75rem; }
 
@@ -141,6 +169,7 @@
       <div class="wrap">
         <div class="links">
           <a href="<%= how_to_path %>">How Remindly works</a>
+          <a href="<%= faq_path %>">Questions</a>
           <a href="<%= privacy_path %>">Privacy</a>
           <a href="<%= terms_path %>">Terms</a>
           <% if current_user %>

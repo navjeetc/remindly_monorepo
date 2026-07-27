@@ -43,6 +43,27 @@ module ApplicationHelper
     "#{CANONICAL_HOST}#{request.path}"
   end
 
+  # The canonical origin on its own, for absolute URLs to things that are not the
+  # current page — og:image, sitemap entries. Social scrapers do not resolve
+  # relative paths, so those have to be absolute.
+  # @return [String] "https://www.remindly.care"
+  def canonical_host = CANONICAL_HOST
+
+  # Render a hash as a JSON-LD data block for the :structured_data slot.
+  #
+  # json_escape handles the one way static structured data can still break a
+  # page: a "</script>" appearing inside a string value would end the block
+  # early, and everything after it would render as markup. It escapes <, > and &
+  # so that cannot happen, which is also why the result is safe to mark
+  # html_safe — without that, content_for would escape the quotes and emit
+  # invalid JSON that search engines silently drop.
+  #
+  # @param data [Hash] a schema.org node, with @context already set by the caller
+  # @return [ActiveSupport::SafeBuffer] escaped JSON ready to sit inside a script tag
+  def json_ld(data)
+    json_escape(data.to_json).html_safe
+  end
+
   # Convert UTC time to user's timezone for display
   # @param time [Time, ActiveSupport::TimeWithZone] Time to convert
   # @param user [User] User whose timezone to use

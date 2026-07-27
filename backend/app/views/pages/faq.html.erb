@@ -1,0 +1,98 @@
+<% content_for :title, "Remindly FAQ — reminding a parent who lives alone" %>
+<% content_for :description, "Common questions about reminding an older parent to take medication when you do not live with them: what they need, what happens if they miss a dose, what it costs, and what Remindly deliberately does not do." %>
+
+<%#
+  Questions and answers live in one place and are rendered twice — as the page a
+  person reads, and as the FAQPage graph search engines read. Google requires the
+  two to match; keeping a second copy in a JSON literal is how they stop
+  matching the first time someone edits a sentence.
+
+  Answers are plain strings, not HTML: FAQPage accepts limited markup and a link
+  in an answer buys nothing here, while the strings stay usable as-is in JSON.
+%>
+<% faqs = [
+     [
+       "How do I remind an elderly parent to take their medication when I don't live with them?",
+       "You set the reminder up from your own phone or computer, and it is spoken aloud at their end at the time it is due — they do not have to open anything or read a screen. When they mark it done, or when the time passes and they have not, Remindly emails you. That is the part that replaces the phone call: you find out without having to ring and ask."
+     ],
+     [
+       "What does my parent need at their end?",
+       "Any device with a web browser and a speaker — an old tablet, a laptop, a desktop computer. There is nothing to install and no app store account. It works best on a device that already sits somewhere they spend time, like the kitchen table, with the page left open the way a clock sits on a shelf."
+     ],
+     [
+       "What if my parent isn't good with technology?",
+       "They do not have to be. Once the page is open, their whole interface is the day's reminders in large type with two buttons: Done and Snooze. There is no password to remember — signing in is a link sent by email, and in practice the person setting it up does that once and leaves the page open."
+     ],
+     [
+       "Does the page have to stay open?",
+       "Yes, and this is the honest limitation. Remindly speaks through the browser page, so if the tab is closed nothing is announced. Think of it as leaving a clock on the counter rather than an app you open when you need it. On an iPad there is one extra step: browsers will not play sound until someone has touched the screen, so Remindly asks for a single tap after it starts. Anything it could not say while waiting is spoken once you tap."
+     ],
+     [
+       "How do I know whether they actually took it?",
+       "Each reminder is marked Done or Snoozed at their end, and you see the whole day at a glance from your own dashboard. For medication, Remindly emails you when a dose is marked taken and again if one is missed. You choose which kinds of reminder email you — medication is on by default, while hydration and routine reminders happen many times a day and stay off unless you turn them on."
+     ],
+     [
+       "Can more than one person in the family help?",
+       "Yes. Several caregivers can be linked to the same person, each with their own sign-in and their own notification settings, so a sibling who wants every medication alert and one who wants none can both be connected. There are also shared tasks — a specific thing to be done once, which you can assign to a particular caregiver or leave open for whoever gets to it."
+     ],
+     [
+       "How does a caregiver get connected to a senior?",
+       "With a one-time pairing code. The person receiving reminders generates the code and shares it, and the caregiver enters it to connect. Either side can end the connection at any time, and access stops immediately — the senior is never locked into an arrangement they did not choose."
+     ],
+     [
+       "Is Remindly free?",
+       "Yes. Every reminder, every caregiver you link and every email it sends are free to use. There is no card to enter and no trial that quietly ends. It is early software, and being useful to people matters more right now than being paid for."
+     ],
+     [
+       "Is Remindly a medical device?",
+       "No, and it should not be relied on as one. It is a reminder that speaks at a set time and records whether someone marked it done. It does not dispense anything, it cannot tell whether a tablet was actually swallowed, and it is not a substitute for a pill dispenser, a carer, or medical advice. If a missed dose would be dangerous, it should not be the only thing standing between your parent and that dose."
+     ],
+     [
+       "What happens to our data?",
+       "Reminders, acknowledgements and the email addresses used to sign in are what Remindly stores. The public pages set no analytics cookies at all. Data is deleted on request — the privacy policy sets out what is kept and for how long."
+     ]
+   ] %>
+
+<% content_for :structured_data, json_ld(
+     "@context" => "https://schema.org",
+     "@type" => "FAQPage",
+     "mainEntity" => faqs.map { |question, answer|
+       {
+         "@type" => "Question",
+         "name" => question,
+         "acceptedAnswer" => { "@type" => "Answer", "text" => answer }
+       }
+     }
+   ) %>
+
+<h1>Questions about reminding a parent who lives alone</h1>
+
+<p class="lead">
+  Most people find Remindly while working out how to help a parent who is
+  managing on their own but forgetting things — a tablet at lunchtime, an
+  appointment on Thursday. These are the questions that come up, answered
+  plainly, including the ones where the answer is no.
+</p>
+
+<% faqs.each do |question, answer| %>
+  <h2><%= question %></h2>
+  <p><%= answer %></p>
+<% end %>
+
+<h2>Still deciding?</h2>
+
+<p>
+  The <a href="<%= how_to_path %>">guide</a> walks through what setting this up
+  actually looks like, with short videos. Or email
+  <a href="mailto:hello@remindly.care">hello@remindly.care</a> and describe your
+  situation — a real person reads it, and if Remindly is the wrong fit for what
+  you need, you will be told so.
+</p>
+
+<div class="actions">
+  <% if current_user %>
+    <a class="btn btn-secondary" href="<%= dashboard_path %>">Back to your dashboard</a>
+  <% else %>
+    <a class="btn btn-primary" href="<%= login_path %>">Get started — it's free</a>
+  <% end %>
+</div>
