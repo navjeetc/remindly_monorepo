@@ -82,7 +82,11 @@ RSpec.describe "Pages", type: :request do
       it "loads no third-party assets" do
         get "/"
 
-        external = doc.css("script[src], link[rel='stylesheet']").map { |n| n["src"] || n["href"] }.compact
+        # img is in the list because the screenshots could just as easily have
+        # been hotlinked from an image host, which would put a third-party
+        # request back on the one page that must not make any.
+        external = doc.css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
+          .map { |n| n["src"] || n["href"] }.compact
 
         # "//cdn.example.com/x.js" fetches over the page's own scheme, so a check
         # for "http" alone would pass while the browser still made the request.
@@ -115,6 +119,51 @@ RSpec.describe "Pages", type: :request do
       it "says plainly that it costs nothing" do
         get "/"
         expect(response.body).to match(/free to use/i)
+      end
+
+      describe "the product screenshots" do
+        before { get "/" }
+
+        def screenshots = doc.css("figure.shot img")
+
+        it "shows both sides of the product — what the senior sees and what the caregiver sees" do
+          sources = screenshots.map { |img| img["src"] }
+
+          expect(sources).to include("/screenshot-voice-reminders.webp")
+          expect(sources).to include("/screenshot-tasks.webp")
+        end
+
+        it "ships the files the page points at" do
+          screenshots.each do |img|
+            path = Rails.public_path.join(img["src"].delete_prefix("/"))
+            expect(path).to exist, "#{img["src"]} is referenced but not in public/"
+          end
+        end
+
+        # Half the point of this product is that it is usable by people who
+        # cannot read a screen well. A marketing page for them that ships
+        # undescribed images would be an odd advertisement for the claim.
+        it "describes every image for anyone who cannot see it" do
+          screenshots.each do |img|
+            expect(img["alt"].to_s.length).to be > 40,
+              "#{img["src"]} needs alt text that actually describes the screenshot"
+          end
+        end
+
+        # Without intrinsic dimensions the browser cannot reserve the space, and
+        # the text below jumps as each image arrives.
+        it "declares intrinsic dimensions so nothing jumps as they load" do
+          screenshots.each do |img|
+            expect(img["width"]).to be_present, "#{img["src"]} has no width"
+            expect(img["height"]).to be_present, "#{img["src"]} has no height"
+          end
+        end
+
+        # They sit well below the fold, and this page is the one that has to
+        # stay fast.
+        it "defers them until they are scrolled to" do
+          expect(screenshots.map { |img| img["loading"] }).to all(eq("lazy"))
+        end
       end
     end
 

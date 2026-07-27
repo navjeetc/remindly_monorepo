@@ -141,6 +141,36 @@
 
       .rule { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
 
+      /* Product screenshots. The tinted panel does the work: a bare screenshot
+         of a white app on a white page reads as part of the page rather than as
+         a picture of something. The panel bleeds slightly wider than the text
+         column so it registers as an image without breaking the measure. */
+      .shot {
+        margin: 2rem -1rem 2.5rem;
+        padding: 1rem;
+        background: var(--bg-soft);
+        border-radius: 0.9rem;
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 0.6rem;
+        box-shadow: 0 8px 24px rgb(31 41 51 / 12%);
+      }
+      .shot figcaption {
+        margin-top: 0.9rem;
+        padding: 0 0.25rem;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      @media (min-width: 48rem) {
+        .shot { margin-left: -2rem; margin-right: -2rem; padding: 1.5rem; }
+      }
+
       /* Blog */
       .post-list { list-style: none; padding: 0; }
       .post-list li { border-top: 1px solid var(--line); padding-top: 1.5rem; margin-bottom: 2rem; }

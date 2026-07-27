@@ -1,7 +1,8 @@
 <div class="space-y-6">
   <div class="flex justify-between items-center">
     <div>
-      <h2 class="text-3xl font-bold text-gray-900">Tasks for <%= @senior.email %></h2>
+      <%# display_name falls back to the email, so this only ever shows more than the address did. %>
+      <h2 class="text-3xl font-bold text-gray-900">Tasks for <%= @senior.display_name %></h2>
       <p class="mt-1 text-sm text-gray-500">Manage appointments, errands, and activities</p>
     </div>
     <div class="flex space-x-4">
