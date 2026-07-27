@@ -49,6 +49,29 @@ RSpec.describe "Pages", type: :request do
         expect(doc.at_css("meta[name='description']")&.[]("content")).to be_present
       end
 
+      # The FAQ carries the long-tail search content and the FAQPage graph, and
+      # was reachable from here only through one link in the closing paragraph
+      # and the footer — both below everything on the page.
+      it "links to the questions page from where cost is discussed, not only at the foot" do
+        get "/"
+
+        # Walk only as far as the next heading. Taking every following sibling
+        # would sweep up the closing paragraph's link and pass with or without
+        # a link in this section, which is the thing being tested.
+        heading = doc.at_css("h2:contains('What it costs')")
+        expect(heading).to be_present, "the 'What it costs' section is gone"
+
+        section = []
+        node = heading.next_element
+        while node && node.name != "h2"
+          section << node
+          node = node.next_element
+        end
+
+        hrefs = section.flat_map { |n| n.css("a").map { |a| a["href"] } }
+        expect(hrefs).to include("/faq"), "nothing links to the FAQ from the section about cost"
+      end
+
       # /how_to is otherwise an orphan - nothing links to it, so nothing finds it.
       it "links to the guide and to sign in" do
         get "/"
