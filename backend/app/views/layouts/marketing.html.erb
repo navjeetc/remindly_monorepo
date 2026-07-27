@@ -112,8 +112,34 @@
         outline-offset: 2px;
       }
 
-      /* Sits directly under the call to action, so it reads as part of it. */
-      .free-note { color: var(--muted); margin: -1.5rem 0 3rem; }
+      .brand { display: inline-flex; align-items: center; gap: 0.6rem; }
+
+      /* Quiet on purpose. A loud badge on a product aimed at family caregivers
+         — a group used to being sold to — reads as a hook rather than as
+         generosity, and invites "what's the catch" instead of answering it. */
+      .badge-free {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--brand);
+        background: var(--bg-soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.2rem 0.6rem;
+      }
+
+      /* Sits directly under the call to action, so it reads as part of it.
+         Bordered rather than muted grey: it was the least visible line on the
+         page while carrying the fact most likely to earn the click. */
+      .free-note {
+        margin: -1rem 0 3rem;
+        padding: 0.9rem 1.1rem;
+        color: var(--muted);
+        background: var(--bg-soft);
+        border-left: 4px solid var(--brand);
+        border-radius: 0 0.4rem 0.4rem 0;
+      }
       .free-note strong { color: var(--ink); }
 
       ol.steps { padding-left: 1.25rem; margin: 0 0 1.5rem; }
@@ -264,7 +290,17 @@
   <body>
     <header>
       <div class="wrap">
-        <a class="logo" href="/">Remindly</a>
+        <%#
+          The badge sits with the logo rather than being another line of copy,
+          because someone who arrives on the FAQ or a blog post from a search
+          could otherwise read three pages without ever learning it costs
+          nothing. Stated once, quietly, on every page — the page that argues
+          the point is /faq, which answers why.
+        %>
+        <span class="brand">
+          <a class="logo" href="/">Remindly</a>
+          <span class="badge-free">Free</span>
+        </span>
         <% if current_user %>
           <a href="<%= dashboard_path %>">Dashboard</a>
         <% else %>

@@ -258,6 +258,46 @@ RSpec.describe "Pages", type: :request do
     end
   end
 
+  # Costing nothing is the fact most likely to decide whether a caregiver
+  # comparing options clicks through, and for a while only the homepage carried
+  # it. The homepage is also the least likely landing page for the long-tail
+  # searches this site is written for.
+  describe "saying that it is free" do
+    def doc = Nokogiri::HTML(response.body)
+
+    # The <title> is the blue link text in a search result, so a page that
+    # ranks without it in the title never gets to make the point at all.
+    it "carries it in the title of every page written to be landed on" do
+      %w[/ /faq /how_to /routine_sheet].each do |path|
+        get path
+
+        expect(doc.at_css("title").text).to match(/free/i), "#{path} title does not mention it"
+      end
+    end
+
+    # Someone arriving on the FAQ or a blog post from a search could otherwise
+    # read several pages without ever learning it.
+    it "shows the badge on every public page, including the blog" do
+      [ "/", "/faq", "/how_to", "/routine_sheet", "/blog", Post.all.first.path ].each do |path|
+        get path
+
+        expect(doc.at_css("header .badge-free")&.text).to eq("Free"), "no badge on #{path}"
+      end
+    end
+
+    # The question a wary reader actually has. Answering it is worth more than
+    # repeating the word, and it is itself a thing people search for.
+    it "answers what the catch is, as a question search engines can surface" do
+      get "/faq"
+
+      questions = structured_data["mainEntity"].map { |q| q["name"] }
+      expect(questions).to include(a_string_matching(/why is remindly free/i))
+
+      answer = structured_data["mainEntity"].find { |q| q["name"].match?(/why is remindly free/i) }
+      expect(answer.dig("acceptedAnswer", "text")).to match(/no catch/i)
+    end
+  end
+
   # The privacy policy tells anonymous readers that public pages are not
   # tracked. Ahoy's exclusion list was four hardcoded paths, so every public
   # page added after it was written recorded an IP, referrer and device for
