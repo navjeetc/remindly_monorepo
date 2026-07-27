@@ -1,0 +1,25 @@
+<% content_for :title, "Writing — Remindly" %>
+<% content_for :description, "Practical writing about caring for a parent who lives on their own: medication routines, knowing whether a dose was taken, and helping from a distance without phoning to check." %>
+
+<h1>Writing</h1>
+
+<p class="lead">
+  Practical notes on helping a parent who is managing on their own but
+  forgetting things. Written to be useful whether or not you ever use Remindly.
+</p>
+
+<% if @posts.any? %>
+  <ul class="post-list">
+    <% @posts.each do |post| %>
+      <li>
+        <h2><a href="<%= post.path %>"><%= post.title %></a></h2>
+        <p class="post-meta"><time datetime="<%= post.published_on.iso8601 %>"><%= post.published_on.strftime("%-d %B %Y") %></time></p>
+        <p><%= post.description %></p>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p>Nothing published yet. The first pieces are being written.</p>
+<% end %>
+
+<%= render "shared/subscribe_form", source: "blog_index" %>

@@ -29,8 +29,24 @@ Rails.application.routes.draw do
 
   # Public pages (no authentication required)
   get  "how_to",             to: "pages#how_to", as: :how_to
+  get  "faq",                to: "pages#faq", as: :faq
+  get  "routine_sheet",      to: "pages#routine_sheet", as: :routine_sheet
   get  "privacy",            to: "pages#privacy", as: :privacy
   get  "terms",              to: "pages#terms", as: :terms
+
+  # Blog. Posts are Markdown files in content/posts, so there is nothing to
+  # create or edit over HTTP — only these two reads.
+  get  "blog",               to: "posts#index", as: :blog
+  get  "blog/:slug",         to: "posts#show", as: :post
+
+  # Mailing list. Create only: unsubscribing is a reply to the email, which for
+  # a list this size is a person reading it rather than a link that has to stay
+  # working forever.
+  resources :subscribers, only: [ :create ]
+
+  # Matches /sitemap.xml — the trailing ".xml" is parsed as the format segment,
+  # which is the path robots.txt points crawlers at.
+  get  "sitemap",            to: "pages#sitemap", as: :sitemap, defaults: { format: "xml" }
 
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard

@@ -8,9 +8,33 @@
     <%= csp_meta_tag %>
 
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Remindly">
     <meta property="og:title" content="<%= yield(:title).presence || "Remindly — spoken reminders for seniors" %>">
     <meta property="og:description" content="<%= yield(:description).presence || "Spoken reminders for seniors, set up by the people who care for them." %>">
     <meta property="og:url" content="<%= canonical_url %>">
+
+    <%#
+      Shared links to this site are how most people will first hear of it, and a
+      link with no image is rendered as a bare grey box by Facebook, LinkedIn,
+      WhatsApp and iMessage alike. The absolute URL is required — these scrapers
+      do not resolve relative paths — and it stays on CANONICAL_HOST so the card
+      is identical no matter which of the three hostnames was shared.
+    %>
+    <meta property="og:image" content="<%= canonical_host %>/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Remindly — spoken reminders for a parent living on their own. Free to use.">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <%#
+      Structured data. Pages opt in with content_for :structured_data; without it
+      nothing is emitted, so a page that has nothing meaningful to declare does
+      not ship an empty graph. Rendered as a JSON-LD data block, which browsers
+      never execute — it exists for search engines.
+    %>
+    <% if content_for?(:structured_data) %>
+      <script type="application/ld+json"><%= yield(:structured_data) %></script>
+    <% end %>
 
     <%#
       Styles are inlined rather than linked. There is no asset pipeline in this app,
@@ -69,9 +93,14 @@
         display: inline-block;
         padding: 0.9rem 1.5rem;
         border-radius: 0.6rem;
+        /* font: inherit before font-weight — a <button> defaults to a smaller
+           system font, so without this the button ones came out visibly
+           smaller than the <a> ones sitting next to them. */
+        font: inherit;
         font-weight: 600;
         text-decoration: none;
         border: 2px solid transparent;
+        cursor: pointer;
       }
       .btn-primary { background: var(--brand); color: #fff; }
       .btn-primary:hover { background: var(--brand-dark); }
@@ -82,6 +111,10 @@
         outline: 3px solid var(--brand);
         outline-offset: 2px;
       }
+
+      /* Sits directly under the call to action, so it reads as part of it. */
+      .free-note { color: var(--muted); margin: -1.5rem 0 3rem; }
+      .free-note strong { color: var(--ink); }
 
       ol.steps { padding-left: 1.25rem; margin: 0 0 1.5rem; }
       ol.steps li { margin-bottom: 0.75rem; }
@@ -105,6 +138,113 @@
       footer .links { display: flex; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1rem; }
 
       a { color: var(--brand); }
+
+      .rule { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
+
+      /* Product screenshots. The tinted panel does the work: a bare screenshot
+         of a white app on a white page reads as part of the page rather than as
+         a picture of something. The panel bleeds slightly wider than the text
+         column so it registers as an image without breaking the measure. */
+      .shot {
+        margin: 2rem -1rem 2.5rem;
+        padding: 1rem;
+        background: var(--bg-soft);
+        border-radius: 0.9rem;
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 0.6rem;
+        box-shadow: 0 8px 24px rgb(31 41 51 / 12%);
+      }
+      .shot figcaption {
+        margin-top: 0.9rem;
+        padding: 0 0.25rem;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      @media (min-width: 48rem) {
+        .shot { margin-left: -2rem; margin-right: -2rem; padding: 1.5rem; }
+      }
+
+      /* Blog */
+      .post-list { list-style: none; padding: 0; }
+      .post-list li { border-top: 1px solid var(--line); padding-top: 1.5rem; margin-bottom: 2rem; }
+      .post-list h2 { margin-top: 0; }
+      .post-list h2 a { text-decoration: none; }
+      .post-list h2 a:hover { text-decoration: underline; }
+      .post-meta { color: var(--muted); font-size: 1rem; margin-bottom: 0.5rem; }
+      .post blockquote {
+        margin: 1.5rem 0;
+        padding-left: 1.25rem;
+        border-left: 4px solid var(--line);
+        color: var(--muted);
+      }
+      .post ul, .post ol { padding-left: 1.25rem; }
+      .post li { margin-bottom: 0.5rem; }
+
+      /* Mailing list */
+      .subscribe {
+        background: var(--bg-soft);
+        border-radius: 0.6rem;
+        padding: 1.5rem;
+        margin: 3rem 0 1rem;
+      }
+      .subscribe h2 { margin-top: 0; }
+      .subscribe-form label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+      .subscribe-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+      .subscribe-row input {
+        flex: 1 1 16rem;
+        padding: 0.9rem 1rem;
+        font: inherit;
+        color: var(--ink);
+        background: var(--bg);
+        border: 2px solid var(--line);
+        border-radius: 0.6rem;
+      }
+      .subscribe-row input:focus-visible { outline: 3px solid var(--brand); outline-offset: 1px; }
+      .subscribe-row button { cursor: pointer; font: inherit; }
+
+      /* Off-screen rather than display:none — some bots skip hidden inputs. */
+      .honeypot {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
+      /* Printable routine sheet */
+      .print-hint { color: var(--muted); font-size: 1rem; }
+      .sheet-title { margin-top: 0; }
+      .sheet-heading { margin: 2rem 0 0.5rem; }
+      .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+      .sheet-table th {
+        text-align: left;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        border-bottom: 2px solid var(--ink);
+        padding: 0.4rem 0.5rem;
+      }
+      .sheet-table td { border-bottom: 1px solid var(--line); height: 2.6rem; padding: 0.4rem 0.5rem; }
+      .sheet-table .tick { width: 4rem; }
+      .fill-name { display: inline-block; min-width: 12rem; border-bottom: 1px solid var(--ink); }
+
+      @media print {
+        /* What prints is the sheet: no navigation, no calls to action, black on
+           white regardless of what the screen was showing. */
+        header, footer, .no-print { display: none !important; }
+        body { background: #fff; color: #000; font-size: 12pt; }
+        .wrap { max-width: none; padding: 0; }
+        .sheet-table th { border-bottom: 2px solid #000; color: #000; }
+        .sheet-table td { border-bottom: 1px solid #666; }
+      }
 
       @media (prefers-color-scheme: dark) {
         :root {
@@ -141,6 +281,8 @@
       <div class="wrap">
         <div class="links">
           <a href="<%= how_to_path %>">How Remindly works</a>
+          <a href="<%= faq_path %>">Questions</a>
+          <a href="<%= blog_path %>">Writing</a>
           <a href="<%= privacy_path %>">Privacy</a>
           <a href="<%= terms_path %>">Terms</a>
           <% if current_user %>

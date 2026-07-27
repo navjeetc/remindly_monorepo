@@ -7,6 +7,25 @@ RSpec.describe "Pages", type: :request do
     Nokogiri::HTML(response.body).at_css("link[rel='canonical']")&.[]("href")
   end
 
+  # Structured data is only worth anything if it parses. A trailing comma or an
+  # escaping slip makes search engines drop the whole block silently, and nothing
+  # about the rendered page looks wrong when that happens.
+  def structured_data
+    raw = Nokogiri::HTML(response.body).at_css("script[type='application/ld+json']")&.text
+    raw && JSON.parse(raw)
+  end
+
+  # Ahoy skips anything it thinks is a bot, and a request spec sends no
+  # User-Agent at all — so an analytics assertion made without one passes no
+  # matter what the code does. Two specs here were green for exactly that
+  # reason while /faq, /routine_sheet and the blog were recording a visit row
+  # for every anonymous reader. Any spec about tracking has to send this.
+  BROWSER = {
+    "HTTP_USER_AGENT" =>
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+      "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  }.freeze
+
   describe "GET / (marketing homepage)" do
     def doc = Nokogiri::HTML(response.body)
 
@@ -74,11 +93,88 @@ RSpec.describe "Pages", type: :request do
       it "loads no third-party assets" do
         get "/"
 
-        external = doc.css("script[src], link[rel='stylesheet']").map { |n| n["src"] || n["href"] }.compact
+        # img is in the list because the screenshots could just as easily have
+        # been hotlinked from an image host, which would put a third-party
+        # request back on the one page that must not make any.
+        external = doc.css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
+          .map { |n| n["src"] || n["href"] }.compact
 
         # "//cdn.example.com/x.js" fetches over the page's own scheme, so a check
         # for "http" alone would pass while the browser still made the request.
         expect(external.select { |u| u.start_with?("http", "//") }).to be_empty
+      end
+
+      # Most people meet this site through a link someone shared. Without an
+      # image, every one of those links renders as a bare grey box.
+      it "carries a social preview image at an absolute URL on the canonical host" do
+        get "/", headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+
+        expect(doc.at_css("meta[property='og:image']")&.[]("content"))
+          .to eq("https://www.remindly.care/og-image.png")
+        expect(doc.at_css("meta[name='twitter:card']")&.[]("content")).to eq("summary_large_image")
+      end
+
+      it "ships the file that og:image points at" do
+        expect(Rails.root.join("public", "og-image.png")).to exist
+      end
+
+      # The price is the reason for the structured data: it is what lets a search
+      # result say "free", which is the fact most likely to earn the click.
+      it "declares itself as free software in its structured data" do
+        get "/"
+
+        expect(structured_data["@type"]).to eq("SoftwareApplication")
+        expect(structured_data.dig("offers", "price")).to eq("0")
+      end
+
+      it "says plainly that it costs nothing" do
+        get "/"
+        expect(response.body).to match(/free to use/i)
+      end
+
+      describe "the product screenshots" do
+        before { get "/" }
+
+        def screenshots = doc.css("figure.shot img")
+
+        it "shows both sides of the product — what the senior sees and what the caregiver sees" do
+          sources = screenshots.map { |img| img["src"] }
+
+          expect(sources).to include("/screenshot-voice-reminders.webp")
+          expect(sources).to include("/screenshot-tasks.webp")
+        end
+
+        it "ships the files the page points at" do
+          screenshots.each do |img|
+            path = Rails.public_path.join(img["src"].delete_prefix("/"))
+            expect(path).to exist, "#{img["src"]} is referenced but not in public/"
+          end
+        end
+
+        # Half the point of this product is that it is usable by people who
+        # cannot read a screen well. A marketing page for them that ships
+        # undescribed images would be an odd advertisement for the claim.
+        it "describes every image for anyone who cannot see it" do
+          screenshots.each do |img|
+            expect(img["alt"].to_s.length).to be > 40,
+              "#{img["src"]} needs alt text that actually describes the screenshot"
+          end
+        end
+
+        # Without intrinsic dimensions the browser cannot reserve the space, and
+        # the text below jumps as each image arrives.
+        it "declares intrinsic dimensions so nothing jumps as they load" do
+          screenshots.each do |img|
+            expect(img["width"]).to be_present, "#{img["src"]} has no width"
+            expect(img["height"]).to be_present, "#{img["src"]} has no height"
+          end
+        end
+
+        # They sit well below the fold, and this page is the one that has to
+        # stay fast.
+        it "defers them until they are scrolled to" do
+          expect(screenshots.map { |img| img["loading"] }).to all(eq("lazy"))
+        end
       end
     end
 
@@ -123,7 +219,7 @@ RSpec.describe "Pages", type: :request do
     # The policy says analytics aren't collected on public pages, so this page must
     # not persist an Ahoy visit for an anonymous reader.
     it "records no analytics visit for an anonymous visitor" do
-      expect { get "/privacy" }.not_to change { Ahoy::Visit.count }
+      expect { get "/privacy", headers: BROWSER }.not_to change { Ahoy::Visit.count }
     end
 
     # It is the indexable set of pages, so it must not block on a third-party asset.
@@ -158,7 +254,45 @@ RSpec.describe "Pages", type: :request do
     end
 
     it "records no analytics visit for an anonymous visitor" do
-      expect { get "/terms" }.not_to change { Ahoy::Visit.count }
+      expect { get "/terms", headers: BROWSER }.not_to change { Ahoy::Visit.count }
+    end
+  end
+
+  # The privacy policy tells anonymous readers that public pages are not
+  # tracked. Ahoy's exclusion list was four hardcoded paths, so every public
+  # page added after it was written recorded an IP, referrer and device for
+  # every stranger who read it — with nothing failing to say so.
+  describe "analytics on public pages" do
+    def public_paths = PagesController::STATIC_PATHS + Post.all.map(&:path)
+
+    it "records no visit on any public page" do
+      public_paths.each do |path|
+        expect { get path, headers: BROWSER }.not_to(change { Ahoy::Visit.count }, "#{path} recorded a visit")
+      end
+    end
+
+    # Not a page anyone reads — it exists to be fetched by a machine, so it is
+    # not in STATIC_PATHS and was tracked until it was named explicitly.
+    it "records no visit for the sitemap" do
+      expect { get "/sitemap.xml", headers: BROWSER }.not_to change { Ahoy::Visit.count }
+    end
+
+    it "records no visit when someone joins the mailing list" do
+      expect {
+        post "/subscribers", params: { email: "quiet@example.com" }, headers: BROWSER
+      }.not_to change { Ahoy::Visit.count }
+    end
+
+    # The counterpart: signed-in activity is still tracked, which is where the
+    # useful signal is and where people do have an account with us. Without
+    # this, "exclude everything" would pass the specs above.
+    it "still records visits for signed-in activity" do
+      user = User.create!(email: "tracked@example.com", role: :caregiver, tz: "America/New_York", name: "Tracked")
+
+      expect {
+        post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) },
+          headers: BROWSER
+      }.to change { Ahoy::Visit.count }.by(1)
     end
   end
 
@@ -208,6 +342,116 @@ RSpec.describe "Pages", type: :request do
     it "ignores query strings so tracking params don't split the canonical" do
       get "/how_to", params: { utm_source: "newsletter" }
       expect(canonical_href).to eq("https://www.remindly.care/how_to")
+    end
+  end
+
+  describe "GET /faq" do
+    it "renders without authentication" do
+      get "/faq"
+
+      expect(response).to have_http_status(:ok)
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Questions")
+    end
+
+    it "points the canonical URL at www.remindly.care" do
+      get "/faq"
+      expect(canonical_href).to eq("https://www.remindly.care/faq")
+    end
+
+    # The whole point of the page: rich results for the questions caregivers
+    # actually type. Google drops a FAQPage whose questions are not also visible
+    # on the page, so both come from one source in the template.
+    it "publishes every visible question as FAQPage structured data" do
+      get "/faq"
+
+      expect(structured_data["@type"]).to eq("FAQPage")
+
+      asked = structured_data["mainEntity"].map { |q| q["name"] }
+      shown = Nokogiri::HTML(response.body).css("h2").map(&:text)
+
+      expect(asked).to all(be_in(shown))
+      expect(structured_data["mainEntity"]).to all(include("acceptedAnswer"))
+    end
+
+    # Trust is the thing being sold here, and the honest answers are the ones a
+    # worried family most needs before handing over their parent's medication
+    # schedule. They are also the two most tempting lines to quietly drop.
+    it "keeps the answers that are 'no'" do
+      get "/faq"
+
+      expect(response.body).to match(/medical device/i)
+      expect(response.body).to match(/not a substitute/i)
+      expect(response.body).to match(/page have to stay open/i)
+    end
+
+    it "issues no session cookie to an anonymous visitor" do
+      get "/faq"
+      expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+    end
+
+    it "loads no third-party assets" do
+      get "/faq"
+      refs = Nokogiri::HTML(response.body).css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
+        .map { |n| n["src"] || n["href"] }.compact
+      expect(refs.select { |u| u.start_with?("http", "//") }).to be_empty
+    end
+  end
+
+  describe "GET /sitemap.xml" do
+    it "serves XML at the path robots.txt advertises" do
+      get "/sitemap.xml"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("application/xml")
+    end
+
+    # A sitemap on one hostname pointing at pages that claim another as canonical
+    # is a conflicting signal, and this app answers on three hostnames.
+    it "lists every public page as an absolute URL on the canonical host" do
+      get "/sitemap.xml", headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+
+      locs = Nokogiri::XML(response.body).css("url loc").map(&:text)
+      expected = PagesController::STATIC_PATHS + Post.all.map(&:path)
+
+      expect(locs).to match_array(expected.map { |path| "https://www.remindly.care#{path}" })
+    end
+
+    # A post is only worth writing if it can be found, and a new file on disk is
+    # the whole of "publishing" here — nothing else has to be remembered.
+    it "picks up blog posts from disk without anything else being edited" do
+      get "/sitemap.xml"
+
+      locs = Nokogiri::XML(response.body).css("url loc").map(&:text)
+
+      expect(Post.all).not_to be_empty, "no posts on disk, so this proves nothing"
+      expect(locs).to include("https://www.remindly.care#{Post.all.first.path}")
+    end
+
+    # Listing a page that robots.txt forbids tells a crawler to fetch something
+    # it is also told not to, and Search Console reports it as an error.
+    it "lists nothing that robots.txt disallows" do
+      get "/sitemap.xml"
+
+      disallowed = Rails.root.join("public", "robots.txt").read
+        .scan(/^Disallow:\s*(\S+)/).flatten
+
+      listed = Nokogiri::XML(response.body).css("url loc")
+        .map { |n| URI.parse(n.text).path }
+
+      # robots.txt matches by prefix, so a rule blocks a path when the rule is a
+      # prefix of it — not the other way round. Comparing the other direction
+      # passes "/" against every rule and fails on all of them.
+      listed.each do |path|
+        blocking = disallowed.select { |rule| path.start_with?(rule) }
+
+        expect(blocking).to be_empty,
+          "#{path} is in the sitemap but blocked by robots.txt rule(s): #{blocking.join(", ")}"
+      end
+    end
+
+    it "is advertised in robots.txt" do
+      robots = Rails.root.join("public", "robots.txt").read
+      expect(robots).to include("Sitemap: https://www.remindly.care/sitemap.xml")
     end
   end
 end

@@ -1,14 +1,41 @@
 class Ahoy::Store < Ahoy::DatabaseStore
-  # Pages anyone can read without signing in. Someone looking at the marketing
-  # page has not asked for an account, and logging their IP to find out that a
-  # stranger read a public page is not worth the record.
+  # Someone reading a public page has not asked for an account, and logging
+  # their IP to find out that a stranger read a marketing page is not worth the
+  # record. Everything behind the login is still tracked: that is where the
+  # useful signal is, and those visitors have an account with us.
   #
-  # Everything behind the login is still tracked: that is where the useful
-  # signal is, and those visitors have an account with us.
-  PUBLIC_PATHS = [ "/", "/how_to", "/privacy", "/terms" ].freeze
-
+  # This used to be a hardcoded list of four paths, which went stale the moment
+  # /faq, /routine_sheet and the blog were added — those pages recorded an IP,
+  # referrer and device for every anonymous reader while the privacy policy said
+  # public pages were not tracked. Deriving the list from the routes themselves
+  # is what stops that happening again the next public page we add.
   def exclude?
-    super || PUBLIC_PATHS.include?(request&.path)
+    super || public_page?
+  end
+
+  private
+
+  # Endpoints that are not pages at all. STATIC_PATHS is the list of things a
+  # person reads, so the sitemap — which only ever exists to be fetched by a
+  # machine — is not in it and would otherwise be tracked. Bots are already
+  # excluded outside development, but that only helps for crawlers Ahoy
+  # recognises as bots.
+  MACHINE_PATHS = [ "/sitemap.xml", "/robots.txt" ].freeze
+
+  # PagesController::STATIC_PATHS is the same constant the sitemap is built
+  # from, so a page is either public in both places or in neither.
+  #
+  # Blog posts need a prefix match because their paths are dynamic. Nothing else
+  # may be matched by prefix — "/" is in STATIC_PATHS, and every path starts
+  # with it.
+  def public_page?
+    path = request&.path
+    return false if path.blank?
+
+    PagesController::STATIC_PATHS.include?(path) ||
+      MACHINE_PATHS.include?(path) ||
+      path.start_with?("/blog/") ||
+      path == "/subscribers"
   end
 end
 

@@ -5,6 +5,11 @@
 #
 # NOTE: a blank line ends a record, so every Disallow below must stay in one
 # unbroken block under the User-agent line or it silently applies to nobody.
+#
+# Sitemap is a non-group directive — it belongs to no User-agent record, so it
+# sits above the group rather than inside it. Absolute URL is required by spec.
+Sitemap: https://www.remindly.care/sitemap.xml
+
 User-agent: *
 # Auth flows — magic-link URLs are single-use credentials, never crawl them.
 # /client/ belongs here too: the standalone client it served was retired, but the

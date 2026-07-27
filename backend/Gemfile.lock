@@ -156,6 +156,8 @@ GEM
       activerecord
       kaminari-core (= 1.2.2)
     kaminari-core (1.2.2)
+    kramdown (2.5.2)
+      rexml (>= 3.4.4)
     language_server-protocol (3.17.0.5)
     launchy (3.1.1)
       addressable (~> 2.8)
@@ -282,6 +284,7 @@ GEM
     regexp_parser (2.11.3)
     reline (0.6.3)
       io-console (~> 0.5)
+    rexml (3.4.4)
     rspec-core (3.13.5)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -409,6 +412,7 @@ DEPENDENCIES
   jwt (~> 2.7)
   kamal
   kaminari (~> 1.2)
+  kramdown (~> 2.4)
   letter_opener (~> 1.10)
   postmark-rails
   puma (>= 5.0)

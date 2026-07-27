@@ -1,0 +1,55 @@
+<%#
+  One view, both outcomes. A redirect with a flash message would be the usual
+  shape, but flash is stored in the session — and issuing a session cookie is
+  the thing these public pages go out of their way not to do.
+
+  subscriber is nil when the honeypot was filled: a bot gets the same page a
+  person does, and learns nothing.
+%>
+<% failed = subscriber&.errors&.any? %>
+
+<% content_for :title, failed ? "That address didn't look right — Remindly" : "You're on the list — Remindly" %>
+
+<% if failed %>
+  <h1>That address didn't look right</h1>
+
+  <p class="lead">
+    <%= subscriber.errors.full_messages.to_sentence %>. Have another go — or
+    just email <a href="mailto:hello@remindly.care">hello@remindly.care</a> and
+    I'll add you by hand.
+  </p>
+
+  <%= render "shared/subscribe_form", source: "retry" %>
+<% else %>
+  <h1>You're on the list</h1>
+
+  <%#
+    This page must be true in three different situations, only one of which
+    sends an email: a genuinely new subscriber, someone already on the list, and
+    a bot that filled the honeypot. It used to say the sheet was "on its way to
+    your inbox" and to go and check the spam folder — which sent the second
+    group hunting for a message that was never sent.
+
+    So it promises nothing about email and hands over the sheet directly, which
+    is the thing they actually came for and is public anyway. It also cannot
+    tell anyone whether their address was already on the list.
+  %>
+  <p class="lead">
+    Here is the routine sheet —
+    <a href="<%= routine_sheet_path %>">open it and print it</a>. One page for
+    the fridge door, and you do not have to wait for an email to get hold of it.
+  </p>
+
+  <p>
+    The monthly note will arrive when there is one worth sending: one useful
+    thing about caring for a parent at a distance, and a line on what has
+    changed in Remindly. Reply to any of them to come off the list, or write to
+    <a href="mailto:hello@remindly.care">hello@remindly.care</a> if something
+    looks wrong.
+  </p>
+
+  <div class="actions">
+    <a class="btn btn-primary" href="<%= login_path %>">Try Remindly — it's free</a>
+    <a class="btn btn-secondary" href="<%= blog_path %>">Read something first</a>
+  </div>
+<% end %>
