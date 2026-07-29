@@ -51,10 +51,17 @@ class Post
 
     private
 
-    # Parsed once per boot in production, and on every call in development so a
-    # post being written shows up on reload without restarting the server.
+    # Parsed once per boot in production. Everywhere else it re-reads, so a post
+    # being written shows up on reload without restarting the server.
+    #
+    # Test deliberately does not memoize either. It used to, and the memo
+    # outlived the example that filled it: post_spec points ROOT at a temp
+    # directory, so every spec that ran afterwards saw those temp posts instead
+    # of the real ones. blog_spec was asserting against another spec's
+    # leftovers, and a genuinely broken file in content/posts passed the whole
+    # suite while failing when that one file was run alone.
     def load_all
-      return parse_all if Rails.env.development?
+      return parse_all unless Rails.env.production?
 
       @load_all ||= parse_all
     end
