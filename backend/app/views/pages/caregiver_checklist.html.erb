@@ -1,0 +1,135 @@
+<% content_for :title, "Free printable daily checklist for caring for a parent" %>
+<% content_for :description, "A one-page daily checklist for caring for an aging parent at home: medication, meals, hydration, appointments, mood and home safety. Print it free, no signup." %>
+
+<div class="no-print">
+  <h1>A daily checklist for caring for a parent</h1>
+
+  <p class="lead">
+    Most caregiving is not hard, it is just endless — and the worry is usually
+    not that you cannot do it, but that you have forgotten something. This is one
+    page of the things worth casting an eye over. Print it, put it somewhere you
+    pass daily, and let it hold the list instead of your head.
+  </p>
+
+  <p>
+    One sheet covers a week: tick the day. Nothing here needs doing in order,
+    and not every line matters every day. It is a prompt, not an exam paper.
+  </p>
+
+  <p>
+    <button type="button" class="btn btn-primary" onclick="window.print()">Print this checklist</button>
+    <span class="print-hint">or press Ctrl+P — ⌘P on a Mac.</span>
+  </p>
+
+  <hr class="rule">
+</div>
+
+<%#
+  Everything below prints: no navigation, no calls to action. The print rules in
+  the marketing layout hide the header, footer and .no-print blocks, and
+  .sheet-dense scopes the tighter print spacing to this page so the routine
+  sheet keeps its larger handwriting rows.
+%>
+<section class="sheet sheet-dense">
+  <h2 class="sheet-title">Daily checklist for <span class="fill fill-name"></span></h2>
+  <p class="sheet-week">Week beginning <span class="fill fill-week"></span></p>
+
+  <%#
+    A daily item on a weekly sheet needs a box per day, not one box that is used
+    up on Monday. Rendered as a real table with a row header, so the day columns
+    stay associated with their item for anyone using a screen reader.
+  %>
+  <% days = %w[M T W T F S S] %>
+  <% daily = {
+       "Morning" => [
+         "Up, dressed, and moving about",
+         "Morning medication taken",
+         "Breakfast eaten — not just tea",
+         "Hearing aid in, glasses on, batteries working"
+       ],
+       "Through the day" => [
+         "Something to drink every few hours",
+         "A proper meal at midday",
+         "Midday medication, if there is one",
+         "Out of the chair — a walk, the garden, the stairs",
+         "Spoke to somebody other than you"
+       ],
+       "Evening" => [
+         "Evening meal eaten",
+         "Evening medication taken",
+         "Doors locked, heating set",
+         "Anything needed in the night within reach"
+       ]
+     } %>
+
+  <% daily.each do |heading, items| %>
+    <h3 class="sheet-heading"><%= heading %></h3>
+    <table class="week-grid">
+      <thead>
+        <tr>
+          <th></th>
+          <% days.each_with_index do |day, i| %>
+            <th scope="col" id="<%= "#{heading.parameterize}-day-#{i}" %>"><%= day %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.each do |item| %>
+          <tr>
+            <th scope="row"><%= item %></th>
+            <% days.each_index do |i| %>
+              <td><span class="box"></span></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <h3 class="sheet-heading">Worth a look once a week</h3>
+  <ul class="checklist">
+    <li>Enough medication left — reorder before it runs low, not after</li>
+    <li>Appointments coming up, and who is taking them</li>
+    <li>Food in date; anything gone off in the fridge</li>
+    <li>Post opened, bills paid</li>
+    <li>Phone and any medical devices charged</li>
+    <li>Nothing new to trip over — rugs, wires, boxes on the stairs</li>
+    <li>Washing done; enough clean clothes</li>
+  </ul>
+
+  <h3 class="sheet-heading">How they seem</h3>
+  <p class="sheet-note">
+    The part no list can tick for you. Worth writing down when something is
+    different, because a pattern is far easier to see on paper than to remember
+    across three weeks.
+  </p>
+  <table class="sheet-table">
+    <thead>
+      <tr><th>Date</th><th>Something that seemed different</th></tr>
+    </thead>
+    <tbody>
+      <% 2.times do %>
+        <tr><td class="fill"></td><td class="fill"></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+
+<div class="no-print">
+  <hr class="rule">
+
+  <p>
+    There is also a <a href="<%= routine_sheet_path %>">printable daily routine
+    sheet</a> for medication times and contacts, if the routine itself is what
+    needs writing down.
+  </p>
+
+  <p>
+    If keeping the day on track turns into its own job,
+    <a href="<%= login_path %>">Remindly</a> speaks reminders aloud at your
+    parent's end and tells you what was done and what was missed — so the
+    checking does not have to be another phone call. It is free.
+  </p>
+
+  <%= render "shared/subscribe_form", source: "caregiver_checklist" %>
+</div>

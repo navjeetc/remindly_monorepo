@@ -77,6 +77,63 @@ RSpec.describe "Blog", type: :request do
     end
   end
 
+  # A free printable is the one asset on this site a senior centre or a
+  # caregiver forum might actually link to, which is worth more to a new domain
+  # than any amount of markup. So it stays public, ungated, and indexable.
+  describe "GET /caregiver_checklist" do
+    it "renders without authentication and without gating it behind the list" do
+      get "/caregiver_checklist"
+
+      expect(response).to have_http_status(:ok)
+      expect(doc.css(".week-grid tbody tr").count).to be >= 12
+      expect(doc.css("ul.checklist li").count).to be >= 5
+    end
+
+    # One sheet covers a week, so a daily item needs a box for each day. A
+    # single box gets used up on Monday and the sheet stops working.
+    it "gives every daily item a box for each day of the week" do
+      get "/caregiver_checklist"
+
+      doc.css(".week-grid tbody tr").each do |row|
+        expect(row.css("td .box").count).to eq(7), "#{row.at_css("th")&.text} has #{row.css("td .box").count} boxes"
+      end
+    end
+
+    # A Markdown table cannot produce these, which is why the grid is written
+    # as HTML: without them the day columns are not tied to their item.
+    it "associates each row of boxes with its item for screen readers" do
+      get "/caregiver_checklist"
+
+      labels = doc.css(".week-grid tbody tr").map { |row| row.at_css("th[scope='row']")&.text&.strip }
+
+      expect(labels).to be_present
+      expect(labels).to all(be_present)
+    end
+
+    it "points the canonical URL at www.remindly.care" do
+      get "/caregiver_checklist", headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+
+      expect(doc.at_css("link[rel='canonical']")&.[]("href"))
+        .to eq("https://www.remindly.care/caregiver_checklist")
+    end
+
+    it "issues no session cookie" do
+      get "/caregiver_checklist"
+
+      expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+    end
+
+    # Both printables are useful to the same person, and each was otherwise
+    # reachable only from the footer.
+    it "links to the routine sheet, and the routine sheet links back" do
+      get "/caregiver_checklist"
+      expect(doc.css("a").map { |a| a["href"] }).to include("/routine_sheet")
+
+      get "/routine_sheet"
+      expect(doc.css("a").map { |a| a["href"] }).to include("/caregiver_checklist")
+    end
+  end
+
   describe "GET /routine_sheet" do
     it "renders without authentication and without gating it behind the list" do
       get "/routine_sheet"
