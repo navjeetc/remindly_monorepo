@@ -15,9 +15,11 @@ RSpec.describe CaregiverInvitationMailer, type: :mailer do
       expect(mail.to).to eq([ caregiver.email ])
     end
 
-    it 'sends from the default mailer address' do
-      from_address = Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
-      expect(mail.from).to eq([ from_address ])
+    # Asserts the address rather than re-deriving it from the same expression
+    # the mailer used, which is why this passed while the sender was an
+    # unverified domain that Postmark rejected on every send.
+    it 'sends from the one official remindly.care address' do
+      expect(mail.from).to eq([ 'hello@remindly.care' ])
     end
 
     it 'includes the inviter name in the body' do

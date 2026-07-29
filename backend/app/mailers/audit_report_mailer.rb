@@ -1,6 +1,4 @@
 class AuditReportMailer < ApplicationMailer
-  default from: Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
-
   def daily_report(date: Date.yesterday, recipient_email:)
     @date = date
     @start_time = @date.beginning_of_day

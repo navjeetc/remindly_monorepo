@@ -1,0 +1,11 @@
+NEW SUBSCRIBER
+========================================
+
+<%= @subscriber.email %>
+
+From: <%= @subscriber.source.presence || "unknown page" %>
+Joined: <%= @subscriber.created_at.strftime("%B %-d, %Y at %-I:%M %p %Z") %>
+
+That makes <%= @total %> <%= "subscriber".pluralize(@total) %> in total.
+
+Reply to this email to write to them directly.

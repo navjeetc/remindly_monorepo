@@ -1,7 +1,6 @@
 class MagicMailer < ApplicationMailer
   ALLOWED_ORIGIN_HOSTS = %w[remindly.anakhsoft.com remindly.care www.remindly.care localhost 127.0.0.1].freeze
 
-  default from: Rails.application.credentials.admin_email || ENV.fetch("MAILER_FROM", "noreply@remindly.app")
 
   def magic_link_email(user, token, web: false, origin: nil)
     @user = user
