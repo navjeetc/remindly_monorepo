@@ -85,7 +85,29 @@ RSpec.describe "Blog", type: :request do
       get "/caregiver_checklist"
 
       expect(response).to have_http_status(:ok)
-      expect(doc.css("ul.checklist li").count).to be >= 15
+      expect(doc.css(".week-grid tbody tr").count).to be >= 12
+      expect(doc.css("ul.checklist li").count).to be >= 5
+    end
+
+    # One sheet covers a week, so a daily item needs a box for each day. A
+    # single box gets used up on Monday and the sheet stops working.
+    it "gives every daily item a box for each day of the week" do
+      get "/caregiver_checklist"
+
+      doc.css(".week-grid tbody tr").each do |row|
+        expect(row.css("td .box").count).to eq(7), "#{row.at_css("th")&.text} has #{row.css("td .box").count} boxes"
+      end
+    end
+
+    # A Markdown table cannot produce these, which is why the grid is written
+    # as HTML: without them the day columns are not tied to their item.
+    it "associates each row of boxes with its item for screen readers" do
+      get "/caregiver_checklist"
+
+      labels = doc.css(".week-grid tbody tr").map { |row| row.at_css("th[scope='row']")&.text&.strip }
+
+      expect(labels).to be_present
+      expect(labels).to all(be_present)
     end
 
     it "points the canonical URL at www.remindly.care" do

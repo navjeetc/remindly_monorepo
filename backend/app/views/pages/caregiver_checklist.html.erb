@@ -12,8 +12,8 @@
   </p>
 
   <p>
-    Nothing here needs doing in order, and not every line matters every day. It
-    is a prompt, not an exam paper.
+    One sheet covers a week: tick the day. Nothing here needs doing in order,
+    and not every line matters every day. It is a prompt, not an exam paper.
   </p>
 
   <p>
@@ -26,36 +26,65 @@
 
 <%#
   Everything below prints: no navigation, no calls to action. The print rules in
-  the marketing layout hide the header, footer and .no-print blocks.
+  the marketing layout hide the header, footer and .no-print blocks, and
+  .sheet-dense scopes the tighter print spacing to this page so the routine
+  sheet keeps its larger handwriting rows.
 %>
-<section class="sheet">
+<section class="sheet sheet-dense">
   <h2 class="sheet-title">Daily checklist for <span class="fill fill-name"></span></h2>
-  <p class="sheet-week">Week beginning <span class="fill fill-name"></span></p>
+  <p class="sheet-week">Week beginning <span class="fill fill-week"></span></p>
 
-  <h3 class="sheet-heading">Morning</h3>
-  <ul class="checklist">
-    <li>Up, dressed, and moving about</li>
-    <li>Morning medication taken</li>
-    <li>Breakfast eaten — not just tea</li>
-    <li>Hearing aid in, glasses on, batteries working</li>
-  </ul>
+  <%#
+    A daily item on a weekly sheet needs a box per day, not one box that is used
+    up on Monday. Rendered as a real table with a row header, so the day columns
+    stay associated with their item for anyone using a screen reader.
+  %>
+  <% days = %w[M T W T F S S] %>
+  <% daily = {
+       "Morning" => [
+         "Up, dressed, and moving about",
+         "Morning medication taken",
+         "Breakfast eaten — not just tea",
+         "Hearing aid in, glasses on, batteries working"
+       ],
+       "Through the day" => [
+         "Something to drink every few hours",
+         "A proper meal at midday",
+         "Midday medication, if there is one",
+         "Out of the chair — a walk, the garden, the stairs",
+         "Spoke to somebody other than you"
+       ],
+       "Evening" => [
+         "Evening meal eaten",
+         "Evening medication taken",
+         "Doors locked, heating set",
+         "Anything needed in the night within reach"
+       ]
+     } %>
 
-  <h3 class="sheet-heading">Through the day</h3>
-  <ul class="checklist">
-    <li>Something to drink at least every few hours</li>
-    <li>A proper meal at midday</li>
-    <li>Midday medication, if there is one</li>
-    <li>Out of the chair — a walk, the garden, the stairs</li>
-    <li>Spoke to somebody other than you</li>
-  </ul>
-
-  <h3 class="sheet-heading">Evening</h3>
-  <ul class="checklist">
-    <li>Evening meal eaten</li>
-    <li>Evening medication taken</li>
-    <li>Doors locked, heating set</li>
-    <li>Anything needed in the night within reach</li>
-  </ul>
+  <% daily.each do |heading, items| %>
+    <h3 class="sheet-heading"><%= heading %></h3>
+    <table class="week-grid">
+      <thead>
+        <tr>
+          <th></th>
+          <% days.each_with_index do |day, i| %>
+            <th scope="col" id="<%= "#{heading.parameterize}-day-#{i}" %>"><%= day %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.each do |item| %>
+          <tr>
+            <th scope="row"><%= item %></th>
+            <% days.each_index do |i| %>
+              <td><span class="box"></span></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
 
   <h3 class="sheet-heading">Worth a look once a week</h3>
   <ul class="checklist">
@@ -79,12 +108,11 @@
       <tr><th>Date</th><th>Something that seemed different</th></tr>
     </thead>
     <tbody>
-      <% 3.times do %>
+      <% 2.times do %>
         <tr><td class="fill"></td><td class="fill"></td></tr>
       <% end %>
     </tbody>
   </table>
-
 </section>
 
 <div class="no-print">

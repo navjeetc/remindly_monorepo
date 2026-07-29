@@ -263,6 +263,22 @@
         border: 2px solid var(--muted);
         border-radius: 0.2rem;
       }
+      /* One row per item, one box per day — a daily checklist on a weekly
+         sheet needs somewhere to record each day, not a single box that is
+         used up on Monday. */
+      .week-grid { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; }
+      .week-grid th[scope="row"] { font-weight: 400; text-align: left; padding: 0.3rem 0.5rem 0.3rem 0; }
+      .week-grid thead th { font-size: 0.85rem; color: var(--muted); text-align: center; padding: 0 0.2rem 0.3rem; font-weight: 700; }
+      .week-grid td { text-align: center; padding: 0.3rem 0.2rem; width: 2.2rem; }
+      .week-grid tr { border-bottom: 1px solid var(--line); }
+      .week-grid .box {
+        display: inline-block;
+        width: 1.05rem;
+        height: 1.05rem;
+        border: 2px solid var(--muted);
+        border-radius: 0.2rem;
+      }
+
       .sheet-note { color: var(--muted); font-size: 1rem; }
       .sheet-week { margin: -0.5rem 0 1.5rem; }
 
@@ -283,6 +299,8 @@
       .sheet-table td { border-bottom: 1px solid var(--line); height: 2.6rem; padding: 0.4rem 0.5rem; }
       .sheet-table .tick { width: 4rem; }
       .fill-name { display: inline-block; min-width: 12rem; border-bottom: 1px solid var(--ink); }
+      /* Separate from fill-name so the two can be sized independently. */
+      .fill-week { display: inline-block; min-width: 8rem; border-bottom: 1px solid var(--ink); }
 
       @media print {
         /* What prints is the sheet: no navigation, no calls to action, black on
@@ -292,17 +310,25 @@
         .wrap { max-width: none; padding: 0; }
         .sheet-table th { border-bottom: 2px solid #000; color: #000; }
         .sheet-table td { border-bottom: 1px solid #666; }
-        /* Denser on paper than on screen: the checklist is comfortable to
-           read at screen spacing but ran to a page and a half printed, and the
-           page promises one. */
-        body { font-size: 10.5pt; }
-        .checklist li { border-bottom: 1px solid #ccc; page-break-inside: avoid; padding: 0.12rem 0 0.12rem 1.6rem; }
-        .checklist li::before { border-color: #000; top: 0.3rem; width: 0.85rem; height: 0.85rem; }
-        .sheet-heading { page-break-after: avoid; margin: 0.9rem 0 0.3rem; }
-        .sheet-title { margin-bottom: 0.2rem; }
-        .sheet-week { margin: 0 0 0.6rem; }
-        .sheet-note { margin-bottom: 0.4rem; }
-        .sheet-table td { height: 1.8rem; }
+        .sheet-heading { page-break-after: avoid; }
+
+        /* Density overrides are scoped to .sheet-dense, not global. The
+           checklist needs them to fit a page; the routine sheet does not, and
+           applying them there shrank its handwriting rows from 2.6rem to
+           1.8rem — smaller boxes to write in, on a sheet whose whole purpose
+           is being written on by hand. */
+        .sheet-dense { font-size: 10.5pt; }
+        .sheet-dense .sheet-title { margin-bottom: 0.2rem; }
+        .sheet-dense .sheet-week { margin: 0 0 0.6rem; }
+        .sheet-dense .sheet-note { margin-bottom: 0.4rem; }
+        .sheet-dense .sheet-heading { margin: 0.9rem 0 0.3rem; }
+        .sheet-dense .sheet-table td { height: 1.8rem; }
+        .sheet-dense .checklist li { border-bottom: 1px solid #ccc; page-break-inside: avoid; padding: 0.12rem 0 0.12rem 1.6rem; }
+        .sheet-dense .checklist li::before { border-color: #000; top: 0.3rem; width: 0.85rem; height: 0.85rem; }
+        .sheet-dense .week-grid th, .sheet-dense .week-grid td { padding: 0.08rem 0.2rem; }
+        .sheet-dense .week-grid .box { width: 0.85rem; height: 0.85rem; }
+        .sheet-dense .checklist { margin-bottom: 0.6rem; }
+        .week-grid .box { border-color: #000; }
       }
 
       @media (prefers-color-scheme: dark) {
