@@ -1,6 +1,6 @@
 ---
 title: A medication routine for a parent living alone
-description: Why medication routines fail, and the practical things that make one stick: anchoring doses to the day, simplifying the regimen with your pharmacy, and knowing when to escalate.
+description: Why medication routines fail, and the practical things that make one stick — anchoring doses to the day, simplifying the regimen with your pharmacy, and knowing when to escalate.
 published_on: 2026-07-29
 ---
 

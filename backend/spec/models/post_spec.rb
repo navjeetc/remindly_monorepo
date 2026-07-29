@@ -7,10 +7,12 @@ RSpec.describe Post do
   # stub_const has to run inside the per-test lifecycle, so the directory is
   # created in before and cleaned up in after rather than wrapped in an around
   # block with Dir.mktmpdir.
+  # No need to reset Post's memo here any more — it does not memoize outside
+  # production, precisely because doing so let this spec's temp directory leak
+  # into every spec that ran after it.
   before do
     @dir = Pathname(Dir.mktmpdir)
     stub_const("Post::ROOT", @dir)
-    Post.instance_variable_set(:@load_all, nil)
   end
 
   after { FileUtils.remove_entry(@dir) }
