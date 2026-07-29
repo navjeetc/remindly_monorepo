@@ -122,11 +122,20 @@ Configuration options follow a consistent pattern across components:
 
 ### Changelog Updates
 
-When fixing bugs or adding features:
+When fixing bugs or adding features, add an entry to `CHANGELOG.md` **at the
+repository root** — there is one changelog, not one per component.
 
-- Add an entry to the top of `<component>/CHANGELOG.md`
-- Format: Brief description, then `*Your Name*` on new line
-- See existing entries for style
+- Put it under `## [Unreleased]`, creating that section if the last release has
+  already been cut
+- Group under `### Added`, `### Changed`, `### Fixed` or `### Security`
+- Lead with a bold summary, then say **why** — what was broken, or what the
+  change makes possible. The existing entries explain the reasoning, and that is
+  the part worth copying.
+
+Do not use "Brief description, then `*Your Name*`". That format is the Rails
+project's convention and appears in no entry this changelog has ever had; it was
+left here when this file was adapted from Rails' contributing guide, along with
+the `railties` and `action_view` examples elsewhere in this document.
 
 ### Test Naming
 

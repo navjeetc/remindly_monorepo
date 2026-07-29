@@ -37,6 +37,36 @@
     <% end %>
 
     <%#
+      Who publishes this site, on every page. Page-level graphs above say what a
+      given page is; nothing said who is behind it, which is the association
+      search engines use to tie a domain, a name and a support address together.
+      Separate from the page graph deliberately — a page that declares nothing of
+      its own still declares this.
+    %>
+    <script type="application/ld+json"><%= json_ld(
+      "@context" => "https://schema.org",
+      "@graph" => [
+        {
+          "@type" => "Organization",
+          "@id" => "#{canonical_host}#organization",
+          "name" => "Remindly",
+          "url" => canonical_host,
+          "email" => "hello@remindly.care",
+          "description" => "Free spoken reminders for older people living on their own, set up by the family who care for them.",
+          "logo" => "#{canonical_host}/icon.png"
+        },
+        {
+          "@type" => "WebSite",
+          "@id" => "#{canonical_host}#website",
+          "name" => "Remindly",
+          "url" => canonical_host,
+          "publisher" => { "@id" => "#{canonical_host}#organization" },
+          "inLanguage" => "en"
+        }
+      ]
+    ) %></script>
+
+    <%#
       Styles are inlined rather than linked. There is no asset pipeline in this app,
       the dashboard pulls Tailwind from a CDN (~400KB of JS that Tailwind itself
       warns against in production), and this is the one page meant to rank — so it
