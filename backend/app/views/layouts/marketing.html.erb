@@ -244,6 +244,28 @@
         overflow: hidden;
       }
 
+      /* Printable checklists. Boxes are drawn with a border rather than a
+         real checkbox so they survive printing — form controls print
+         inconsistently across browsers and some drop them entirely. */
+      .checklist { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+      .checklist li {
+        position: relative;
+        padding: 0.35rem 0 0.35rem 2rem;
+        border-bottom: 1px solid var(--line);
+      }
+      .checklist li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.55rem;
+        width: 1.05rem;
+        height: 1.05rem;
+        border: 2px solid var(--muted);
+        border-radius: 0.2rem;
+      }
+      .sheet-note { color: var(--muted); font-size: 1rem; }
+      .sheet-week { margin: -0.5rem 0 1.5rem; }
+
       /* Printable routine sheet */
       .print-hint { color: var(--muted); font-size: 1rem; }
       .sheet-title { margin-top: 0; }
@@ -270,6 +292,17 @@
         .wrap { max-width: none; padding: 0; }
         .sheet-table th { border-bottom: 2px solid #000; color: #000; }
         .sheet-table td { border-bottom: 1px solid #666; }
+        /* Denser on paper than on screen: the checklist is comfortable to
+           read at screen spacing but ran to a page and a half printed, and the
+           page promises one. */
+        body { font-size: 10.5pt; }
+        .checklist li { border-bottom: 1px solid #ccc; page-break-inside: avoid; padding: 0.12rem 0 0.12rem 1.6rem; }
+        .checklist li::before { border-color: #000; top: 0.3rem; width: 0.85rem; height: 0.85rem; }
+        .sheet-heading { page-break-after: avoid; margin: 0.9rem 0 0.3rem; }
+        .sheet-title { margin-bottom: 0.2rem; }
+        .sheet-week { margin: 0 0 0.6rem; }
+        .sheet-note { margin-bottom: 0.4rem; }
+        .sheet-table td { height: 1.8rem; }
       }
 
       @media (prefers-color-scheme: dark) {
@@ -318,6 +351,7 @@
         <div class="links">
           <a href="<%= how_to_path %>">How Remindly works</a>
           <a href="<%= faq_path %>">Questions</a>
+          <a href="<%= caregiver_checklist_path %>">Free checklist</a>
           <a href="<%= blog_path %>">Writing</a>
           <a href="<%= privacy_path %>">Privacy</a>
           <a href="<%= terms_path %>">Terms</a>
