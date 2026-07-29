@@ -5,6 +5,56 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **The site can be found**: `/sitemap.xml`, generated from the routes and the
+  posts on disk rather than kept as a static file, and advertised in
+  `robots.txt`. `SoftwareApplication` structured data declaring a price of 0 —
+  which is what lets a result carry a "free" label — plus `og:image` and
+  `twitter:card`, without which every shared link rendered as a bare grey box.
+- **`/faq`**: the questions caregivers type into a search engine, with
+  `FAQPage` structured data so answers can surface directly in results.
+  Questions and answers render from one source, because Google drops a
+  `FAQPage` whose questions are not also visible on the page.
+- **Blog at `/blog`**: posts are Markdown files in `backend/content/posts` with
+  YAML front matter — no database table, no admin UI. Publishing is adding a
+  file; the index, the sitemap and the `Article` structured data all pick it up.
+  A `published_on` in the future is a draft.
+- **Printable daily routine sheet at `/routine_sheet`**: one page for the fridge
+  door, deliberately not gated behind the mailing list.
+- **Mailing list**: signup on the public pages, with the routine sheet emailed
+  on joining, and a notification to us naming the page that earned the address.
+- **Product screenshots on the homepage**: real captures of the voice reminders
+  page and the caregiver task list, scripted so they can be regenerated when the
+  UI changes (`backend/script/marketing_screenshots`).
+- **It says that it is free**: in the title of every page written to be landed
+  on, a badge beside the logo, and a "why is it free — what's the catch?" FAQ
+  entry, since answering the suspicion is worth more than repeating the word.
+
+### Changed
+- **All mail now sends from `hello@remindly.care`**, defined once on
+  `ApplicationMailer`. Seven of the eight mailers previously fell back to
+  `noreply@remindly.app` — a domain that is not ours and that Postmark rejects
+  outright — or sent from a personal address on another domain. Who receives
+  contact submissions and subscriber notices stays configurable.
+- **The task list shows a senior's name** rather than their email address.
+
+### Fixed
+- **Public pages no longer record analytics visits.** `/faq`,
+  `/routine_sheet`, `/blog` and every post were logging an IP, referrer and
+  device for each anonymous reader while the privacy policy said public pages
+  were not tracked. The exclusion now derives from the same list the sitemap is
+  built from, so a page is public in both places or in neither.
+- **The privacy policy discloses the mailing list** — what is stored, what it is
+  used for, that Postmark sees it, and how to come off it.
+- **Signing up twice no longer 500s.** Two concurrent requests for the same
+  address could both pass the lookup before either committed.
+- **The welcome email's replies reach a person.** It asks people to reply in
+  order to stop, and was sending from an unmonitored `noreply@` address.
+- **Tables in blog posts render properly** — cells had no padding and ran into
+  one another.
+
 ## [0.5.0] - 2026-07-19
 
 ### Added
