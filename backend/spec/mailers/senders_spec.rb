@@ -11,9 +11,16 @@ require "rails_helper"
 RSpec.describe "Mailer senders" do
   OFFICIAL = "hello@remindly.care".freeze
 
+  MAILER_ROOT = Rails.root.join("app/mailers")
+
+  # Recursive, and the constant is derived from the path rather than the
+  # basename, so a namespaced mailer (app/mailers/admin/foo_mailer.rb ->
+  # Admin::FooMailer) is checked rather than skipped. Globbing only the top
+  # level meant a mailer in a subdirectory bypassed the sender guard entirely
+  # while the other checks in this file already looked recursively.
   def mailers
-    Rails.root.glob("app/mailers/*.rb").map { |path|
-      path.basename(".rb").to_s.camelize.constantize
+    MAILER_ROOT.glob("**/*.rb").map { |path|
+      path.relative_path_from(MAILER_ROOT).to_s.delete_suffix(".rb").camelize.constantize
     }.select { |klass| klass < ActionMailer::Base }
   end
 
@@ -21,11 +28,16 @@ RSpec.describe "Mailer senders" do
     expect(mailers.size).to be >= 6
   end
 
-  it "sends everything from the one official address" do
+  # Parses the header rather than substring-matching it. `include?` passes on
+  # "Remindly <hello@remindly.care>, attacker@evil.example" — the official
+  # address is present, and so is a second one. The point of this spec is that
+  # there is exactly one sender, so it has to assert exactly one.
+  it "sends everything from the one official address, and only that" do
     mailers.each do |mailer|
-      from = Array(mailer.default[:from]).join
+      raw = Array(mailer.default[:from]).join(", ")
+      addresses = Mail::AddressList.new(raw).addresses.map(&:address)
 
-      expect(from).to include(OFFICIAL), "#{mailer} sends from #{from.inspect}"
+      expect(addresses).to eq([ OFFICIAL ]), "#{mailer} sends from #{raw.inspect}"
     end
   end
 
