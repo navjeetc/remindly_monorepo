@@ -87,6 +87,8 @@ Post bodies are rendered with `html_safe` — sound only because posts are repo 
 - **macOS client** configures `APIClient.base` in Xcode; uses `AVSpeechSynthesizer` for TTS
 
 ### Deployment
+After deploying, run `docs/POST_DEPLOY_CHECKS.md` — a short list of things that pass in CI and still fail in production. Every item on it is a failure this project has actually had (Solid Queue not running, a mailer sending from a domain Postmark rejects, public pages recording IPs while the privacy policy said they did not).
+
 Kamal + Docker targeting a single DigitalOcean server (`161.35.104.56`). SQLite3 persists on a Docker volume at `/rails/storage/production.sqlite3`. The Docker entrypoint runs migrations automatically on deploy. SSL via Let's Encrypt at `remindly.anakhsoft.com`. Secrets (`KAMAL_REGISTRY_PASSWORD`, `RAILS_MASTER_KEY`) live in `.kamal/secrets`.
 
 ### CI (GitHub Actions)
