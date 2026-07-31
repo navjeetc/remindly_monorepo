@@ -38,6 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or a caregiver forum might link to, and backlinks are what a new domain lacks.
 - **Two more blog posts**: building a medication routine that sticks, and what to
   check on daily when a parent lives alone.
+- **Navigation at the top of every public page**: How it works, Questions and
+  Blog. Someone arriving on a post from a search previously had no visible route
+  anywhere except Sign in — the one thing they are not ready to do. Three links,
+  not the footer's seven, and no JavaScript: they stack under the logo on a
+  narrow screen rather than hiding behind a menu.
 - **`Organization` and `WebSite` structured data on every public page**, which is
   the association search engines use to tie a domain, a name and a support
   address together. Nothing declared it before.
@@ -67,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Printing the routine sheet keeps its full-size handwriting rows.** Print
   density rules added for the checklist were global and shrank them from 2.6rem
   to 1.8rem — smaller boxes to write in, on a sheet made to be written on.
+- **The blog is called "Blog"** rather than "Writing", which was chosen for tone
+  at the cost of being scannable — people look for the word they expect.
 - **`/blog` has a title worth showing in a search result** — it was "Writing",
   eighteen characters with no indication of what the writing is about.
 

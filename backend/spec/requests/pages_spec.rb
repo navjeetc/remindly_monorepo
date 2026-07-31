@@ -281,6 +281,78 @@ RSpec.describe "Pages", type: :request do
     end
   end
 
+  # Someone landing on a blog post from a search had no visible route anywhere
+  # except Sign in — the one thing they are not ready to do.
+  describe "the top navigation" do
+    def nav_links(path)
+      get path
+      Nokogiri::HTML(response.body).css("header nav.top-nav a")
+    end
+
+    it "offers the evaluating path on every public page" do
+      (PagesController::STATIC_PATHS + [ Post.all.first.path ]).each do |path|
+        hrefs = nav_links(path).map { |a| a["href"] }
+
+        expect(hrefs).to include("/how_to", "/faq", "/blog"), "#{path} nav has #{hrefs.inspect}"
+      end
+    end
+
+    # Deliberately three destinations plus one action, not the footer's seven.
+    # The rest belong where people go looking for them.
+    it "stays short, and keeps the legal pages in the footer" do
+      hrefs = nav_links("/").map { |a| a["href"] }
+
+      expect(hrefs.size).to eq(4)
+      expect(hrefs).not_to include("/privacy")
+      expect(hrefs).not_to include("/terms")
+    end
+
+    it "sends a signed-out visitor to sign in, and a signed-in one to their dashboard" do
+      expect(nav_links("/faq").map { |a| a["href"] }).to include("/login")
+
+      user = User.create!(email: "nav@example.com", role: :caregiver, tz: "America/New_York", name: "Nav")
+      post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+
+      hrefs = nav_links("/faq").map { |a| a["href"] }
+      expect(hrefs).to include("/dashboard")
+      expect(hrefs).not_to include("/login")
+    end
+
+    # These pages ship no JavaScript, and three links do not justify starting.
+    it "needs no JavaScript to work" do
+      get "/"
+
+      expect(Nokogiri::HTML(response.body).css("header script")).to be_empty
+    end
+
+    # /how_to was "How it works" at the top and "How Remindly works" in the
+    # footer — the same page under two names, which makes a reader wonder
+    # whether they are two pages.
+    it "gives each destination one label, wherever it appears" do
+      get "/"
+      doc = Nokogiri::HTML(response.body)
+
+      labels = Hash.new { |h, k| h[k] = Set.new }
+      doc.css("header nav.top-nav a, footer a").each do |link|
+        labels[link["href"]] << link.text.strip
+      end
+
+      inconsistent = labels.select { |_href, names| names.size > 1 }
+      expect(inconsistent).to be_empty, "same destination, different labels: #{inconsistent.inspect}"
+    end
+
+    # "Writing" was chosen for tone and cost legibility — people scan for the
+    # word they expect, and this audience least of all wants to decode a label.
+    it "calls the blog the blog, in both navigations" do
+      get "/"
+      doc = Nokogiri::HTML(response.body)
+
+      expect(doc.css("header nav.top-nav a").map(&:text).map(&:strip)).to include("Blog")
+      expect(doc.css("footer a").map(&:text).map(&:strip)).to include("Blog")
+      expect(response.body).not_to include(">Writing<")
+    end
+  end
+
   # Page-level graphs say what a given page is. Nothing said who publishes the
   # site, which is the association search engines use to tie a domain, a name and
   # a support address together.
