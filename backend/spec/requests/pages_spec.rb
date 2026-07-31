@@ -325,6 +325,22 @@ RSpec.describe "Pages", type: :request do
       expect(Nokogiri::HTML(response.body).css("header script")).to be_empty
     end
 
+    # /how_to was "How it works" at the top and "How Remindly works" in the
+    # footer — the same page under two names, which makes a reader wonder
+    # whether they are two pages.
+    it "gives each destination one label, wherever it appears" do
+      get "/"
+      doc = Nokogiri::HTML(response.body)
+
+      labels = Hash.new { |h, k| h[k] = Set.new }
+      doc.css("header nav.top-nav a, footer a").each do |link|
+        labels[link["href"]] << link.text.strip
+      end
+
+      inconsistent = labels.select { |_href, names| names.size > 1 }
+      expect(inconsistent).to be_empty, "same destination, different labels: #{inconsistent.inspect}"
+    end
+
     # "Writing" was chosen for tone and cost legibility — people scan for the
     # word they expect, and this audience least of all wants to decode a label.
     it "calls the blog the blog, in both navigations" do
