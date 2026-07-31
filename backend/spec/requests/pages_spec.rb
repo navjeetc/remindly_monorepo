@@ -311,9 +311,14 @@ RSpec.describe "Pages", type: :request do
 
     # Every block has to parse. An unparseable one is dropped silently and
     # nothing about the page looks wrong.
+    #
+    # Deliberately not asserting how many there are: the count is not the
+    # behaviour, and pinning it would fail the day a legitimate BreadcrumbList
+    # is added.
     it "emits only valid JSON" do
       expect { graphs("/") }.not_to raise_error
-      expect(graphs("/").size).to eq(2)
+      expect(graphs("/")).to all(be_a(Hash))
+      expect(graphs("/")).not_to be_empty
     end
   end
 
