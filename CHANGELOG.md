@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **It says that it is free**: in the title of every page written to be landed
   on, a badge beside the logo, and a "why is it free — what's the catch?" FAQ
   entry, since answering the suspicion is worth more than repeating the word.
+- **Free printable caregiver checklist at `/caregiver_checklist`**: a one-page
+  weekly sheet with a box for each day — morning, through the day, evening, plus
+  the weekly things that quietly cause a crisis if nobody looks. Ungated, like
+  the routine sheet: a free printable is the one asset here that a senior centre
+  or a caregiver forum might link to, and backlinks are what a new domain lacks.
+- **Two more blog posts**: building a medication routine that sticks, and what to
+  check on daily when a parent lives alone.
+- **`Organization` and `WebSite` structured data on every public page**, which is
+  the association search engines use to tie a domain, a name and a support
+  address together. Nothing declared it before.
 
 ### Changed
 - **All mail now sends from `hello@remindly.care`**, defined once on
@@ -54,6 +64,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   order to stop, and was sending from an unmonitored `noreply@` address.
 - **Tables in blog posts render properly** — cells had no padding and ran into
   one another.
+- **Printing the routine sheet keeps its full-size handwriting rows.** Print
+  density rules added for the checklist were global and shrank them from 2.6rem
+  to 1.8rem — smaller boxes to write in, on a sheet made to be written on.
+- **`/blog` has a title worth showing in a search result** — it was "Writing",
+  eighteen characters with no indication of what the writing is about.
 
 ## [0.5.0] - 2026-07-19
 

@@ -281,6 +281,47 @@ RSpec.describe "Pages", type: :request do
     end
   end
 
+  # Page-level graphs say what a given page is. Nothing said who publishes the
+  # site, which is the association search engines use to tie a domain, a name and
+  # a support address together.
+  describe "site-wide publisher structured data" do
+    def graphs(path)
+      get path
+      Nokogiri::HTML(response.body)
+        .css("script[type='application/ld+json']")
+        .map { |node| JSON.parse(node.text) }
+    end
+
+    it "declares the organisation and the site on every public page" do
+      (PagesController::STATIC_PATHS + [ Post.all.first.path ]).each do |path|
+        types = graphs(path).flat_map { |g| g["@graph"]&.map { |n| n["@type"] } || [ g["@type"] ] }
+
+        expect(types).to include("Organization"), "#{path} declares #{types.inspect}"
+        expect(types).to include("WebSite"), "#{path} declares #{types.inspect}"
+      end
+    end
+
+    # A page that declares something of its own must keep doing so — the
+    # publisher graph is additional, not a replacement.
+    it "leaves the page's own graph in place" do
+      expect(graphs("/faq").map { |g| g["@type"] }).to include("FAQPage")
+      expect(graphs("/").map { |g| g["@type"] }).to include("SoftwareApplication")
+      expect(graphs(Post.all.first.path).map { |g| g["@type"] }).to include("Article")
+    end
+
+    # Every block has to parse. An unparseable one is dropped silently and
+    # nothing about the page looks wrong.
+    #
+    # Deliberately not asserting how many there are: the count is not the
+    # behaviour, and pinning it would fail the day a legitimate BreadcrumbList
+    # is added.
+    it "emits only valid JSON" do
+      expect { graphs("/") }.not_to raise_error
+      expect(graphs("/")).to all(be_a(Hash))
+      expect(graphs("/")).not_to be_empty
+    end
+  end
+
   # Costing nothing is the fact most likely to decide whether a caregiver
   # comparing options clicks through, and for a while only the homepage carried
   # it. The homepage is also the least likely landing page for the long-tail
