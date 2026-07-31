@@ -72,8 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Printing the routine sheet keeps its full-size handwriting rows.** Print
   density rules added for the checklist were global and shrank them from 2.6rem
   to 1.8rem — smaller boxes to write in, on a sheet made to be written on.
-- **The blog is called "Blog"** rather than "Writing", which was chosen for tone
-  at the cost of being scannable — people look for the word they expect.
+- **The blog is called "Blog" and the FAQ is called "FAQ"** rather than "Writing"
+  and "Questions", both of which were chosen for tone at the cost of being
+  scannable — people look for the word they expect, and the FAQ page's own title
+  already used the conventional one.
 - **`/blog` has a title worth showing in a search result** — it was "Writing",
   eighteen characters with no indication of what the writing is about.
 

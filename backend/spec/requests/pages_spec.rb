@@ -341,15 +341,21 @@ RSpec.describe "Pages", type: :request do
       expect(inconsistent).to be_empty, "same destination, different labels: #{inconsistent.inspect}"
     end
 
-    # "Writing" was chosen for tone and cost legibility — people scan for the
-    # word they expect, and this audience least of all wants to decode a label.
-    it "calls the blog the blog, in both navigations" do
+    # Both of these were chosen for tone and cost legibility. People scan for
+    # the word they expect: "Writing" for a blog, and "Questions" for what every
+    # other site on the internet calls an FAQ — which the page's own title
+    # already called it.
+    it "uses the conventional label for the blog and the FAQ, in both navigations" do
       get "/"
       doc = Nokogiri::HTML(response.body)
 
-      expect(doc.css("header nav.top-nav a").map(&:text).map(&:strip)).to include("Blog")
-      expect(doc.css("footer a").map(&:text).map(&:strip)).to include("Blog")
+      top = doc.css("header nav.top-nav a").map(&:text).map(&:strip)
+      foot = doc.css("footer a").map(&:text).map(&:strip)
+
+      expect(top).to include("Blog", "FAQ")
+      expect(foot).to include("Blog", "FAQ")
       expect(response.body).not_to include(">Writing<")
+      expect(response.body).not_to include(">Questions<")
     end
   end
 
