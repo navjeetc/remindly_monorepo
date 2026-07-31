@@ -354,8 +354,8 @@ RSpec.describe "Pages", type: :request do
 
       expect(top).to include("Blog", "FAQ")
       expect(foot).to include("Blog", "FAQ")
-      expect(response.body).not_to include(">Writing<")
-      expect(response.body).not_to include(">Questions<")
+      expect(top + foot).not_to include("Writing")
+      expect(top + foot).not_to include("Questions")
     end
   end
 
