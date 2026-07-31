@@ -144,6 +144,25 @@
 
       .brand { display: inline-flex; align-items: center; gap: 0.6rem; }
 
+      .top-nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1.25rem;
+        font-size: 1rem;
+      }
+      .top-nav a { color: var(--muted); text-decoration: none; }
+      .top-nav a:hover { color: var(--ink); text-decoration: underline; }
+      /* The one link that is an action rather than a destination. */
+      .top-nav .nav-cta { color: var(--brand); font-weight: 600; }
+
+      @media (max-width: 34rem) {
+        /* Stack under the logo rather than squeezing beside it, so the heading
+           does not get pushed off the first screen on a phone. */
+        header .wrap { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+        .top-nav { gap: 1rem; font-size: 0.95rem; }
+      }
+
       /* Quiet on purpose. A loud badge on a product aimed at family caregivers
          — a group used to being sold to — reads as a hook rather than as
          generosity, and invites "what's the catch" instead of answering it. */
@@ -413,11 +432,27 @@
           <a class="logo" href="/">Remindly</a>
           <span class="badge-free">Free</span>
         </span>
-        <% if current_user %>
-          <a href="<%= dashboard_path %>">Dashboard</a>
-        <% else %>
-          <a href="<%= login_path %>">Sign in</a>
-        <% end %>
+        <%#
+          Three links, not the footer's seven. Someone arriving on a blog post
+          from a search previously had no visible route anywhere except Sign in
+          — the one thing they are not ready to do. These are the "still
+          deciding" path; privacy, terms and the printables stay in the footer
+          where people go looking for them.
+
+          No JavaScript menu: these pages ship none, and a hamburger would mean
+          shipping some for three links. They wrap onto a second line on a
+          narrow screen instead, which costs a little height and no complexity.
+        %>
+        <nav class="top-nav" aria-label="Main">
+          <a href="<%= how_to_path %>">How it works</a>
+          <a href="<%= faq_path %>">Questions</a>
+          <a href="<%= blog_path %>">Blog</a>
+          <% if current_user %>
+            <a class="nav-cta" href="<%= dashboard_path %>">Dashboard</a>
+          <% else %>
+            <a class="nav-cta" href="<%= login_path %>">Sign in</a>
+          <% end %>
+        </nav>
       </div>
     </header>
 
@@ -431,7 +466,7 @@
           <a href="<%= how_to_path %>">How Remindly works</a>
           <a href="<%= faq_path %>">Questions</a>
           <a href="<%= caregiver_checklist_path %>">Free checklist</a>
-          <a href="<%= blog_path %>">Writing</a>
+          <a href="<%= blog_path %>">Blog</a>
           <a href="<%= privacy_path %>">Privacy</a>
           <a href="<%= terms_path %>">Terms</a>
           <% if current_user %>
