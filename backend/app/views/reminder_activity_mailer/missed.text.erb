@@ -1,9 +1,12 @@
 Hi <%= @caregiver.display_name %>,
 
-<%= @senior.display_name %> has not completed <%= @reminder.title %>.
+<%= @senior.display_name %> has not marked <%= @reminder.title %> as done.
 <% if @scheduled_at %>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and was not completed.
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and has not been marked done since.
 <% end %>
+This means nobody pressed Done on their device. It does not necessarily mean it
+was not done — they may have done it without marking it.
+
 View <%= @senior.display_name %>'s dashboard: <%= @dashboard_url %>
 
 --

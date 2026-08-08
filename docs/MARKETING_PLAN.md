@@ -1,25 +1,137 @@
 # Remindly marketing plan
 
-Written 2026-07-26. Framework: *The Minimalist Entrepreneur* — spend time before
-money, build an audience rather than buy attention.
+Written 2026-07-26, revised 2026-08-08. Framework: *The Minimalist Entrepreneur*
+— spend time before money, build an audience rather than buy attention.
+
+**What changed in the 2026-08-08 revision.** Three facts arrived that the first
+draft had to guess at, and each one moves the plan:
+
+1. **Google Search Console is verified and the sitemap is submitted.** Bing is
+   not. The blocking item at the top of the last draft is cleared.
+2. **Track A has not started.** Zero to two households use Remindly in a normal
+   week. Meanwhile Track B shipped three posts, a second printable, a top nav
+   and a full structured-data pass. The last draft said *do not skip to Track B
+   because it is more comfortable*, and that is precisely what happened.
+3. **There is no founding story** — Remindly did not come out of the author's
+   own family. The Level 2 content plan was built on that story and needs
+   replacing.
+
+And one thing arrived that is worth more than all three: **the first real
+feedback on whether the site converts**, from early users. It is the top of this
+document now, because it is the only evidence we have about the page that
+everything else drives traffic to.
+
+## The site feedback, and what to do about it
+
+Five items came back. Checked against the markup, four of them are about
+**sequence rather than substance** — the content is already on the page, in the
+wrong order, below the fold. One is a genuine accuracy problem. In priority
+order:
+
+### 1. "Marked done" is not "taken" — fix this first
+
+This is the only item that is not a conversion tweak. The FAQ is already
+careful: it says a dose is *"marked taken"*, and the *Is Remindly a medical
+device?* answer is explicit that it "cannot tell whether a tablet was actually
+swallowed". The homepage is not careful. It says:
+
+- Lead paragraph: *"it tells you when they're taken — or when they're not"*
+- Meta description: *"Remindly tells you when a dose is taken or missed"*
+
+The meta description is the sentence Google prints under the result. The most
+imprecise claim on the site is the one strangers read first.
+
+The fix is a vocabulary, applied everywhere: **"marked done"**, **"confirmed on
+the device"**, **"marked taken at 8:04"**. Never "taken" unqualified, never
+"confirmed" alone, nothing that reads as verification. This runs past the
+marketing pages into the **notification emails**, which are the place a
+caregiver actually forms the belief — an email saying "Margaret took her
+morning medication" is a stronger claim than the product can support. Audit the
+mailers as part of the same change.
+
+Highest-stakes use case, lowest-cost fix, and it is the one that would matter in
+a bad week.
+
+### 2. One CTA, and one label per destination
+
+The hero already has a single primary and a single secondary button. The
+confusion is elsewhere: the nav's **"Sign in"** and the hero's **"Get started —
+it's free"** point at the same `login_path` under two labels, so the page offers
+what looks like three next actions for two things. The `feat/top-nav` work
+already established the principle — *one label per destination* — and the
+homepage is the page that breaks it.
+
+- Primary: **"Set up reminders for my parent — free"**. Names the outcome and
+  who it is for; "Get started" names neither.
+- Secondary, lower emphasis: **"See how it works first"**.
+- Resolve the nav duplicate rather than adding a third competing action.
+
+### 3. Answer the setup objection above the fold
+
+The three steps the feedback asks for are already written and already correct
+(`home.html.erb`, the `ol.steps` block): you create the reminders, they hear
+them spoken, you see done or missed. They sit roughly five hundred words down,
+after an essay. Hoist a compact version directly under the hero, framed as the
+objection it answers: **"Works with the tablet or computer they already use."**
+No app, no app-store account, nothing to install.
+
+**Setup time is stated nowhere on the site**, and it is the question behind the
+objection. Do not invent a number. Time it: set up a fresh account cold with a
+stopwatch, then time one of the ten people in Track A doing it without help.
+Publish the real figure, rounded honestly ("about ten minutes, most of it
+spent deciding what to remind them about"). If the true number is embarrassing,
+that is a product finding, not a copy problem.
+
+### 4. Show the senior's screen sooner
+
+Also mostly a sequencing fix: the senior screenshot already appears *before* the
+caregiver one, which is the right instinct. It is just buried. Move it up so the
+first image on the page is the spoken prompt, the large **Done** button and
+**Snooze**, and caption it with the line the feedback proposes:
+
+> No app to learn. Just a familiar screen that speaks when it's time.
+
+The buyer is the adult child, but the objection that stops them is *"my mother
+will never use this."* That objection is answered by a picture, not a paragraph.
+
+### 5. Reassurance next to "free"
+
+The *"Why is Remindly free — what's the catch?"* FAQ answer already exists and
+is good. What is missing is one line where the claim is made, in the hero. The
+current note sells "no limit on how many reminders" — a feature nobody is
+worried about. Replace with the three things a caregiver is actually braced for:
+
+> **Free — no card, no ads, no sales calls.**
+
+All three are true today, which is the only reason to print them.
+
+### The one to schedule, not ship
+
+The closing suggestion — **assemble a beta group, gather feedback, record
+testimonials** — is the most valuable line in the whole review, and it cannot be
+built this week because it requires Track A to exist first. It is also the
+answer to the founding-story problem below. It becomes the spine of the next 90
+days.
 
 ## Where we actually are
 
 The minimalist playbook says to start marketing after ~100 paying customers,
 because marketing is sales at scale and you cannot scale something that has not
 worked once. Remindly is not there. It is free, it is early, and the number of
-households using it weekly is small.
+households using it weekly is between zero and two.
 
-So this is not a marketing plan in the "turn on the megaphone" sense. It is two
-tracks running at once:
+Two tracks, as before — but the balance has to change:
 
-- **Track A — get to 50 households, by hand.** One-to-one. Unscalable on
-  purpose. This is where the product learns what it is.
-- **Track B — plant the compounding assets now.** SEO and an email list take
-  three to six months to return anything, which is exactly why they cannot wait
-  until Track A finishes.
+- **Track A — get to 50 households, by hand.** One-to-one, unscalable on
+  purpose. **This has not started.** It is now roughly all of the work.
+- **Track B — the compounding assets.** SEO and the email list are planted.
+  Google is indexing. They now need *time*, not more input.
 
-Track A is the real work. Track B is done in the background because of the lag.
+The honest read on the last two weeks: Track B is finished enough. A fourth,
+fifth and sixth blog post added to a site with two users compounds nothing —
+posts rank on a timescale of months regardless of how many there are, and three
+is already enough to find out whether any of them can rank at all. Writing more
+now is the comfortable move that feels like progress.
 
 ## The free decision
 
@@ -32,7 +144,7 @@ frequently exploited group. A free tool with no card field and no trial is the
 one thing that can be mentioned in those rooms without it reading as a pitch,
 and it is the only reason a moderator lets it stand.
 
-The site now says so plainly, and says it in a way that does not trap us: free
+The site says so plainly, and says it in a way that does not trap us: free
 today, and if that changes, existing users hear it first and well beforehand.
 Nothing in the copy promises free forever.
 
@@ -51,194 +163,239 @@ Every piece of copy should be recognisable to that person in the first sentence.
 
 ## Track A: the first 50 households
 
-Do these in order. Do not skip to Track B because it is more comfortable.
+This is the plan now. Do these in order.
 
-1. **Write down the ten people you already know** who have a parent living
-   alone. Not prospects — people you can text. Ask them to try it, watch them
-   set it up, and say nothing while they do. Every place they hesitate is a bug.
-2. **Sit with three seniors** while they use the voice page for a week. The
-   "page must stay open" limitation is the one most likely to kill this quietly.
-   Find out whether it does.
-3. **Go where they already are, as a member.** r/AgingParents and
+1. **Fix the five site items above**, because the next ten people will land on
+   that page and the feedback says what they will trip over.
+2. **Write down the ten people you already know** with a parent living alone.
+   Not prospects — people you can text. Ask them to try it, watch them set it
+   up, and **say nothing while they do**. Every place they hesitate is a bug.
+   Time the setup while you are there.
+3. **Sit with three seniors** using the voice page for a week. The "page must
+   stay open" limitation is the one most likely to kill this quietly. Find out
+   whether it does.
+4. **Form the beta group** out of whoever survives steps 2 and 3 — six to ten
+   households is plenty. Give it a name, email them monthly, and tell them
+   plainly that they are early and their complaints set the roadmap. This group
+   is simultaneously the product feedback loop, the testimonial source and the
+   Level 2 content supply.
+5. **Ask for testimonials once, at the right moment** — not at signup, but after
+   a household has used it for three or four weeks. Ask for the specific thing:
+   *what did you stop doing since you started using this?* Record with explicit
+   written permission, first name and city only, and offer to show them the
+   quote before it goes up.
+6. **Go where they already are, as a member.** r/AgingParents,
    r/CaregiverSupport, AgingCare.com forums, a local senior centre or Area
-   Agency on Aging. Spend four weeks answering questions about caregiving
-   without mentioning Remindly at all. Then mention it only when it is a direct
-   answer to a question someone asked.
-4. **Talk to one hospital discharge planner or social worker.** They meet this
+   Agency on Aging. Four weeks answering caregiving questions without mentioning
+   Remindly at all. Then mention it only as a direct answer to a question
+   somebody asked.
+7. **Talk to one hospital discharge planner or social worker.** They meet this
    exact family at the exact moment of need, every day. If Remindly is worth
    anything, one of them will tell you why it is not.
 
-Target: **50 households using it in a normal week** before spending a day on
-scale. If Track A stalls, the answer is a product problem, and no amount of
-Track B fixes it.
+**Day-30 gate: ten households.** If ten people you already know will not use a
+free tool built for a problem they have, the problem is the product or the
+pitch, and no amount of Track B fixes it. That finding is worth more than
+another quarter of posts.
 
-## Track B: SEO
+**Day-90 target: 50 households in a normal week.**
 
-This is the highest-leverage channel for this product, because the demand
-already exists as search volume. Nobody searches for "Remindly", but a great
-many people search for the problem, at 11pm, after a bad phone call.
+## Track B: SEO — now in maintenance
 
-### Already shipped
+### Shipped
 
-- `/faq` — a real page answering the questions people type, with FAQPage
-  structured data so answers can surface directly in results
-- `SoftwareApplication` structured data declaring price 0, which is what lets a
-  result carry a "free" label
-- `/sitemap.xml`, generated from the routes and from the posts on disk,
-  advertised in `robots.txt`
-- `og:image` + `twitter:card`, so shared links stop rendering as grey boxes
-- "Free to use" in the title, meta description, CTA and a "What it costs" section
-- `/blog` — Markdown files in `backend/content/posts`, with Article structured
-  data. Publishing is adding a file; a future `published_on` is a draft.
-- `/routine_sheet` — a printable one-page daily routine sheet, public rather
-  than gated, so it can rank on its own
-- `/subscribers` — the mailing list, with the routine sheet sent on signup
+- `/faq` with `FAQPage` structured data; `SoftwareApplication` declaring price 0;
+  `Organization`, `WebSite` and `Article` graphs
+- `/sitemap.xml` generated from routes and posts, advertised in `robots.txt`
+- `og:image` + `twitter:card`
+- `/blog` with three posts (26–29 July); publishing is adding a Markdown file,
+  and a future `published_on` is a draft
+- Two ungated printables: `/routine_sheet`, `/caregiver_checklist`
+- Mailing list with welcome + admin notification, all mail from
+  `hello@remindly.care`
+- Top nav: How it works · FAQ · Blog · Sign in
+- **Google Search Console verified, sitemap submitted**
 
-### Manual step, do this first — nothing else matters until it is done
+### The three things left, and then stop
 
-Verify `www.remindly.care` in **Google Search Console** and submit
-`https://www.remindly.care/sitemap.xml`. Do the same in Bing Webmaster Tools.
-Until this happens the site is essentially invisible, and no amount of content
-changes that. It takes fifteen minutes.
+1. **Bing Webmaster Tools.** Fifteen minutes. Bing skews older than Google,
+   which for this audience is not a rounding error.
+2. **Check that the three posts are actually indexed.** Two weeks after a
+   submitted sitemap, Search Console's coverage report gives a real answer. Zero
+   indexed pages after a submitted sitemap is a technical fault worth finding
+   now, not in November.
+3. **Read the query report monthly.** The queries people actually type will not
+   match the table below. That list is worth more than any keyword tool, and it
+   is the only input that should trigger writing another post.
 
-Then check Search Console monthly for which queries actually bring people —
-that list is worth more than any keyword tool, and it will not match the guesses
-below.
-
-### The queries to write for
-
-Long-tail, low-competition, high-intent. Nobody with a marketing budget is
-bidding on these because they do not convert to a paid product — which is
-exactly why a free one can own them.
+### The queries written for
 
 | Query | Page |
 |---|---|
-| how to remind elderly parent to take medication | blog post |
-| medication reminder for elderly parent living alone | blog post |
+| how to remind elderly parent to take medication | published |
+| medication reminder for elderly parent living alone | published |
+| what to check on daily when a parent lives alone | published |
 | free medication reminder app for seniors | homepage + FAQ |
-| how do I know if my mom took her medication | blog post |
-| talking reminder clock for seniors | comparison post |
-| Reminder Rosie alternative | comparison post |
-| reminder system for elderly with memory loss | blog post |
-| how to help a parent who lives alone remember things | blog post |
+| how do I know if my mom took her medication | published |
+| reminder system for elderly with memory loss | unwritten |
+| how to help a parent who lives alone remember things | unwritten |
 
-The **"Reminder Rosie alternative"** angle deserves attention. There is an
-established hardware category — talking reminder clocks, day clocks — selling at
-$70–150. People search for those products by name. A free software alternative
-that runs on a tablet they already own is a genuinely useful answer to that
-search, and a comparison page is honest as long as it says where the hardware is
-better (it does not need a tab left open; it survives a wifi outage).
-
-### What to write
-
-Six posts, one every two weeks, three months. Each answers a question a
-caregiver actually asks, and each is genuinely useful to someone who never signs
-up. Product mention at the bottom, once.
-
-Post 1 is written and published — *How to know whether your parent actually took
-their medication*. **It is a draft in your voice, not mine: read it before you
-promote it anywhere.** It names a real limitation of Remindly and points readers
-at a dedicated device when that suits them better, which is deliberate, but it
-is your name on it. Five remain.
-
-Publishing is adding a Markdown file to `backend/content/posts` with `title`,
-`description` and `published_on` front matter. Nothing else has to be touched —
-the index, the sitemap and the structured data all pick it up. A `published_on`
-in the future is a draft and stays out of both the index and the sitemap.
-
-For the remaining five, an interview-driven writing pipeline beats drafting them
-outright — it gets the author's voice onto the page rather than a plausible
-imitation of it. Matt Pocock's agent skills ([github.com/mattpocock/skills](https://github.com/mattpocock/skills),
-installable with `npx skills@latest add mattpocock/skills`) do this in three
-steps: `writing-fragments` interviews you to mine raw material, `writing-shape`
-turns the pile into an article, and `edit-article` tightens the draft.
+Per the editorial direction already set: **no product comparisons, no
+recommending competitors.** The talking-clock post was rewritten as generic
+caregiving advice for exactly this reason, and that decision stands.
 
 ## Content: educate, inspire, entertain
 
-**Level 1 — Educate.** The six SEO posts above are level 1. Add: what you
-learned building this, from the technical side, published where developers read
-it. Two audiences, two accounts, no crossover.
+### Level 1 — Educate
 
-**Level 2 — Inspire.** The strongest asset here is the story of why this exists,
-and I do not know it — whether Remindly came out of your own family, and what
-the moment was. If it did, that story is worth more than all six SEO posts
-combined, because it is the one thing a competitor cannot copy and the one thing
-that makes a stranger trust a free tool that wants their parent's medication
-schedule. If it is too personal to publish, that is a legitimate answer, and
-Track B leans harder on Level 1.
+Five, in priority order. One a month at most, and only if Track A is moving.
 
-**Level 3 — Entertain.** Skip it. Entertainment is the widest-reaching content
-and the hardest to do, and caregiving humour lands badly from a stranger with a
-product. Revisit at 500 users.
+1. **"What do I need at their end, and how long does setup take?"** The long
+   form of the objection panel. Doubles as the honest answer to the search
+   *how to set up a tablet for an elderly parent* — font size, auto-lock, keeping
+   a screen awake, keeping a page open. Turns the product's biggest limitation
+   into a genuinely useful general how-to.
+2. **"When a parent says they don't need help."** The most common conflict in
+   every caregiving forum, and it sits directly upstream of the patronising
+   phone call the product exists to end.
+3. **"Sharing the care with siblings without it turning into an argument."**
+   Maps to `CaregiverLink` and shared tasks, which currently have no story told
+   about them anywhere.
+4. **"What to bring to a parent's doctor appointment."** Printable-shaped —
+   becomes the third ungated sheet and feeds the list.
+5. **"Signs it is time for more help at home."** High intent, hard question, and
+   the honest answer is sometimes "more than a reminder app". Saying so is what
+   makes the other four believable.
+
+### Level 2 — Inspire, without a founding story
+
+There is no family origin to tell. Inventing one is out of the question, and a
+manufactured mission statement reads as exactly what it is. The replacement is
+**other people's stories plus radical transparency** — and the beta group is
+what produces the first kind.
+
+1. **Beta-user stories.** The single strongest asset available. *"I stopped
+   ringing my mother at nine every morning"* in a real person's words beats any
+   founder narrative, and unlike a founding story it compounds — every new
+   household is another one.
+2. **"Why Remindly is free, and what would have to change that."** A dated,
+   public commitment. Free products are assumed to have a catch; the only cure
+   is specificity about the conditions.
+3. **"What our privacy policy actually means."** The public pages set no
+   analytics cookies and log no IPs. Almost nobody in this category can say
+   that, and most of the competition is worse than the reader fears. This is the
+   trust asset that stands in for the family story — and it is already true, so
+   it costs a post rather than a project.
+4. **"The page has to stay open."** Name the limitation before a user discovers
+   it. Doing this in public is the cheapest credibility available, and it is
+   already the tone of the FAQ.
+5. **An interview with a discharge planner or home-care nurse.** Their words,
+   your platform, their name if they will give it. The emotional weight of a
+   founding story, borrowed honestly from someone who has earned it.
+
+### Level 3 — Entertain
+
+Skip it, and this is a deliberate deviation from the framework rather than an
+oversight. Entertainment reaches furthest and is hardest to land, and caregiving
+humour from a stranger with a product goes wrong more often than it goes right.
+Padding this list to five would produce four things that should never ship. Two
+that could work, at 500 users, not now:
+
+1. **The nine-in-the-morning phone call, told from the parent's side.** The
+   pattern-break is that the parent finds the call as unbearable as the caller
+   does. It is funny because both people are being kind and both are miserable.
+2. **A short video of the setup, unedited, mistakes left in.** Entertaining in
+   the way competence is entertaining, and it doubles as the setup-time proof
+   from Track A item 3.
 
 ## Email: the owned channel
 
-Start collecting now, before there is anything to send. Subscribers compound;
-followers do not, and a subreddit can change its rules on a Tuesday.
+Subscribers compound; followers do not, and a subreddit can change its rules on
+a Tuesday.
 
-- **The offer:** a printable one-page daily routine sheet — medication times,
-  meals, contacts — that a family can stick on the fridge. Useful whether or not
-  they ever use Remindly, which is the point.
-- **Where:** homepage, blog index, every post, and the sheet itself. Each form
-  records which page it came from, so after a few months the `source` column
-  answers "which writing is worth doing more of" without guessing.
-- **What to send:** monthly, short, one useful thing about caring for a parent
-  at a distance, plus one line on what changed in Remindly. Same educate /
-  inspire split as above.
+- **The offer:** two printable sheets — a daily routine sheet and a caregiver
+  checklist — useful whether or not anyone ever uses Remindly. **Deliberately
+  ungated.** Gating them would collect more addresses in the short run and trade
+  away pages that can rank on their own, plus the goodwill of a group that is
+  used to being milked for an address before anyone helps them.
+- **Where:** homepage, blog index, every post, and the sheets themselves. Each
+  form records its `source`, so in a few months that column answers "which
+  writing is worth doing more of" without guessing.
+- **What to send:** monthly, short, one useful thing about caring for a parent at
+  a distance plus one line on what changed in Remindly.
 
-Built. One deliberate choice worth knowing: **the routine sheet is not gated.**
-It sits at `/routine_sheet`, free to anyone, and the form says so. Gating it
-would collect more addresses in the short run and trade away a page that can
-rank on "printable medication schedule for elderly parent" — plus the goodwill
-of a group that is used to being milked for an email before anyone helps them.
+Two things to settle before the first send:
+
+- **The path has never fired with a real address.** `deliver_later` → Solid
+  Queue → Postmark did nothing in production until PR #41. One live signup with
+  a readable inbox, and one magic-link login, before anything is announced. See
+  `docs/POST_DEPLOY_CHECKS.md`.
+- **Do not start a monthly newsletter for eleven subscribers.** Hold until ~25,
+  or until the beta group exists — the beta group email *is* the newsletter,
+  earlier and better, because those people asked for it by name.
 
 There is no unsubscribe link, by design: replies come to a human at this size.
-That stops being acceptable somewhere around a few hundred subscribers, and it
-is also roughly where bulk-sender rules start requiring one-click unsubscribe.
+That stops being acceptable somewhere around a few hundred subscribers, and that
+is also roughly where bulk-sender rules begin requiring one-click unsubscribe.
 Revisit before the list gets there.
 
 ## Build in public
 
 Two accounts, as the framework says: you the person, and Remindly the product.
-Pick **one** platform and stay there. Given the audience, the honest answer is
-that adult children of aging parents are on Facebook, and Facebook caregiver
-groups are where they gather — not Twitter/X, which is where founders gather.
+Pick **one** platform and stay there.
 
-If the goal is users, that means Facebook groups, joined as a member, under
-Track A rules. If the goal is peers and encouragement, it is a developer
-platform. These are different goals; do not confuse activity on the second for
-progress on the first.
+The last draft named Facebook, on the grounds that adult children of aging
+parents are there. That is true and still not the right answer, for one reason:
+**Facebook group posts are invisible to search.** A good answer written in a
+Facebook group helps one person and then disappears. The same answer on Reddit
+is indexed, ranks for the long-tail question that prompted it, and is still
+bringing people three years later — which is the same compounding that makes the
+blog worth having, at a fraction of the effort.
+
+So: **Reddit, as a member, under Track A rules.** r/AgingParents and
+r/CaregiverSupport. Four weeks contributing with no mention of the product. This
+is not a second channel bolted onto Track A; it is Track A step 6, and the
+audience-building is a side effect of doing the sales work honestly.
+
+Developer platforms are for peers and encouragement. That is a different goal —
+do not let activity there feel like progress on this one.
 
 ## Paid advertising
 
-Not yet. Revisit only when all three are true:
+Not yet, and the case is stronger than it was. Revisit only when all three hold:
 
 1. Track A cleared 50 weekly households
 2. Organic search brings visitors without being pushed
 3. You know what a signed-up caregiver is worth
 
-The third one is the problem: on a free product, a customer is worth $0 in
-revenue, so there is no honest number to compare a click price against. Paid
-acquisition for a free product spends real money to buy something you cannot
-value. Until there is a paid tier, the answer to "should we run ads" is no, and
-the money is better spent on the people already using it.
+The third remains the blocker: on a free product a customer is worth $0 in
+revenue, so there is no honest number to compare a click price against. Buying
+traffic to a page that two households have successfully used would be spending
+real money to scale something not yet shown to work once. Until there is a paid
+tier, the answer is no, and the money is better spent on the people already
+using it.
 
 ## The next 90 days
 
-| Weeks | Track A | Track B |
+| Weeks | Track A — the work | Track B — maintenance only |
 |---|---|---|
-| 1–2 | Ten people you know. Watch them set it up. | **Search Console + sitemap submitted.** Read and edit post 1. |
-| 3–4 | Sit with three seniors for a week. | Post 2 — the talking-clock comparison. |
-| 5–8 | Join two caregiver communities. Contribute only. | Posts 3–4. First monthly note to the list. |
-| 9–12 | Answer where relevant; mention Remindly only as an answer. | Posts 5–6. Check Search Console for the queries people actually used — they will not match the table above. |
+| 1–2 | Ship the five site fixes, accuracy first. Text the ten people. Watch them set it up; time it. | Bing Webmaster Tools. Confirm the three posts are indexed. |
+| 3–4 | Sit with three seniors for a week. Publish the real setup time. | Nothing. |
+| 5–8 | Form the beta group. Monthly note to them. Join two communities; contribute only. | Post 4 — the setup/device post. First Search Console query read. |
+| 9–12 | Ask the first testimonials. Talk to one discharge planner. Answer where relevant; mention Remindly only as an answer. | Put two testimonials on the homepage. Post 5, only if the query report justifies it. |
 
 Review at 90 days against one number: **households using Remindly in a normal
 week.** Not signups, not visitors, not impressions.
 
 ## Open questions
 
-1. What is the founding story — did this come from your own family?
-2. Which community do you already belong to? The plan assumes none, which is the
-   weakest starting position; if you have one, it changes the order of Track A.
-3. Is free permanent, or free until it costs too much to run? The copy is written
-   to survive either answer, but it changes when to think about ads.
+1. ~~What is the founding story?~~ **Answered 2026-08-08: there isn't one.**
+   Level 2 now runs on beta-user stories and transparency instead.
+2. **Which community do you already belong to?** Still unanswered, and still the
+   weakest point in the plan. It assumes none, which is the hardest starting
+   position. If you do belong to one, Track A reorders around it.
+3. **Is free permanent, or free until it costs too much to run?** The copy
+   survives either answer, but it decides whether paid acquisition ever becomes
+   a question worth asking.
+4. **What is the real setup time?** Nobody has measured it. It is the first
+   objection, it is unanswerable from the code, and one stopwatch settles it.

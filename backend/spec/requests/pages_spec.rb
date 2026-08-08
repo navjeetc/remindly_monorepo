@@ -49,6 +49,72 @@ RSpec.describe "Pages", type: :request do
         expect(doc.at_css("meta[name='description']")&.[]("content")).to be_present
       end
 
+      # Early-user feedback, 2026-08: the page offered a nav "Sign in", a hero
+      # "Get started" and a "See how it works" for what is really one decision,
+      # and the primary did not say what you would be starting. One button
+      # carries the action, and its label names the outcome.
+      it "offers exactly one primary call to action, named by its outcome" do
+        get "/"
+
+        primaries = doc.css(".actions .btn-primary")
+        expect(primaries.length).to eq(1), "the hero should offer one primary action, found #{primaries.length}"
+        expect(primaries.first.text).to match(/set up reminders/i)
+        expect(primaries.first["href"]).to eq("/login")
+      end
+
+      # The first objection is practical — what device, is there an app — and it
+      # was answered five hundred words down, below an essay. It now sits above
+      # the first screenshot, which is where someone deciding whether to bother
+      # actually is.
+      it "answers the device question before the first screenshot" do
+        get "/"
+
+        panel = doc.at_css("section.setup")
+        expect(panel).to be_present, "the setup panel is gone"
+        expect(panel.at_css("h2").text).to match(/already use/i)
+        expect(panel.css("ol li").length).to eq(3)
+        expect(panel.text).to match(/nothing to install/i)
+
+        # Document order via XPath rather than Node#line: line numbers come from
+        # libxml2 and are not dependable — 0 or nil under some parse options,
+        # and unusable past 65535 lines — so a spec comparing them can fail on a
+        # DOM that is in exactly the right order.
+        first_shot = doc.at_css("figure.shot")
+        expect(first_shot).to be_present
+        expect(first_shot.xpath("preceding::section[contains(@class, 'setup')]")).not_to be_empty,
+          "the setup panel should come before the first screenshot"
+      end
+
+      # The senior's screen is the answer to "my mother will never use this",
+      # which is the objection that actually stops the buyer.
+      it "shows the senior's screen before the caregiver's" do
+        get "/"
+
+        srcs = doc.css("figure.shot img").map { |img| img["src"] }
+        expect(srcs.first).to eq("/screenshot-voice-reminders.webp")
+        expect(doc.at_css("figure.shot figcaption").text).to match(/no app to learn/i)
+      end
+
+      # Remindly observes a button press. It cannot observe a swallowed tablet,
+      # and medication is the wrong subject to be loose about — least of all in
+      # the meta description, which is the sentence Google prints and therefore
+      # the most-read claim on the site. The FAQ has always been careful here;
+      # this page was not.
+      it "never claims to know a dose was taken, including in the meta description" do
+        get "/"
+
+        description = doc.at_css("meta[name='description']")["content"]
+        expect(description).to match(/marked done/i)
+
+        # The FAQ deliberately asks "how do I know whether they actually took
+        # it?" — the reader's question, answered precisely. Nothing on this page
+        # has that excuse.
+        # "a missed dose" is the same overclaim pointed the other way, and it is
+        # the one that comes apart in practice — tablets taken, button not
+        # pressed.
+        expect(doc.at_css("body").text).not_to match(/\bdose is (taken|missed)\b|\bwhen they'?re taken\b/i)
+      end
+
       # The FAQ carries the long-tail search content and the FAQPage graph, and
       # was reachable from here only through one link in the closing paragraph
       # and the footer — both below everything on the page.
@@ -194,7 +260,11 @@ RSpec.describe "Pages", type: :request do
         end
 
         # They sit well below the fold, and this page is the one that has to
-        # stay fast.
+        # stay fast. The first screenshot moved up the document in 2026-08,
+        # which briefly looked like a reason to load it eagerly — but the hero,
+        # the buttons, the free note and the setup panel still run past the
+        # first screen, so it is not visible on arrival on any common viewport
+        # and eager loading only competes with the content that is.
         it "defers them until they are scrolled to" do
           expect(screenshots.map { |img| img["loading"] }).to all(eq("lazy"))
         end

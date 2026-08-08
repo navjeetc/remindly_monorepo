@@ -1,5 +1,16 @@
 <% content_for :title, "Remindly — free spoken reminders for a parent living on their own" %>
-<% content_for :description, "Remindly says reminders out loud at the right time, so a parent living on their own does not have to read a screen or open an app. You set them up from wherever you are, and for medication Remindly tells you when a dose is taken or missed — without phoning to ask. Free to use." %>
+<%#
+  This sentence is what Google prints under the result, which makes it the most
+  widely read claim on the site — so it is held to the same standard as the FAQ:
+  Remindly knows a dose was *marked done* on the device, and cannot know whether
+  a tablet was swallowed. "Taken" implies a verification this product does not
+  perform, and medication is the wrong place to be loose about it.
+
+  "Missed" is the same overclaim pointed the other way — it describes a dose
+  rather than an unmarked reminder, and the two come apart exactly when someone
+  takes their tablets and forgets to press the button.
+%>
+<% content_for :description, "Remindly says reminders out loud at the right time, so a parent living on their own does not have to read a screen or open an app. You set them up from wherever you are, and for medication Remindly emails you when a dose is marked done, or when the time passes and nobody marks it — without phoning to ask. Free to use." %>
 
 <%#
   Declares the product to search engines: what it is, who it is for, and that it
@@ -32,18 +43,89 @@
   You cannot be there for every tablet, every appointment, every glass of water.
   Remindly says each reminder out loud at the right time, so the person you care
   for hears it — and for the things that matter most, like medication, it tells
-  you when they're taken — or when they're not — without your having to ring and ask.
+  you when they mark it done, or when the time passes and nobody does — without
+  your having to ring and ask.
 </p>
 
+<%#
+  One action, named by its outcome. "Get started" said nothing about what you
+  would be starting, and sat beside a nav "Sign in" pointing at the same place —
+  three visible options for two things. The secondary is deliberately worded as
+  a detour rather than an alternative, so it reads as "not yet" instead of "or".
+%>
 <div class="actions">
-  <a class="btn btn-primary" href="<%= login_path %>">Get started — it's free</a>
-  <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works</a>
+  <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works first</a>
 </div>
 
+<%#
+  The three things a caregiver braces for on a free product. The old line sold
+  "no limit on how many reminders", which is a worry nobody arrives with.
+%>
 <p class="free-note">
-  <strong>Remindly is free to use.</strong> No card, no trial that runs out, no
-  limit on how many reminders you set.
+  <strong>Free — no card, no ads, no sales calls.</strong> No trial that quietly
+  ends, and no limit on how many reminders you set.
 </p>
+
+<%#
+  The practical objection, answered before anything else: what device, is there
+  an app, what do I actually have to do. These are the same three steps that
+  used to sit under "What it looks like at yours", roughly five hundred words
+  down — the content was right, its position was not.
+
+  There is deliberately no claim about how long setup takes. Nobody has timed
+  it, and inventing a number on the page a caregiver trusts with their parent's
+  medication is not a copy decision. Measure it, then say it here.
+%>
+<section class="setup">
+  <h2>Works with the tablet or computer they already use</h2>
+
+  <ol>
+    <li>
+      <strong>You create the reminders</strong> — medication, appointments, a
+      walk after lunch — from your own phone or computer, wherever you are.
+    </li>
+    <li>
+      <strong>Your parent hears them spoken aloud</strong> at home, without
+      having to read a screen or open an app.
+    </li>
+    <li>
+      <strong>You see what was marked done</strong>, and what wasn't — so
+      checking in does not have to mean another phone call.
+    </li>
+  </ol>
+
+  <p class="setup-foot">
+    Nothing to install and no app store account. Any device with a web browser
+    and a speaker will do — an old tablet, a laptop, the computer already on the
+    desk. Signing in is a link sent by email, so there is no password for anyone
+    to remember.
+  </p>
+</section>
+
+<%#
+  Real screenshots of the running app, not mockups — width and height are the
+  file's own dimensions so the browser reserves the space and the text below
+  does not jump when the image arrives.
+
+  The senior's screen comes first. The buyer is the adult child, but the
+  objection that stops them is "my mother will never use this", and that is
+  answered by a picture rather than a paragraph.
+
+  Still lazy-loaded, though. Moving it up the document did not move it above the
+  fold: the hero, the buttons, the free note and the setup panel run past the
+  first screen on a laptop and well past it on a phone, so this is roughly 40KB
+  fetched eagerly to compete with content the visitor can actually see.
+%>
+<figure class="shot">
+  <img src="/screenshot-voice-reminders.webp"
+       width="1400" height="1179" loading="lazy" decoding="async"
+       alt="The Remindly screen a senior sees: a heading reading My Reminders, a note that there are six reminders today, then each reminder as a large card — Take your morning medication at 8:00 AM with the note two white tablets with breakfast, and Have a glass of water at 10:30 AM — each with a big green Done button and a Snooze button beside it.">
+  <figcaption>
+    <strong>No app to learn. Just a familiar screen that speaks when it's time.</strong>
+    Everything is large, and there are only ever two things to press.
+  </figcaption>
+</figure>
 
 <h2>What it looks like at their end</h2>
 
@@ -60,36 +142,25 @@
   password to remember, no menus to get lost in.
 </p>
 
-<%#
-  Real screenshots of the running app, not mockups — width and height are the
-  file's own dimensions so the browser reserves the space and the text below
-  does not jump when the image arrives.
-%>
-<figure class="shot">
-  <img src="/screenshot-voice-reminders.webp"
-       width="1400" height="1179" loading="lazy" decoding="async"
-       alt="The Remindly screen a senior sees: a heading reading My Reminders, a note that there are six reminders today, then each reminder as a large card — Take your morning medication at 8:00 AM with the note two white tablets with breakfast, and Have a glass of water at 10:30 AM — each with a big green Done button and a Snooze button beside it.">
-  <figcaption>What sits on their screen. Everything is large, and there are only ever two things to press.</figcaption>
-</figure>
-
 <h2>What it looks like at yours</h2>
 
-<ol class="steps">
-  <li>
-    <strong>You set the reminders up</strong> — medication, appointments, a walk
-    after lunch — from your own phone or computer, wherever you happen to be.
-  </li>
-  <li>
-    <strong>They hear them at home</strong>, spoken aloud, without having to read
-    a screen or open an app.
-  </li>
-  <li>
-    <strong>Remindly tells you when it counts</strong> — you can see the whole day
-    at a glance, and for medication it can email you when a dose is taken, or when
-    one has been missed, so checking in does not have to mean another phone call asking
-    whether they remembered.
-  </li>
-</ol>
+<p>
+  You see the whole day at a glance from your own dashboard. For medication,
+  Remindly emails you when a dose is <strong>marked done</strong> on their
+  device, and again if the time passes and it has not been — so checking in does
+  not have to mean another phone call asking whether they remembered.
+</p>
+
+<div class="note">
+  <p>
+    <strong>What "done" means, and what it doesn't.</strong> Remindly records
+    that someone pressed <strong>Done</strong> on the reminder. That is a good
+    signal and it is not proof: it cannot tell you a tablet was actually
+    swallowed, and it is not a substitute for a pill dispenser, a carer or
+    medical advice. If a missed dose would be dangerous, Remindly should not be
+    the only thing standing between your parent and that dose.
+  </p>
+</div>
 
 <p>
   Alongside the reminders that repeat, there is a shared list of the one-off
