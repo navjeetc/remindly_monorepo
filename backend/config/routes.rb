@@ -25,6 +25,7 @@ Rails.application.routes.draw do
       end
     end
     resources :audit_logs, only: [ :index, :show ]
+    resources :traffic, only: [ :index ]
   end
 
   # Public pages (no authentication required)
