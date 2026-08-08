@@ -15,19 +15,32 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>⚠️ Reminder missed</h1>
+      <h1>⚠️ Not marked done</h1>
     </div>
 
     <div class="content">
       <p>Hi <%= @caregiver.display_name %>,</p>
 
       <div class="alert">
-        <strong><%= @senior.display_name %> has not completed <%= @reminder.title %>.</strong>
+        <strong><%= @senior.display_name %> has not marked <%= @reminder.title %> as done.</strong>
       </div>
 
       <% if @scheduled_at %>
-        <p>It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and was not completed.</p>
+        <p>It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and has not been marked done since.</p>
       <% end %>
+
+      <%#
+        The caveat that matters more than the one on the completed email. This
+        notification says a button was not pressed, and the most likely
+        explanation is that it was not pressed — but "did it and forgot to say
+        so" is common enough that leading a caregiver straight to alarm, before
+        they have picked up the phone, is the wrong default.
+      %>
+      <p style="color: #6b7280; font-size: 14px;">
+        This means nobody pressed <strong>Done</strong> on their device. It does
+        not necessarily mean it was not done — they may have done it without
+        marking it.
+      </p>
 
       <div style="text-align: center; margin: 30px 0;">
         <a href="<%= @dashboard_url %>" class="button" style="color: #ffffff; text-decoration: none;">View <%= @senior.display_name %>'s dashboard</a>

@@ -4,18 +4,24 @@ class ReminderActivityMailer < ApplicationMailer
   # fallback for so long. Both now inherit the sender from ApplicationMailer
   # instead of restating it.
 
-  # A senior completed a reminder (of a category the caregiver opted into).
+  # Subjects say what Remindly actually observed — that Done was pressed, or
+  # that it was not — rather than what a caregiver might infer from it. For a
+  # medication reminder "Mom completed Metformin" is a claim about a dose; all
+  # this product knows is that a button was pressed on a device. The distinction
+  # is invisible on a good day and the whole ballgame on a bad one.
+
+  # A senior marked a reminder done (of a category the caregiver opted into).
   # Params: caregiver, senior, reminder, occurrence
   def completed
     setup
-    mail(to: @caregiver.email, subject: "#{@senior.display_name} completed #{@reminder.title}")
+    mail(to: @caregiver.email, subject: "#{@senior.display_name} marked #{@reminder.title} as done")
   end
 
-  # A senior missed a reminder (the sweep marked it missed).
+  # Nobody marked the reminder done before the sweep closed it out.
   # Params: caregiver, senior, reminder, occurrence
   def missed
     setup
-    mail(to: @caregiver.email, subject: "#{@senior.display_name} missed #{@reminder.title}")
+    mail(to: @caregiver.email, subject: "#{@senior.display_name} hasn't marked #{@reminder.title} as done")
   end
 
   private

@@ -12,6 +12,13 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       .public_send(action)
   end
 
+  # body.encoded is quoted-printable, which inserts soft "=\n" breaks wherever
+  # the 76th column falls — so asserting on a phrase against it passes or fails
+  # on line-wrap luck rather than on the copy. Decode both parts and read those.
+  def readable(mail)
+    [ mail.html_part, mail.text_part ].compact.map(&:decoded).join("\n")
+  end
+
   describe "#completed" do
     let(:mail) { mail_for(:completed) }
 
@@ -27,11 +34,23 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     end
 
     it "names the senior and the reminder in the subject" do
-      expect(mail.subject).to eq("Mom completed Metformin")
+      expect(mail.subject).to eq("Mom marked Metformin as done")
     end
 
     it "mentions the senior and reminder in the body" do
       expect(mail.body.encoded).to include("Mom").and include("Metformin")
+    end
+
+    # The product observes a button press and nothing more. On a medication
+    # reminder, "Mom completed Metformin" reads as a claim about a dose, and a
+    # caregiver deciding whether to drive over is entitled to know which of the
+    # two they have been told. Guarded in both directions so a future edit
+    # cannot quietly reintroduce the stronger claim.
+    it "claims only that the reminder was marked done, never that a dose was taken" do
+      expect(readable(mail)).to include("marked Metformin as done")
+      expect(readable(mail)).to match(/cannot confirm/i)
+      expect(mail.subject).not_to match(/\btook\b|\btaken\b/i)
+      expect(readable(mail)).not_to match(/\btook\b|\btaken\b/i)
     end
 
     # Copy must be category-neutral now that hydration/routine can notify too.
@@ -58,11 +77,18 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     let(:mail) { mail_for(:missed) }
 
     it "names the senior and the reminder in the subject" do
-      expect(mail.subject).to eq("Mom missed Metformin")
+      expect(mail.subject).to eq("Mom hasn't marked Metformin as done")
     end
 
-    it "says the reminder was not completed" do
-      expect(mail.body.encoded).to include("has not completed")
+    it "says the reminder was not marked done" do
+      expect(readable(mail)).to include("has not marked Metformin as done")
+    end
+
+    # The alarming direction of the same problem. An unmarked reminder is not
+    # evidence of a skipped dose — forgetting to press Done is at least as
+    # likely — and this email is read by someone deciding whether to panic.
+    it "says an unmarked reminder is not proof the thing was not done" do
+      expect(readable(mail)).to match(/does not necessarily mean/i)
     end
 
     it "does not describe the reminder as medication" do
