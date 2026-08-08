@@ -5,8 +5,12 @@
   Remindly knows a dose was *marked done* on the device, and cannot know whether
   a tablet was swallowed. "Taken" implies a verification this product does not
   perform, and medication is the wrong place to be loose about it.
+
+  "Missed" is the same overclaim pointed the other way — it describes a dose
+  rather than an unmarked reminder, and the two come apart exactly when someone
+  takes their tablets and forgets to press the button.
 %>
-<% content_for :description, "Remindly says reminders out loud at the right time, so a parent living on their own does not have to read a screen or open an app. You set them up from wherever you are, and for medication Remindly emails you when a dose is marked done — or missed — without phoning to ask. Free to use." %>
+<% content_for :description, "Remindly says reminders out loud at the right time, so a parent living on their own does not have to read a screen or open an app. You set them up from wherever you are, and for medication Remindly emails you when a dose is marked done, or when the time passes and nobody marks it — without phoning to ask. Free to use." %>
 
 <%#
   Declares the product to search engines: what it is, who it is for, and that it
@@ -86,7 +90,7 @@
       having to read a screen or open an app.
     </li>
     <li>
-      <strong>You see what was marked done</strong>, and what was missed — so
+      <strong>You see what was marked done</strong>, and what wasn't — so
       checking in does not have to mean another phone call.
     </li>
   </ol>
@@ -104,15 +108,18 @@
   file's own dimensions so the browser reserves the space and the text below
   does not jump when the image arrives.
 
-  The senior's screen comes first and is the first image on the page. The buyer
-  is the adult child, but the objection that stops them is "my mother will never
-  use this", and that is answered by a picture rather than a paragraph. Not
-  lazy-loaded, unlike the one below: it is above the fold on most screens, and a
-  lazy image there just renders late.
+  The senior's screen comes first. The buyer is the adult child, but the
+  objection that stops them is "my mother will never use this", and that is
+  answered by a picture rather than a paragraph.
+
+  Still lazy-loaded, though. Moving it up the document did not move it above the
+  fold: the hero, the buttons, the free note and the setup panel run past the
+  first screen on a laptop and well past it on a phone, so this is roughly 40KB
+  fetched eagerly to compete with content the visitor can actually see.
 %>
 <figure class="shot">
   <img src="/screenshot-voice-reminders.webp"
-       width="1400" height="1179" decoding="async"
+       width="1400" height="1179" loading="lazy" decoding="async"
        alt="The Remindly screen a senior sees: a heading reading My Reminders, a note that there are six reminders today, then each reminder as a large card — Take your morning medication at 8:00 AM with the note two white tablets with breakfast, and Have a glass of water at 10:30 AM — each with a big green Done button and a Snooze button beside it.">
   <figcaption>
     <strong>No app to learn. Just a familiar screen that speaks when it's time.</strong>

@@ -75,10 +75,14 @@ RSpec.describe "Pages", type: :request do
         expect(panel.css("ol li").length).to eq(3)
         expect(panel.text).to match(/nothing to install/i)
 
-        # Nokogiri preserves document order, so comparing positions is enough.
+        # Document order via XPath rather than Node#line: line numbers come from
+        # libxml2 and are not dependable — 0 or nil under some parse options,
+        # and unusable past 65535 lines — so a spec comparing them can fail on a
+        # DOM that is in exactly the right order.
         first_shot = doc.at_css("figure.shot")
         expect(first_shot).to be_present
-        expect(panel.line).to be < first_shot.line
+        expect(first_shot.xpath("preceding::section[contains(@class, 'setup')]")).not_to be_empty,
+          "the setup panel should come before the first screenshot"
       end
 
       # The senior's screen is the answer to "my mother will never use this",
@@ -105,7 +109,10 @@ RSpec.describe "Pages", type: :request do
         # The FAQ deliberately asks "how do I know whether they actually took
         # it?" — the reader's question, answered precisely. Nothing on this page
         # has that excuse.
-        expect(doc.at_css("body").text).not_to match(/\bdose is taken\b|\bwhen they'?re taken\b/i)
+        # "a missed dose" is the same overclaim pointed the other way, and it is
+        # the one that comes apart in practice — tablets taken, button not
+        # pressed.
+        expect(doc.at_css("body").text).not_to match(/\bdose is (taken|missed)\b|\bwhen they'?re taken\b/i)
       end
 
       # The FAQ carries the long-tail search content and the FAQPage graph, and
@@ -252,15 +259,14 @@ RSpec.describe "Pages", type: :request do
           end
         end
 
-        # This page has to stay fast, so anything the visitor has to scroll to
-        # waits. The first screenshot moved above the fold in 2026-08 and is now
-        # the largest thing painted on arrival — deferring *that* one delays the
-        # paint it was supposed to speed up, which is why the rule is "every
-        # screenshot but the first" rather than "every screenshot".
-        it "defers every screenshot except the one above the fold" do
-          expect(screenshots.first["loading"]).to be_nil,
-            "the first screenshot is above the fold and should not be lazy-loaded"
-          expect(screenshots.drop(1).map { |img| img["loading"] }).to all(eq("lazy"))
+        # They sit well below the fold, and this page is the one that has to
+        # stay fast. The first screenshot moved up the document in 2026-08,
+        # which briefly looked like a reason to load it eagerly — but the hero,
+        # the buttons, the free note and the setup panel still run past the
+        # first screen, so it is not visible on arrival on any common viewport
+        # and eager loading only competes with the content that is.
+        it "defers them until they are scrolled to" do
+          expect(screenshots.map { |img| img["loading"] }).to all(eq("lazy"))
         end
       end
     end
