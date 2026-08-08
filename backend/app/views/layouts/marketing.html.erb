@@ -194,6 +194,55 @@
       ol.steps { padding-left: 1.25rem; margin: 0 0 1.5rem; }
       ol.steps li { margin-bottom: 0.75rem; }
 
+      /* The first objection a caregiver has is practical, not emotional: what
+         does my parent need, is there an app, how long will this take me. That
+         answer existed on this page but sat five hundred words down, under an
+         essay, so it now sits directly beneath the call to action. */
+      .setup {
+        background: var(--bg-soft);
+        border: 1px solid var(--line);
+        border-radius: 0.9rem;
+        padding: 1.5rem;
+        margin: 0 0 2.5rem;
+      }
+      .setup h2 { margin: 0 0 1.25rem; font-size: 1.25rem; }
+      .setup ol {
+        list-style: none;
+        counter-reset: step;
+        display: grid;
+        gap: 1.25rem;
+        padding: 0;
+        margin: 0;
+      }
+      .setup li {
+        counter-increment: step;
+        position: relative;
+        padding-left: 2.5rem;
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+      .setup li::before {
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: -0.1rem;
+        width: 1.8rem;
+        height: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--brand);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .setup-foot { margin: 1.25rem 0 0; font-size: 1rem; color: var(--muted); }
+
+      @media (min-width: 40rem) {
+        .setup ol { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+      }
+
       .note {
         background: var(--bg-soft);
         border-left: 4px solid var(--brand);
@@ -413,7 +462,10 @@
           --bg: #14181e;
           --bg-soft: #1b212a;
         }
+        /* --brand lightens in dark mode, so white text on it fails contrast.
+           Same reason, same fix, for the numbered step markers. */
         .btn-primary { color: #14181e; }
+        .setup li::before { color: #14181e; }
       }
     </style>
   </head>
