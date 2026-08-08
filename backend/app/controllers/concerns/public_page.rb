@@ -14,9 +14,36 @@ module PublicPage
     layout "marketing"
 
     after_action :drop_analytics_cookies_for_anonymous_visitors
+    after_action :count_this_page_view
   end
 
   private
+
+  # An aggregate tally, so that "did that post send anyone" has an answer. See
+  # PageCount for what is and is not recorded — the short version is that no row
+  # describes a person, and the user agent and referrer path are read and thrown
+  # away rather than stored.
+  #
+  # Counting happens here rather than in Ahoy on purpose: turning Ahoy back on
+  # for these pages would reinstate the visit row and the cookie, which is the
+  # thing the concern above exists to prevent.
+  def count_this_page_view
+    return unless request.get?
+    return unless response.successful?
+    return unless request.format.html?
+
+    PageCount.record!(
+      path: request.path,
+      referrer: request.referer,
+      source: params[:from],
+      user_agent: request.user_agent
+    )
+  rescue StandardError => e
+    # A counter is never worth failing a page over. The marketing pages are the
+    # ones strangers and search engines see, and a 500 here would cost more than
+    # the measurement is worth.
+    Rails.logger.warn("PageCount failed for #{request.path}: #{e.class}: #{e.message}")
+  end
 
   # Excluding these paths in Ahoy::Store stops the visit row being written, but
   # Ahoy still sets its ahoy_visitor and ahoy_visit cookies, so an anonymous
