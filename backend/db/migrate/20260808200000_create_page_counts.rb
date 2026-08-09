@@ -15,7 +15,7 @@
 ## Every dimension defaults to "" rather than NULL. SQLite treats NULLs as
 ## distinct in a unique index, so a nullable column would defeat the ON CONFLICT
 ## clause the counter relies on and quietly write a new row per request.
-class CreatePageCounts < ActiveRecord::Migration[8.0]
+class CreatePageCounts < ActiveRecord::Migration[8.1]
   def change
     create_table :page_counts do |t|
       t.date :day, null: false

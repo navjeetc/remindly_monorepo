@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A count of public page views, that records nobody**: the marketing pages set
+  no analytics cookie and write no Ahoy visit, which is what makes the privacy
+  policy true — and it left us unable to answer the only question that mattered
+  after posting about Remindly on a forum: did it send nobody, or send people
+  who bounced? Those call for opposite responses, and the fallback of grepping
+  the server logs holds about a week. `PageCount` keeps one row per day per
+  page, referring site, campaign tag and human/bot, with a counter. No visitor
+  id, no IP address, no user agent, no cookie: the user agent is read to
+  classify the request and thrown away, and a referrer is reduced to its host
+  because referrer paths carry search terms. A `?from=` tag on a link we share
+  survives forums that strip the referrer. Readable at **Admin → Traffic**, and
+  deleted after 90 days by `PruneAnalyticsJob`, which is what the privacy policy
+  promises. The policy is updated to describe exactly what is now kept.
 - **The site can be found**: `/sitemap.xml`, generated from the routes and the
   posts on disk rather than kept as a static file, and advertised in
   `robots.txt`. `SoftwareApplication` structured data declaring a price of 0 —

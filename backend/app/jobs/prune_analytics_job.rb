@@ -41,10 +41,13 @@ class PruneAnalyticsJob < ApplicationJob
     # rows for years would make that sentence false. Same cutoff, one promise.
     page_counts = PageCount.where(day: ...cutoff.to_date).delete_all
 
+    # Two sentences, because the two halves are removed by different rules and a
+    # single parenthetical implying otherwise is misleading in the one place it
+    # gets read — checking that the 90-day promise is being kept.
     Rails.logger.info(
-      "PruneAnalyticsJob: removed #{visits} visits, #{events} events and " \
-      "#{page_counts} page counts (before #{cutoff.to_date}, undated, or " \
-      "attached to a removed visit)"
+      "PruneAnalyticsJob: removed #{visits} visits and #{events} events " \
+      "(before #{cutoff.to_date}, undated, or attached to a removed visit). " \
+      "Removed #{page_counts} page counts (day before #{cutoff.to_date})."
     )
 
     { visits: visits, events: events, page_counts: page_counts }

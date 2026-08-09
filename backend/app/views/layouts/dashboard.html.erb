@@ -36,6 +36,7 @@
               <% if current_user&.role_admin? %>
                 <%= link_to "Users", admin_users_path, class: nav_link_class(admin_users_path) %>
                 <%= link_to "Audit Logs", admin_audit_logs_path, class: nav_link_class(admin_audit_logs_path) %>
+                <%= link_to "Traffic", admin_traffic_index_path, class: nav_link_class(admin_traffic_index_path) %>
               <% end %>
             </div>
           </div>
