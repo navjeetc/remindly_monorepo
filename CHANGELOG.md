@@ -69,6 +69,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The task list shows a senior's name** rather than their email address.
 
 ### Fixed
+- **Production could not boot, and CI could not have known.** A deploy failed
+  with `NameError: uninitialized constant MailDeliveryJob` — the container
+  exited 1 and never became healthy. Kamal kept the previous version serving, so
+  there was no outage, but nothing shipped.
+  `config/initializers/postmark.rb` touched `ActionMailer::Base` during
+  initialization, which fires the `on_load` hook and constantizes the configured
+  `delivery_job` before autoloading can resolve a constant from `app/`. The
+  initializer was pure duplication — `config/environments/production.rb` already
+  sets both `delivery_method` and `postmark_settings` — so deleting it is the
+  whole fix. It was also wrapped in `if Rails.env.production?`, meaning its
+  contents ran in exactly one environment, and that environment was the one no
+  test and no CI job had ever started: 407 green specs against an app that could
+  not start. CI now boots the production environment on every PR, using
+  `SECRET_KEY_BASE_DUMMY` so it needs no secrets.
 - **Stop mailing addresses that no longer exist.** `CheckCoverageGapsJob` mailed
   two demo accounts every morning from 24 July to 9 August — 44 failed jobs,
   every one a `Postmark::InactiveRecipientError`. Both addresses had hard
