@@ -29,6 +29,39 @@ RSpec.describe CoverageGapNotificationService do
         .not_to have_enqueued_mail(CoverageGapMailer, :notify_gap)
           .with(hash_including(caregiver: opted_out))
     end
+
+    # This job mailed two hard-bounced addresses every morning for sixteen days,
+    # producing 44 failed jobs and aiming a steady trickle of mail at mailboxes
+    # that do not exist — from the domain that also carries magic-link logins.
+    # Postmark refuses these sends anyway, so the only thing attempting them
+    # bought was the reputation damage.
+    context "when a caregiver's address has hard bounced" do
+      let!(:bounced) do
+        create(:user, :caregiver, name: "Gone", email: "gone@example.com",
+          email_undeliverable_at: 1.day.ago).tap do |caregiver|
+          CaregiverLink.create!(senior: senior, caregiver: caregiver)
+        end
+      end
+
+      it "does not email them" do
+        expect { described_class.check_and_notify(senior) }
+          .not_to have_enqueued_mail(CoverageGapMailer, :notify_gap)
+            .with(hash_including(caregiver: bounced))
+      end
+
+      # Their email being dead is no reason to hide the gap from them inside the
+      # app, where they can still see it.
+      it "still creates their in-app notification" do
+        expect { described_class.check_and_notify(senior) }
+          .to change { bounced.notifications.count }.by(1)
+      end
+
+      it "still emails everyone else" do
+        expect { described_class.check_and_notify(senior) }
+          .to have_enqueued_mail(CoverageGapMailer, :notify_gap)
+            .with(hash_including(caregiver: opted_in)).once
+      end
+    end
   end
 
   describe ".notify_gap_filled" do

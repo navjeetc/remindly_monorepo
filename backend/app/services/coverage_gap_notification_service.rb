@@ -18,8 +18,16 @@ class CoverageGapNotificationService
         create_gap_notification(caregiver, senior, gaps)
       end
 
-      # Send email notifications
-      caregivers.each do |caregiver|
+      # Send email notifications.
+      #
+      # Only to addresses that can still receive mail. A hard-bounced address is
+      # refused by Postmark anyway, so the send cannot succeed — all it does is
+      # burn a job, record a failure every morning, and aim more mail at a
+      # mailbox that does not exist from the same domain that carries magic-link
+      # logins. The in-app notification above is deliberately not filtered: the
+      # caregiver's email being dead is no reason to hide the gap from them
+      # inside the app.
+      caregivers.deliverable.each do |caregiver|
         CoverageGapMailer.notify_gap(
           caregiver: caregiver,
           senior: senior,

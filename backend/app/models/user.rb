@@ -39,6 +39,44 @@ class User < ApplicationRecord
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
 
+  # Addresses a mail provider has permanently refused — a hard bounce, meaning
+  # the mailbox does not exist. Postmark marks such an address inactive and
+  # rejects every later send, so continuing to try achieves nothing and actively
+  # costs something: mailbox providers judge a sender on how much mail it aims
+  # at addresses that are not there, and every message here now leaves the one
+  # address that magic-link logins also use.
+  #
+  # Notification mail should be sent to `deliverable` users only. Magic links
+  # are deliberately not filtered — someone signing in is asking for that one
+  # message, and refusing to try would turn a bounced address into a silent
+  # lockout with nothing in the logs.
+  scope :deliverable, -> { where(email_undeliverable_at: nil) }
+
+  def email_deliverable? = email_undeliverable_at.nil?
+
+  # Idempotent: the first refusal is the one worth dating, and a later one
+  # should not keep moving the timestamp forward.
+  #
+  # Done as a conditional UPDATE rather than check-then-write. Two mail jobs for
+  # the same address running at once — one coverage gap, one missed dose, which
+  # is an ordinary morning — can both read nil before either writes, and the
+  # later write would then quietly replace the earlier date. The WHERE clause
+  # makes the database pick a winner instead.
+  def mark_email_undeliverable!(at: Time.current)
+    claimed = self.class.where(id: id, email_undeliverable_at: nil)
+      .update_all(email_undeliverable_at: at)
+
+    # Keep this instance honest either way: adopt our own timestamp if we won,
+    # and the winner's if we did not, rather than going on believing the address
+    # is still good.
+    recorded = claimed.positive? ? at : self.class.where(id: id).pick(:email_undeliverable_at)
+
+    write_attribute(:email_undeliverable_at, recorded)
+    clear_attribute_changes([ :email_undeliverable_at ])
+
+    self
+  end
+
   # Class methods to get users by role
   def self.caregivers
     where(role: :caregiver)

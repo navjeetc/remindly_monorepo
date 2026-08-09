@@ -96,6 +96,39 @@ RSpec.describe ReminderNotificationService do
     end
   end
 
+  # This path fires on every completed and missed reminder — several times a day
+  # per senior — so an address Postmark has permanently refused would generate
+  # far more discarded jobs here than the daily coverage-gap mail ever did.
+  describe "a caregiver whose address has hard bounced" do
+    let(:bounced) do
+      create(:user, :caregiver, email: "gone@example.com", name: "Gone",
+        email_undeliverable_at: 1.day.ago)
+    end
+
+    it "is not emailed" do
+      link!(bounced)
+
+      expect { described_class.notify_acknowledged(occurrence_for) }
+        .not_to have_enqueued_mail(ReminderActivityMailer, :completed)
+    end
+
+    # A dead mailbox is no reason to hide a missed dose from them in the app.
+    it "still gets the in-app notification" do
+      link!(bounced)
+
+      expect { described_class.notify_acknowledged(occurrence_for) }
+        .to change { bounced.notifications.count }.by(1)
+    end
+
+    it "does not stop the other caregivers being emailed" do
+      link!(bounced)
+      link!(caregiver)
+
+      expect { described_class.notify_acknowledged(occurrence_for) }
+        .to have_enqueued_mail(ReminderActivityMailer, :completed).once
+    end
+  end
+
   describe ".notify_missed" do
     it "creates a missed notification and enqueues the missed email" do
       link!(caregiver)
