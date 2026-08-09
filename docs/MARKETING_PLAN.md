@@ -6,8 +6,9 @@ Written 2026-07-26, revised 2026-08-08. Framework: *The Minimalist Entrepreneur*
 **What changed in the 2026-08-08 revision.** Three facts arrived that the first
 draft had to guess at, and each one moves the plan:
 
-1. **Google Search Console is verified and the sitemap is submitted.** Bing is
-   not. The blocking item at the top of the last draft is cleared.
+1. **Google Search Console is verified and the sitemap is submitted** (Bing
+   followed on 2026-08-09). The blocking item at the top of the last draft is
+   cleared.
 2. **Track A has not started.** Zero to two households use Remindly in a normal
    week. Meanwhile Track B shipped three posts, a second printable, a top nav
    and a full structured-data pass. The last draft said *do not skip to Track B
@@ -214,17 +215,41 @@ another quarter of posts.
 - Mailing list with welcome + admin notification, all mail from
   `hello@remindly.care`
 - Top nav: How it works · FAQ · Blog · Sign in
-- **Google Search Console verified, sitemap submitted**
+- **Google Search Console and Bing Webmaster Tools both verified**, sitemap
+  submitted to each (Google 2026-08-08, Bing 2026-08-09)
+- **The five homepage fixes from the first user feedback** (2026-08-08): one
+  primary CTA named by its outcome, the "works with the tablet or computer they
+  already use" panel above the fold, the senior's screen as the first image,
+  "no card, no ads, no sales calls", and the accuracy pass that replaced
+  "taken" and "missed" with "marked done" everywhere including the mailers
+- **A traffic counter** (2026-08-09) — see below
 
-### The three things left, and then stop
+### Measurement: the gap that made this plan guesswork
 
-1. **Bing Webmaster Tools.** Fifteen minutes. Bing skews older than Google,
-   which for this audience is not a rounding error.
-2. **Check that the three posts are actually indexed.** Two weeks after a
-   submitted sitemap, Search Console's coverage report gives a real answer. Zero
-   indexed pages after a submitted sitemap is a technical fault worth finding
-   now, not in November.
-3. **Read the query report monthly.** The queries people actually type will not
+Until 2026-08-09 the site could not tell you whether any marketing worked. The
+public pages set no analytics cookie and write no visit row, which is what makes
+the privacy policy true — and it meant a forum post that produced no signups was
+indistinguishable from one nobody saw. Those call for opposite responses.
+
+`PageCount` now keeps a daily aggregate: page, referring site, campaign tag,
+human or bot. No cookie, no IP, no user agent, no visitor id — no row describes a
+person. It is at **Admin → Traffic**, and rows are deleted after 90 days.
+
+**Share every link as `https://www.remindly.care/?from=<place>`.** Forums and
+apps routinely strip the referrer; the tag is what survives, and it is the
+difference between "maybe some people came" and a number.
+
+Two things to know when reading it. The human figure **errs high** — anything
+whose user agent does not match a known bot pattern counts as human. And
+crawlers will dominate the raw totals for a while: the week before this was
+built, the logs showed roughly 300 crawler hits against 8–10 human views.
+
+### The two things left, and then stop
+
+1. **Check that the pages are actually indexed**, in both consoles, about a week
+   after submission. Zero indexed pages after a submitted sitemap is a technical
+   fault worth finding now, not in November.
+2. **Read the query report monthly.** The queries people actually type will not
    match the table below. That list is worth more than any keyword tool, and it
    is the only input that should trigger writing another post.
 
@@ -379,7 +404,7 @@ using it.
 
 | Weeks | Track A — the work | Track B — maintenance only |
 |---|---|---|
-| 1–2 | Ship the five site fixes, accuracy first. Text the ten people. Watch them set it up; time it. | Bing Webmaster Tools. Confirm the three posts are indexed. |
+| 1–2 | ~~Ship the five site fixes~~ **done**. Text the ten people. Watch them set it up; time it. | ~~Bing~~ **done**. Confirm the pages are indexed in both consoles. |
 | 3–4 | Sit with three seniors for a week. Publish the real setup time. | Nothing. |
 | 5–8 | Form the beta group. Monthly note to them. Join two communities; contribute only. | Post 4 — the setup/device post. First Search Console query read. |
 | 9–12 | Ask the first testimonials. Talk to one discharge planner. Answer where relevant; mention Remindly only as an answer. | Put two testimonials on the homepage. Post 5, only if the query report justifies it. |
