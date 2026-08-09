@@ -19,10 +19,22 @@ production:
     queue: default
     schedule: every day at 3am
 
+  # Every schedule in this file is UTC — config.time_zone is left at its default
+  # in config/application.rb, so Time.zone is UTC in production. That is not
+  # obvious when writing "8am", and it mattered here: this job emails a caregiver
+  # to say nobody is scheduled to look after their parent on an upcoming day, and
+  # at 8am UTC it arrived at 4am Eastern and 1am Pacific — buried under overnight
+  # mail by the time anyone was awake to act on it.
+  #
+  # 12:00 UTC is 8am Eastern in summer and 7am in winter, which is what "8am" was
+  # reaching for. A fixed UTC hour cannot be right for every recipient; if
+  # caregivers ever span more timezones than they do now, the answer is to run
+  # this hourly and mail each one at 8am in their own tz, which users already
+  # carry on `tz`.
   check_coverage_gaps:
     class: CheckCoverageGapsJob
     queue: default
-    schedule: every day at 8am
+    schedule: "0 12 * * *"
 
   mark_missed_occurrences:
     class: MarkMissedOccurrencesJob

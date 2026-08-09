@@ -83,6 +83,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test and no CI job had ever started: 407 green specs against an app that could
   not start. CI now boots the production environment on every PR, using
   `SECRET_KEY_BASE_DUMMY` so it needs no secrets.
+- **The coverage gap email arrives in the morning, not at 4am.** Schedules in
+  `config/recurring.yml` are UTC, because `config.time_zone` is left at its
+  default — which is not obvious when writing "8am". This job emails a caregiver
+  to say nobody is scheduled to look after their parent on an upcoming day, and
+  at 8am UTC it landed at 4am Eastern and 1am Pacific, buried under overnight
+  mail by the time anyone was awake to act on it. Now `0 12 * * *` — 8am Eastern
+  in summer, 7am in winter. A new spec guards the whole file, because a mistake
+  in it is silent by construction: a schedule that does not parse, or a class
+  that does not exist, means the task simply never runs, which looks exactly like
+  a feature nobody uses.
 - **Stop mailing addresses that no longer exist.** `CheckCoverageGapsJob` mailed
   two demo accounts every morning from 24 July to 9 August — 44 failed jobs,
   every one a `Postmark::InactiveRecipientError`. Both addresses had hard
