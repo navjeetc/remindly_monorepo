@@ -52,6 +52,16 @@ class ReminderNotificationService
       next if already_notified?(caregiver, occurrence, kind)
 
       create_notification(caregiver, senior, reminder, occurrence, kind)
+
+      # Same rule as coverage gaps, and it matters more here: a coverage gap
+      # mails once a day, while this fires on every completed and missed
+      # reminder — several times a day per senior. An address Postmark has
+      # permanently refused would generate that many discarded jobs and that
+      # many pointless API calls, which is the noise this is meant to end
+      # rather than relocate. The in-app notification above is unconditional:
+      # a dead mailbox is no reason to hide a missed dose from a caregiver.
+      next unless caregiver.email_deliverable?
+
       deliver_email(caregiver, senior, reminder, occurrence, kind)
     end
   end

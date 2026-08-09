@@ -71,6 +71,32 @@ RSpec.describe MailDeliveryJob do
 
     # The date of the first refusal is the useful one when someone asks why they
     # stopped hearing from us; a later bounce should not move it.
+    # The race, reproduced exactly: another job has already written the
+    # timestamp, and this instance was loaded before that happened, so its
+    # in-memory copy still says nil. A check-then-write would sail past the
+    # guard and overwrite the earlier date.
+    it "does not overwrite a date another job recorded first" do
+      first = 2.days.ago.change(usec: 0)
+      User.where(id: user.id).update_all(email_undeliverable_at: first)
+      expect(user.email_undeliverable_at).to be_nil, "the in-memory copy should still be stale"
+
+      user.mark_email_undeliverable!(at: Time.current)
+
+      expect(user.reload.email_undeliverable_at).to be_within(1.second).of(first)
+    end
+
+    # Losing the race must not leave this instance believing the address is fine.
+    it "adopts the winner's date in memory" do
+      first = 2.days.ago.change(usec: 0)
+      User.where(id: user.id).update_all(email_undeliverable_at: first)
+
+      user.mark_email_undeliverable!
+
+      expect(user.email_undeliverable_at).to be_within(1.second).of(first)
+      expect(user).not_to be_email_deliverable
+      expect(user).not_to be_changed, "the attribute should not be left dirty"
+    end
+
     it "keeps the first refusal date" do
       job_raising(inactive_error(user.email)).perform_now
       first = user.reload.email_undeliverable_at
