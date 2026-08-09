@@ -2,9 +2,14 @@
 
 Status: **proposed**, not built. Written 2026-08-09.
 
-Depends on [`REMINDER_LINKS_DESIGN.md`](REMINDER_LINKS_DESIGN.md), which is also
-proposed and not built. This document does not restate it and should not be
-implemented without it.
+Depends on `docs/REMINDER_LINKS_DESIGN.md`, which is **not on `main`** — it lives
+on the unmerged branch `docs/reminder-links` (commit `a4fa464`, written
+2026-07-27) and is itself proposed rather than built. Deliberately not linked
+relatively, because that link would 404 for anyone reading this from `main`.
+
+This document does not restate it and should not be implemented without it. If
+that branch is abandoned, this proposal needs rewriting rather than adapting: the
+token model is load-bearing here.
 
 ## The problem
 
@@ -71,14 +76,14 @@ are told who set this up and can refuse.
 
 These are the things that must be impossible, not merely discouraged.
 
-1. **A caregiver-created account is always a new account.** If the address
-   already exists, this path must refuse and fall back to consent-based pairing.
-   Auto-linking to an existing account would hand over an existing person's
+1. **A caregiver-created account is always a new account**, never an attachment
+   to an existing one. Auto-linking would hand over an existing person's
    history — their reminders, their acknowledgements, their other caregivers —
    to whoever typed their address.
-2. **The response is identical whether or not the address exists.** Otherwise the
-   form answers "does this person use Remindly?" to anyone who asks, which is a
-   disclosure in its own right.
+2. **This flow never asks for the senior's email address.** See "Do not ask for
+   the senior's address" below. This is what makes invariant 1 structural: with
+   no address there is no lookup, so there is nothing to collide with and no way
+   to ask the form whether somebody already uses Remindly.
 3. **Nothing happens until the senior's device opens the link.** No mail, no
    speech, no acknowledgements, and nothing for the caregiver to look at.
 4. **The senior can always refuse.** The first screen names who set this up and
@@ -95,13 +100,77 @@ Emailing an address the app has never verified means any signed-in user can send
 mail from `hello@remindly.care` to an arbitrary address. Bounces and complaints
 follow. Every message in this app — including magic links — leaves that same
 domain, so the end state of poor sender hygiene is that **nobody can log in**.
-That is not hypothetical: see the `Fixed` entry for 2026-08-09 in the changelog,
-where mailing two non-existent addresses for sixteen days was worth a PR of its
-own.
+That is not hypothetical: see the changelog entry **"Stop mailing addresses that
+no longer exist"** under `Unreleased` → `Fixed`, where mailing two non-existent
+addresses for sixteen days was worth a PR of its own.
 
 A link or QR code handed over in person avoids all of it, and matches the
 scenario the product is actually for. Remote setup can come later, with rate
 limits per sender and per target address, once there is a reason to want it.
+
+## Do not ask for the senior's address
+
+The first draft of this document collected the senior's email "optionally" and
+said that an address already in use would quietly fall back to pairing. Review
+found that this cannot work, and the objection is correct: if the address exists,
+no account can be created, so the caregiver cannot go on to write reminders — and
+a flow that visibly stops in one case and continues in the other **is** the
+enumeration oracle invariant 2 was written to prevent. Identical responses and
+"carry on with setup" are not simultaneously satisfiable.
+
+Rather than paper over it, drop the field. **A senior created this way has no
+email address at all.**
+
+This is coherent with the rest of the design rather than a concession:
+
+- We already decided not to email them (see below), so the address had no use.
+- No address means no lookup, no collision, no branch, and no oracle.
+- It matches the scene: someone setting up a tablet in their parent's kitchen
+  should not have to know which of three addresses their mother still reads.
+
+Two consequences to design for:
+
+- `User` validates `email` for presence and uniqueness. Link-only seniors need
+  that relaxed — and must be **structurally unmailable**, not merely unmailed.
+  The `email_undeliverable_at` machinery added on 2026-08-09 is the natural
+  place: no address means no delivery attempt, ever.
+- Such an account cannot be recovered and cannot sign in. If the senior later
+  wants a real account — to manage caregivers, or to use the app properly —
+  they add their own address themselves, which is the same consent step this
+  design moved to first use, arriving when it is actually needed.
+
+## The states a link moves through
+
+Review found a second hole, and it is the sharper of the two.
+`CaregiverLink#pending?` means `caregiver_id` is `nil`, while every caregiver
+action authorises through `current_user.caregiver_links`. So in the first draft:
+
+- leave `caregiver_id` unset and the caregiver **cannot create reminders**, which
+  is the entire point of the feature; or
+- set it immediately and the existing activity routes — `dashboard#senior`, the
+  acknowledgement history, the coverage views — become reachable **before the
+  senior has consented**, which violates invariant 3.
+
+Neither is acceptable, so the state has to be explicit rather than inferred from
+whether a foreign key is null. Three states, not two:
+
+| State | Meaning | Caregiver may |
+|---|---|---|
+| `pending` | senior generated a token, no caregiver yet (**today's behaviour, unchanged**) | nothing |
+| `provisional` | caregiver created the account; senior has not opened the link | create and edit reminders |
+| `active` | the senior opened the link and chose to start | everything they can do today |
+
+`provisional` is the new one, and the rule that matters is that **authorisation
+splits by state, not by whether data happens to exist yet**. Reminder authoring
+accepts `provisional` or `active`; every activity, acknowledgement and coverage
+view requires `active`. Invariant 3 then holds because the routes refuse, not
+because the account happens to be empty — which is the difference between a
+guarantee and a coincidence.
+
+Refusal at the first-run screen destroys the `provisional` link and the account
+with it. That is safe precisely because a provisional account contains nothing
+but reminders the caregiver typed: there is no history to lose, because none can
+have been created yet.
 
 ## Where this meets the reminder link design
 
@@ -146,29 +215,37 @@ only the first is needed here.
 **Caregiver:**
 
 1. Signs in as they do today
-2. "Set up reminders for someone" — enters a name and, optionally, an address
-3. A new senior account is created, with a pending `CaregiverLink` and a
-   reminder-link token. If the address already exists: identical response, but
-   the pairing path is used instead (invariants 1 and 2)
-4. Creates the first reminders
+2. "Set up reminders for someone" — enters **a name only**. No email address is
+   asked for, so there is no branch here and no lookup
+3. A new senior account is created with no address, a **`provisional`**
+   `CaregiverLink`, and a reminder-link token
+4. Creates the first reminders — permitted because the link is `provisional`
 5. Gets a link and a QR code, with plain instructions for the tablet
 
 **Senior, once, on their device:**
 
 6. Opens the link → the first-run screen: *"Jane set up reminders for you on
    Remindly. It will say them out loud when it is time. Start, or stop this."*
-7. Taps start → the audio unlock the voice page already requires
+7. Taps start → the link becomes `active`, then the audio unlock that the voice
+   page already requires
 8. The page stays open
 
-The caregiver sees nothing until step 6, and the account is inert until then.
+Between steps 3 and 7 the caregiver can write reminders and nothing else: the
+activity, acknowledgement and coverage routes all require `active` and refuse a
+`provisional` link outright. If the senior chooses "stop this" at step 6, the
+link and the account are destroyed, and nothing has been recorded about them —
+because nothing could have been.
 
 ## Open questions
 
-1. **Does the senior need an email address at all?** If the caregiver never
-   supplies one, the account cannot be recovered, and the senior can never sign
-   in properly to manage caregivers. Making it optional is friendlier and may
-   trap people. Making it required reintroduces a piece of the problem this
-   feature exists to remove.
+1. ~~**Does the senior need an email address at all?**~~ **Answered by review:
+   no, and asking for one optionally is worse than not asking.** See "Do not ask
+   for the senior's address". What remains open is the consequence: a link-only
+   account cannot be recovered if the link is lost, and the senior cannot sign in
+   to manage caregivers until they add an address themselves. Whether the
+   first-run screen should offer that immediately, or wait until it is needed, is
+   a judgement about how much to put in front of someone who just wants the
+   tablet to start talking.
 2. **What does the caregiver see between steps 5 and 6?** "Waiting for the tablet
    to be set up" is honest, but a caregiver who does the setup then goes home
    needs to know whether it worked.
