@@ -66,6 +66,24 @@ RSpec.describe "Public page counting", type: :request do
     expect(PageCount.count).to eq(0)
   end
 
+  # The regression this file did not have, and the deploy that followed found.
+  #
+  # curl, a good many crawlers and anything that is not a browser send
+  # `Accept: */*`, which Rails resolves to Mime::ALL — so `request.format.html?`
+  # was false while the HTML template rendered and returned 200 text/html, and
+  # nothing was counted. Rails' own test `get` resolves to html, which is
+  # exactly why the original spec passed and production did not.
+  it "counts a request that asks for */* and is served HTML" do
+    expect {
+      browse("/faq", headers: { "HTTP_ACCEPT" => "*/*" })
+    }.to change { PageCount.humans.sum(:count) }.by(1)
+  end
+
+  it "still refuses the sitemap when it is requested as */*" do
+    browse("/sitemap.xml", headers: { "HTTP_ACCEPT" => "*/*" })
+    expect(PageCount.count).to eq(0)
+  end
+
   # A tally is never worth a 500 on the pages strangers and search engines see.
   it "serves the page even if counting fails" do
     allow(PageCount).to receive(:record!).and_raise(ActiveRecord::StatementInvalid, "boom")

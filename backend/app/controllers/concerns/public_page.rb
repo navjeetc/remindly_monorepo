@@ -30,7 +30,15 @@ module PublicPage
   def count_this_page_view
     return unless request.get?
     return unless response.successful?
-    return unless request.format.html?
+
+    # What was *served*, not what was asked for. `request.format.html?` looks
+    # like the obvious test and is wrong: a client sending `Accept: */*` — curl,
+    # a good many crawlers, anything not a browser — resolves to Mime::ALL, so
+    # the check returned false while Rails happily rendered the HTML template
+    # and returned 200 text/html. That shipped, and counted nothing for a day.
+    # The response's own media type is the honest answer, and it still excludes
+    # /sitemap.xml, which is the reason this guard exists.
+    return unless response.media_type == "text/html"
 
     PageCount.record!(
       path: request.path,
