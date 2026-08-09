@@ -69,6 +69,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The task list shows a senior's name** rather than their email address.
 
 ### Fixed
+- **Stop mailing addresses that no longer exist.** `CheckCoverageGapsJob` mailed
+  two demo accounts every morning from 24 July to 9 August — 44 failed jobs,
+  every one a `Postmark::InactiveRecipientError`. Both addresses had hard
+  bounced ("unknown user, mailbox not found"), after which Postmark marks an
+  address inactive and refuses every later send. Nothing was broken in the job;
+  it was told to email people who do not exist, and had nowhere to record that
+  it had been refused, so it rediscovered the fact daily. The exposure was real:
+  aiming mail at mailboxes that are not there is what erodes a sending
+  reputation, and every message now leaves the same address that carries
+  magic-link logins — so the eventual cost of ignoring it is that nobody can log
+  in. Delivery failures Postmark declares permanent are now discarded rather
+  than retried (its own `retry?` says so), the address is recorded on the user,
+  and notification mail skips it thereafter. In-app notifications are
+  deliberately still created: a dead mailbox is no reason to hide a coverage gap
+  from someone inside the app.
 - **Public pages no longer record analytics visits.** `/faq`,
   `/routine_sheet`, `/blog` and every post were logging an IP, referrer and
   device for each anonymous reader while the privacy policy said public pages

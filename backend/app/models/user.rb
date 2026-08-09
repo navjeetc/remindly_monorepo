@@ -39,6 +39,29 @@ class User < ApplicationRecord
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
 
+  # Addresses a mail provider has permanently refused — a hard bounce, meaning
+  # the mailbox does not exist. Postmark marks such an address inactive and
+  # rejects every later send, so continuing to try achieves nothing and actively
+  # costs something: mailbox providers judge a sender on how much mail it aims
+  # at addresses that are not there, and every message here now leaves the one
+  # address that magic-link logins also use.
+  #
+  # Notification mail should be sent to `deliverable` users only. Magic links
+  # are deliberately not filtered — someone signing in is asking for that one
+  # message, and refusing to try would turn a bounced address into a silent
+  # lockout with nothing in the logs.
+  scope :deliverable, -> { where(email_undeliverable_at: nil) }
+
+  def email_deliverable? = email_undeliverable_at.nil?
+
+  # Idempotent: the first refusal is the one worth dating, and a later one
+  # should not keep moving the timestamp forward.
+  def mark_email_undeliverable!(at: Time.current)
+    return if email_undeliverable_at.present?
+
+    update_column(:email_undeliverable_at, at)
+  end
+
   # Class methods to get users by role
   def self.caregivers
     where(role: :caregiver)

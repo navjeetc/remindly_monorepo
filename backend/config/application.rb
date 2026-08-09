@@ -39,6 +39,16 @@ module Backend
     # Don't generate system test files.
     config.generators.system_tests = nil
 
+    # Every deliver_later runs through our own subclass so that a permanently
+    # refused address is discarded rather than retried — see MailDeliveryJob.
+    #
+    # Set here rather than per-environment so the test suite exercises the same
+    # job production uses. Note the warning in production.rb: this setting must
+    # never be nil, which makes every deliver_later raise and silently sends no
+    # queued mail at all. A named subclass of ActionMailer::MailDeliveryJob is
+    # safe; an empty value is not.
+    config.action_mailer.delivery_job = "MailDeliveryJob"
+
     # Support both HTML dashboard views and JSON API endpoints.
     config.api_only = false
   end
