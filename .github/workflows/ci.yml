@@ -44,6 +44,41 @@ jobs:
       - name: Run tests
         run: bundle exec rspec
 
+  # The whole suite ran green while production could not boot at all.
+  #
+  # `config/initializers/postmark.rb` was wrapped in `if Rails.env.production?`,
+  # so its contents ran in exactly one environment and no test could reach them.
+  # It touched ActionMailer::Base during initialization, which constantized the
+  # configured delivery_job before autoloading could resolve an app constant —
+  # NameError, container exited 1, deploy refused to go healthy.
+  #
+  # Booting the production environment is the cheapest thing that would have
+  # caught it. SECRET_KEY_BASE_DUMMY lets Rails boot without the master key, so
+  # this needs no secrets: anything credentials-backed comes back nil, which is
+  # fine, because what is being tested is that the app loads at all.
+  boot_production:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: backend/.ruby-version
+          bundler-cache: true
+          working-directory: backend
+
+      - name: Boot the production environment
+        env:
+          RAILS_ENV: production
+          SECRET_KEY_BASE_DUMMY: "1"
+          JWT_SECRET: boot_check_only
+        # eager_load is on in production, so this loads every class in app/ and
+        # runs every initializer — which is exactly where the failure was.
+        run: bin/rails runner "puts 'production boot OK'"
+
   scan_ruby:
     runs-on: ubuntu-latest
 
