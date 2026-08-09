@@ -168,6 +168,54 @@ This document tracks potential features and enhancements for future development 
 
 ---
 
+### 10. Product Update Emails to Caregivers ⏳ **PENDING**
+**Description:** Tell existing caregivers what has been added or changed in
+Remindly, with an easy way to stop receiving it. Requested 2026-08-09.
+
+**Why it is not simply "send an email":** every message the app sends today is
+*transactional* — a magic link, a missed dose, a coverage gap. Each one answers
+something the recipient did or asked for. A product update is **bulk commercial
+mail**, and it is governed by different rules and different risks.
+
+**The technical decision that matters most: use a separate Postmark message
+stream.** Postmark distinguishes transactional streams from broadcast streams
+precisely so that a spam complaint about a newsletter cannot degrade delivery of
+the mail that matters. Everything in this app leaves one address —
+`hello@remindly.care` — and that address carries **magic-link logins**. If
+product updates were sent on the transactional stream and a few recipients hit
+"spam", the failure mode is not "fewer people read the update", it is
+**nobody can sign in**. See the changelog entry *"Stop mailing addresses that no
+longer exist"* for how quickly poor sender hygiene became a real problem here.
+
+**Requirements:**
+- Caregivers only. Seniors should never receive product marketing.
+- Skip users where `email_undeliverable_at` is set (added 2026-08-09), so a
+  bounced address is never mailed again.
+- An opt-out preference on `User`, following the existing
+  `notify_on_coverage_gaps` / `notify_on_task_assigned_to_others` pattern.
+- **One-click unsubscribe that needs no login** — a tokenized URL plus the
+  `List-Unsubscribe` and `List-Unsubscribe-Post` headers. Gmail and Yahoo bulk
+  sender rules require this, and the mailing list at `/subscribers` currently has
+  no unsubscribe link at all (a deliberate decision, documented in
+  `MARKETING_PLAN.md`, that was always going to expire). Build it once and use it
+  for both.
+- Physical postal address in the footer, per CAN-SPAM.
+- Content can be derived from `CHANGELOG.md`, which is already written in a
+  human, why-first style — but it is developer-facing and would need editing, not
+  copying.
+
+**Do not build this yet.** There are eleven accounts, of which roughly seven are
+real people, and several are the author. An email to seven people someone knows
+is a personal note, not a feature — and it will be read more carefully than any
+newsletter. Write it by hand. Build the machinery when hand-sending is genuinely
+the bottleneck, which is also roughly the scale at which the unsubscribe
+requirements stop being optional.
+
+**When it is worth building, the honest trigger is:** enough caregivers that you
+cannot name them all.
+
+---
+
 ## Future Integrations
 
 ### 8. Smart Speaker Integration
