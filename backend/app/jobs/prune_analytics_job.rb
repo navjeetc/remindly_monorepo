@@ -35,11 +35,21 @@ class PruneAnalyticsJob < ApplicationJob
 
     visits = expired_visits.delete_all
 
+    # Page counts hold no personal data at all, so the argument for expiring
+    # them is not the same one — it is that the privacy policy promises usage
+    # analytics are deleted after 90 days, and a table that quietly kept its
+    # rows for years would make that sentence false. Same cutoff, one promise.
+    page_counts = PageCount.where(day: ...cutoff.to_date).delete_all
+
+    # Two sentences, because the two halves are removed by different rules and a
+    # single parenthetical implying otherwise is misleading in the one place it
+    # gets read — checking that the 90-day promise is being kept.
     Rails.logger.info(
       "PruneAnalyticsJob: removed #{visits} visits and #{events} events " \
-      "(before #{cutoff.to_date}, undated, or attached to a removed visit)"
+      "(before #{cutoff.to_date}, undated, or attached to a removed visit). " \
+      "Removed #{page_counts} page counts (day before #{cutoff.to_date})."
     )
 
-    { visits: visits, events: events }
+    { visits: visits, events: events, page_counts: page_counts }
   end
 end

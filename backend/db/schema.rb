@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_025245) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_200000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -109,6 +109,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_025245) do
     t.index ["reminder_id", "scheduled_at"], name: "index_occurrences_on_reminder_id_and_scheduled_at", unique: true
     t.index ["reminder_id"], name: "index_occurrences_on_reminder_id"
     t.index ["status", "scheduled_at"], name: "index_occurrences_on_status_and_scheduled_at"
+  end
+
+  create_table "page_counts", force: :cascade do |t|
+    t.boolean "bot", default: false, null: false
+    t.integer "count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.date "day", null: false
+    t.string "path", null: false
+    t.string "referrer_host", default: "", null: false
+    t.string "source", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["day", "path", "referrer_host", "source", "bot"], name: "index_page_counts_on_dimensions", unique: true
+    t.index ["day"], name: "index_page_counts_on_day"
   end
 
   create_table "reminders", force: :cascade do |t|

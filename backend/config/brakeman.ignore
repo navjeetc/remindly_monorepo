@@ -1,0 +1,15 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "HTTP Verb Confusion",
+      "warning_code": 118,
+      "fingerprint": "138ac15b827fbd8d98b3d22bb9b260eec473e48de4271622d49c6f71f0a86139",
+      "check_name": "VerbConfusion",
+      "message": "Potential HTTP verb confusion. `HEAD` is routed like `GET` but `request.get?` will return `false`",
+      "file": "app/controllers/concerns/public_page.rb",
+      "line": 31,
+      "note": "Not a security decision. This check exists because `request.get?` returning false for a HEAD request can bypass protective logic — an auth guard or a redirect. Here the guard decides only whether to add one to a page-view tally, and skipping HEAD is the intended behaviour rather than a hole in it: a HEAD response carries no body, so nothing was read and counting it would overstate the one number this table exists to report. The worst case if a client sends HEAD instead of GET is that its own request goes uncounted."
+    }
+  ],
+  "brakeman_version": "8.0.5"
+}
