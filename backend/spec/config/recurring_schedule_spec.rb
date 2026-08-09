@@ -12,7 +12,12 @@ require "fugit"
 # background failure that presented as silence: Solid Queue not running at all
 # (PR #41), and CheckCoverageGapsJob failing every morning for sixteen days.
 RSpec.describe "config/recurring.yml" do
-  let(:tasks) { YAML.load_file(Rails.root.join("config/recurring.yml")).fetch("production") }
+  # safe_load_file rather than load_file: this is plain data, and the safe
+  # variant refuses the Ruby-object tags the full parser would happily
+  # instantiate. Nothing here needs them, so nothing here should permit them.
+  let(:tasks) do
+    YAML.safe_load_file(Rails.root.join("config/recurring.yml")).fetch("production")
+  end
 
   it "defines the jobs the app depends on" do
     expect(tasks.keys).to include(
