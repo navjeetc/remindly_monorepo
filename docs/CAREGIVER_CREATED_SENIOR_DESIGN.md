@@ -220,12 +220,14 @@ only the first is needed here.
 3. A new senior account is created with no address, a **`provisional`**
    `CaregiverLink`, and a reminder-link token
 4. Creates the first reminders — permitted because the link is `provisional`
-5. Gets a link and a QR code, with plain instructions for the tablet
+5. Gets a **six-digit code** and a QR code, with plain instructions for the
+   tablet — see "Getting the link onto the device"
 
 **Senior, once, on their device:**
 
-6. Opens the link → the first-run screen: *"Jane set up reminders for you on
-   Remindly. It will say them out loud when it is time. Start, or stop this."*
+6. Goes to `remindly.care/start` and types the six digits → the first-run screen:
+   *"Jane set up reminders for you on Remindly. It will say them out loud when it
+   is time. Start, or stop this."*
 7. Taps start → the link becomes `active`, then the audio unlock that the voice
    page already requires
 8. The page stays open
@@ -235,6 +237,69 @@ activity, acknowledgement and coverage routes all require `active` and refuse a
 `provisional` link outright. If the senior chooses "stop this" at step 6, the
 link and the account are destroyed, and nothing has been recorded about them —
 because nothing could have been.
+
+## Getting the link onto the device
+
+The first draft said the caregiver "gets a link and a QR code" and left the hard
+part unsaid. `REMINDER_LINKS_DESIGN` has the same gap: it describes a device
+visiting `/r/<token>` and bookmarking it, but not how a 43-character token
+reaches a tablet in the first place.
+
+The obvious answers all fail:
+
+- **Typing the URL.** The token is `SecureRandom.urlsafe_base64(32)` — 43
+  mixed-case characters, on a tablet keyboard, for someone whose eyesight is
+  part of why you are setting this up.
+- **QR code alone.** Fine on a tablet with a camera and a scanner that behaves.
+  Useless on the desktop computer in the kitchen, which is one of the devices
+  the FAQ explicitly says works.
+- **Email.** Ruled out above, for reasons that have not changed.
+
+### Move a short code, not a long URL
+
+The pattern every television app uses, for exactly this problem:
+
+1. The caregiver's screen shows a **six-digit code** (and a QR code as a
+   shortcut for devices that can scan)
+2. On the senior's device, someone goes to **`remindly.care/start`** — short
+   enough to type, and short enough to say
+3. They type the six digits
+4. The server exchanges the code for the durable capability and redirects to
+   `/r/<token>`, which then does exactly what `REMINDER_LINKS_DESIGN` specifies:
+   sets the signed cookie, drops the token out of the address bar, lands on the
+   voice page
+5. Bookmark it or add it to the home screen. The bookmark holds `/r/<token>`, so
+   the "survives cookie loss" property in that document still holds
+
+The QR code encodes the `/r/<token>` URL directly, so both routes converge.
+
+### The part that makes this more than a convenience
+
+**Six digits can be read down a telephone.** That makes remote setup possible
+without ever emailing an unverified address: you are at home, your mother is at
+hers, you talk her through typing `remindly.care/start` and read her the numbers.
+
+It is worth noticing that this is the one channel this audience is most
+comfortable with. Every other remote option asks an older person to find a
+message in an inbox and trust a link inside it — the exact interaction they are
+told never to trust.
+
+### What this costs
+
+A six-digit code is guessable in a way a 256-bit token is not, so the exchange
+endpoint carries the security burden the capability URL does not:
+
+- **Short expiry** — ten minutes is enough to walk to another room, and short
+  enough that a guessed code is unlikely to still be live
+- **Single use**, and bound to one `provisional` link
+- **Hard rate limiting** on `/start`, per IP and per code. Rails 8's
+  `rate_limit` is already used in `SubscribersController`
+- **No enumeration signal** — a wrong code and an expired code must be
+  indistinguishable
+- Codes must be generated with `SecureRandom`, not `rand`
+
+None of this is novel, and all of it has to be in the reminder-links work rather
+than bolted on afterwards — which is a change to the phasing below.
 
 ## Open questions
 
@@ -259,13 +324,18 @@ because nothing could have been.
 
 ## Phasing
 
-1. `REMINDER_LINKS_DESIGN`, in full. Nothing here works without it.
-2. Caregiver-creates-senior, hand-over link, first-run screen, self-revocation.
+1. `REMINDER_LINKS_DESIGN`, in full — **plus the `/start` code exchange**, which
+   belongs there rather than here. A capability URL nobody can get onto a device
+   is not finished, and that document has the same gap this one had.
+2. Caregiver-creates-senior, first-run screen, self-revocation, and the code and
+   QR display on the caregiver's side.
 3. Privacy policy updated **in the same PR**, because this stores personal data
    about someone who never signed up. The policy has twice lagged the code in
    this project; it should not be a third time.
-4. Remote hand-over by email, with rate limits, if and only if there is evidence
-   people want to set this up without being in the room.
+4. Remote hand-over by email — **probably never.** The six-digit code read over
+   the phone already covers setting this up from a distance, without mailing an
+   address nobody has verified. Revisit only if something turns up that a phone
+   call genuinely cannot do.
 
 ## What would make this unnecessary
 
