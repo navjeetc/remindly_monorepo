@@ -150,6 +150,12 @@ RSpec.describe PageCount do
         "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
           "Version/13.0.3 Mobile/15E148 Safari/604.1",
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Mobile/15E148 Safari/604.1",
+        # A link tapped inside the Facebook app. No Safari token at all — and
+        # this is exactly how the traffic this counter measures actually arrives.
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) " \
+          "Mobile/15E148 [FBAN/FBIOS;FBDV/iPhone14,3;FBMD/iPhone;FBSN/iOS;FBSV/16.6;FBID/phone;FBLC/en_US]",
+        # The bare iOS web view, which many apps send.
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148",
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0"
       ].each do |agent|
@@ -168,6 +174,15 @@ RSpec.describe PageCount do
       convincing = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
       expect(described_class.bot?(convincing)).to be(false)
+    end
+
+    # The allowlist promises a browser token followed by a version. `[\d.]+`
+    # alone would also accept a bare dot, which is not a version and is a
+    # cheaper thing to fake than a plausible user agent.
+    it "does not accept a product token without a real version" do
+      expect(described_class.bot?("Chrome/.")).to be(true)
+      expect(described_class.bot?("Mozilla/5.0 Safari/..")).to be(true)
+      expect(described_class.bot?("Mozilla/5.0 Chrome/1")).to be(false)
     end
 
     # A request with no user agent is a script. Counting it as human would

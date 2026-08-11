@@ -59,6 +59,21 @@ class PageCount < ApplicationRecord
   # cost is that a scraper sending a complete, plausible Chrome user agent is
   # indistinguishable from a person here, and no amount of pattern-matching
   # changes that. See "What this still cannot see" in the spec.
+  # `Mobile/` earns its place separately from `Safari/`, and getting this wrong
+  # would have quietly deleted the visitors we care most about. A link opened
+  # inside an iOS app — Facebook's in-app browser, Instagram's, a forum app's —
+  # renders in a WKWebView whose user agent often carries **no** Safari token at
+  # all:
+  #
+  #   Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)
+  #   AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;...]
+  #
+  # That is a person, on a phone, who tapped a link in the Facebook app — which
+  # is precisely how the traffic this counter was built to measure arrives.
+  #
+  # The version must start with a digit. `[\d.]+` alone also matches `Chrome/.`,
+  # which is not a version and makes the allowlist easier to fake than the
+  # comment above claims.
   BROWSER_PATTERN = %r{
     \b(
       Chrome | CriOS |            # Chrome, and Chrome on iOS
@@ -66,8 +81,9 @@ class PageCount < ApplicationRecord
       Edg | EdgA | EdgiOS |       # Edge
       OPR |                       # Opera
       Safari |                    # Safari, and anything Chromium-derived
+      Mobile |                    # iOS web views, which may carry nothing else
       Trident                     # old Internet Explorer
-    )/[\d.]+
+    )/\d[\d.]*
   }xi
 
   # Hostnames that are us. A click from the homepage to the FAQ is navigation,

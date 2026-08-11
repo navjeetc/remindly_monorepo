@@ -83,7 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sends a convincing browser user agent; separating those would need a
   per-visitor identifier, which is the one thing these pages refuse to store.
   Rows written before this change keep their old classification, because the
-  user agent was never stored.
+  user agent was never stored. The allowlist counts an iOS web view as a
+  browser even when it carries no Safari token, because a link tapped inside
+  the Facebook app is exactly how the traffic this measures arrives.
 - **Production could not boot, and CI could not have known.** A deploy failed
   with `NameError: uninitialized constant MailDeliveryJob` — the container
   exited 1 and never became healthy. Kamal kept the previous version serving, so
