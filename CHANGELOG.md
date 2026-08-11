@@ -69,6 +69,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The task list shows a senior's name** rather than their email address.
 
 ### Fixed
+- **The traffic counter was calling scanners people.** Two days after shipping,
+  the human figure was overstating by roughly two and a half times: 43 "human"
+  views on 10 August against 18 favicon fetches, which is the number of requests
+  a real browser actually made. The cause was the classifier being a denylist
+  only, so anything without a recognisable bot token counted as a person —
+  including a scanner sending `http://remindly.care/wp-admin/install.php?step=1`
+  *as its user agent*. It now has to look like a browser to be counted as one,
+  and the denylist still runs first because bingbot advertises itself inside an
+  otherwise complete Chrome user agent and would sail through an allowlist
+  alone. Against the user agents actually observed in production this moves 17
+  of 55 out of the human column. It does not — and cannot — see a scraper that
+  sends a convincing browser user agent; separating those would need a
+  per-visitor identifier, which is the one thing these pages refuse to store.
+  Rows written before this change keep their old classification, because the
+  user agent was never stored.
 - **Production could not boot, and CI could not have known.** A deploy failed
   with `NameError: uninitialized constant MailDeliveryJob` — the container
   exited 1 and never became healthy. Kamal kept the previous version serving, so
