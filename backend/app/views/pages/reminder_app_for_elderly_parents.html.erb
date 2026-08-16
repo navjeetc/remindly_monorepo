@@ -13,50 +13,35 @@
 <% content_for :description, "A free reminder app for elderly parents that speaks each reminder out loud, on a tablet or computer they already own — nothing to install, no phone to check. You set the reminders from wherever you are, and for medication you are emailed when one is marked done, or when the time passes and nobody marks it." %>
 
 <%#
-  Questions and answers in one place, rendered twice — once as the page a person
-  reads and once as the graph a search engine reads. Google drops a FAQPage
-  whose questions are not also visible on the page, and a second copy in a JSON
-  literal is how the two stop matching the first time someone edits a sentence.
+  Three questions, and none of them the questions /faq answers.
 
-  Deliberately not the same questions as /faq. Two pages answering the same
-  question in the same words compete with each other, and these are the ones
-  that belong to this search specifically: the device, the app, who does the
-  setting up.
+  The first version of this page asked five that were reworded /faq entries —
+  what device, what if they are not good with technology, can I set it up from
+  away, will I know if one is missed, what does it cost — and published them as
+  a second FAQPage. Rewording does not separate two pages: the intent is what
+  competes, so both URLs were bidding for the same informational searches with
+  our own content on each side.
+
+  These three are the questions someone asks when deciding *whether to bother*,
+  which is the state this page's visitor is actually in. /faq answers what
+  Remindly is; this answers whether it is worth setting up. There is no FAQPage
+  graph here either — /faq keeps that entity, so there is nothing for a crawler
+  to weigh one against the other.
 %>
-<% faqs = [
+<% questions = [
      [
-       "Is there a reminder app for elderly parents that doesn't need a smartphone?",
-       "This one does not. Remindly runs in an ordinary web browser, so anything with a screen and a speaker will do — an old tablet propped on the kitchen table, the laptop already on the desk, a desktop computer. There is nothing to install, no app store account and no phone to keep charged and to hand."
+       "Is it worth it if my parent only takes one tablet a day?",
+       "That depends on whether the one is ever forgotten. If it never is, this solves a problem you do not have, and you should not bother. Most families arrive here because something has already been missed — and once it is set up, the same routine carries the things that are not medication at all: the appointment on Thursday, a glass of water in the afternoon, the walk after lunch."
      ],
      [
-       "What if my parent won't use an app at all?",
-       "Then they do not have to. The reminder is spoken out loud at the time it is due, the way a kitchen timer speaks: nothing is opened, nothing is unlocked, nothing is read. If they want to mark it done there are two large buttons on the screen, and if they ignore the screen entirely they have still heard the reminder, which was the point of it."
+       "Will my parent find it patronising?",
+       "That is the objection worth taking seriously, and the reason the page is quiet by default: it says nothing at all unless something is due, keeps no score, and does not nag. There is no streak to break and no report card. What comes back to you is whether a reminder was marked done — not where they are, not what they are doing, and nothing the microphone hears."
      ],
      [
-       "Can I set the reminders up for them from somewhere else?",
-       "Yes, and that is the usual arrangement. You sign in from your own phone or computer, wherever you live, and set up the medication times, the appointments, the walk after lunch. Their device only ever shows the day's list. Several people in a family can be linked to the same parent, each with their own sign-in."
-     ],
-     [
-       "Will I know if a reminder is missed?",
-       "For medication, yes — Remindly emails you when a reminder is marked done at their end, and again if the time passes and nobody marks it. You choose which kinds of reminder are worth an email to you. What it tells you is what happened on the device, which is a good signal and not proof: an unmarked reminder can mean a missed dose, and it can equally mean tablets taken and a button not pressed."
-     ],
-     [
-       "What does it cost?",
-       "Nothing. Every reminder, every caregiver you link and every email it sends are free, with no card to enter and no trial that quietly ends. Remindly is early software, and families using it and saying what is wrong with it is worth more right now than charging would be."
+       "What if we set it up and it turns out not to suit us?",
+       "Then you stop, and there is nothing to cancel — no card was entered and no subscription started. Your parent can end a caregiver's access themselves at any time, from their own screen, without asking anyone; it is their arrangement to leave as much as yours. Ask and the data is deleted."
      ]
    ] %>
-
-<% content_for :structured_data, json_ld(
-     "@context" => "https://schema.org",
-     "@type" => "FAQPage",
-     "mainEntity" => faqs.map { |question, answer|
-       {
-         "@type" => "Question",
-         "name" => question,
-         "acceptedAnswer" => { "@type" => "Answer", "text" => answer }
-       }
-     }
-   ) %>
 
 <h1>A reminder app for elderly parents</h1>
 
@@ -68,8 +53,19 @@
   check a phone or open an app.
 </p>
 
+<%#
+  Conditional, like the one at the foot of the page. This route is indexable and
+  a signed-in reader can arrive on it from a bookmark or a search result, and
+  SessionsController#new does not bounce an authenticated visitor — so a fixed
+  link to /login put the page's main action on an email form they have no use
+  for.
+%>
 <div class="actions">
-  <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <% if current_user %>
+    <a class="btn btn-primary" href="<%= dashboard_path %>">Go to your dashboard</a>
+  <% else %>
+    <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <% end %>
   <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works first</a>
 </div>
 
@@ -210,21 +206,20 @@
   have picked up.
 </p>
 
-<h2>Questions people ask</h2>
+<h2>Before you set it up</h2>
 
-<%#
-  Fenced in a section so a spec can hold the visible questions and the FAQPage
-  graph to being the same set in both directions. Without the fence it could
-  only check that every question in the graph appears on the page, and the
-  failure that actually happens is the other one: a question added to the page
-  and not to the graph.
-%>
 <section class="questions">
-  <% faqs.each do |question, answer| %>
+  <% questions.each do |question, answer| %>
     <h3><%= question %></h3>
     <p><%= answer %></p>
   <% end %>
 </section>
+
+<p>
+  The <a href="<%= faq_path %>">questions page</a> answers the rest — what the
+  device needs, what happens if a reminder is missed, how a caregiver is
+  connected, and the ones where the answer is no.
+</p>
 
 <h2>Setting it up</h2>
 

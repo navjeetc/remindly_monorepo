@@ -16,12 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that search had no page here to land on. This one answers it in its own words:
   what a reminder app has to do when the person needing reminding and the person
   arranging it are not in the same house, how Remindly does each, what it runs
-  on, and what comes back to the caregiver. Its `FAQPage` questions are
-  deliberately none of `/faq`'s — two pages answering the same question in the
-  same words are read as one page duplicated, and the search engine shows
-  whichever it prefers, so a spec fails on any overlap. Held to the same claims
-  as the rest of the site: "marked done", never "taken", and the
-  page-must-stay-open limitation stated rather than buried.
+  on, and what comes back to the caregiver. It asks three questions of its own —
+  is it worth it if they only take one tablet, will they find it patronising,
+  what if it does not suit us — and publishes no `FAQPage`: `/faq` keeps that
+  graph. Two pages of ours bidding for the same informational search compete
+  with each other, and rewording the questions does not separate them, because
+  what competes is the intent behind them. Held to the same claims as the rest
+  of the site: "marked done", never "taken", and the page-must-stay-open
+  limitation stated rather than buried.
 - **A count of public page views, that records nobody**: the marketing pages set
   no analytics cookie and write no Ahoy visit, which is what makes the privacy
   policy true — and it left us unable to answer the only question that mattered

@@ -703,30 +703,51 @@ RSpec.describe "Pages", type: :request do
       expect(primaries.first["href"]).to eq("/login")
     end
 
-    # Both directions, deliberately. Asserting only that every question in the
-    # graph is visible leaves the failure that actually happens — a question
-    # added to the page and forgotten in the JSON-LD — passing, and Google drops
-    # the whole block when the two disagree. Scoped to section.questions so an
-    # h3 added elsewhere on the page is not read as an undeclared question.
-    it "publishes exactly the visible questions as FAQPage structured data" do
+    # This route is indexable and a signed-in reader can arrive on it from a
+    # bookmark or a search result — SessionsController#new does not bounce them —
+    # so a hero fixed to /login put the page's main action on an email form they
+    # have no use for. Both calls to action are conditional; this covers the
+    # branch the logged-out specs never reach.
+    it "sends a signed-in reader to their dashboard from both calls to action" do
+      user = User.create!(email: "landed@example.com", role: :caregiver, tz: "America/New_York", name: "Landed")
+      post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+
       get landing
 
-      expect(structured_data["@type"]).to eq("FAQPage")
-
-      asked = structured_data["mainEntity"].map { |q| q["name"] }
-      shown = doc.css("section.questions h3").map(&:text)
-
-      expect(shown).not_to be_empty, "the questions section is gone"
-      expect(asked).to match_array(shown)
-      expect(structured_data["mainEntity"]).to all(include("acceptedAnswer"))
+      hrefs = doc.css(".actions a").map { |a| a["href"] }
+      expect(hrefs).to include(dashboard_path)
+      expect(hrefs).not_to include(login_path)
     end
 
-    # The failure this page invites: two of our own pages answering the same
-    # question in the same words, which a search engine reads as one page
-    # duplicated and shows whichever it prefers — usually not the one intended.
+    # No FAQPage here, deliberately, and this spec is what keeps it that way.
+    #
+    # The first version of this page published one. Codex made the point that
+    # rewording the questions does not separate the two pages — every one of
+    # them was a paraphrase of a /faq entry (the device, reluctance to use
+    # technology, remote setup, missed medication, price), so both URLs carried
+    # our own competing FAQPage entities for the same informational intent.
+    # /faq keeps that graph; this page asks the questions someone has when
+    # deciding whether to bother, and declares nothing for a crawler to weigh
+    # against it.
+    it "publishes no FAQPage, leaving that graph to /faq" do
+      get landing
+
+      types = doc.css("script[type='application/ld+json']")
+        .map { |node| JSON.parse(node.text) }
+        .flat_map { |g| g["@graph"]&.map { |n| n["@type"] } || [ g["@type"] ] }
+
+      expect(types).not_to include("FAQPage")
+      expect(types).to include("Organization"), "the publisher graph should still be here"
+    end
+
+    # The visible questions still have to stay off /faq's subjects, and no
+    # assertion can judge intent — but the exact-wording check catches the
+    # cheapest way for the two to converge, which is one being pasted into the
+    # other.
     it "asks different questions than the FAQ does" do
       get landing
-      here = structured_data["mainEntity"].map { |q| q["name"] }
+      here = doc.css("section.questions h3").map(&:text)
+      expect(here).not_to be_empty, "the questions section is gone"
 
       get "/faq"
       there = structured_data["mainEntity"].map { |q| q["name"] }
