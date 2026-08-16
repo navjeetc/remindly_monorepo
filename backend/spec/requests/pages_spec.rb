@@ -703,16 +703,21 @@ RSpec.describe "Pages", type: :request do
       expect(primaries.first["href"]).to eq("/login")
     end
 
-    it "publishes every visible question as FAQPage structured data" do
+    # Both directions, deliberately. Asserting only that every question in the
+    # graph is visible leaves the failure that actually happens — a question
+    # added to the page and forgotten in the JSON-LD — passing, and Google drops
+    # the whole block when the two disagree. Scoped to section.questions so an
+    # h3 added elsewhere on the page is not read as an undeclared question.
+    it "publishes exactly the visible questions as FAQPage structured data" do
       get landing
 
       expect(structured_data["@type"]).to eq("FAQPage")
 
       asked = structured_data["mainEntity"].map { |q| q["name"] }
-      shown = doc.css("h3").map(&:text)
+      shown = doc.css("section.questions h3").map(&:text)
 
-      expect(asked).not_to be_empty
-      expect(asked).to all(be_in(shown))
+      expect(shown).not_to be_empty, "the questions section is gone"
+      expect(asked).to match_array(shown)
       expect(structured_data["mainEntity"]).to all(include("acceptedAnswer"))
     end
 

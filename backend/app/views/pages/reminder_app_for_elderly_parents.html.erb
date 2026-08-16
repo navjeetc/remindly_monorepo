@@ -212,10 +212,19 @@
 
 <h2>Questions people ask</h2>
 
-<% faqs.each do |question, answer| %>
-  <h3><%= question %></h3>
-  <p><%= answer %></p>
-<% end %>
+<%#
+  Fenced in a section so a spec can hold the visible questions and the FAQPage
+  graph to being the same set in both directions. Without the fence it could
+  only check that every question in the graph appears on the page, and the
+  failure that actually happens is the other one: a question added to the page
+  and not to the graph.
+%>
+<section class="questions">
+  <% faqs.each do |question, answer| %>
+    <h3><%= question %></h3>
+    <p><%= answer %></p>
+  <% end %>
+</section>
 
 <h2>Setting it up</h2>
 

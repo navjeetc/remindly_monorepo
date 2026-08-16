@@ -114,10 +114,13 @@
         letter-spacing: -0.01em;
       }
       /* Until the landing page there was no h3 anywhere in prose — the only
-         ones on the site are on the printable sheets, where .sheet-heading
-         handles them. A run of questions under one h2 needs the level to be
-         visible, and the browser default is bold body text tight against the
-         paragraph above it. */
+         ones on the site are on the printable sheets. A run of questions under
+         one h2 needs the level to be visible, and the browser default is bold
+         body text tight against the paragraph above it.
+
+         The sheets are deliberately not styled from here: .sheet-heading sets
+         its own size in em, so print density stays where the print rules put
+         it. */
       h3 {
         font-size: 1.2rem;
         margin: 2rem 0 0.5rem;
@@ -416,7 +419,14 @@
       /* Printable routine sheet */
       .print-hint { color: var(--muted); font-size: 1rem; }
       .sheet-title { margin-top: 0; }
-      .sheet-heading { margin: 2rem 0 0.5rem; }
+      /* Sized in em, and explicitly, so the sheets are not resized by anything
+         done to prose h3 above. That is not hypothetical: the h3 rule added
+         with the landing page shrank these on screen (1.17em of an 18px body is
+         21px, against 1.2rem's 19.2px) and grew them in print, where rem is
+         still the root size while .sheet-dense has taken the body down to
+         10.5pt — enlarging the headings on the one layout whose whole purpose
+         is fitting a page. 1.17em is the browser default these have always had. */
+      .sheet-heading { font-size: 1.17em; margin: 2rem 0 0.5rem; }
       .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
       .sheet-table th {
         text-align: left;
