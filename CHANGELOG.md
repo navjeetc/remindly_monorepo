@@ -69,6 +69,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The task list shows a senior's name** rather than their email address.
 
 ### Fixed
+- **Saving your profile could move you to UTC-12.** The timezone column had
+  drifted into holding two spellings of the same thing — IANA identifiers
+  (`America/New_York`, the column default) and Rails zone names (`Eastern Time
+  (US & Canada)`, what the profile form submitted). Nothing ever failed on it,
+  because every read goes through `ActiveSupport::TimeZone[]` and that accepts
+  either, which is exactly why the mixture sat there unnoticed. The round trip
+  is where it broke: the select's option values were Rails names, so a user
+  whose column held the IANA default matched no option at all, the browser fell
+  back to the first entry in the list — International Date Line West — and
+  saving the form wrote it back. Changing your name moved you seventeen hours
+  off Eastern, and in an app whose entire job is firing reminders at the right
+  moment, that means every reminder lands on the wrong day. It happened to the
+  first real signup, on her first day, and raised nothing anywhere. Zones are
+  now normalized to the identifier on write, a zone that resolves to nothing is
+  rejected instead of stored, and the select offers the same identifiers it
+  stores so the round trip closes. A migration brings the existing rows across.
 - **The traffic counter was calling scanners people.** Two days after shipping,
   the human figure was overstating by roughly two and a half times: 43 "human"
   views on 10 August against 18 favicon fetches, which is the number of requests

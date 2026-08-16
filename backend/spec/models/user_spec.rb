@@ -46,8 +46,20 @@ RSpec.describe User do
       expect(user.errors[:tz]).to include("is not a valid timezone")
     end
 
+    # Asserts on the value, not the label: ActiveSupport's label text tracks
+    # zoneinfo and has changed format before, and none of that is what this
+    # guards. The identifier is the half the column has to agree with.
     it "offers options whose values are the identifiers it stores" do
-      expect(User::TIMEZONE_OPTIONS).to include([ "(GMT-05:00) Eastern Time (US & Canada)", "America/New_York" ])
+      values = User::TIMEZONE_OPTIONS.map { |_label, identifier| identifier }
+
+      expect(values).to include("America/New_York")
+      expect(values).not_to include("Eastern Time (US & Canada)")
+    end
+
+    it "labels each option, so the list is readable" do
+      labels = User::TIMEZONE_OPTIONS.to_h.invert
+
+      expect(labels.fetch("America/New_York")).to include("Eastern Time (US & Canada)")
     end
 
     it "keeps a stored zone selectable even when Rails' curated list omits it" do

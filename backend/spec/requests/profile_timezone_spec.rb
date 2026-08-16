@@ -14,20 +14,27 @@ RSpec.describe "Profile timezone", type: :request do
     post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
   end
 
+  def doc = Nokogiri::HTML(response.body)
+
+  def zone_select = doc.at_css("select[name='user[tz]']")
+
   let(:user) { create(:user, :caregiver, name: "Christy", tz: "America/New_York") }
 
   it "preselects the user's stored zone" do
     sign_in(user)
     get "/profile"
 
-    expect(response.body).to include(%(<option selected="selected" value="America/New_York">))
+    expect(zone_select.at_css("option[selected]")[:value]).to eq("America/New_York")
   end
 
   it "does not offer the Rails zone name as a value, which nothing stores" do
     sign_in(user)
     get "/profile"
 
-    expect(response.body).not_to include(%(value="Eastern Time (US &amp; Canada)"))
+    values = zone_select.css("option").map { |option| option[:value] }
+
+    expect(values).to include("America/New_York")
+    expect(values).not_to include("Eastern Time (US & Canada)")
   end
 
   it "leaves the zone untouched when the form is submitted unchanged" do
