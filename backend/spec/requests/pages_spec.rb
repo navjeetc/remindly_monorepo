@@ -480,7 +480,7 @@ RSpec.describe "Pages", type: :request do
     # The <title> is the blue link text in a search result, so a page that
     # ranks without it in the title never gets to make the point at all.
     it "carries it in the title of every page written to be landed on" do
-      %w[/ /faq /how_to /routine_sheet].each do |path|
+      %w[/ /reminder-app-for-elderly-parents /faq /how_to /routine_sheet].each do |path|
         get path
 
         expect(doc.at_css("title").text).to match(/free/i), "#{path} title does not mention it"
@@ -644,6 +644,127 @@ RSpec.describe "Pages", type: :request do
     it "loads no third-party assets" do
       get "/faq"
       refs = Nokogiri::HTML(response.body).css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
+        .map { |n| n["src"] || n["href"] }.compact
+      expect(refs.select { |u| u.start_with?("http", "//") }).to be_empty
+    end
+  end
+
+  # A landing page for one search — "reminder app for elderly parents" — rather
+  # than a second homepage. The specs that matter here are the ones that keep it
+  # from becoming the latter: a distinct title, questions that are not the FAQ's,
+  # and a route in from the homepage so it is not reachable only by sitemap.
+  describe "GET /reminder-app-for-elderly-parents" do
+    landing = "/reminder-app-for-elderly-parents"
+
+    def doc = Nokogiri::HTML(response.body)
+
+    it "renders without authentication" do
+      get landing
+
+      expect(response).to have_http_status(:ok)
+      expect(doc.at_css("h1").text).to match(/reminder app for elderly parents/i)
+    end
+
+    # The phrase has to be in the words a search engine actually prints — the
+    # blue link and the grey sentence under it — or the page is written for a
+    # search it never enters.
+    it "carries the search phrase in the title and the meta description" do
+      get landing
+
+      expect(doc.at_css("title").text).to match(/reminder app for elderly parents/i)
+      expect(doc.at_css("meta[name='description']")["content"])
+        .to match(/reminder app for elderly parents/i)
+    end
+
+    it "points the canonical URL at www.remindly.care, including from the legacy subdomain" do
+      get landing, headers: { "HOST" => "remindly.anakhsoft.com", "X-Forwarded-Proto" => "https" }
+
+      expect(canonical_href).to eq("https://www.remindly.care#{landing}")
+    end
+
+    # Same standard as the homepage. This page argues harder for the product,
+    # which is exactly when the claim is most tempting to round up — Remindly
+    # observes a button press, not a swallowed tablet.
+    it "never claims to know a dose was taken, including in the meta description" do
+      get landing
+
+      expect(doc.at_css("meta[name='description']")["content"]).to match(/marked done/i)
+      expect(doc.at_css("body").text).not_to match(/\bdose is (taken|missed)\b|\bwhen they'?re taken\b/i)
+      expect(response.body).to match(/not a substitute/i)
+    end
+
+    it "opens with one primary call to action, pointing at sign-in" do
+      get landing
+
+      hero = doc.at_css(".actions")
+      primaries = hero.css(".btn-primary")
+
+      expect(primaries.length).to eq(1)
+      expect(primaries.first["href"]).to eq("/login")
+    end
+
+    it "publishes every visible question as FAQPage structured data" do
+      get landing
+
+      expect(structured_data["@type"]).to eq("FAQPage")
+
+      asked = structured_data["mainEntity"].map { |q| q["name"] }
+      shown = doc.css("h3").map(&:text)
+
+      expect(asked).not_to be_empty
+      expect(asked).to all(be_in(shown))
+      expect(structured_data["mainEntity"]).to all(include("acceptedAnswer"))
+    end
+
+    # The failure this page invites: two of our own pages answering the same
+    # question in the same words, which a search engine reads as one page
+    # duplicated and shows whichever it prefers — usually not the one intended.
+    it "asks different questions than the FAQ does" do
+      get landing
+      here = structured_data["mainEntity"].map { |q| q["name"] }
+
+      get "/faq"
+      there = structured_data["mainEntity"].map { |q| q["name"] }
+
+      expect(here & there).to be_empty, "same question on both pages: #{(here & there).inspect}"
+    end
+
+    # A page nothing links to is a page a search engine has little reason to
+    # think matters, however diligently the sitemap lists it.
+    it "is linked from the homepage" do
+      get "/"
+
+      expect(doc.css("a").map { |a| a["href"] }).to include(landing)
+    end
+
+    it "is listed in the sitemap" do
+      get "/sitemap.xml"
+
+      locs = Nokogiri::XML(response.body).css("url loc").map(&:text)
+      expect(locs).to include("https://www.remindly.care#{landing}")
+    end
+
+    it "ships the screenshot it points at, described for anyone who cannot see it" do
+      get landing
+
+      doc.css("figure.shot img").each do |img|
+        expect(Rails.public_path.join(img["src"].delete_prefix("/"))).to exist
+        expect(img["alt"].to_s.length).to be > 40
+        expect(img["width"]).to be_present
+        expect(img["height"]).to be_present
+      end
+    end
+
+    it "issues no session cookie to an anonymous visitor" do
+      get landing
+
+      expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+    end
+
+    it "loads no third-party assets" do
+      get landing
+
+      refs = doc.css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
         .map { |n| n["src"] || n["href"] }.compact
       expect(refs.select { |u| u.start_with?("http", "//") }).to be_empty
     end

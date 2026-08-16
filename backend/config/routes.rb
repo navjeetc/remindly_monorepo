@@ -36,6 +36,13 @@ Rails.application.routes.draw do
   get  "privacy",            to: "pages#privacy", as: :privacy
   get  "terms",              to: "pages#terms", as: :terms
 
+  # Hyphens, unlike every other path here, because this one exists to be landed
+  # on from a search and the words in it are the search. The route helper keeps
+  # the underscored Ruby name.
+  get  "reminder-app-for-elderly-parents",
+       to: "pages#reminder_app_for_elderly_parents",
+       as: :reminder_app_for_elderly_parents
+
   # Blog. Posts are Markdown files in content/posts, so there is nothing to
   # create or edit over HTTP — only these two reads.
   get  "blog",               to: "posts#index", as: :blog
