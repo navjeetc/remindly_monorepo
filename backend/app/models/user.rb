@@ -35,9 +35,20 @@ class User < ApplicationRecord
   has_many :visits, class_name: "Ahoy::Visit", dependent: :destroy
   has_many :events, class_name: "Ahoy::Event", dependent: :destroy
 
+  # Label from Rails, value from IANA — see #tz= for why the value must be the
+  # identifier. Deduped because several Rails zone names share one IANA zone
+  # ("Edinburgh" and "London" are both Europe/London), and a select holding the
+  # same value twice cannot round-trip the second one.
+  TIMEZONE_OPTIONS = ActiveSupport::TimeZone.all
+    .map { |zone| [ zone.to_s, zone.tzinfo.name ] }
+    .uniq { |_label, identifier| identifier }
+    .freeze
+
   validates :email, presence: true, uniqueness: true
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
+  validates :tz, presence: true
+  validate :tz_resolves_to_a_real_zone
 
   # Addresses a mail provider has permanently refused — a hard bounce, meaning
   # the mailbox does not exist. Postmark marks such an address inactive and
@@ -91,6 +102,36 @@ class User < ApplicationRecord
     CaregiverLink.generate_pairing_token(senior: self)
   end
 
+  # Zones are stored as IANA identifiers ("America/New_York"), never as Rails
+  # zone names ("Eastern Time (US & Canada)"). Both spellings resolve through
+  # ActiveSupport::TimeZone[], which is exactly why a column holding a mix of
+  # the two sat there for months without anything failing.
+  #
+  # What it did break was the round trip through the profile form. That select's
+  # <option> values were Rails names, so a user whose column held the IANA
+  # default matched no option at all; the browser then showed the first option
+  # in the list, and saving the form wrote it back. The first entry of
+  # ActiveSupport::TimeZone.all is International Date Line West, so opening the
+  # profile and pressing Save silently moved a user to UTC-12 — seventeen hours
+  # off Eastern, which for this app means every reminder fires on the wrong day.
+  # It happened to the first real signup, on her first day.
+  #
+  # The select now offers identifiers, and this normalizes whatever arrives, so
+  # both ends of that round trip speak one language. An unresolvable value is
+  # kept as-is rather than quietly dropped, so the validation below can name it.
+  def tz=(value)
+    super(ActiveSupport::TimeZone[value.to_s]&.tzinfo&.name || value)
+  end
+
+  # A zone outside Rails' curated list is a legitimate thing to be stored (it
+  # resolves fine) but would match no option and put this form right back where
+  # it started, so it is added to the list rather than dropped from it.
+  def timezone_options
+    return TIMEZONE_OPTIONS if TIMEZONE_OPTIONS.any? { |_label, identifier| identifier == tz }
+
+    TIMEZONE_OPTIONS + [ [ tz, tz ] ]
+  end
+
   # Display name - uses nickname if available, otherwise name, otherwise email
   def display_name
     nickname.presence || name.presence || email
@@ -137,5 +178,13 @@ class User < ApplicationRecord
 
     self.role = new_role # keep this in-memory instance in sync with the DB
     true
+  end
+
+  private
+
+  def tz_resolves_to_a_real_zone
+    return if tz.blank?
+
+    errors.add(:tz, "is not a valid timezone") unless ActiveSupport::TimeZone[tz]
   end
 end

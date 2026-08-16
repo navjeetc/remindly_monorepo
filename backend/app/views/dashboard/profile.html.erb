@@ -57,10 +57,7 @@
         <div>
           <%= f.label :tz, "Timezone", class: "block text-sm font-medium text-gray-700" %>
           <%= f.select :tz,
-            options_for_select(
-              ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] },
-              current_user.tz
-            ),
+            options_for_select(current_user.timezone_options, current_user.tz),
             {},
             class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
         </div>

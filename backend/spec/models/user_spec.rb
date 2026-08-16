@@ -28,6 +28,35 @@ RSpec.describe User do
     end
   end
 
+  describe "#tz" do
+    it "stores a Rails zone name as its IANA identifier" do
+      user = create(:user, :caregiver, name: "Kid", tz: "Eastern Time (US & Canada)")
+
+      expect(user.reload.tz).to eq("America/New_York")
+    end
+
+    it "leaves an identifier alone" do
+      expect(User.new(tz: "Asia/Kolkata").tz).to eq("Asia/Kolkata")
+    end
+
+    it "refuses a zone that resolves to nothing, rather than silently blanking it" do
+      user = build(:user, :caregiver, name: "Kid", tz: "Middle Earth")
+
+      expect(user).not_to be_valid
+      expect(user.errors[:tz]).to include("is not a valid timezone")
+    end
+
+    it "offers options whose values are the identifiers it stores" do
+      expect(User::TIMEZONE_OPTIONS).to include([ "(GMT-05:00) Eastern Time (US & Canada)", "America/New_York" ])
+    end
+
+    it "keeps a stored zone selectable even when Rails' curated list omits it" do
+      user = build(:user, tz: "America/Detroit") # resolves, but not one of Rails' names
+
+      expect(user.timezone_options).to include([ "America/Detroit", "America/Detroit" ])
+    end
+  end
+
   describe "#assign_self_role" do
     it "lets a brand-new (role-less, name-less) user pick senior or caregiver" do
       user = User.create!(email: "new@example.com", tz: "America/New_York") # role nil, no name
