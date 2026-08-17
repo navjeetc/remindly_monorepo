@@ -1,0 +1,248 @@
+<% content_for :title, "A reminder app for elderly parents — free, and spoken out loud" %>
+<%#
+  Written for the search, not for us. Someone typing "reminder app for elderly
+  parents" is asking whether such a thing exists for a parent who will not use a
+  phone app, so the first clause of the description answers that and the rest
+  says what it costs.
+
+  Held to the same standard as the homepage on the one claim that matters:
+  Remindly knows a reminder was *marked done* on the device. It cannot know
+  whether a tablet was swallowed, and medication is the wrong subject to be
+  loose about in the sentence a search engine prints.
+%>
+<% content_for :description, "A free reminder app for elderly parents that speaks each reminder out loud, on a tablet or computer they already own — nothing to install, no phone to check. You set the reminders from wherever you are, and for medication you are emailed when one is marked done, or when the time passes and nobody marks it." %>
+
+<%#
+  Three questions, and none of them the questions /faq answers.
+
+  The first version of this page asked five that were reworded /faq entries —
+  what device, what if they are not good with technology, can I set it up from
+  away, will I know if one is missed, what does it cost — and published them as
+  a second FAQPage. Rewording does not separate two pages: the intent is what
+  competes, so both URLs were bidding for the same informational searches with
+  our own content on each side.
+
+  These three are the questions someone asks when deciding *whether to bother*,
+  which is the state this page's visitor is actually in. /faq answers what
+  Remindly is; this answers whether it is worth setting up. There is no FAQPage
+  graph here either — /faq keeps that entity, so there is nothing for a crawler
+  to weigh one against the other.
+%>
+<% questions = [
+     [
+       "Is it worth it if my parent only takes one tablet a day?",
+       "That depends on whether the one is ever forgotten. If it never is, this solves a problem you do not have, and you should not bother. Most families arrive here because something has already been missed — and once it is set up, the same routine carries the things that are not medication at all: the appointment on Thursday, a glass of water in the afternoon, the walk after lunch."
+     ],
+     [
+       "Will my parent find it patronising?",
+       "That is the objection worth taking seriously, and the reason the page is quiet by default: it says nothing at all unless something is due, keeps no score, and does not nag. There is no streak to break and no report card. What comes back to you is whether a reminder was marked done — not where they are, not what they are doing, and nothing the microphone hears."
+     ],
+     [
+       "What if we set it up and it turns out not to suit us?",
+       "Then you stop, and there is nothing to cancel — no card was entered and no subscription started. Your parent can end a caregiver's access themselves at any time, from their own screen, without asking anyone; it is their arrangement to leave as much as yours. Ask and the data is deleted."
+     ]
+   ] %>
+
+<h1>A reminder app for elderly parents</h1>
+
+<p class="lead">
+  The difficulty is rarely that a parent refuses to take their tablets. It is
+  that eleven o'clock arrives while they are doing something else, and there is
+  nobody in the room to say so. Remindly says it out loud — on a tablet or
+  computer they already own, at the time it is due, without their having to
+  check a phone or open an app.
+</p>
+
+<%#
+  Conditional, like the one at the foot of the page. This route is indexable and
+  a signed-in reader can arrive on it from a bookmark or a search result, and
+  SessionsController#new does not bounce an authenticated visitor — so a fixed
+  link to /login put the page's main action on an email form they have no use
+  for.
+%>
+<div class="actions">
+  <% if current_user %>
+    <a class="btn btn-primary" href="<%= dashboard_path %>">Go to your dashboard</a>
+  <% else %>
+    <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <% end %>
+  <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works first</a>
+</div>
+
+<p class="free-note">
+  <strong>Free — no card, no ads, no sales calls.</strong> No trial that quietly
+  ends, and no limit on how many reminders you set.
+</p>
+
+<%#
+  The criteria, before the product. Someone at this search has usually looked at
+  two or three things already and cannot tell what separates them, and the
+  useful thing to hand them is the list of questions to ask — which stays useful
+  whether or not they choose Remindly. No named comparisons: the questions are
+  the point, and a page that spends its space on other people's shortcomings is
+  a worse answer to the search than one that answers it.
+%>
+<h2>What to look for in one</h2>
+
+<p>
+  Most reminder software is written for the person who owns the phone. That is a
+  different problem from this one — here, the person who needs reminding and the
+  person doing the arranging are not the same person, and are often not in the
+  same house. Four things follow from that, and they are worth checking against
+  anything you are considering:
+</p>
+
+<ul>
+  <li>
+    <strong>Does the reminder reach them without their doing anything?</strong>
+    A notification on a phone in another room is not a reminder. Spoken out
+    loud, in the room they are in, is.
+  </li>
+  <li>
+    <strong>Can you change it from where you are?</strong> A dose time moves
+    after an appointment. If that means a visit, or talking someone through a
+    settings screen over the telephone, it will not get done.
+  </li>
+  <li>
+    <strong>Does anything come back to you?</strong> Setting a reminder and
+    hearing nothing afterwards leaves you exactly where you started — ringing to
+    ask.
+  </li>
+  <li>
+    <strong>What does it ask of them?</strong> Every password, unlock and menu
+    is somewhere it can stop working on a day nobody is there to fix it.
+  </li>
+</ul>
+
+<section class="setup">
+  <h2>How Remindly answers them</h2>
+
+  <ol>
+    <li>
+      <strong>You set the reminders</strong> — medication, appointments, a walk
+      after lunch — from your own phone or computer, from wherever you happen to
+      live.
+    </li>
+    <li>
+      <strong>They hear it spoken aloud</strong> at the right time, at home,
+      without reading a screen or opening anything.
+    </li>
+    <li>
+      <strong>You see what was marked done</strong>, and what wasn't — so
+      checking in does not have to mean another phone call.
+    </li>
+  </ol>
+
+  <p class="setup-foot">
+    Their end needs no password: signing in is a link sent by email, and in
+    practice whoever sets it up does that once and leaves the page open.
+  </p>
+</section>
+
+<figure class="shot">
+  <img src="/screenshot-voice-reminders.webp"
+       width="1400" height="1179" loading="lazy" decoding="async"
+       alt="The Remindly screen a senior sees: a heading reading My Reminders, a note that there are six reminders today, then each reminder as a large card — Take your morning medication at 8:00 AM with the note two white tablets with breakfast, and Have a glass of water at 10:30 AM — each with a big green Done button and a Snooze button beside it.">
+  <figcaption>
+    <strong>What your parent sees.</strong> Large type, and only ever two things
+    to press.
+  </figcaption>
+</figure>
+
+<h2>What it runs on</h2>
+
+<p>
+  Any device with a web browser and a speaker. Families use an old tablet that
+  had stopped being carried around, a laptop that already lives on the desk, or
+  the desktop computer in the corner. Nothing is installed and no account is
+  needed at the app store, because there is no app to fetch from one.
+</p>
+
+<p>
+  It works best on a device that already sits somewhere they spend time — the
+  kitchen table, beside a favourite chair — with the page left open, the way a
+  clock sits on a shelf.
+</p>
+
+<div class="note">
+  <p>
+    <strong>Two things worth knowing before you set this up.</strong>
+  </p>
+  <p>
+    Remindly speaks through the page, so that page has to stay open on their
+    device. Close the tab and nothing is spoken.
+  </p>
+  <p>
+    And browsers will not play sound until someone has touched the screen, so on
+    an iPad Remindly asks for a single tap after it starts up. It remembers
+    anything it could not say and speaks it once you do.
+  </p>
+</div>
+
+<h2>What comes back to you</h2>
+
+<p>
+  You see the whole day at a glance from your own dashboard. For medication,
+  Remindly emails you when a reminder is <strong>marked done</strong> on their
+  device, and again if the time passes and it has not been. That is the part
+  that replaces the phone call.
+</p>
+
+<div class="note">
+  <p>
+    <strong>What "done" means, and what it doesn't.</strong> Remindly records
+    that someone pressed <strong>Done</strong> on the reminder. That is a good
+    signal and it is not proof: it cannot tell you a tablet was actually
+    swallowed, and it is not a substitute for a pill dispenser, a carer or
+    medical advice. If a missed dose would be dangerous, Remindly should not be
+    the only thing standing between your parent and that dose.
+  </p>
+</div>
+
+<p>
+  Alongside the reminders that repeat, there is a shared list of the one-off
+  things — a prescription to collect, an appointment on Thursday. If more than
+  one of you is helping, you can each take what you can and see what the others
+  have picked up.
+</p>
+
+<h2>Before you set it up</h2>
+
+<section class="questions">
+  <% questions.each do |question, answer| %>
+    <h3><%= question %></h3>
+    <p><%= answer %></p>
+  <% end %>
+</section>
+
+<p>
+  The <a href="<%= faq_path %>">questions page</a> answers the rest — what the
+  device needs, what happens if a reminder is missed, how a caregiver is
+  connected, and the ones where the answer is no.
+</p>
+
+<h2>Setting it up</h2>
+
+<p>
+  Enter your email on the <a href="<%= login_path %>">sign-in page</a> and
+  Remindly sends you a link — there is no password to choose. The first time you
+  sign in it asks one question, whether you are setting this up for someone else
+  or will be receiving the reminders yourself, and takes you straight in.
+</p>
+
+<p>
+  The <a href="<%= how_to_path %>">guide</a> walks through creating a first
+  reminder, and the <a href="<%= faq_path %>">questions page</a> covers the rest
+  — including the things Remindly deliberately does not do. If you would rather
+  describe your situation to a person first, email
+  <a href="mailto:hello@remindly.care">hello@remindly.care</a>: if this is the
+  wrong fit for what you need, you will be told so.
+</p>
+
+<div class="actions">
+  <% if current_user %>
+    <a class="btn btn-secondary" href="<%= dashboard_path %>">Back to your dashboard</a>
+  <% else %>
+    <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <% end %>
+</div>

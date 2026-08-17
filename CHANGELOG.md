@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A landing page at `/reminder-app-for-elderly-parents`**: the homepage opens
+  on the feeling — "caring for a parent from a distance" — because most people
+  who reach it arrived from a link someone sent them and are already part
+  persuaded. Someone typing "reminder app for elderly parents" into a search
+  engine has already decided they want software and is asking which one, and
+  that search had no page here to land on. This one answers it in its own words:
+  what a reminder app has to do when the person needing reminding and the person
+  arranging it are not in the same house, how Remindly does each, what it runs
+  on, and what comes back to the caregiver. It asks three questions of its own —
+  is it worth it if they only take one tablet, will they find it patronising,
+  what if it does not suit us — and publishes no `FAQPage`: `/faq` keeps that
+  graph. Two pages of ours bidding for the same informational search compete
+  with each other, and rewording the questions does not separate them, because
+  what competes is the intent behind them. Held to the same claims as the rest
+  of the site: "marked done", never "taken", and the page-must-stay-open
+  limitation stated rather than buried.
 - **A count of public page views, that records nobody**: the marketing pages set
   no analytics cookie and write no Ahoy visit, which is what makes the privacy
   policy true — and it left us unable to answer the only question that mattered

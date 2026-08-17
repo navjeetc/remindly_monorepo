@@ -37,11 +37,29 @@ class PagesController < WebController
   # the addresses gating it would collect.
   def caregiver_checklist; end
 
+  # A landing page for one search: "reminder app for elderly parents", and the
+  # phrasings around it. The homepage cannot serve that search well — it opens
+  # on the feeling ("caring for a parent from a distance") because most of the
+  # people who reach it arrived from a link someone sent them, already part
+  # persuaded. Someone typing this phrase into a search engine has already
+  # decided they want a piece of software and is asking which one, so this page
+  # opens on the practical question instead and answers it in its own words
+  # rather than the homepage's.
+  #
+  # Kept deliberately distinct from the homepage for that reason and one other:
+  # two pages arguing the same thing in the same words are read as duplicates,
+  # and a search engine picks one of them to show — usually not the one you
+  # meant.
+  def reminder_app_for_elderly_parents; end
+
   # Every public page that is not a blog post, in the order a person would meet
   # them. This is also the authoritative list of what is indexable: robots.txt
   # disallows everything else, so a page missing here is a page search engines
   # have no route to except an inbound link.
-  STATIC_PATHS = %w[/ /how_to /faq /routine_sheet /caregiver_checklist /blog /privacy /terms].freeze
+  STATIC_PATHS = %w[
+    / /reminder-app-for-elderly-parents /how_to /faq /routine_sheet
+    /caregiver_checklist /blog /privacy /terms
+  ].freeze
 
   # Rendered rather than a static file so it cannot drift from the routes or
   # from the posts on disk. No layout — a sitemap is XML, and the marketing
