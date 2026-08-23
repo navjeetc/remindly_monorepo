@@ -110,6 +110,17 @@ class TelnyxVoiceService
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
         digits: 1,
+        # Say it once. Telnyx re-speaks the prompt when no digit is collected,
+        # and left to its default it tries several times — which on a live test
+        # put two identical recordings on a voicemail, sixty-one seconds apart
+        # against a ten-second timeout. A repeat only helps someone who fumbled
+        # the first prompt, and costs an extra voicemail message every single
+        # time nobody picks up, which is exactly what makes an automated caller
+        # feel like a robocall.
+        #
+        # The real answer is answering-machine detection: knowing a machine
+        # picked up means hanging up rather than talking to it at all.
+        maximum_tries: 1,
         timeout_millis: 10000,
         inter_digit_timeout_millis: 5000,
         terminating_digit: "#",

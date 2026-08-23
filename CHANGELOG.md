@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A missed call left two identical messages on the voicemail.** Found in a
+  live test, not by a reviewer: Telnyx re-speaks a `gather_using_speak` prompt
+  when no digit is collected, and `maximum_tries` was never set, so it used its
+  default. One `call.answered` event, one gather command from us, and two
+  recordings sixty-one seconds apart against a ten-second timeout. It is now
+  explicitly `1` — a repeat only helps someone who fumbled the first prompt, and
+  costs another voicemail message every time nobody picks up, which is exactly
+  what makes an automated caller feel like a robocall. The real answer is
+  answering-machine detection, which the design document already requires
+  ("voicemail is not delivery") and which is not built: a machine answering is
+  currently recorded as an answered call that happened to collect no digit.
+
 - **Reminder calls had no upper age limit.** The scheduler matched every
   pending occurrence ever scheduled, and occurrences do not age out on their
   own: `MarkMissedOccurrencesJob` sweeps only within its seven-day

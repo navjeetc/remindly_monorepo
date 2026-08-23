@@ -51,4 +51,24 @@ RSpec.describe TelnyxVoiceService do
       expect(with(base_url: "https://example.com/")).to start_with("https://example.com/telnyx/webhooks")
     end
   end
+  # A live test left two identical recordings on a voicemail sixty-one seconds
+  # apart, against a ten-second timeout: Telnyx re-speaks the prompt when no
+  # digit is collected, and its default is more than once.
+  describe ".gather_digit" do
+    it "asks Telnyx to speak the prompt exactly once" do
+      sent = nil
+      allow(described_class).to receive(:post) { |_path, body, **| sent = body; { "data" => {} } }
+
+      described_class.gather_digit(call_control_id: "v3:abc", prompt: "time for your tablet")
+
+      expect(sent[:maximum_tries]).to eq(1)
+    end
+
+    it "still raises when the provider refuses, so the event stays redeliverable" do
+      allow(described_class).to receive(:post).and_return(nil)
+
+      expect { described_class.gather_digit(call_control_id: "v3:abc", prompt: "x") }
+        .to raise_error(/gather_using_speak failed/)
+    end
+  end
 end
