@@ -51,6 +51,19 @@ class User < ApplicationRecord
   validate :tz_resolves_to_a_real_zone
   validate :phone_is_e164, if: -> { phone.present? }
 
+  # Consent is to a number, not to a person.
+  #
+  # Change the number and every fact about the old one stops applying: the new
+  # number has not been verified and its owner has not agreed to anything. A
+  # caregiver editing this field would otherwise inherit consent given by
+  # somebody else — which is the failure the whole consent design exists to
+  # prevent, reached through a text field rather than a form full of promises.
+  #
+  # An opt-out is deliberately *not* cleared. Someone who said stop said it about
+  # being telephoned, not about a particular number, and a caregiver must not be
+  # able to undo that by editing a field. Lifting it takes a fresh keypress.
+  before_save :forget_consent_when_the_number_changes
+
   # Addresses a mail provider has permanently refused — a hard bounce, meaning
   # the mailbox does not exist. Postmark marks such an address inactive and
   # rejects every later send, so continuing to try achieves nothing and actively
@@ -208,6 +221,20 @@ class User < ApplicationRecord
     return if tz.blank?
 
     errors.add(:tz, "is not a valid timezone") unless ActiveSupport::TimeZone[tz]
+  end
+
+  def forget_consent_when_the_number_changes
+    return unless will_save_change_to_phone?
+
+    # Nothing to forget when there was no previous number — a new record, or the
+    # first number set on an existing one. Without this the callback wipes
+    # consent being granted in the same save, which reads as security and is
+    # simply a bug: it defeats any single write that sets both, silently.
+    return if phone_in_database.blank?
+
+    self.phone_verified_at = nil
+    self.call_consent_at = nil
+    self.call_reminders_enabled = false
   end
 
   def phone_is_e164

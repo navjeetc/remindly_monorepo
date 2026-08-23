@@ -108,6 +108,79 @@ RSpec.describe User do
     end
   end
 
+  # Consent is to a number, not to a person. A caregiver who edits this field
+  # would otherwise inherit agreement given by somebody else — the failure the
+  # whole consent design exists to prevent, reached through a text field.
+  describe "consent when the phone number changes" do
+    let(:senior) { create(:user, :senior, name: "Mom", phone: "+15551110000") }
+
+    before do
+      senior.update!(phone_verified_at: Time.current, call_consent_at: Time.current,
+                     call_reminders_enabled: true)
+    end
+
+    it "forgets that the old number was verified" do
+      expect { senior.update!(phone: "+15552220000") }
+        .to change { senior.reload.phone_verified_at }.to(nil)
+    end
+
+    it "forgets the consent given for the old number" do
+      expect { senior.update!(phone: "+15552220000") }
+        .to change { senior.reload.call_consent_at }.to(nil)
+    end
+
+    it "stops calls until the new number agrees for itself" do
+      senior.update!(phone: "+15552220000")
+
+      expect(senior.reload.call_reminders_enabled).to be false
+    end
+
+    it "leaves consent alone when something else is saved" do
+      senior.update!(name: "Margaret")
+
+      expect(senior.reload.call_consent_at).to be_present
+      expect(senior.call_reminders_enabled).to be true
+    end
+
+    it "forgets consent when the number is removed entirely" do
+      senior.update!(phone: nil)
+
+      expect(senior.reload.call_consent_at).to be_nil
+      expect(senior.call_reminders_enabled).to be false
+    end
+
+    # There is nothing to forget when there was no previous number. Clearing here
+    # would defeat any single save that sets a number and its consent together,
+    # silently — which reads as caution and is simply a bug.
+    it "does not wipe consent granted in the same save as the first number" do
+      fresh = create(:user, :senior, name: "Dad", phone: "+15557770000",
+                                     phone_verified_at: Time.current,
+                                     call_consent_at: Time.current,
+                                     call_reminders_enabled: true)
+
+      expect(fresh.reload.call_reminders_enabled).to be true
+      expect(fresh.call_consent_at).to be_present
+    end
+
+    it "does not wipe consent when a number is added to a user who had none" do
+      numberless = create(:user, :senior, name: "Aunt", phone: nil)
+      numberless.update!(phone: "+15558880000", call_consent_at: Time.current,
+                         call_reminders_enabled: true)
+
+      expect(numberless.reload.call_reminders_enabled).to be true
+    end
+
+    # An opt-out is about being telephoned, not about a particular number. A
+    # caregiver must not be able to undo it by editing a field.
+    it "does not lift an opt-out" do
+      senior.update!(call_opted_out_at: Time.current)
+
+      senior.update!(phone: "+15552220000")
+
+      expect(senior.reload.call_opted_out_at).to be_present
+    end
+  end
+
   # Outbound reminder calls are legally restricted to 8am-9pm where the person
   # answering actually is, which makes tz the thing this rule stands on.
   describe "#within_calling_hours?" do
