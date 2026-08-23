@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_090000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -91,16 +91,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
     t.text "message"
     t.json "metadata"
     t.string "notification_type", null: false
+    t.integer "occurrence_id"
     t.datetime "read_at"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["notification_type"], name: "index_notifications_on_notification_type"
+    t.index ["user_id", "notification_type", "occurrence_id"], name: "index_notifications_on_user_type_and_occurrence", unique: true, where: "occurrence_id IS NOT NULL"
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "occurrences", force: :cascade do |t|
+    t.datetime "call_suppressed_at"
+    t.string "call_suppressed_reason"
     t.datetime "created_at", null: false
     t.integer "reminder_id", null: false
     t.datetime "scheduled_at", null: false
@@ -221,6 +225,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
     t.index ["task_type"], name: "index_tasks_on_task_type"
   end
 
+  create_table "telnyx_calls", force: :cascade do |t|
+    t.datetime "answered_at"
+    t.integer "attempt_number", default: 1, null: false
+    t.string "call_control_id"
+    t.date "call_day"
+    t.string "call_leg_id"
+    t.string "call_tz"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.integer "daily_sequence"
+    t.string "dtmf"
+    t.text "last_payload"
+    t.integer "occurrence_id", null: false
+    t.string "outcome", default: "pending", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["call_control_id"], name: "index_telnyx_calls_on_call_control_id", unique: true
+    t.index ["call_leg_id"], name: "index_telnyx_calls_on_call_leg_id", unique: true, where: "call_leg_id IS NOT NULL"
+    t.index ["occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_occurrence_and_attempt", unique: true
+    t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
+    t.index ["user_id", "call_day", "daily_sequence"], name: "index_telnyx_calls_on_user_day_and_sequence", unique: true, where: "call_day IS NOT NULL"
+    t.index ["user_id"], name: "index_telnyx_calls_on_user_id"
+  end
+
   create_table "time_blocks", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
@@ -245,9 +274,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
     t.boolean "notify_on_coverage_gaps", default: true, null: false
     t.boolean "notify_on_task_assigned_to_others", default: false
     t.json "notify_reminder_categories", default: ["medication"], null: false
+    t.string "phone"
     t.integer "role"
     t.string "tz", default: "America/New_York"
     t.datetime "updated_at", null: false
+    t.boolean "voice_reminders_enabled", default: false, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
@@ -267,5 +298,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
   add_foreign_key "tasks", "users", column: "assigned_to_id"
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"
+  add_foreign_key "telnyx_calls", "occurrences"
+  add_foreign_key "telnyx_calls", "users"
   add_foreign_key "time_blocks", "users"
 end

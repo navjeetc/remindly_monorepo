@@ -1,11 +1,34 @@
 Hi <%= @caregiver.display_name %>,
 
+<% if @phone_failure == :could_not_place -%>
+Remindly tried to call <%= @senior.display_name %> about <%= @reminder.title %> and could not get through.
+<% if @scheduled_at -%>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>. <%= pluralize(@attempts, "attempt") %> made,
+and not one of them reached the phone network. That is a fault at our end.
+<% end -%>
+<% elsif @phone_failure == :not_attempted_in_time -%>
+Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
+<% if @scheduled_at -%>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, and was closed as missed
+before Remindly managed to place the call. That is a fault at our end.
+<% end -%>
+<% elsif @phone_failure -%>
+Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
+<% if @scheduled_at -%>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside the hours
+Remindly is allowed to place reminder calls — between <%= @calling_hours %> in
+<%= @senior.display_name %>'s own time.
+<% end -%>
+Nobody was contacted, so this says nothing about whether <%= @senior.display_name %> did it —
+only that Remindly did not ask.
+<% else -%>
 <%= @senior.display_name %> has not marked <%= @reminder.title %> as done.
-<% if @scheduled_at %>
+<% if @scheduled_at -%>
 It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and has not been marked done since.
-<% end %>
+<% end -%>
 This means nobody pressed Done on their device. It does not necessarily mean it
 was not done — they may have done it without marking it.
+<% end -%>
 
 View <%= @senior.display_name %>'s dashboard: <%= @dashboard_url %>
 

@@ -49,6 +49,7 @@ class User < ApplicationRecord
   attribute :tz, :string, default: "America/New_York"
   validates :tz, presence: true
   validate :tz_resolves_to_a_real_zone
+  validate :phone_is_e164, if: -> { phone.present? }
 
   # Addresses a mail provider has permanently refused — a hard bounce, meaning
   # the mailbox does not exist. Postmark marks such an address inactive and
@@ -180,11 +181,39 @@ class User < ApplicationRecord
     true
   end
 
+  # Outbound reminder calls are restricted to 8am-9pm in the *called party's*
+  # own local time. That is a legal limit, not a preference, and it is what makes
+  # tz load-bearing for phone reminders rather than a display convenience: the
+  # profile bug that silently moved savers to UTC-12 would, under this feature,
+  # have telephoned them in the middle of the night.
+  #
+  # 8...21 covers the hours 8 through 20, so 20:59 is inside the window and 21:00
+  # is not.
+  CALLING_HOURS = (8...21)
+
+  def within_calling_hours?(at: Time.current)
+    zone = ActiveSupport::TimeZone[tz.to_s]
+
+    # A zone we cannot resolve means we do not know what time it is where this
+    # person is, and "probably daytime" is not a defence. Blocking is the only
+    # safe default -- a call placed at 3am cannot be taken back.
+    return false if zone.nil?
+
+    CALLING_HOURS.cover?(at.in_time_zone(zone).hour)
+  end
+
   private
 
   def tz_resolves_to_a_real_zone
     return if tz.blank?
 
     errors.add(:tz, "is not a valid timezone") unless ActiveSupport::TimeZone[tz]
+  end
+
+  def phone_is_e164
+    # E.164: leading +, 1-3 digit country code, then up to 12 digits.
+    return if phone.match?(/\A\+[1-9]\d{7,14}\z/)
+
+    errors.add(:phone, "must be a valid E.164 number like +15551234567")
   end
 end

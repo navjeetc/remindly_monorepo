@@ -92,4 +92,14 @@ Rails.application.configure do
   # e.g. "evil.local.attacker.com" -- the DNS-rebinding case Host Authorization
   # exists to stop.
   config.hosts << /\A[a-z0-9-]+\.local(:\d+)?\z/i
+
+  # ngrok, for exercising provider webhooks (Telnyx Call Control) against the
+  # dev server -- a DTMF press cannot be tested any other way, because the
+  # provider has to reach us from the public internet.
+  #
+  # Anchored for the same reason as the Bonjour pattern above: unanchored,
+  # "ngrok-free.dev.attacker.com" would match. Reserved subdomains on paid
+  # ngrok plans use the same apex, so the label pattern stays permissive.
+  config.hosts << /\A[a-z0-9-]+\.ngrok-free\.dev(:\d+)?\z/i
+  config.hosts << /\A[a-z0-9-]+\.ngrok\.app(:\d+)?\z/i
 end

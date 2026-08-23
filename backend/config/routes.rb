@@ -36,6 +36,9 @@ Rails.application.routes.draw do
   get  "privacy",            to: "pages#privacy", as: :privacy
   get  "terms",              to: "pages#terms", as: :terms
 
+  # Telnyx Call Control webhooks (public, token-secured)
+  post "telnyx/webhooks",    to: "telnyx_webhooks#receive"
+
   # Hyphens, unlike every other path here, because this one exists to be landed
   # on from a search and the words in it are the search. The route helper keeps
   # the underscored Ruby name.

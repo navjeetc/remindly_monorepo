@@ -407,6 +407,7 @@ DEPENDENCIES
   bootsnap
   brakeman
   debug
+  ed25519 (~> 1.4)
   factory_bot_rails (~> 6.4)
   ice_cube (~> 0.16)
   jwt (~> 2.7)

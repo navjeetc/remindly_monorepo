@@ -13,6 +13,21 @@ class FeatureFlag
       description: "Connect to external scheduling services (Acuity, Calendly)",
       default: true,
       env_var: "ENABLE_EXTERNAL_SCHEDULING"
+    },
+    # The outer of two locks on reminder phone calls. This one says the code may
+    # run at all; a senior's own voice_reminders_enabled and phone say whether it
+    # runs for them.
+    #
+    # It exists because the inner lock is two ordinary columns, and the only way
+    # to try this in production is to set them — after which calls begin within
+    # the minute, and the only way to stop them is a deploy. This flag is a lever
+    # that can be thrown without one, and turning the feature on becomes a
+    # reviewed change to the deploy configuration rather than a console update.
+    phone_call_reminders: {
+      name: "Phone Call Reminders",
+      description: "Deliver reminders as an outbound phone call, acknowledged by keypad",
+      default: false,
+      env_var: "ENABLE_PHONE_CALL_REMINDERS"
     }
   }.freeze
 

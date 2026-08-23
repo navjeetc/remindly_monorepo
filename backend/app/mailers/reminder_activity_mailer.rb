@@ -18,10 +18,29 @@ class ReminderActivityMailer < ApplicationMailer
   end
 
   # Nobody marked the reminder done before the sweep closed it out.
+  #
+  # Three different things can produce that, and they ask the caregiver for
+  # different actions. Usually the senior was asked and did not answer. But if
+  # their channel is the telephone, nobody may have been asked at all -- either
+  # the reminder fell outside the hours a call may be placed, or every attempt
+  # failed before it reached the provider. Saying "hasn't marked it as done" in
+  # those cases reports a non-event as a lapse, and sends a caregiver looking
+  # for a failure that is ours rather than theirs.
+  #
   # Params: caregiver, senior, reminder, occurrence
   def missed
     setup
-    mail(to: @caregiver.email, subject: "#{@senior.display_name} hasn't marked #{@reminder.title} as done")
+
+    subject = case @phone_failure
+    when :outside_calling_hours, :not_attempted_in_time
+      "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
+    when :could_not_place
+      "Remindly tried to call #{@senior.display_name} about #{@reminder.title} and couldn't get through"
+    else
+      "#{@senior.display_name} hasn't marked #{@reminder.title} as done"
+    end
+
+    mail(to: @caregiver.email, subject: subject)
   end
 
   private
@@ -35,5 +54,11 @@ class ReminderActivityMailer < ApplicationMailer
     # templates strftime it, so an Eastern 9:00 AM dose would otherwise read 1:00 PM.
     @scheduled_at = @occurrence.scheduled_at&.in_time_zone(@reminder.tz)
     @dashboard_url = senior_dashboard_url(@senior)
+    @phone_failure = @occurrence.phone_failure_reason
+    @attempts = @occurrence.telnyx_calls.count
+    # .max, not .last: Range#last returns the end object even for an exclusive
+    # range, so (8...21).last is 21 and this read "8am and 10pm" — an hour later
+    # than within_calling_hours? actually allows, in an email to a caregiver.
+    @calling_hours = "#{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm"
   end
 end

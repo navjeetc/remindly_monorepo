@@ -7,7 +7,267 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A finished call kept blocking the senior's next one.** `completed_at` was
+  only written when the hangup event found the outcome still `pending`, so a
+  call where nobody pressed anything — the outcome having already been set to
+  `no_response` by the gather — never recorded that it had ended. Harmless until
+  the one-call-at-a-time guard started reading that column to decide whether a
+  senior may be called again, at which point a call that finished twenty seconds
+  ago went on occupying the line for five minutes. Completion is now recorded
+  unconditionally; only the outcome stays conditional, so a hangup arriving
+  after a keypress cannot overwrite what the senior said.
+
+- **A senior could be telephoned twice at the same instant.** Found in a live
+  test: a dose falling due at the same moment as another occurrence's retry
+  placed two calls in the same second to the same phone. One was answered; the
+  other talked to voicemail, having spent a daily slot on a call that could not
+  possibly be picked up. Nothing prevented it — `MAX_CALLS_PER_DAY` bounds the
+  day and `MAX_ATTEMPTS` bounds the occurrence, and neither bounds concurrency.
+  A reservation is now refused while that senior has a call in progress; the
+  skipped occurrence stays pending and the scheduler, which runs every minute,
+  offers it again once the line is free. An attempt that never rang does not
+  occupy the line, and one abandoned by a dead worker stops counting after five
+  minutes rather than blocking the rest of the day.
+
+- **A missed call left two identical messages on the voicemail.** Found in a
+  live test, not by a reviewer: Telnyx re-speaks a `gather_using_speak` prompt
+  when no digit is collected, and `maximum_tries` was never set, so it used its
+  default. One `call.answered` event, one gather command from us, and two
+  recordings sixty-one seconds apart against a ten-second timeout. It is now
+  explicitly `1` — a repeat only helps someone who fumbled the first prompt, and
+  costs another voicemail message every time nobody picks up, which is exactly
+  what makes an automated caller feel like a robocall. The real answer is
+  answering-machine detection, which the design document already requires
+  ("voicemail is not delivery") and which is not built: a machine answering is
+  currently recorded as an answered call that happened to collect no digit.
+
+- **Reminder calls had no upper age limit.** The scheduler matched every
+  pending occurrence ever scheduled, and occurrences do not age out on their
+  own: `MarkMissedOccurrencesJob` sweeps only within its seven-day
+  `MARK_LOOKBACK`, so anything unacknowledged for longer stays `pending` for
+  good. One production account had accumulated thirty such rows over six months,
+  the oldest from the previous November — switching the feature on would have
+  telephoned about ten of them within a minute of each other, then ten more
+  every day, indefinitely. `LOOKBACK` bounds it to two hours: enough to survive
+  a queue backlog, short enough that nobody is rung at bedtime about a dose due
+  at breakfast. A call is far more intrusive than the status write the missed
+  sweep performs, so its window is deliberately much tighter.
+
+- **The daily cap still was not a cap, and four more.** The slot number came
+  from a moving `maximum` while the cap came from a separate `count`, which two
+  workers defeat: both pass the count at nine, the first takes slot ten, the
+  second then reads a maximum of ten and takes eleven. Nothing collides. There
+  are now exactly `MAX_CALLS_PER_DAY` slots in a day and a reservation claims
+  the lowest free one, so two racing reserves pick the same slot and the index
+  refuses one; a slot is released when an attempt turns out never to have rung,
+  so it can be reused rather than leaving a hole. A senior's timezone is
+  editable and the day hangs off it, so changing zones handed back a fresh set
+  of slots — the zone each attempt was filed under is now recorded, which
+  catches that without refusing the ordinary morning call after a full evening.
+  A `reserved` row whose worker died was reported to caregivers as "we tried to
+  call and could not get through", when nothing had reached the provider. And
+  cancelling an attempt while recording why were two separate writes, so a
+  crash between them left a state nothing could repair.
+- **The Ed25519 webhook signature path had no test at all.** It is the
+  production verification mode for a public endpoint that writes
+  acknowledgements, and every spec stubbed the public key to nil, so it never
+  ran. A regression in the header names, the signed-message format or the base64
+  decoding would have passed CI and surfaced only once signature mode was
+  switched on — at which point every callback would be rejected and no reminder
+  call could be acknowledged.
+
+- **A fifth review round: seven more, one of them user-visible.** The missed
+  email's subject handled two of the three no-call reasons, so
+  `not_attempted_in_time` fell through to "hasn't marked it as done" while the
+  body of the same message said "Remindly did not call" — the subject blaming
+  the senior for a call that was never placed, which is the exact failure that
+  reason exists to prevent. The per-senior daily cap was a count followed by an
+  insert, which three Solid Queue worker threads can all pass at once; it is now
+  a `(user_id, call_day, daily_sequence)` unique index, so two reserves
+  computing the same slot cannot both win. That cap also counted attempts where
+  the phone never rang, so ten failures early in the day silenced every later
+  reminder even after the provider recovered. A `cancelled` attempt was
+  classified as "we tried and could not get through". `suppress_call!` decided
+  first-refusal with a read rather than a conditional update, so two callers
+  could each write a different reason. The cancel branch recorded nothing, so a
+  sweep that closed an occurrence mid-claim produced a caregiver email claiming
+  a call was attempted. And the notifications migration built a unique index
+  without collapsing duplicates first — harmless on today's data, but the
+  entrypoint runs `db:prepare` at container start, so a raise there aborts the
+  boot rather than surfacing in a test.
+
+- **Four more, from a fourth review pass.** The dialling job trusted the
+  scheduler's `WHERE` clause for the per-user opt-in, so a senior who switched
+  voice reminders off — or a job invoked directly for someone who never opted in
+  — was still called; the opt-in is now re-read at dial time, like the status
+  and the calling hours already were. `MAX_ATTEMPTS` is per occurrence, so a
+  senior with six reminders due could take eighteen calls without exceeding it;
+  `MAX_CALLS_PER_DAY` bounds the person rather than the reminder, counted in
+  their own day. Correlating a stray callback matched the most recent
+  uncorrelated attempt, so a delayed callback from attempt 1 could attach to
+  attempt 2 and silence its real call — `client_state` now carries the attempt
+  number and the claim is a conditional update on that exact row. And a job held
+  in the queue past the missed sweep's grace left no record at all, so the
+  caregiver was told the senior ignored a call that was still waiting to be
+  placed.
+
+- **Four more ways a caregiver could be told the wrong thing.** An accepted call
+  whose `call_control_id` failed to persist could never be correlated, so every
+  callback asked for a retry until the provider gave up and the senior stayed
+  connected to a call that never spoke — the event's `client_state` now names
+  the occurrence, so the reserved attempt is adopted and the call proceeds. The
+  scheduler skipped out-of-hours occurrences before `VoiceReminderJob` ever ran,
+  so the suppression recording added for exactly this case never executed in
+  production, where the scheduler is the only caller. `phone_failure_reason`
+  consulted the senior's *current* preferences before the durable record, so
+  switching voice reminders off after a failure retroactively turned a call
+  nobody placed into a reminder she had ignored. And duplicate notification
+  deliveries could race: the "already notified" check was a SELECT against an
+  unindexable json column, so both workers passed it — `notifications` now has a
+  real `occurrence_id` column with a partial unique index, and the insert
+  decides rather than the check.
+
+- **The caregiver email stated the wrong calling window.** `CALLING_HOURS` is
+  the exclusive range `(8...21)`, and Ruby's `Range#last` returns the range's
+  *end* regardless of exclusivity — so `last + 1 - 12` gave `10` and the mail
+  read "between 8am and 10pm" while `within_calling_hours?` actually stops at
+  9pm. `.max` respects exclusivity. The suppression log had the same fault,
+  reading "8:00-22:00".
+- **Four ways an event could be retired without being handled.** A gather that
+  failed left the senior connected to silence with no retry, because
+  `answered_at` was recorded first and suppressed redelivery; the gather now
+  precedes the flag, and Telnyx's `command_id` makes a duplicate harmless. A
+  callback arriving before `dial` wrote `call_control_id` back was answered
+  `200` and lost for good; `client_state` now identifies our own calls so they
+  can be retried, while genuinely foreign ids are still dropped rather than
+  retried forever. The caregiver notification was conditioned on a value
+  computed inside an already-committed transaction, so a failed enqueue could
+  never be recovered by a redelivery; it is now enqueued on every delivery,
+  which both the job and the delivery beneath it already tolerate. And a dose
+  resolved from another client between the status check and the dial was still
+  telephoned about — the status is re-read after the attempt is claimed.
+
+- **An unanswered senior could be telephoned dozens of times.** The scheduler
+  skipped occurrences called within the last two minutes, but every dial reused
+  one `TelnyxCall` row per occurrence, so its `created_at` never moved past the
+  first attempt and the window stopped excluding anything. Running every minute
+  against an occurrence that stays `pending` for the full 60-minute miss grace,
+  that is around fifty consecutive calls to someone who did not pick up — all
+  inside legal hours, so the calling-hours guard could not help. Attempts are
+  now one row each, capped at three and spaced five minutes apart, per the
+  design document's "retries after a few minutes, twice at most, then stops".
+- **Two runs could both dial the same dose.** Nothing was written before the
+  provider was called, so a redelivered job or two overlapping scheduler runs
+  each POSTed without being able to see the other. An attempt is now claimed
+  first, and a unique index on `(occurrence_id, attempt_number)` decides the
+  race in the database — the loser is told before it dials rather than after.
+- **A failed keypress was reported to Telnyx as success.** The handlers rescued
+  every error, logged it, and still answered `200`, so the provider considered
+  the event delivered and never resent it. A transient write failure therefore
+  discarded the senior's "1" for good: the occurrence stayed pending and the
+  caregiver was later emailed that she had not marked it done. Failures now
+  propagate and the endpoint answers `500` so Telnyx retries; every handler is
+  idempotent, and there are specs for the redelivered case.
+
+- **A call that could not be placed also said the senior hadn't marked it
+  done.** The previous fix covered calls suppressed for calling hours, but not
+  calls that were attempted and never reached the provider — a missing API key,
+  the provider down. Those left the occurrence pending, the sweep marked it
+  missed, and the caregiver was told their mother had not marked her dose done.
+  This is the state production is in today, with no `telnyx:` credentials at
+  all: enabling voice reminders there would have produced that email for every
+  single reminder. `Occurrence#phone_failure_reason` now separates the two
+  cases, and the mail says which — "Remindly tried to call Mom about Metformin
+  and couldn't get through", with the attempt count and an admission that the
+  fault is ours. An attempt only counts as a real call once it has a
+  `call_control_id`, which is the provider's receipt; testing the attempt row's
+  mere existence let a reservation that failed before the API call masquerade
+  as a call that rang.
+- **A reminder that was never called said the senior hadn't marked it done**:
+  once calls are confined to 8am–9pm, a 6am dose for a senior whose only channel
+  is the telephone is suppressed at 6:00, marked `missed` at 7:00 by the sweep,
+  and emailed to the caregiver as "hasn't marked Metformin as done". Nobody was
+  asked. Reporting a non-event as a lapse sends a caregiver looking for a
+  failure that never happened, which is the opposite of what this mail exists
+  for. That case now says "Remindly couldn't call Mom about Metformin", names
+  the hour and the window, and states plainly that nothing was contacted so it
+  implies nothing about what the senior did. It reverts to the ordinary wording
+  the moment a call actually went out — a queue backlog delivering a 7:55 dose
+  at 8:05 is a real attempt and an ordinary miss.
+
+- **Telnyx webhooks failed open when no token was configured**: a blank
+  `webhook_token` meant "accept anything", which reads as a lenient default and
+  is actually an open door — production has no `telnyx:` credentials, so on
+  deploy `/telnyx/webhooks` would have accepted any POST and let it acknowledge
+  a reminder. An unconfigured integration now rejects callbacks instead of
+  trusting them, and the token comparison is constant-time.
+- **The `base_url` credential still pointed at the legacy domain**: it said
+  `remindly.anakhsoft.com`, and two places in the codebase had already been
+  written to route around it — the production mailer host is hardcoded because
+  the credential "was stale and kept sending caregivers to the old domain", and
+  `MagicMailer` prefers the origin the login actually began on. It is now
+  `www.remindly.care`, matching `ApplicationHelper::CANONICAL_HOST`, so email
+  links, canonical tags and Telnyx callbacks finally agree on one host. The
+  mailer host stays hardcoded regardless: login links are the
+  highest-consequence path in the app.
+
 ### Added
+- **Phone reminders are behind a feature flag, off by default.** Until now the
+  only thing preventing calls in production was that no senior had
+  `voice_reminders_enabled` and a phone number — two ordinary columns, which a
+  single console command sets, and setting them is the only way to try the
+  feature there. Calls would then begin within the minute, and stopping them
+  would need a deploy. `FeatureFlag.enabled?(:phone_call_reminders)`
+  (`ENABLE_PHONE_CALL_REMINDERS`, default false) is the outer of two locks: it
+  says the code may run at all, while the senior's own columns say whether it
+  runs for them. It is checked in `VoiceReminderSchedulerJob` so no work is
+  enqueued, and again in `VoiceReminderJob` because that job is reachable from
+  a console or a retry — a flag that only guards the gate is not a kill switch.
+
+- **Reminder calls are confined to 8am–9pm in the called party's own
+  timezone**: automated voice calls are regulated and the window belongs to the
+  person answering, not the server. `User#within_calling_hours?` is checked in
+  two places on purpose — the scheduler, so an occurrence due at 2am enqueues
+  nothing rather than a job every minute until the missed sweep claims it, and
+  `VoiceReminderJob` itself, because that job is reachable from a console or
+  from a retry hours after the failure that caused it, and a call placed at 3am
+  cannot be taken back. A timezone that cannot be resolved blocks the call
+  instead of assuming daytime. It cannot catch a timezone that is wrong but
+  valid — the UTC-12 profile bug resolved perfectly well — which is why
+  verifying the number with a real person still matters.
+- **Reminders delivered as a phone call, acknowledged from the keypad**: every
+  client until now assumed the senior has a screen, is signed in, and will look
+  at it. A phone call assumes none of that — it reaches someone whose only
+  device is a landline, and it reaches them whether or not they remember an app
+  exists. At the scheduled time Telnyx dials the senior, speaks the reminder and
+  collects one digit: 1 marks it done, 2 schedules it again ten minutes later.
+  Those are the same two actions `/voice_reminders` offers, and both now run
+  through `Occurrence#snooze!`, so a keypress and a tap cannot drift apart — a
+  snooze resolves the occurrence *and* schedules the next one, which recording
+  the acknowledgement alone would not. An unanswered call records `no_response`
+  and leaves the occurrence pending, deliberately not "skip": nobody chose
+  anything, so the missed sweep still claims it and the caregiver is still told.
+
+  **Not yet fit to enable in production.** There is no consent record, no
+  verification that a number reaches the person it is meant to, and no
+  answering-machine detection — and no way for anyone to opt in, since nothing
+  in the app sets `voice_reminders_enabled` or `phone`.
+  `docs/PHONE_CALL_REMINDERS_DESIGN.md` sets out what has to exist first, and
+  why the timezone fix from August is load-bearing here: a user silently moved
+  to UTC-12 would be telephoned in the middle of the night. Calling hours *are*
+  enforced — see the entry above — and the whole feature sits behind
+  `ENABLE_PHONE_CALL_REMINDERS`, off by default, so the scheduled job returns
+  immediately and nothing can be dialled.
+
+  Each call carries its own `webhook_url`, resolved from `base_url` or
+  `APP_URL`, which overrides the one configured on the Telnyx connection. A
+  single URL in the provider's portal has to be hand-flipped between production
+  and a tunnel to test anything, and forgetting has no error: the call
+  connects, nothing is listening, and the senior hears silence until it times
+  out. A base that resolves to loopback sends no override at all rather than a
+  URL Telnyx provably cannot reach.
+
 - **A landing page at `/reminder-app-for-elderly-parents`**: the homepage opens
   on the feeling — "caring for a parent from a distance" — because most people
   who reach it arrived from a link someone sent them and are already part

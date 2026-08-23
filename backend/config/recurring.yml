@@ -40,3 +40,15 @@ production:
     class: MarkMissedOccurrencesJob
     queue: default
     schedule: every 15 minutes
+
+  # Safe to leave scheduled while the feature is off: the job returns
+  # immediately unless FeatureFlag.enabled?(:phone_call_reminders), which is
+  # false unless ENABLE_PHONE_CALL_REMINDERS=true is set in the deploy
+  # environment. Scheduled rather than commented out deliberately — this
+  # project has twice shipped something that had to be switched on and was not
+  # (Solid Queue itself until PR #41, the CI workflow for months), and an entry
+  # someone forgets to restore fails exactly that way: silently, looking fine.
+  voice_reminder_scheduler:
+    class: VoiceReminderSchedulerJob
+    queue: default
+    schedule: every minute
