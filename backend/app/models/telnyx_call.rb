@@ -71,18 +71,38 @@ class TelnyxCall < ApplicationRecord
     return nil if previous && previous.attempt_number >= MAX_ATTEMPTS
     return nil if previous && previous.created_at > now - RETRY_AFTER
     day = local_day(user, now)
-    return nil if calls_on(user, day) >= MAX_CALLS_PER_DAY
+
+    # A fixed set of slots, not a moving counter. The previous shape read a count
+    # and then a separate maximum, which two workers defeat trivially: both pass
+    # the count at nine, the first takes slot ten, the second then reads a
+    # maximum of ten and takes eleven. Nothing collides and eleven calls go out.
+    #
+    # There are exactly MAX_CALLS_PER_DAY slots in a day. Two reserves racing
+    # both compute the same lowest free one, the unique index accepts one, and
+    # the loser is told before it dials. A released slot is reusable, so an
+    # attempt that never rang gives its allowance back without leaving a hole
+    # that a dense counter could not fill.
+    slot = free_slot(user, day)
+    return nil if slot.nil?
+
+    # A zone change must not hand back a fresh day. call_day comes from users.tz,
+    # which a caregiver can edit, and at 00:30 UTC Tokyo and Los Angeles are on
+    # different dates — so without this the cap is configurable away, the one
+    # thing invariant 7 says it must not be.
+    #
+    # Counted by comparing the zone each attempt was filed under, not by a
+    # rolling window: a window wide enough to catch this also refuses a
+    # legitimate morning call after a full evening, which is normal operation
+    # rather than an anomaly. When the zone has not changed, nothing here counts.
+    return nil if (slots_used(user, day) + slots_under_other_zones(user, zone_name(user), now)) >= MAX_CALLS_PER_DAY
 
     create!(
       occurrence: occurrence,
       user: user,
       attempt_number: (previous&.attempt_number || 0) + 1,
       call_day: day,
-      # Monotonic, taken from the highest number used rather than from the count
-      # that decides the cap. A cancelled attempt keeps its number while giving
-      # its allowance back, so counting would hand the same number out twice and
-      # the index would refuse a call the senior is entitled to.
-      daily_sequence: (where(user_id: user.id, call_day: day).maximum(:daily_sequence) || 0) + 1,
+      call_tz: zone_name(user),
+      daily_sequence: slot,
       status: "reserved",
       outcome: "pending"
     )
@@ -101,19 +121,40 @@ class TelnyxCall < ApplicationRecord
     now.in_time_zone(zone).to_date
   end
 
-  # What the senior's allowance has actually been spent on: calls that reached
-  # the provider, and reservations still in flight.
+  # The lowest slot nobody holds, or nil when the day is spent.
   #
-  # Excluded are attempts where the phone demonstrably never rang — cancelled,
-  # because she resolved the reminder herself or the sweep closed it, and failed,
-  # because the provider was never successfully contacted. Counting those would
-  # let ten failures early in the day silence every later reminder even after the
-  # integration recovered, which is the opposite of a safety cap's purpose. The
-  # per-occurrence MAX_ATTEMPTS and RETRY_AFTER already bound a runaway failure
-  # loop; this bounds a ringing telephone.
-  def self.calls_on(user, day)
-    where(user_id: user.id, call_day: day)
-      .where.not(status: [ "cancelled", "failed" ])
+  # A slot is released — daily_sequence set to NULL — when an attempt turns out
+  # never to have rung: cancelled because she resolved it herself or the sweep
+  # closed it, failed because the provider was never reached. Ten failures early
+  # in the day must not silence every later reminder once the integration
+  # recovers, and the per-occurrence MAX_ATTEMPTS and RETRY_AFTER already bound a
+  # runaway failure loop. This bounds a ringing telephone, not an API.
+  def self.free_slot(user, day)
+    taken = where(user_id: user.id, call_day: day).where.not(daily_sequence: nil).pluck(:daily_sequence)
+
+    (1..MAX_CALLS_PER_DAY).find { |slot| taken.exclude?(slot) }
+  end
+
+  def self.zone_name(user)
+    (ActiveSupport::TimeZone[user.tz.to_s] || Time.zone).name
+  end
+
+  def self.slots_used(user, day)
+    where(user_id: user.id, call_day: day).where.not(daily_sequence: nil).count
+  end
+
+  # Slots taken recently under a *different* zone than the one now in force —
+  # which is to say, calls the senior received before their clock was moved.
+  # Zero in normal operation, because the zone is the same one.
+  def self.slots_under_other_zones(user, current_zone, now)
+    where(user_id: user.id, created_at: (now - 1.day)..now)
+      .where.not(daily_sequence: nil)
+      .where.not(call_tz: current_zone)
       .count
+  end
+
+  # Releases this attempt's hold on the day, for an attempt that never rang.
+  def release_slot!(**attributes)
+    update!(attributes.merge(daily_sequence: nil))
   end
 end

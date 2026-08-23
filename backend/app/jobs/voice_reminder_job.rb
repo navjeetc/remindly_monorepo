@@ -90,12 +90,19 @@ class VoiceReminderJob < ApplicationJob
     # keypress on an earlier attempt. Without this, a senior who has just marked
     # the dose done gets telephoned about it anyway.
     unless occurrence.reload.status_pending?
-      attempt.update!(status: "cancelled", outcome: "no_response", completed_at: Time.current)
+      # One transaction, because these two writes have to be true together. If
+      # the process exits between them the row is cancelled with no reason
+      # recorded, and nothing can repair it afterwards: the earlier status guard
+      # refuses to record one because an attempt row now exists, and
+      # phone_failure_reason ignores cancelled rows — so the caregiver would be
+      # told the senior had not marked it done.
+      ActiveRecord::Base.transaction do
+        attempt.release_slot!(status: "cancelled", outcome: "no_response", completed_at: Time.current)
 
-      # If the sweep closed it rather than the senior resolving it, nobody was
-      # ever contacted and that has to be recorded here — a later job will not
-      # do it, because an attempt row now exists.
-      occurrence.suppress_call!(:not_attempted_in_time) if occurrence.status_missed?
+        # Only when the sweep closed it. One she resolved herself is a
+        # resolution, not an undelivered call.
+        occurrence.suppress_call!(:not_attempted_in_time) if occurrence.status_missed?
+      end
 
       Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: resolved while the attempt was being claimed"
       return

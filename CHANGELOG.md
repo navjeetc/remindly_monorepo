@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The daily cap still was not a cap, and four more.** The slot number came
+  from a moving `maximum` while the cap came from a separate `count`, which two
+  workers defeat: both pass the count at nine, the first takes slot ten, the
+  second then reads a maximum of ten and takes eleven. Nothing collides. There
+  are now exactly `MAX_CALLS_PER_DAY` slots in a day and a reservation claims
+  the lowest free one, so two racing reserves pick the same slot and the index
+  refuses one; a slot is released when an attempt turns out never to have rung,
+  so it can be reused rather than leaving a hole. A senior's timezone is
+  editable and the day hangs off it, so changing zones handed back a fresh set
+  of slots — the zone each attempt was filed under is now recorded, which
+  catches that without refusing the ordinary morning call after a full evening.
+  A `reserved` row whose worker died was reported to caregivers as "we tried to
+  call and could not get through", when nothing had reached the provider. And
+  cancelling an attempt while recording why were two separate writes, so a
+  crash between them left a state nothing could repair.
+- **The Ed25519 webhook signature path had no test at all.** It is the
+  production verification mode for a public endpoint that writes
+  acknowledgements, and every spec stubbed the public key to nil, so it never
+  ran. A regression in the header names, the signed-message format or the base64
+  decoding would have passed CI and surfaced only once signature mode was
+  switched on — at which point every callback would be rejected and no reminder
+  call could be acknowledged.
+
 - **A fifth review round: seven more, one of them user-visible.** The missed
   email's subject handled two of the three no-call reasons, so
   `not_attempted_in_time` fell through to "hasn't marked it as done" while the

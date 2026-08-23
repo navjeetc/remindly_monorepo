@@ -78,7 +78,9 @@ class TelnyxVoiceService
   # the same number immediately and dial in a tight loop against whatever is
   # broken.
   def self.record_failure(attempt)
-    attempt&.update(status: "failed", outcome: "error", completed_at: Time.current)
+    # Releases the senior's daily slot too: nothing rang, so it should not cost
+    # them a later reminder once whatever failed here recovers.
+    attempt&.release_slot!(status: "failed", outcome: "error", completed_at: Time.current)
     nil
   end
 

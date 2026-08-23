@@ -29,11 +29,11 @@ class Occurrence < ApplicationRecord
   def phone_failure_reason
     return nil if telnyx_calls.where.not(call_control_id: nil).exists?
 
-    # Cancelled attempts are excluded deliberately. Those were claimed and then
-    # abandoned before the provider was contacted — because she resolved the
-    # reminder herself, or the sweep closed it — so "we tried to call and could
-    # not get through" would be untrue of them.
-    return :could_not_place if telnyx_calls.where.not(status: "cancelled").exists?
+    # Only `failed` proves an attempt was actually made and did not get through.
+    # A `cancelled` row was abandoned deliberately, and a `reserved` one is a
+    # claim whose worker died before it reached the provider — saying "we tried
+    # to call and could not get through" would be untrue of both.
+    return :could_not_place if telnyx_calls.where(status: "failed").exists?
 
     # The recorded decision beats any re-derivation. Asking
     # within_calling_hours?(at: scheduled_at) now would answer for the schedule

@@ -219,7 +219,7 @@ RSpec.describe VoiceReminderJob do
       other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :acknowledged)
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          status: "cancelled", outcome: "no_response",
-                         call_day: at(9).to_date, daily_sequence: i + 1,
+                         call_day: at(9).to_date, daily_sequence: nil, # slot released
                          created_at: at(9) + i.minutes)
     end
 
@@ -234,7 +234,7 @@ RSpec.describe VoiceReminderJob do
       other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :pending)
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          status: "failed", outcome: "error",
-                         call_day: at(9).to_date, daily_sequence: i + 1,
+                         call_day: at(9).to_date, daily_sequence: nil, # slot released
                          created_at: at(9) + i.minutes)
     end
 
