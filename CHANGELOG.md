@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first, and why the timezone bug fixed in August is load-bearing here: a user
   silently moved to UTC-12 gets telephoned in the middle of the night.
 
+  Each call carries its own `webhook_url`, resolved from `base_url` or
+  `APP_URL`, which overrides the one configured on the Telnyx connection. A
+  single URL in the provider's portal has to be hand-flipped between production
+  and a tunnel to test anything, and forgetting has no error: the call
+  connects, nothing is listening, and the senior hears silence until it times
+  out. A base that resolves to loopback sends no override at all rather than a
+  URL Telnyx provably cannot reach.
+
 - **A landing page at `/reminder-app-for-elderly-parents`**: the homepage opens
   on the feeling — "caring for a parent from a distance" — because most people
   who reach it arrived from a link someone sent them and are already part

@@ -36,6 +36,11 @@ class TelnyxVoiceService
       command_id: command_id_for("dial")
     }
 
+    # Only sent when it resolves to something reachable; otherwise Telnyx falls
+    # back to the connection's own webhook URL.
+    hook = webhook_url
+    payload[:webhook_url] = hook if hook.present?
+
     response = post("/calls", payload, command_id: payload[:command_id])
     unless response&.key?("data")
       Rails.logger.error "Telnyx dial response missing data: #{response.inspect}"
@@ -144,9 +149,33 @@ class TelnyxVoiceService
     value.presence && value.to_s
   end
 
+  # Where Telnyx should send this call's events. Sent on the call itself, which
+  # overrides the URL configured on the connection, so each environment routes
+  # its own callbacks instead of one global setting in the portal being flipped
+  # by hand between production and a tunnel. That setting has exactly one
+  # failure mode and it is silent: the call connects, nothing is listening, and
+  # the senior hears silence until it times out.
+  #
+  # Returns nil when the base is somewhere Telnyx cannot reach. Sending
+  # http://localhost:5000 would guarantee no webhook ever arrives; omitting the
+  # key falls back to whatever the connection has configured, which at least
+  # stands a chance.
+  UNREACHABLE_HOSTS = %w[localhost 127.0.0.1 0.0.0.0 ::1].freeze
+
   def self.webhook_url
-    base = Rails.application.credentials.base_url || ENV.fetch("APP_URL", "http://localhost:5000")
+    base = (Rails.application.credentials.base_url || ENV["APP_URL"]).to_s.strip
+    return nil if base.empty?
+
     base = "https://#{base}" unless base.start_with?("http")
+    base = base.chomp("/")
+
+    host = begin
+      URI.parse(base).host
+    rescue URI::InvalidURIError
+      nil
+    end
+    return nil if host.blank? || UNREACHABLE_HOSTS.include?(host)
+
     url = "#{base}/telnyx/webhooks"
     token = credentials[:webhook_token]
     token.present? ? "#{url}?token=#{CGI.escape(token)}" : url
