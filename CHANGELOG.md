@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A reminder that was never called said the senior hadn't marked it done**:
+  once calls are confined to 8am–9pm, a 6am dose for a senior whose only channel
+  is the telephone is suppressed at 6:00, marked `missed` at 7:00 by the sweep,
+  and emailed to the caregiver as "hasn't marked Metformin as done". Nobody was
+  asked. Reporting a non-event as a lapse sends a caregiver looking for a
+  failure that never happened, which is the opposite of what this mail exists
+  for. That case now says "Remindly couldn't call Mom about Metformin", names
+  the hour and the window, and states plainly that nothing was contacted so it
+  implies nothing about what the senior did. It reverts to the ordinary wording
+  the moment a call actually went out — a queue backlog delivering a 7:55 dose
+  at 8:05 is a real attempt and an ordinary miss.
+
 - **Telnyx webhooks failed open when no token was configured**: a blank
   `webhook_token` meant "accept anything", which reads as a lenient default and
   is actually an open door — production has no `telnyx:` credentials, so on

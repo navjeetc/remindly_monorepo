@@ -1,7 +1,33 @@
 class Occurrence < ApplicationRecord
   belongs_to :reminder
   has_many :acknowledgements, dependent: :destroy
+  has_many :telnyx_calls, dependent: :destroy
   enum :status, { pending: 0, acknowledged: 1, missed: 2 }, prefix: true
+
+  # True when the only reason nobody responded is that Remindly never asked: the
+  # senior takes their reminders by phone, and this one fell outside the hours a
+  # call may legally be placed, so no call went out at all.
+  #
+  # The caregiver email hangs off this. Telling someone their mother "has not
+  # marked it as done" when her phone never rang reports a non-event as a
+  # negative one, and a caregiver acting on that would go looking for a lapse
+  # that never happened.
+  #
+  # Derived rather than stored, because every input is already recorded and the
+  # answer has to be recomputed against the senior's *current* timezone anyway.
+  # The telnyx_calls check is what keeps it honest: if a call did go out -- a
+  # queue backlog delivering a 7:55 occurrence at 8:05, say -- then a real
+  # attempt was made and this is an ordinary miss, whatever the scheduled hour
+  # says in hindsight.
+  def phone_call_withheld?
+    senior = reminder.user
+
+    return false unless senior.voice_reminders_enabled?
+    return false if senior.phone.blank?
+    return false if telnyx_calls.exists?
+
+    !senior.within_calling_hours?(at: scheduled_at)
+  end
 
   SNOOZE_DEFAULT_MINUTES = 10
   SNOOZE_MIN_MINUTES = 1

@@ -18,10 +18,24 @@ class ReminderActivityMailer < ApplicationMailer
   end
 
   # Nobody marked the reminder done before the sweep closed it out.
+  #
+  # Two different things can produce that, and they ask the caregiver for
+  # different actions. Usually the senior was asked and did not answer. But if
+  # their only channel is the telephone and the reminder fell outside the hours
+  # a call may be placed, nobody was asked at all -- and saying "hasn't marked
+  # it as done" would report a non-event as a lapse.
+  #
   # Params: caregiver, senior, reminder, occurrence
   def missed
     setup
-    mail(to: @caregiver.email, subject: "#{@senior.display_name} hasn't marked #{@reminder.title} as done")
+
+    subject = if @phone_call_withheld
+      "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
+    else
+      "#{@senior.display_name} hasn't marked #{@reminder.title} as done"
+    end
+
+    mail(to: @caregiver.email, subject: subject)
   end
 
   private
@@ -35,5 +49,7 @@ class ReminderActivityMailer < ApplicationMailer
     # templates strftime it, so an Eastern 9:00 AM dose would otherwise read 1:00 PM.
     @scheduled_at = @occurrence.scheduled_at&.in_time_zone(@reminder.tz)
     @dashboard_url = senior_dashboard_url(@senior)
+    @phone_call_withheld = @occurrence.phone_call_withheld?
+    @calling_hours = "#{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.last + 1 - 12}pm"
   end
 end

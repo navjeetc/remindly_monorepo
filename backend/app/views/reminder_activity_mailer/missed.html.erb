@@ -8,25 +8,41 @@
     .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; }
     .content { background-color: #f9fafb; padding: 20px; }
     .alert { background-color: #fee2e2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0; }
+    /* Amber, not red: nothing has gone wrong with the senior here — the call
+       simply was not placed, and the alarm colour would misdirect. */
+    .header.info { background-color: #b45309; }
+    .alert.info { background-color: #fef3c7; border-left-color: #b45309; }
     .button { display: inline-block; padding: 12px 24px; background-color: #dc2626; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
     .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>⚠️ Not marked done</h1>
+    <div class="header<%= " info" if @phone_call_withheld %>">
+      <h1><%= @phone_call_withheld ? "☎️ Not called" : "⚠️ Not marked done" %></h1>
     </div>
 
     <div class="content">
       <p>Hi <%= @caregiver.display_name %>,</p>
 
-      <div class="alert">
-        <strong><%= @senior.display_name %> has not marked <%= @reminder.title %> as done.</strong>
+      <div class="alert<%= " info" if @phone_call_withheld %>">
+        <% if @phone_call_withheld %>
+          <strong>Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.</strong>
+        <% else %>
+          <strong><%= @senior.display_name %> has not marked <%= @reminder.title %> as done.</strong>
+        <% end %>
       </div>
 
       <% if @scheduled_at %>
-        <p>It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and has not been marked done since.</p>
+        <% if @phone_call_withheld %>
+          <p>
+            It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside
+            the hours Remindly is allowed to place reminder calls — between
+            <%= @calling_hours %> in <%= @senior.display_name %>'s own time.
+          </p>
+        <% else %>
+          <p>It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and has not been marked done since.</p>
+        <% end %>
       <% end %>
 
       <%#
@@ -36,11 +52,19 @@
         so" is common enough that leading a caregiver straight to alarm, before
         they have picked up the phone, is the wrong default.
       %>
-      <p style="color: #6b7280; font-size: 14px;">
-        This means nobody pressed <strong>Done</strong> on their device. It does
-        not necessarily mean it was not done — they may have done it without
-        marking it.
-      </p>
+      <% if @phone_call_withheld %>
+        <p style="color: #6b7280; font-size: 14px;">
+          Nobody was contacted, so this says nothing about whether
+          <%= @senior.display_name %> did it — only that Remindly did not ask. To
+          reach them at this hour, this reminder needs a way other than a phone call.
+        </p>
+      <% else %>
+        <p style="color: #6b7280; font-size: 14px;">
+          This means nobody pressed <strong>Done</strong> on their device. It does
+          not necessarily mean it was not done — they may have done it without
+          marking it.
+        </p>
+      <% end %>
 
       <div style="text-align: center; margin: 30px 0;">
         <a href="<%= @dashboard_url %>" class="button" style="color: #ffffff; text-decoration: none;">View <%= @senior.display_name %>'s dashboard</a>

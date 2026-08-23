@@ -19,6 +19,59 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     [ mail.html_part, mail.text_part ].compact.map(&:decoded).join("\n")
   end
 
+  # A senior whose only channel is the telephone, with a dose due at an hour a
+  # call may not legally be placed. Nobody was asked, so the ordinary "hasn't
+  # marked it as done" wording would report a non-event as a lapse.
+  describe "#missed when no call was ever placed" do
+    let(:senior) do
+      create(:user, :senior, name: "Mom", tz: "America/New_York",
+                             phone: "+15551234567", voice_reminders_enabled: true)
+    end
+    let(:occurrence) do
+      Occurrence.create!(reminder: reminder, status: :missed,
+                         scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 6, 0))
+    end
+    let(:mail) { mail_for(:missed) }
+
+    it "says Remindly could not call, rather than blaming the senior" do
+      expect(mail.subject).to eq("Remindly couldn't call Mom about Metformin")
+    end
+
+    it "explains that nobody was contacted, and why" do
+      body = readable(mail)
+
+      expect(body).to include("Remindly did not call Mom about Metformin")
+      expect(body).to include("outside the hours")
+    end
+
+    it "never claims a button went unpressed, because no device was involved" do
+      expect(readable(mail)).not_to include("pressed Done on their device")
+    end
+
+    it "falls back to the ordinary wording once a call has actually gone out" do
+      TelnyxCall.create!(call_control_id: "call-xyz", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+
+      expect(mail_for(:missed).subject).to eq("Mom hasn't marked Metformin as done")
+    end
+
+    it "falls back to the ordinary wording for a senior who does not take calls" do
+      senior.update!(voice_reminders_enabled: false)
+
+      expect(mail_for(:missed).subject).to eq("Mom hasn't marked Metformin as done")
+    end
+
+    it "keeps the ordinary wording for a dose due inside calling hours" do
+      inside = Occurrence.create!(reminder: reminder, status: :missed,
+                                  scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 9, 0))
+      mail = described_class
+        .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: inside)
+        .missed
+
+      expect(mail.subject).to eq("Mom hasn't marked Metformin as done")
+    end
+  end
+
   describe "#completed" do
     let(:mail) { mail_for(:completed) }
 
