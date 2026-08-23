@@ -146,11 +146,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   anything, so the missed sweep still claims it and the caregiver is still told.
 
   **Not yet fit to enable in production.** There is no consent record, no
-  calling-hours guard in the called party's own timezone — `recurring.yml` would
-  run the scheduler every minute, at any hour — and no answering-machine
-  detection. `docs/PHONE_CALL_REMINDERS_DESIGN.md` sets out what has to exist
-  first, and why the timezone bug fixed in August is load-bearing here: a user
-  silently moved to UTC-12 gets telephoned in the middle of the night.
+  verification that a number reaches the person it is meant to, and no
+  answering-machine detection — and no way for anyone to opt in, since nothing
+  in the app sets `voice_reminders_enabled` or `phone`.
+  `docs/PHONE_CALL_REMINDERS_DESIGN.md` sets out what has to exist first, and
+  why the timezone fix from August is load-bearing here: a user silently moved
+  to UTC-12 would be telephoned in the middle of the night. Calling hours *are*
+  enforced — see the entry above — and the whole feature sits behind
+  `ENABLE_PHONE_CALL_REMINDERS`, off by default, so the scheduled job returns
+  immediately and nothing can be dialled.
 
   Each call carries its own `webhook_url`, resolved from `base_url` or
   `APP_URL`, which overrides the one configured on the Telnyx connection. A
