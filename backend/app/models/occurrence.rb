@@ -4,29 +4,35 @@ class Occurrence < ApplicationRecord
   has_many :telnyx_calls, dependent: :destroy
   enum :status, { pending: 0, acknowledged: 1, missed: 2 }, prefix: true
 
-  # True when the only reason nobody responded is that Remindly never asked: the
-  # senior takes their reminders by phone, and this one fell outside the hours a
-  # call may legally be placed, so no call went out at all.
+  # Why the telephone never reached this person, or nil when that is not the
+  # story. The caregiver email hangs off this, and the distinction is the whole
+  # point: "she has not marked it as done" is a statement about her, and it is
+  # false when nobody ever asked her.
   #
-  # The caregiver email hangs off this. Telling someone their mother "has not
-  # marked it as done" when her phone never rang reports a non-event as a
-  # negative one, and a caregiver acting on that would go looking for a lapse
-  # that never happened.
+  #   :outside_calling_hours  no call was placed, and none legally could be
+  #   :could_not_place        attempts were made and not one reached the provider
   #
-  # Derived rather than stored, because every input is already recorded and the
-  # answer has to be recomputed against the senior's *current* timezone anyway.
-  # The telnyx_calls check is what keeps it honest: if a call did go out -- a
-  # queue backlog delivering a 7:55 occurrence at 8:05, say -- then a real
-  # attempt was made and this is an ordinary miss, whatever the scheduled hour
-  # says in hindsight.
-  def phone_call_withheld?
+  # nil means either a call genuinely went out — answered or not, which is an
+  # ordinary miss and hers to explain — or the telephone is not her channel.
+  #
+  # A claimed attempt only counts as a call once it has a call_control_id. That
+  # is the provider's receipt: without one, nothing was dialled, whatever the
+  # attempt row says. Testing mere existence would let a reservation that failed
+  # before the API call masquerade as a call that rang.
+  #
+  # Derived rather than stored, because every input is recorded already and the
+  # answer must be read against the senior's *current* timezone.
+  def phone_failure_reason
     senior = reminder.user
 
-    return false unless senior.voice_reminders_enabled?
-    return false if senior.phone.blank?
-    return false if telnyx_calls.exists?
+    return nil unless senior.voice_reminders_enabled?
+    return nil if senior.phone.blank?
+    return nil if telnyx_calls.where.not(call_control_id: nil).exists?
 
-    !senior.within_calling_hours?(at: scheduled_at)
+    return :could_not_place if telnyx_calls.exists?
+    return :outside_calling_hours unless senior.within_calling_hours?(at: scheduled_at)
+
+    nil
   end
 
   SNOOZE_DEFAULT_MINUTES = 10

@@ -1,6 +1,12 @@
 Hi <%= @caregiver.display_name %>,
 
-<% if @phone_call_withheld -%>
+<% if @phone_failure == :could_not_place -%>
+Remindly tried to call <%= @senior.display_name %> about <%= @reminder.title %> and could not get through.
+<% if @scheduled_at -%>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>. <%= pluralize(@attempts, "attempt") %> made,
+and not one of them reached the phone network. That is a fault at our end.
+<% end -%>
+<% elsif @phone_failure -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>
 It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside the hours
@@ -8,8 +14,7 @@ Remindly is allowed to place reminder calls — between <%= @calling_hours %> in
 <%= @senior.display_name %>'s own time.
 <% end -%>
 Nobody was contacted, so this says nothing about whether <%= @senior.display_name %> did it —
-only that Remindly did not ask. To reach them at this hour, this reminder needs a
-way other than a phone call.
+only that Remindly did not ask.
 <% else -%>
 <%= @senior.display_name %> has not marked <%= @reminder.title %> as done.
 <% if @scheduled_at -%>

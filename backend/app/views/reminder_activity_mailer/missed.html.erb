@@ -18,15 +18,17 @@
 </head>
 <body>
   <div class="container">
-    <div class="header<%= " info" if @phone_call_withheld %>">
-      <h1><%= @phone_call_withheld ? "☎️ Not called" : "⚠️ Not marked done" %></h1>
+    <div class="header<%= " info" if @phone_failure %>">
+      <h1><%= @phone_failure ? "☎️ Not reached" : "⚠️ Not marked done" %></h1>
     </div>
 
     <div class="content">
       <p>Hi <%= @caregiver.display_name %>,</p>
 
-      <div class="alert<%= " info" if @phone_call_withheld %>">
-        <% if @phone_call_withheld %>
+      <div class="alert<%= " info" if @phone_failure %>">
+        <% if @phone_failure == :could_not_place %>
+          <strong>Remindly tried to call <%= @senior.display_name %> about <%= @reminder.title %> and could not get through.</strong>
+        <% elsif @phone_failure %>
           <strong>Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.</strong>
         <% else %>
           <strong><%= @senior.display_name %> has not marked <%= @reminder.title %> as done.</strong>
@@ -34,7 +36,13 @@
       </div>
 
       <% if @scheduled_at %>
-        <% if @phone_call_withheld %>
+        <% if @phone_failure == :could_not_place %>
+          <p>
+            It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>.
+            <%= pluralize(@attempts, "attempt") %> made, and not one of them
+            reached the phone network. That is a fault at our end.
+          </p>
+        <% elsif @phone_failure %>
           <p>
             It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside
             the hours Remindly is allowed to place reminder calls — between
@@ -52,11 +60,10 @@
         so" is common enough that leading a caregiver straight to alarm, before
         they have picked up the phone, is the wrong default.
       %>
-      <% if @phone_call_withheld %>
+      <% if @phone_failure %>
         <p style="color: #6b7280; font-size: 14px;">
           Nobody was contacted, so this says nothing about whether
-          <%= @senior.display_name %> did it — only that Remindly did not ask. To
-          reach them at this hour, this reminder needs a way other than a phone call.
+          <%= @senior.display_name %> did it — only that Remindly did not ask.
         </p>
       <% else %>
         <p style="color: #6b7280; font-size: 14px;">

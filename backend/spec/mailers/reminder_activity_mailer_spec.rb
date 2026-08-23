@@ -72,6 +72,53 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     end
   end
 
+  # Attempts were claimed and every one failed before reaching the provider —
+  # the state production is in right now, since it has no telnyx credentials at
+  # all. Nobody was called, so blaming the senior would be doubly wrong.
+  describe "#missed when the call could not be placed" do
+    let(:senior) do
+      create(:user, :senior, name: "Mom", tz: "America/New_York",
+                             phone: "+15551234567", voice_reminders_enabled: true)
+    end
+    let(:occurrence) do
+      Occurrence.create!(reminder: reminder, status: :missed,
+                         scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 9, 0))
+    end
+
+    before do
+      2.times do |i|
+        TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: i + 1,
+                           status: "failed", outcome: "error")
+      end
+    end
+
+    it "says Remindly could not get through, not that the senior ignored it" do
+      expect(mail_for(:missed).subject)
+        .to eq("Remindly tried to call Mom about Metformin and couldn't get through")
+    end
+
+    it "owns the fault and counts the attempts" do
+      body = readable(mail_for(:missed))
+
+      expect(body).to include("could not get through")
+      expect(body).to include("2 attempts")
+      expect(body).to include("fault at our end")
+    end
+
+    it "never claims a button went unpressed" do
+      expect(readable(mail_for(:missed))).not_to include("pressed Done on their device")
+    end
+
+    # The provider's receipt. Without a call_control_id nothing was dialled,
+    # whatever the attempt row says — and with one, a call really did ring and
+    # went unanswered, which is an ordinary miss.
+    it "reverts to the ordinary wording once one attempt actually reached the provider" do
+      occurrence.telnyx_calls.first.update!(call_control_id: "v3:real-call", status: "hangup", outcome: "no_response")
+
+      expect(mail_for(:missed).subject).to eq("Mom hasn't marked Metformin as done")
+    end
+  end
+
   describe "#completed" do
     let(:mail) { mail_for(:completed) }
 

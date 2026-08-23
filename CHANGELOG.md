@@ -30,6 +30,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   propagate and the endpoint answers `500` so Telnyx retries; every handler is
   idempotent, and there are specs for the redelivered case.
 
+- **A call that could not be placed also said the senior hadn't marked it
+  done.** The previous fix covered calls suppressed for calling hours, but not
+  calls that were attempted and never reached the provider — a missing API key,
+  the provider down. Those left the occurrence pending, the sweep marked it
+  missed, and the caregiver was told their mother had not marked her dose done.
+  This is the state production is in today, with no `telnyx:` credentials at
+  all: enabling voice reminders there would have produced that email for every
+  single reminder. `Occurrence#phone_failure_reason` now separates the two
+  cases, and the mail says which — "Remindly tried to call Mom about Metformin
+  and couldn't get through", with the attempt count and an admission that the
+  fault is ours. An attempt only counts as a real call once it has a
+  `call_control_id`, which is the provider's receipt; testing the attempt row's
+  mere existence let a reservation that failed before the API call masquerade
+  as a call that rang.
 - **A reminder that was never called said the senior hadn't marked it done**:
   once calls are confined to 8am–9pm, a 6am dose for a senior whose only channel
   is the telephone is suppressed at 6:00, marked `missed` at 7:00 by the sweep,

@@ -19,18 +19,23 @@ class ReminderActivityMailer < ApplicationMailer
 
   # Nobody marked the reminder done before the sweep closed it out.
   #
-  # Two different things can produce that, and they ask the caregiver for
+  # Three different things can produce that, and they ask the caregiver for
   # different actions. Usually the senior was asked and did not answer. But if
-  # their only channel is the telephone and the reminder fell outside the hours
-  # a call may be placed, nobody was asked at all -- and saying "hasn't marked
-  # it as done" would report a non-event as a lapse.
+  # their channel is the telephone, nobody may have been asked at all -- either
+  # the reminder fell outside the hours a call may be placed, or every attempt
+  # failed before it reached the provider. Saying "hasn't marked it as done" in
+  # those cases reports a non-event as a lapse, and sends a caregiver looking
+  # for a failure that is ours rather than theirs.
   #
   # Params: caregiver, senior, reminder, occurrence
   def missed
     setup
 
-    subject = if @phone_call_withheld
+    subject = case @phone_failure
+    when :outside_calling_hours
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
+    when :could_not_place
+      "Remindly tried to call #{@senior.display_name} about #{@reminder.title} and couldn't get through"
     else
       "#{@senior.display_name} hasn't marked #{@reminder.title} as done"
     end
@@ -49,7 +54,8 @@ class ReminderActivityMailer < ApplicationMailer
     # templates strftime it, so an Eastern 9:00 AM dose would otherwise read 1:00 PM.
     @scheduled_at = @occurrence.scheduled_at&.in_time_zone(@reminder.tz)
     @dashboard_url = senior_dashboard_url(@senior)
-    @phone_call_withheld = @occurrence.phone_call_withheld?
+    @phone_failure = @occurrence.phone_failure_reason
+    @attempts = @occurrence.telnyx_calls.count
     @calling_hours = "#{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.last + 1 - 12}pm"
   end
 end

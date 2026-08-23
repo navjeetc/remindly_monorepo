@@ -67,6 +67,10 @@ class TelnyxCall < ApplicationRecord
       outcome: "pending"
     )
   rescue ActiveRecord::RecordNotUnique
+    # Must not be called inside an outer transaction. Swallowing a constraint
+    # violation leaves the enclosing transaction unusable on PostgreSQL, and
+    # every later statement in it fails -- so the loser of the race would take
+    # the winner down with it. Nothing wraps this today; keep it that way.
     nil
   end
 end
