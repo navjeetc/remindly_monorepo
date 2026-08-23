@@ -151,8 +151,11 @@ class TelnyxVoiceService
     ActiveSupport::SecurityUtils.secure_compare(request.params["token"].to_s, token)
   end
 
-  private
-
+  # `private` governs instance methods only — singleton methods defined with
+  # `def self.` stay public regardless, so the keyword that used to sit here did
+  # nothing at all. private_class_method actually closes them. webhook_url is
+  # deliberately left public: resolving it is the one piece of this class worth
+  # asserting on directly, and its spec does.
   def self.credentials
     {
       api_key: setting(:api_key, "TELNYX_API_KEY"),
@@ -224,6 +227,8 @@ class TelnyxVoiceService
     false
   end
 
+  private_class_method :credentials, :setting, :command_id_for, :verify_signature, :record_failure
+
   def self.post(path, body, command_id: nil)
     body[:command_id] = command_id if command_id.present?
 
@@ -248,4 +253,6 @@ class TelnyxVoiceService
 
     JSON.parse(response.body)
   end
+
+  private_class_method :post
 end

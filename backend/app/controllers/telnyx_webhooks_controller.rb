@@ -127,25 +127,25 @@ class TelnyxWebhooksController < ApplicationController
     if call.outcome == "pending"
       call.update!(dtmf: digits, status: "completed")
 
-    case digits
-    when "1"
-      acknowledge!(call, "taken")
-    when "2"
-      snooze!(call)
-    else
-      # Unrecognized digit; treat as no response and hang up.
-      call.update!(outcome: "no_response")
+      case digits
+      when "1"
+        acknowledge!(call, "taken")
+      when "2"
+        snooze!(call)
+      else
+        # Unrecognized digit; treat as no response and hang up.
+        call.update!(outcome: "no_response")
+      end
     end
 
-      # Enqueued on every delivery of this event, not only the one that won the
-      # acknowledgement. The previous shape conditioned it on first_ack from the
-      # transaction that had already committed, so if enqueueing failed — or the
-      # process died — a redelivery found outcome == "taken", took the early
-      # return above, and the caregiver was never told. Both this job and the
-      # per-caregiver delivery beneath it are idempotent, and the job re-reads the
-      # occurrence status before sending, so enqueueing twice costs nothing.
-    end
-
+    # Deliberately outside the guard above, and enqueued on every delivery of
+    # this event rather than only on the one that won the acknowledgement. The
+    # previous shape conditioned it on first_ack from the transaction that had
+    # already committed, so if enqueueing failed — or the process died — a
+    # redelivery found outcome == "taken", skipped the block above, and the
+    # caregiver was never told. Both this job and the per-caregiver delivery
+    # beneath it are idempotent, and the job re-reads the occurrence status
+    # before sending, so enqueueing twice costs nothing.
     ReminderNotificationJob.perform_later(call.occurrence_id, "acknowledged") if call.outcome == "taken"
 
     # If the gather ended because the caller hung up, the call is already gone.
