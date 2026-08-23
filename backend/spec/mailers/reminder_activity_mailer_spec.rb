@@ -120,6 +120,41 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     expect(mail.subject).to eq("Remindly couldn't call Mom about Metformin")
   end
 
+  # The sweep closed the occurrence before the queued call was ever placed. The
+  # subject used to fall through to the ordinary wording while the body said
+  # Remindly never called — the two contradicting each other in one message.
+  describe "#missed when the call was never attempted in time" do
+    let(:senior) do
+      create(:user, :senior, name: "Mom", tz: "America/New_York",
+                             phone: "+15551234567", voice_reminders_enabled: true)
+    end
+    let(:occurrence) do
+      Occurrence.create!(reminder: reminder, status: :missed,
+                         scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 9, 0))
+    end
+
+    before { occurrence.suppress_call!(:not_attempted_in_time) }
+
+    it "says Remindly could not call, matching the body" do
+      expect(mail_for(:missed).subject).to eq("Remindly couldn't call Mom about Metformin")
+    end
+
+    it "explains that the reminder was closed before the call could be placed" do
+      body = readable(mail_for(:missed))
+
+      expect(body).to include("closed as missed")
+      expect(body).to include("fault at our end")
+      expect(body).not_to include("pressed Done on their device")
+    end
+
+    it "never leaves the subject blaming the senior while the body exonerates her" do
+      mail = mail_for(:missed)
+
+      expect(mail.subject).not_to include("hasn't marked")
+      expect(readable(mail)).to include("did not call")
+    end
+  end
+
   # Attempts were claimed and every one failed before reaching the provider —
   # the state production is in right now, since it has no telnyx credentials at
   # all. Nobody was called, so blaming the senior would be doubly wrong.
