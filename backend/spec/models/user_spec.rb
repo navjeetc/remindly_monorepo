@@ -108,6 +108,52 @@ RSpec.describe User do
     end
   end
 
+  # Outbound reminder calls are legally restricted to 8am-9pm where the person
+  # answering actually is, which makes tz the thing this rule stands on.
+  describe "#within_calling_hours?" do
+    def at(hour, zone: "America/New_York", minute: 0)
+      ActiveSupport::TimeZone[zone].local(2026, 6, 15, hour, minute)
+    end
+
+    let(:senior) { build(:user, tz: "America/New_York") }
+
+    it "allows a call at 8am, the first legal minute" do
+      expect(senior.within_calling_hours?(at: at(8))).to be true
+    end
+
+    it "allows a call at 20:59, the last legal minute" do
+      expect(senior.within_calling_hours?(at: at(20, minute: 59))).to be true
+    end
+
+    it "refuses a call at 21:00, when the window closes" do
+      expect(senior.within_calling_hours?(at: at(21))).to be false
+    end
+
+    it "refuses a call at 7:59, before the window opens" do
+      expect(senior.within_calling_hours?(at: at(7, minute: 59))).to be false
+    end
+
+    it "refuses the small hours" do
+      expect(senior.within_calling_hours?(at: at(3))).to be false
+    end
+
+    it "judges by the senior's own clock, not the server's" do
+      pacific = build(:user, tz: "America/Los_Angeles")
+
+      # 06:30 in Los Angeles is 09:30 in New York: legal for one, not the other.
+      moment = ActiveSupport::TimeZone["America/Los_Angeles"].local(2026, 6, 15, 6, 30)
+
+      expect(pacific.within_calling_hours?(at: moment)).to be false
+      expect(senior.within_calling_hours?(at: moment)).to be true
+    end
+
+    it "refuses when the zone cannot be resolved, rather than assuming daytime" do
+      senior.tz = "Neverwhere/Nowhere"
+
+      expect(senior.within_calling_hours?(at: at(12))).to be false
+    end
+  end
+
   describe "#notified_for?" do
     it "is true only for chosen categories" do
       user = create(:user, :caregiver, name: "Kid", notify_reminder_categories: %w[medication])

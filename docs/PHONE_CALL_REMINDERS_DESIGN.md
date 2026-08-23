@@ -1,9 +1,17 @@
 # Design: reminders that telephone the senior
 
-Status: **proposed, not built.** Nothing here has been implemented, and two of
-the gates in "Before any code" are decisions only Navjeet can make.
+Status: **partly built, not fit to enable.** The call itself works end to end and
+has been verified against a real handset: dial, speak the reminder, collect one
+DTMF digit, acknowledge or snooze, notify the caregiver. Calling hours are
+enforced in the called party's own timezone, and an unresolvable timezone blocks
+the call rather than defaulting to anything.
 
-Proposed 2026-08-18. Read alongside `SENIOR_ACCESS_DESIGN.md`, which solves an
+What is **not** built is the part this document argues matters most: there is no
+consent record, no number verification, and no answering-machine detection. The
+gates in "Before any code" remain decisions only Navjeet can make, and production
+has no Telnyx credentials, so nothing is enabled there.
+
+Proposed 2026-08-18; first working call 2026-08-23. Read alongside `SENIOR_ACCESS_DESIGN.md`, which solves an
 overlapping problem by a different route — see "Relationship to the access
 design" below, because the two together decide how much of each is worth
 building.
@@ -128,6 +136,14 @@ satisfies TCPA and its state equivalents is a legal question and is not one to
 guess at — the same boundary already drawn for the privacy policy and terms.
 What follows is the shape the code must support, not an opinion that it is
 sufficient.
+
+The hours half of this is built: `User#within_calling_hours?` is checked both by
+the scheduler, so out-of-window occurrences enqueue nothing, and by
+`VoiceReminderJob` itself, because that job is reachable from a console or a
+retry hours after the failure that caused it. It cannot help with a timezone that
+is wrong but valid — the UTC-12 bug resolved perfectly well — which is why the
+consent call below matters: it is the one moment a real person confirms the
+number reaches them.
 
 **Consent is captured on the phone, by the person holding it.** The number is
 verified by placing one call that says who set this up and what will happen, and

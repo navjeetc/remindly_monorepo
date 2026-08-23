@@ -181,6 +181,27 @@ class User < ApplicationRecord
     true
   end
 
+  # Outbound reminder calls are restricted to 8am-9pm in the *called party's*
+  # own local time. That is a legal limit, not a preference, and it is what makes
+  # tz load-bearing for phone reminders rather than a display convenience: the
+  # profile bug that silently moved savers to UTC-12 would, under this feature,
+  # have telephoned them in the middle of the night.
+  #
+  # 8...21 covers the hours 8 through 20, so 20:59 is inside the window and 21:00
+  # is not.
+  CALLING_HOURS = (8...21)
+
+  def within_calling_hours?(at: Time.current)
+    zone = ActiveSupport::TimeZone[tz.to_s]
+
+    # A zone we cannot resolve means we do not know what time it is where this
+    # person is, and "probably daytime" is not a defence. Blocking is the only
+    # safe default -- a call placed at 3am cannot be taken back.
+    return false if zone.nil?
+
+    CALLING_HOURS.cover?(at.in_time_zone(zone).hour)
+  end
+
   private
 
   def tz_resolves_to_a_real_zone

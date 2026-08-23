@@ -22,7 +22,16 @@ class VoiceReminderSchedulerJob < ApplicationJob
       .where.not(
         id: TelnyxCall.select(:occurrence_id).where("telnyx_calls.created_at > ?", now - LOOKAHEAD)
       )
+      .includes(reminder: :user)
       .find_each do |occ|
+        # Calling hours are per-person, in their own timezone, so this cannot be
+        # a WHERE clause -- every senior's window lands on a different UTC hour.
+        # Filtering here rather than letting the job drop it matters because a
+        # dose due at 2am stays pending until the missed sweep claims it an hour
+        # later, and without this every one of those minutes would enqueue a job
+        # that only exists to decline.
+        next unless occ.reminder.user.within_calling_hours?(at: now)
+
         VoiceReminderJob.perform_later(occ.id)
       end
   end

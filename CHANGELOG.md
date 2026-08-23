@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   highest-consequence path in the app.
 
 ### Added
+- **Reminder calls are confined to 8am–9pm in the called party's own
+  timezone**: automated voice calls are regulated and the window belongs to the
+  person answering, not the server. `User#within_calling_hours?` is checked in
+  two places on purpose — the scheduler, so an occurrence due at 2am enqueues
+  nothing rather than a job every minute until the missed sweep claims it, and
+  `VoiceReminderJob` itself, because that job is reachable from a console or
+  from a retry hours after the failure that caused it, and a call placed at 3am
+  cannot be taken back. A timezone that cannot be resolved blocks the call
+  instead of assuming daytime. It cannot catch a timezone that is wrong but
+  valid — the UTC-12 profile bug resolved perfectly well — which is why
+  verifying the number with a real person still matters.
 - **Reminders delivered as a phone call, acknowledged from the keypad**: every
   client until now assumed the senior has a screen, is signed in, and will look
   at it. A phone call assumes none of that — it reaches someone whose only
