@@ -40,3 +40,8 @@ production:
     class: MarkMissedOccurrencesJob
     queue: default
     schedule: every 15 minutes
+
+  voice_reminder_scheduler:
+    class: VoiceReminderSchedulerJob
+    queue: default
+    schedule: every minute

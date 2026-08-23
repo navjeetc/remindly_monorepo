@@ -34,3 +34,7 @@
 /config/credentials/production.key
 .kamal/secrets
 config/credentials/production.key
+
+# Ignore key files for decrypting credentials and more.
+/config/credentials/*.key
+

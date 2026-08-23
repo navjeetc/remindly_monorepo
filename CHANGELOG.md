@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Reminders delivered as a phone call, acknowledged from the keypad**: every
+  client until now assumed the senior has a screen, is signed in, and will look
+  at it. A phone call assumes none of that — it reaches someone whose only
+  device is a landline, and it reaches them whether or not they remember an app
+  exists. At the scheduled time Telnyx dials the senior, speaks the reminder and
+  collects one digit: 1 marks it done, 2 schedules it again ten minutes later.
+  Those are the same two actions `/voice_reminders` offers, and both now run
+  through `Occurrence#snooze!`, so a keypress and a tap cannot drift apart — a
+  snooze resolves the occurrence *and* schedules the next one, which recording
+  the acknowledgement alone would not. An unanswered call records `no_response`
+  and leaves the occurrence pending, deliberately not "skip": nobody chose
+  anything, so the missed sweep still claims it and the caregiver is still told.
+
+  **Not yet fit to enable in production.** There is no consent record, no
+  calling-hours guard in the called party's own timezone — `recurring.yml` would
+  run the scheduler every minute, at any hour — and no answering-machine
+  detection. `docs/PHONE_CALL_REMINDERS_DESIGN.md` sets out what has to exist
+  first, and why the timezone bug fixed in August is load-bearing here: a user
+  silently moved to UTC-12 gets telephoned in the middle of the night.
+
 - **A landing page at `/reminder-app-for-elderly-parents`**: the homepage opens
   on the feeling — "caring for a parent from a distance" — because most people
   who reach it arrived from a link someone sent them and are already part

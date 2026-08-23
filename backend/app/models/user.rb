@@ -49,6 +49,7 @@ class User < ApplicationRecord
   attribute :tz, :string, default: "America/New_York"
   validates :tz, presence: true
   validate :tz_resolves_to_a_real_zone
+  validate :phone_is_e164, if: -> { phone.present? }
 
   # Addresses a mail provider has permanently refused — a hard bounce, meaning
   # the mailbox does not exist. Postmark marks such an address inactive and
@@ -186,5 +187,12 @@ class User < ApplicationRecord
     return if tz.blank?
 
     errors.add(:tz, "is not a valid timezone") unless ActiveSupport::TimeZone[tz]
+  end
+
+  def phone_is_e164
+    # E.164: leading +, 1-3 digit country code, then up to 12 digits.
+    return if phone.match?(/\A\+[1-9]\d{7,14}\z/)
+
+    errors.add(:phone, "must be a valid E.164 number like +15551234567")
   end
 end

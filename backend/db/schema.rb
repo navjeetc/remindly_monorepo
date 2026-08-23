@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_010001) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -221,6 +221,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
     t.index ["task_type"], name: "index_tasks_on_task_type"
   end
 
+  create_table "telnyx_calls", force: :cascade do |t|
+    t.datetime "answered_at"
+    t.string "call_control_id", null: false
+    t.string "call_leg_id"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "dtmf"
+    t.text "last_payload"
+    t.integer "occurrence_id", null: false
+    t.string "outcome", default: "pending", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["call_control_id"], name: "index_telnyx_calls_on_call_control_id", unique: true
+    t.index ["call_leg_id"], name: "index_telnyx_calls_on_call_leg_id", unique: true, where: "call_leg_id IS NOT NULL"
+    t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
+    t.index ["user_id"], name: "index_telnyx_calls_on_user_id"
+  end
+
   create_table "time_blocks", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
@@ -245,9 +264,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
     t.boolean "notify_on_coverage_gaps", default: true, null: false
     t.boolean "notify_on_task_assigned_to_others", default: false
     t.json "notify_reminder_categories", default: ["medication"], null: false
+    t.string "phone"
     t.integer "role"
     t.string "tz", default: "America/New_York"
     t.datetime "updated_at", null: false
+    t.boolean "voice_reminders_enabled", default: false, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
@@ -267,5 +288,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_010000) do
   add_foreign_key "tasks", "users", column: "assigned_to_id"
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"
+  add_foreign_key "telnyx_calls", "occurrences"
+  add_foreign_key "telnyx_calls", "users"
   add_foreign_key "time_blocks", "users"
 end
