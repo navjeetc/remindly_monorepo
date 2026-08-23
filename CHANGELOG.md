@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The caregiver email stated the wrong calling window.** `CALLING_HOURS` is
+  the exclusive range `(8...21)`, and Ruby's `Range#last` returns the range's
+  *end* regardless of exclusivity — so `last + 1 - 12` gave `10` and the mail
+  read "between 8am and 10pm" while `within_calling_hours?` actually stops at
+  9pm. `.max` respects exclusivity. The suppression log had the same fault,
+  reading "8:00-22:00".
+- **Four ways an event could be retired without being handled.** A gather that
+  failed left the senior connected to silence with no retry, because
+  `answered_at` was recorded first and suppressed redelivery; the gather now
+  precedes the flag, and Telnyx's `command_id` makes a duplicate harmless. A
+  callback arriving before `dial` wrote `call_control_id` back was answered
+  `200` and lost for good; `client_state` now identifies our own calls so they
+  can be retried, while genuinely foreign ids are still dropped rather than
+  retried forever. The caregiver notification was conditioned on a value
+  computed inside an already-committed transaction, so a failed enqueue could
+  never be recovered by a redelivery; it is now enqueued on every delivery,
+  which both the job and the delivery beneath it already tolerate. And a dose
+  resolved from another client between the status check and the dial was still
+  telephoned about — the status is re-read after the attempt is claimed.
+
 - **An unanswered senior could be telephoned dozens of times.** The scheduler
   skipped occurrences called within the last two minutes, but every dial reused
   one `TelnyxCall` row per occurrence, so its `created_at` never moved past the

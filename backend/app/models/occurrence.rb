@@ -30,9 +30,23 @@ class Occurrence < ApplicationRecord
     return nil if telnyx_calls.where.not(call_control_id: nil).exists?
 
     return :could_not_place if telnyx_calls.exists?
-    return :outside_calling_hours unless senior.within_calling_hours?(at: scheduled_at)
+
+    # The recorded decision beats any re-derivation. Asking
+    # within_calling_hours?(at: scheduled_at) now would answer for the schedule
+    # rather than for the moment the call was refused: an 8:59pm reminder whose
+    # job ran at 9:01 was refused, but 8:59 is inside the window, so the senior
+    # would be blamed for a call nobody placed.
+    return call_suppressed_reason.to_sym if call_suppressed_at.present? && call_suppressed_reason.present?
 
     nil
+  end
+
+  # Written when a delivery attempt is refused before it becomes an attempt.
+  # Idempotent: the first refusal is the one worth dating.
+  def suppress_call!(reason, at: Time.current)
+    return if call_suppressed_at.present?
+
+    update!(call_suppressed_at: at, call_suppressed_reason: reason.to_s)
   end
 
   SNOOZE_DEFAULT_MINUTES = 10

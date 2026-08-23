@@ -25,6 +25,21 @@ class TelnyxWebhooksController < ApplicationController
     call = TelnyxCall.find_by(call_control_id: call_control_id)
 
     unless call
+      # A dial that the provider accepted can produce a callback before dial()
+      # has written call_control_id back. Answering 200 to that would retire the
+      # event for good — and if the lost event is call.answered, the senior is
+      # connected to a call that never speaks.
+      #
+      # client_state tells us whether it is ours: it carries the occurrence this
+      # call was placed for. If it names an occurrence we hold, ask for a retry
+      # and the reservation will have caught up by then. If it names nothing we
+      # recognise, the event genuinely is not ours and retrying it forever would
+      # be its own bug.
+      if ours?(event)
+        Rails.logger.warn "Telnyx webhook for a call not yet correlated, asking for retry: #{call_control_id}"
+        return head :internal_server_error
+      end
+
       Rails.logger.warn "Telnyx webhook for unknown call: #{call_control_id}"
       return head :ok
     end
@@ -58,10 +73,18 @@ class TelnyxWebhooksController < ApplicationController
     head :unauthorized unless TelnyxVoiceService.webhook_valid?(request)
   end
 
+  # The gather is issued before answered_at is recorded, and the order is the
+  # whole point. Recording first made a failed gather permanent: the flag
+  # suppressed the retry, `receive` answered 200, and the senior sat listening
+  # to silence with no second chance. Doing it this way leaves the event
+  # unhandled and redeliverable when the provider call fails.
+  #
+  # Gathering twice is safe. command_id is Telnyx's idempotency key and this
+  # passes the webhook's own event id, so a redelivered event issues the same
+  # command and the provider discards the duplicate rather than speaking twice.
   def handle_answered(call, event_id)
     return if call.answered_at.present?
 
-    call.update!(answered_at: Time.current)
     occurrence = call.occurrence
     reminder = occurrence.reminder
     senior = call.user
@@ -71,6 +94,8 @@ class TelnyxWebhooksController < ApplicationController
       prompt: announcement_for(senior, reminder),
       command_id: event_id
     )
+
+    call.update!(answered_at: Time.current)
   end
 
   # Reminder titles are free text and most of them are imperative phrases
@@ -97,10 +122,10 @@ class TelnyxWebhooksController < ApplicationController
   end
 
   def handle_gather_ended(call, payload, event_id)
-    return unless call.outcome == "pending"
-
     digits = payload["digits"]
-    call.update!(dtmf: digits, status: "completed")
+
+    if call.outcome == "pending"
+      call.update!(dtmf: digits, status: "completed")
 
     case digits
     when "1"
@@ -111,6 +136,17 @@ class TelnyxWebhooksController < ApplicationController
       # Unrecognized digit; treat as no response and hang up.
       call.update!(outcome: "no_response")
     end
+
+      # Enqueued on every delivery of this event, not only the one that won the
+      # acknowledgement. The previous shape conditioned it on first_ack from the
+      # transaction that had already committed, so if enqueueing failed — or the
+      # process died — a redelivery found outcome == "taken", took the early
+      # return above, and the caregiver was never told. Both this job and the
+      # per-caregiver delivery beneath it are idempotent, and the job re-reads the
+      # occurrence status before sending, so enqueueing twice costs nothing.
+    end
+
+    ReminderNotificationJob.perform_later(call.occurrence_id, "acknowledged") if call.outcome == "taken"
 
     # If the gather ended because the caller hung up, the call is already gone.
     unless payload["status"] == "call_hangup"
@@ -130,8 +166,14 @@ class TelnyxWebhooksController < ApplicationController
   def acknowledge!(call, kind)
     return unless call.outcome == "pending"
 
-    first_ack = false
     ActiveRecord::Base.transaction do
+      # Compare-and-swap, so the affected-row count decides whether this request
+      # is the one that resolved the occurrence — the same handshake the web
+      # client uses, and what makes a late take able to correct a row the missed
+      # sweep already claimed. The caregiver notification no longer hangs off
+      # this result; it is enqueued by the caller on every delivery, because
+      # a value computed inside a committed transaction cannot tell a retry
+      # whether the work after the commit ever happened.
       first_ack = Occurrence.where(id: call.occurrence_id)
                             .where.not(status: :acknowledged)
                             .update_all(status: Occurrence.statuses[:acknowledged], updated_at: Time.current)
@@ -141,8 +183,6 @@ class TelnyxWebhooksController < ApplicationController
 
       call.update!(outcome: kind, completed_at: Time.current)
     end
-
-    ReminderNotificationJob.perform_later(call.occurrence_id, "acknowledged") if kind == "taken" && first_ack
   end
 
   # Snoozing writes the acknowledgement AND schedules the next occurrence, which
@@ -155,6 +195,19 @@ class TelnyxWebhooksController < ApplicationController
     later = call.occurrence.snooze!
     call.update!(outcome: "snooze", completed_at: Time.current)
     Rails.logger.info "Voice snooze for call #{call.call_control_id}: next occurrence #{later.id} at #{later.scheduled_at}"
+  end
+
+  # Whether this event belongs to a call we placed, decided from client_state
+  # rather than from the call id we have not managed to record yet.
+  def ours?(event)
+    state = event.dig("payload", "client_state")
+    return false if state.blank?
+
+    occurrence_id = JSON.parse(Base64.decode64(state))["occurrence_id"]
+    occurrence_id.present? && Occurrence.exists?(id: occurrence_id)
+  rescue JSON::ParserError, ArgumentError => e
+    Rails.logger.warn "Telnyx webhook client_state unreadable: #{e.message}"
+    false
   end
 
   def webhook_event

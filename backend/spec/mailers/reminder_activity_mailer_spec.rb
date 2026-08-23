@@ -33,6 +33,11 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     end
     let(:mail) { mail_for(:missed) }
 
+    # Recorded by VoiceReminderJob when it refuses to dial, rather than inferred
+    # later from scheduled_at — the schedule and the moment of refusal can
+    # disagree, and then the wrong person gets blamed.
+    before { occurrence.suppress_call!(:outside_calling_hours) }
+
     it "says Remindly could not call, rather than blaming the senior" do
       expect(mail.subject).to eq("Remindly couldn't call Mom about Metformin")
     end
@@ -61,7 +66,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(mail_for(:missed).subject).to eq("Mom hasn't marked Metformin as done")
     end
 
-    it "keeps the ordinary wording for a dose due inside calling hours" do
+    it "keeps the ordinary wording for a dose nothing refused to call" do
       inside = Occurrence.create!(reminder: reminder, status: :missed,
                                   scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 9, 0))
       mail = described_class
@@ -70,6 +75,26 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
 
       expect(mail.subject).to eq("Mom hasn't marked Metformin as done")
     end
+  end
+
+  it "says a call was withheld even when the schedule looks like it was inside the window" do
+    senior = create(:user, :senior, name: "Mom", tz: "America/New_York",
+                                    phone: "+15551234567", voice_reminders_enabled: true)
+    reminder = Reminder.create!(user: senior, title: "Metformin", category: :medication,
+                                rrule: "FREQ=DAILY", tz: senior.tz)
+    # Due at 20:59, inside the window; the job did not run until 21:01, outside it.
+    occurrence = Occurrence.create!(
+      reminder: reminder, status: :missed,
+      scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 20, 59)
+    )
+    occurrence.suppress_call!(:outside_calling_hours,
+                              at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 21, 1))
+
+    mail = described_class
+      .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence)
+      .missed
+
+    expect(mail.subject).to eq("Remindly couldn't call Mom about Metformin")
   end
 
   # Attempts were claimed and every one failed before reaching the provider —

@@ -23,10 +23,16 @@ class VoiceReminderJob < ApplicationJob
     # call placed outside legal hours cannot be taken back, so the guard sits
     # at the choke point rather than only at the gate.
     unless senior.within_calling_hours?
+      # Record the refusal, do not leave it to be re-derived. The caregiver
+      # email needs to know a call was withheld, and by the time it is sent the
+      # only evidence would be scheduled_at — which answers for the schedule,
+      # not for the moment the decision was actually taken.
+      occurrence.suppress_call!(:outside_calling_hours)
+
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} suppressed: " \
         "#{local_time_for(senior)} is outside " \
-        "#{User::CALLING_HOURS.first}:00-#{User::CALLING_HOURS.last + 1}:00 for user #{senior.id}"
+        "#{User::CALLING_HOURS.first}:00-#{User::CALLING_HOURS.max + 1}:00 for user #{senior.id}"
       )
       return
     end
@@ -43,6 +49,17 @@ class VoiceReminderJob < ApplicationJob
         "cap of #{TelnyxCall::MAX_ATTEMPTS} reached, the last attempt is newer " \
         "than #{TelnyxCall::RETRY_AFTER.inspect}, or another run claimed it"
       )
+      return
+    end
+
+    # Read the status again, after the claim and before the provider call. The
+    # unique index only arbitrates between competing callers; it says nothing
+    # about the occurrence being resolved meanwhile through the web page or a
+    # keypress on an earlier attempt. Without this, a senior who has just marked
+    # the dose done gets telephoned about it anyway.
+    unless occurrence.reload.status_pending?
+      attempt.update!(status: "cancelled", outcome: "no_response", completed_at: Time.current)
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: resolved while the attempt was being claimed"
       return
     end
 

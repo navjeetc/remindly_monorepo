@@ -18,6 +18,7 @@ class TelnyxCall < ApplicationRecord
     gathering
     completed
     failed
+    cancelled
     hangup
   ].freeze
 

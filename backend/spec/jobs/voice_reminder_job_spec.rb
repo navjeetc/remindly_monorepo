@@ -95,6 +95,26 @@ RSpec.describe VoiceReminderJob do
     expect(TelnyxVoiceService).not_to have_received(:dial)
   end
 
+  # The unique index arbitrates between competing callers; it says nothing about
+  # the occurrence being resolved meanwhile through the web page.
+  it "does not dial when the occurrence is resolved after the attempt is claimed" do
+    allow(TelnyxCall).to receive(:reserve).and_wrap_original do |original, *args, **kwargs|
+      original.call(*args, **kwargs).tap { occurrence.update!(status: :acknowledged) }
+    end
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+    expect(occurrence.telnyx_calls.last.status).to eq("cancelled")
+  end
+
+  it "records why a call was withheld, rather than leaving it to be inferred later" do
+    travel_to(at(3)) { described_class.new.perform(occurrence.id) }
+
+    expect(occurrence.reload.call_suppressed_reason).to eq("outside_calling_hours")
+    expect(occurrence.call_suppressed_at).to be_present
+  end
+
   it "places no call for an occurrence that is already acknowledged" do
     occurrence.update!(status: :acknowledged)
 

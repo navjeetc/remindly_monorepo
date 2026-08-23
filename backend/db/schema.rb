@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_050000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_060000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -101,6 +101,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_050000) do
   end
 
   create_table "occurrences", force: :cascade do |t|
+    t.datetime "call_suppressed_at"
+    t.string "call_suppressed_reason"
     t.datetime "created_at", null: false
     t.integer "reminder_id", null: false
     t.datetime "scheduled_at", null: false

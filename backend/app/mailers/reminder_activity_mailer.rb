@@ -56,6 +56,9 @@ class ReminderActivityMailer < ApplicationMailer
     @dashboard_url = senior_dashboard_url(@senior)
     @phone_failure = @occurrence.phone_failure_reason
     @attempts = @occurrence.telnyx_calls.count
-    @calling_hours = "#{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.last + 1 - 12}pm"
+    # .max, not .last: Range#last returns the end object even for an exclusive
+    # range, so (8...21).last is 21 and this read "8am and 10pm" — an hour later
+    # than within_calling_hours? actually allows, in an email to a caregiver.
+    @calling_hours = "#{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm"
   end
 end

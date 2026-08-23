@@ -144,6 +144,83 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
   end
 
+  # Each of these is a way the provider could be told "handled" for work that
+  # was not done, retiring an event that will never come again.
+  describe "events that must stay redeliverable" do
+    it "asks for a retry when the gather fails, rather than leaving the senior in silence" do
+      allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
+
+      telnyx_post("call.answered")
+
+      expect(response).to have_http_status(:internal_server_error)
+    end
+
+    it "leaves answered_at unset when the gather failed, so the retry speaks" do
+      allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
+
+      telnyx_post("call.answered")
+
+      expect(telnyx_call.reload.answered_at).to be_nil
+    end
+
+    # A callback can outrun dial() writing call_control_id back. If that event is
+    # call.answered, retiring it means the senior is connected to a call that
+    # never speaks.
+    it "asks for a retry when the call id is unknown but client_state names one of ours" do
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.answered",
+          payload: {
+            call_control_id: "v3:not-recorded-yet",
+            client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id }.to_json)
+          }
+        }
+      }
+
+      expect(response).to have_http_status(:internal_server_error)
+    end
+
+    it "accepts and drops an unknown call that is not ours, rather than retrying forever" do
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: { event_type: "call.answered", payload: { call_control_id: "v3:someone-elses" } }
+      }
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "does not retry forever on client_state naming an occurrence that no longer exists" do
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.answered",
+          payload: {
+            call_control_id: "v3:not-recorded-yet",
+            client_state: Base64.strict_encode64({ occurrence_id: 0 }.to_json)
+          }
+        }
+      }
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    # The window after the acknowledgement commits: if enqueueing failed, a
+    # redelivery used to take the early return and the caregiver was never told.
+    it "re-enqueues the caregiver notification on a redelivered keypress" do
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect { telnyx_post("call.gather.ended", digits: "1") }
+        .to have_enqueued_job(ReminderNotificationJob).with(occurrence.id, "acknowledged")
+    end
+
+    it "still acknowledges only once when the keypress is redelivered" do
+      2.times { telnyx_post("call.gather.ended", digits: "1") }
+
+      expect(occurrence.acknowledgements.count).to eq(1)
+    end
+  end
+
   describe "pressing 2" do
     it "snoozes rather than skips, matching the only two actions the senior UI offers" do
       telnyx_post("call.gather.ended", digits: "2")

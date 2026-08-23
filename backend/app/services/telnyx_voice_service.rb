@@ -93,8 +93,12 @@ class TelnyxVoiceService
   end
 
   # Speaks a prompt and collects a single DTMF digit in one action.
-  def self.gather_digit(call_control_id:, prompt:, command_id: nil, call: nil)
-    post(
+  #
+  # Raises rather than swallowing, because the caller records the call as
+  # handled once this returns. A silent failure here is the worst outcome the
+  # feature has: the senior answers, hears nothing, and no retry ever comes.
+  def self.gather_digit(call_control_id:, prompt:, command_id: nil)
+    response = post(
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
         digits: 1,
@@ -108,8 +112,10 @@ class TelnyxVoiceService
       },
       command_id: command_id
     )
-  rescue => e
-    Rails.logger.error "Telnyx gather_using_speak failed for call #{call_control_id}: #{e.message}"
+
+    raise "Telnyx gather_using_speak failed for call #{call_control_id}" if response.nil?
+
+    response
   end
 
   # Hang up a call. Used after a digit is collected or the call is done.
