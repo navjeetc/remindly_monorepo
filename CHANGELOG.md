@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A finished call kept blocking the senior's next one.** `completed_at` was
+  only written when the hangup event found the outcome still `pending`, so a
+  call where nobody pressed anything — the outcome having already been set to
+  `no_response` by the gather — never recorded that it had ended. Harmless until
+  the one-call-at-a-time guard started reading that column to decide whether a
+  senior may be called again, at which point a call that finished twenty seconds
+  ago went on occupying the line for five minutes. Completion is now recorded
+  unconditionally; only the outcome stays conditional, so a hangup arriving
+  after a keypress cannot overwrite what the senior said.
+
 - **A senior could be telephoned twice at the same instant.** Found in a live
   test: a dose falling due at the same moment as another occurrence's retry
   placed two calls in the same second to the same phone. One was answered; the

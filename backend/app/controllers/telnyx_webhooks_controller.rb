@@ -118,8 +118,10 @@ class TelnyxWebhooksController < ApplicationController
       when "2"
         snooze!(call)
       else
-        # Unrecognized digit; treat as no response and hang up.
-        call.update!(outcome: "no_response")
+        # No digit, or one we do not offer. The call is finished either way, so
+        # record that here rather than leaving it to the hangup event — which
+        # used to skip it, because by then the outcome was no longer pending.
+        call.update!(outcome: "no_response", completed_at: Time.current)
       end
     end
 
@@ -139,10 +141,19 @@ class TelnyxWebhooksController < ApplicationController
     end
   end
 
+  # The call is over. That is a fact regardless of what was pressed, so
+  # completed_at is recorded unconditionally: an attempt that has ended is not
+  # still occupying the line, and TelnyxCall.call_in_flight? decides whether
+  # this senior may be called again by reading exactly that column. Leaving it
+  # nil made a finished call block the next one for the whole in-flight window.
+  #
+  # Only the outcome is conditional — a keypress already resolved it, and a
+  # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
-    return if call.outcome != "pending"
+    attributes = { completed_at: call.completed_at || Time.current }
+    attributes[:outcome] = "no_response" if call.outcome == "pending"
 
-    call.update!(outcome: "no_response", completed_at: Time.current)
+    call.update!(attributes)
   end
 
   # Deliberately no rescue: a failure here must propagate so `receive` answers

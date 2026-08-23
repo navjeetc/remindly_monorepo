@@ -249,6 +249,46 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
   end
 
+  # completed_at is what TelnyxCall.call_in_flight? reads to decide whether this
+  # senior may be called again. An attempt that has ended but never recorded it
+  # blocks their next reminder for the whole in-flight window.
+  describe "finishing a call" do
+    it "records completion when nobody pressed anything" do
+      telnyx_post("call.gather.ended", digits: "")
+
+      expect(telnyx_call.reload.outcome).to eq("no_response")
+      expect(telnyx_call.completed_at).to be_present
+    end
+
+    it "records completion on hangup even when a keypress already resolved it" do
+      telnyx_post("call.gather.ended", digits: "1")
+      telnyx_post("call.hangup")
+
+      expect(telnyx_call.reload.outcome).to eq("taken")
+      expect(telnyx_call.completed_at).to be_present
+    end
+
+    it "does not let a hangup overwrite an outcome a keypress decided" do
+      telnyx_post("call.gather.ended", digits: "2")
+      telnyx_post("call.hangup")
+
+      expect(telnyx_call.reload.outcome).to eq("snooze")
+    end
+
+    it "records completion for a call nobody ever answered" do
+      telnyx_post("call.hangup")
+
+      expect(telnyx_call.reload.outcome).to eq("no_response")
+      expect(telnyx_call.completed_at).to be_present
+    end
+
+    it "leaves the senior free to be called again once the call has ended" do
+      telnyx_post("call.gather.ended", digits: "")
+
+      expect(TelnyxCall.call_in_flight?(senior, Time.current)).to be false
+    end
+  end
+
   describe "pressing 2" do
     it "snoozes rather than skips, matching the only two actions the senior UI offers" do
       telnyx_post("call.gather.ended", digits: "2")
