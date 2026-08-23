@@ -42,6 +42,11 @@
             <%= pluralize(@attempts, "attempt") %> made, and not one of them
             reached the phone network. That is a fault at our end.
           </p>
+        <% elsif @phone_failure == :not_attempted_in_time %>
+          <p>
+            It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, and was closed
+            as missed before Remindly managed to place the call. That is a fault at our end.
+          </p>
         <% elsif @phone_failure %>
           <p>
             It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside

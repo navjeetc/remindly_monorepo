@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Four more, from a fourth review pass.** The dialling job trusted the
+  scheduler's `WHERE` clause for the per-user opt-in, so a senior who switched
+  voice reminders off — or a job invoked directly for someone who never opted in
+  — was still called; the opt-in is now re-read at dial time, like the status
+  and the calling hours already were. `MAX_ATTEMPTS` is per occurrence, so a
+  senior with six reminders due could take eighteen calls without exceeding it;
+  `MAX_CALLS_PER_DAY` bounds the person rather than the reminder, counted in
+  their own day. Correlating a stray callback matched the most recent
+  uncorrelated attempt, so a delayed callback from attempt 1 could attach to
+  attempt 2 and silence its real call — `client_state` now carries the attempt
+  number and the claim is a conditional update on that exact row. And a job held
+  in the queue past the missed sweep's grace left no record at all, so the
+  caregiver was told the senior ignored a call that was still waiting to be
+  placed.
+
 - **Four more ways a caregiver could be told the wrong thing.** An accepted call
   whose `call_control_id` failed to persist could never be correlated, so every
   callback asked for a retry until the provider gave up and the senior stayed

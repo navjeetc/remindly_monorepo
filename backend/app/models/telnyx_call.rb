@@ -42,6 +42,17 @@ class TelnyxCall < ApplicationRecord
   MAX_ATTEMPTS = 3
   RETRY_AFTER = 5.minutes
 
+  # A ceiling on calls to one person in one day, which MAX_ATTEMPTS cannot give:
+  # that is per occurrence, so a senior with six reminders due could take
+  # eighteen calls and never exceed it. Invariant 7 of the design document
+  # requires this and requires that a caregiver cannot configure it away, which
+  # is why it is a constant here rather than a column on anything they can edit.
+  #
+  # Ten allows roughly three reminders a day to exhaust their retries. The right
+  # number is an open question in the document, alongside how many retries and
+  # how far apart; it is named so changing it is one edit.
+  MAX_CALLS_PER_DAY = 10
+
   # Claims the next attempt for an occurrence BEFORE anything is dialled.
   #
   # The order matters. Reserving after the provider call, or not at all, means
@@ -59,6 +70,7 @@ class TelnyxCall < ApplicationRecord
 
     return nil if previous && previous.attempt_number >= MAX_ATTEMPTS
     return nil if previous && previous.created_at > now - RETRY_AFTER
+    return nil if calls_today(user, now) >= MAX_CALLS_PER_DAY
 
     create!(
       occurrence: occurrence,
@@ -73,5 +85,21 @@ class TelnyxCall < ApplicationRecord
     # every later statement in it fails -- so the loser of the race would take
     # the winner down with it. Nothing wraps this today; keep it that way.
     nil
+  end
+
+  # Counted in the senior's own day, not the server's — the cap is about how
+  # often their phone rings, and a UTC boundary would cut their evening in half.
+  #
+  # A count followed by an insert is not atomic, so concurrent reserves for
+  # *different* occurrences can overshoot by the number running at once. The
+  # per-occurrence unique index bounds each occurrence to MAX_ATTEMPTS
+  # regardless, so the overshoot is small and cannot compound; a strictly atomic
+  # claim would need its own counter row, which is not worth a second table until
+  # the cap is doing real work.
+  def self.calls_today(user, now)
+    zone = ActiveSupport::TimeZone[user.tz.to_s] || Time.zone
+    day = now.in_time_zone(zone)
+
+    where(user_id: user.id, created_at: day.beginning_of_day..day.end_of_day).count
   end
 end

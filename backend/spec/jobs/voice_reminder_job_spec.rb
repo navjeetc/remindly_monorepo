@@ -139,4 +139,66 @@ RSpec.describe VoiceReminderJob do
 
     expect(TelnyxVoiceService).not_to have_received(:dial)
   end
+  it "does not dial a senior who has switched voice reminders off since the job was enqueued" do
+    senior.update!(voice_reminders_enabled: false)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+    expect(occurrence.telnyx_calls).to be_empty
+  end
+
+  it "does not dial a senior whose phone number has been cleared" do
+    senior.update!(phone: nil)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+  end
+
+  # MAX_ATTEMPTS is per occurrence, so a senior with several reminders due could
+  # take three calls each and never exceed it.
+  it "stops at the per-senior daily cap however many reminders are due" do
+    TelnyxCall::MAX_CALLS_PER_DAY.times do |i|
+      other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :pending)
+      TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
+                         call_control_id: "spent-#{i}", status: "hangup", outcome: "no_response",
+                         created_at: at(9) + i.minutes)
+    end
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+  end
+
+  it "counts that cap in the senior's own day, not the server's" do
+    # 23:30 the previous evening in New York is already the next UTC day.
+    TelnyxCall::MAX_CALLS_PER_DAY.times do |i|
+      other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :pending)
+      TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
+                         call_control_id: "yesterday-#{i}", status: "hangup", outcome: "no_response",
+                         created_at: at(10) - 1.day)
+    end
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).to have_received(:dial)
+  end
+
+  # The sweep can close an occurrence while its call is still queued.
+  it "records that no call was placed when the sweep closed the occurrence first" do
+    occurrence.update!(status: :missed)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(occurrence.reload.call_suppressed_reason).to eq("not_attempted_in_time")
+  end
+
+  it "records nothing when the senior resolved it herself" do
+    occurrence.update!(status: :acknowledged)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(occurrence.reload.call_suppressed_at).to be_nil
+  end
 end

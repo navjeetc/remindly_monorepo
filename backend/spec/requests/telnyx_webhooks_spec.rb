@@ -176,7 +176,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
           event_type: "call.answered",
           payload: {
             call_control_id: "v3:not-recorded-yet",
-            client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id }.to_json)
+            client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id, attempt_number: 1 }.to_json)
           }
         }
       }
@@ -198,7 +198,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
           payload: {
             call_control_id: "v3:accepted-but-unrecorded",
             digits: "1",
-            client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id }.to_json)
+            client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id, attempt_number: 1 }.to_json)
           }
         }
       }
@@ -225,7 +225,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
           event_type: "call.answered",
           payload: {
             call_control_id: "v3:not-recorded-yet",
-            client_state: Base64.strict_encode64({ occurrence_id: 0 }.to_json)
+            client_state: Base64.strict_encode64({ occurrence_id: 0, attempt_number: 1 }.to_json)
           }
         }
       }

@@ -36,7 +36,13 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: phone,
       from: from,
-      client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id }.to_json),
+      # attempt_number is here so a late callback can be matched to the exact
+      # attempt that produced it. Without it, correlation can only guess at the
+      # most recent uncorrelated row, and a delayed callback from attempt 1
+      # attaches itself to attempt 2.
+      client_state: Base64.strict_encode64(
+        { occurrence_id: occurrence.id, user_id: senior.id, attempt_number: attempt.attempt_number }.to_json
+      ),
       command_id: command_id_for("dial")
     }
 

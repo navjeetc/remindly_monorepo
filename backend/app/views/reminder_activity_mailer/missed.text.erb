@@ -6,6 +6,12 @@ Remindly tried to call <%= @senior.display_name %> about <%= @reminder.title %> 
 It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>. <%= pluralize(@attempts, "attempt") %> made,
 and not one of them reached the phone network. That is a fault at our end.
 <% end -%>
+<% elsif @phone_failure == :not_attempted_in_time -%>
+Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
+<% if @scheduled_at -%>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, and was closed as missed
+before Remindly managed to place the call. That is a fault at our end.
+<% end -%>
 <% elsif @phone_failure -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>

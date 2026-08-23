@@ -17,9 +17,31 @@ class VoiceReminderJob < ApplicationJob
 
     occurrence = Occurrence.find_by(id: occurrence_id)
     return unless occurrence
-    return unless occurrence.status_pending?
+
+    unless occurrence.status_pending?
+      # Solid Queue can hold this job past the missed sweep's 60-minute grace,
+      # and the sweep then closes the occurrence before any call is placed.
+      # Without a record of that, the caregiver email falls back to saying the
+      # senior did not mark it done — for a call that was still sitting in a
+      # queue. Only when it was swept to missed and nothing was ever attempted:
+      # an occurrence she acknowledged herself is resolved, not undelivered.
+      if occurrence.status_missed? && occurrence.telnyx_calls.empty?
+        occurrence.suppress_call!(:not_attempted_in_time)
+      end
+
+      return
+    end
 
     senior = occurrence.reminder.user
+
+    # The scheduler's WHERE clause is a filter, not a guarantee. This job can run
+    # long after it was enqueued, and is reachable directly — so a senior who
+    # opted out in between, or who never opted in at all, must not be dialled on
+    # the strength of a query that ran earlier.
+    unless senior.voice_reminders_enabled? && senior.phone.present?
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} skipped: user #{senior.id} is not opted in to phone reminders"
+      return
+    end
 
     # Checked here as well as in the scheduler. The scheduler check exists to
     # avoid enqueuing work that cannot run; this one exists because it is the

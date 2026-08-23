@@ -192,32 +192,40 @@ class TelnyxWebhooksController < ApplicationController
   # itself carries enough to repair the link, because client_state names the
   # occurrence the call was placed for.
   def correlate(event, call_control_id)
-    occurrence_id = client_state_occurrence_id(event)
-    return nil if occurrence_id.blank?
+    state = client_state(event)
+    occurrence_id = state["occurrence_id"]
+    attempt_number = state["attempt_number"]
 
-    attempt = TelnyxCall.where(occurrence_id: occurrence_id, call_control_id: nil)
-                        .order(:attempt_number).last
-    return nil unless attempt
+    # Both, or nothing. Matching on occurrence alone means picking the most
+    # recent uncorrelated row, and a delayed callback from attempt 1 then
+    # attaches to attempt 2 — whose own dial later overwrites the id while
+    # leaving answered_at set, so attempt 2's real call.answered is skipped and
+    # that senior hears silence. Guessing is worse than declining to correlate.
+    return nil if occurrence_id.blank? || attempt_number.blank?
 
-    # Telnyx is calling back about it, so the call is real whatever dial()
-    # concluded. Put the attempt back into a state the handlers can act on.
-    attempt.update!(call_control_id: call_control_id, status: "initiated",
-                    outcome: "pending", completed_at: nil)
-    Rails.logger.info "Telnyx webhook correlated #{call_control_id} to attempt #{attempt.id}"
+    # Conditional claim rather than find-then-write: two deliveries of the same
+    # event race here too, and the row must be taken exactly once.
+    claimed = TelnyxCall.where(occurrence_id: occurrence_id, attempt_number: attempt_number, call_control_id: nil)
+                        .update_all(call_control_id: call_control_id, status: "initiated",
+                                    outcome: "pending", completed_at: nil, updated_at: Time.current)
+
+    attempt = TelnyxCall.find_by(call_control_id: call_control_id)
+    Rails.logger.info "Telnyx webhook correlated #{call_control_id} to attempt #{attempt&.id}" if claimed.positive?
     attempt
   rescue ActiveRecord::RecordNotUnique
-    # Another delivery of the same event correlated it first.
+    # Another delivery correlated it first.
     TelnyxCall.find_by(call_control_id: call_control_id)
   end
 
-  def client_state_occurrence_id(event)
-    state = event.dig("payload", "client_state")
-    return nil if state.blank?
+  def client_state(event)
+    encoded = event.dig("payload", "client_state")
+    return {} if encoded.blank?
 
-    JSON.parse(Base64.decode64(state))["occurrence_id"]
+    parsed = JSON.parse(Base64.decode64(encoded))
+    parsed.is_a?(Hash) ? parsed : {}
   rescue JSON::ParserError, ArgumentError => e
     Rails.logger.warn "Telnyx webhook client_state unreadable: #{e.message}"
-    nil
+    {}
   end
 
   def webhook_event
