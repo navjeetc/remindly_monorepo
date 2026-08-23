@@ -31,7 +31,22 @@ class VoiceReminderJob < ApplicationJob
       return
     end
 
-    TelnyxVoiceService.dial(occurrence)
+    # Claim the attempt before dialling. This is the only thing standing between
+    # a senior and a second call for the same dose when two scheduler runs, or a
+    # redelivered job, reach here at once -- and it is also what bounds retries,
+    # since a claim is refused once the cap is reached.
+    attempt = TelnyxCall.reserve(occurrence, senior)
+
+    if attempt.nil?
+      Rails.logger.info(
+        "Voice reminder for occurrence #{occurrence.id} not attempted: " \
+        "cap of #{TelnyxCall::MAX_ATTEMPTS} reached, the last attempt is newer " \
+        "than #{TelnyxCall::RETRY_AFTER.inspect}, or another run claimed it"
+      )
+      return
+    end
+
+    TelnyxVoiceService.dial(occurrence, attempt: attempt)
   end
 
   private

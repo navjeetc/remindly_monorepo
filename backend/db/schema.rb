@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_010001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_050000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -223,7 +223,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_010001) do
 
   create_table "telnyx_calls", force: :cascade do |t|
     t.datetime "answered_at"
-    t.string "call_control_id", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.string "call_control_id"
     t.string "call_leg_id"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
@@ -236,6 +237,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_010001) do
     t.integer "user_id", null: false
     t.index ["call_control_id"], name: "index_telnyx_calls_on_call_control_id", unique: true
     t.index ["call_leg_id"], name: "index_telnyx_calls_on_call_leg_id", unique: true, where: "call_leg_id IS NOT NULL"
+    t.index ["occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_occurrence_and_attempt", unique: true
     t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
     t.index ["user_id"], name: "index_telnyx_calls_on_user_id"
   end

@@ -19,14 +19,18 @@ class TelnyxVoiceService
 
   # Initiate an outbound call for the given occurrence. Returns the call_control_id
   # from Telnyx so we can correlate webhooks.
-  def self.dial(occurrence, call: nil)
-    senior = occurrence.reminder.user
+  # `attempt` is a TelnyxCall already claimed by TelnyxCall.reserve. Requiring it
+  # rather than creating one here is the point: the row has to exist before the
+  # POST, so a concurrent run collides on the unique index instead of placing a
+  # second call to the same person for the same dose.
+  def self.dial(occurrence, attempt:)
+    senior = attempt.user
     phone = senior&.phone
-    return nil if phone.blank?
+    return record_failure(attempt) if phone.blank?
 
     from = credentials[:from_number]
     connection_id = credentials[:connection_id]
-    return nil if from.blank? || connection_id.blank?
+    return record_failure(attempt) if from.blank? || connection_id.blank?
 
     payload = {
       connection_id: connection_id,
@@ -44,24 +48,31 @@ class TelnyxVoiceService
     response = post("/calls", payload, command_id: payload[:command_id])
     unless response&.key?("data")
       Rails.logger.error "Telnyx dial response missing data: #{response.inspect}"
-      return nil
+      return record_failure(attempt)
     end
 
     data = response["data"]
     call_control_id = data["call_control_id"]
-    call_leg_id = data["call_leg_id"]
 
-    call ||= TelnyxCall.find_or_initialize_by(occurrence: occurrence, user: senior)
-    call.assign_attributes(
+    attempt.update!(
       call_control_id: call_control_id,
-      call_leg_id: call_leg_id,
+      call_leg_id: data["call_leg_id"],
       status: "initiated",
       outcome: "pending"
     )
-    call.save!
     call_control_id
   rescue => e
     Rails.logger.error "Telnyx dial failed for occurrence #{occurrence.id}: #{e.message}"
+    record_failure(attempt)
+  end
+
+  # A claimed attempt that never became a call is still an attempt: it is left
+  # recorded and failed rather than deleted, so it counts against the cap and
+  # holds the retry window open. Deleting it would let the scheduler re-claim
+  # the same number immediately and dial in a tight loop against whatever is
+  # broken.
+  def self.record_failure(attempt)
+    attempt&.update(status: "failed", outcome: "error", completed_at: Time.current)
     nil
   end
 

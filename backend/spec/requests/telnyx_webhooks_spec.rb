@@ -105,6 +105,45 @@ RSpec.describe "Telnyx webhooks", type: :request do
     expect(Acknowledgement.last.kind).to eq("taken")
   end
 
+  # Telnyx only re-sends an event it was not told was handled. Answering 200 to a
+  # failed write throws the keypress away silently: the senior pressed 1, the
+  # occurrence stays pending, and the caregiver is later emailed that she never
+  # marked it done.
+  describe "when handling a keypress fails" do
+    it "answers with a retryable status rather than a cheerful 200" do
+      allow(Acknowledgement).to receive(:create!).and_raise(ActiveRecord::StatementInvalid, "db gone")
+
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(response).to have_http_status(:internal_server_error)
+    end
+
+    it "leaves the occurrence unacknowledged so the retry can still claim it" do
+      allow(Acknowledgement).to receive(:create!).and_raise(ActiveRecord::StatementInvalid, "db gone")
+
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(occurrence.reload.status).to eq("pending")
+      expect(telnyx_call.reload.outcome).to eq("pending")
+    end
+
+    it "is safe to retry — a redelivered keypress acknowledges once, not twice" do
+      2.times { telnyx_post("call.gather.ended", digits: "1") }
+
+      expect(occurrence.acknowledgements.count).to eq(1)
+      expect(occurrence.reload.status).to eq("acknowledged")
+    end
+
+    it "is safe to retry a snooze too" do
+      telnyx_call # the lets are lazy; create the original occurrence before counting
+
+      expect { 2.times { telnyx_post("call.gather.ended", digits: "2") } }
+        .to change { reminder.occurrences.count }.by(1)
+
+      expect(occurrence.acknowledgements.where(kind: :snooze).count).to eq(1)
+    end
+  end
+
   describe "pressing 2" do
     it "snoozes rather than skips, matching the only two actions the senior UI offers" do
       telnyx_post("call.gather.ended", digits: "2")

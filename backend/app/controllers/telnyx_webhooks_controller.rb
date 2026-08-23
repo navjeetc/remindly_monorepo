@@ -41,6 +41,15 @@ class TelnyxWebhooksController < ApplicationController
     end
 
     head :ok
+  rescue => e
+    Rails.logger.error "Telnyx webhook #{event_type} failed for #{call_control_id}: #{e.full_message}"
+
+    # 500, so Telnyx retries. A 200 here would tell the provider the keypress
+    # was handled and it would never send it again: the senior pressed 1, the
+    # write failed, the acknowledgement is gone, the occurrence stays pending,
+    # and the caregiver is eventually emailed that she never marked it done.
+    # Every handler below is idempotent, so a retry is safe.
+    head :internal_server_error
   end
 
   private
@@ -115,6 +124,9 @@ class TelnyxWebhooksController < ApplicationController
     call.update!(outcome: "no_response", completed_at: Time.current)
   end
 
+  # Deliberately no rescue: a failure here must propagate so `receive` answers
+  # non-2xx and Telnyx sends the event again. Safe to retry — the guard below
+  # and the compare-and-swap on the occurrence both make a repeat a no-op.
   def acknowledge!(call, kind)
     return unless call.outcome == "pending"
 
@@ -131,8 +143,6 @@ class TelnyxWebhooksController < ApplicationController
     end
 
     ReminderNotificationJob.perform_later(call.occurrence_id, "acknowledged") if kind == "taken" && first_ack
-  rescue => e
-    Rails.logger.error "Voice acknowledgement failed for call #{call.call_control_id}: #{e.message}"
   end
 
   # Snoozing writes the acknowledgement AND schedules the next occurrence, which
@@ -145,8 +155,6 @@ class TelnyxWebhooksController < ApplicationController
     later = call.occurrence.snooze!
     call.update!(outcome: "snooze", completed_at: Time.current)
     Rails.logger.info "Voice snooze for call #{call.call_control_id}: next occurrence #{later.id} at #{later.scheduled_at}"
-  rescue => e
-    Rails.logger.error "Voice snooze failed for call #{call.call_control_id}: #{e.message}"
   end
 
   def webhook_event

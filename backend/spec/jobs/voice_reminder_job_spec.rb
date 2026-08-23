@@ -20,7 +20,59 @@ RSpec.describe VoiceReminderJob do
   it "dials inside calling hours" do
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
 
-    expect(TelnyxVoiceService).to have_received(:dial).with(occurrence)
+    expect(TelnyxVoiceService).to have_received(:dial)
+      .with(occurrence, attempt: an_instance_of(TelnyxCall))
+  end
+
+  # The attempt row has to exist before the provider is called. If it were
+  # written afterwards, two runs would both POST before either could see the
+  # other, and the senior's phone would ring twice for one dose.
+  it "claims the attempt before dialling, so a concurrent run cannot also dial" do
+    claimed = nil
+    allow(TelnyxVoiceService).to receive(:dial) { |_occ, attempt:| claimed = attempt }
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(claimed).to be_persisted
+    expect(claimed.attempt_number).to eq(1)
+    expect(claimed.status).to eq("reserved")
+  end
+
+  it "does not dial when another run has already claimed this attempt" do
+    TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: 1,
+                       status: "reserved", outcome: "pending")
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+  end
+
+  # The bug this replaces: attempts reused one row, so the scheduler's
+  # "recently called" window never advanced and an unanswered senior was
+  # re-dialled every minute until the missed sweep closed the occurrence -- some
+  # fifty-odd calls, all inside legal hours.
+  it "stops after the attempt cap, however often the job is run" do
+    TelnyxCall::MAX_ATTEMPTS.times do |i|
+      travel_to(at(10) + (i * (TelnyxCall::RETRY_AFTER + 1.minute))) do
+        described_class.new.perform(occurrence.id)
+      end
+    end
+
+    # Well past the retry window, and every minute of it — the shape of the
+    # scheduler's real cadence.
+    20.times do |i|
+      travel_to(at(12) + i.minutes) { described_class.new.perform(occurrence.id) }
+    end
+
+    expect(TelnyxVoiceService).to have_received(:dial).exactly(TelnyxCall::MAX_ATTEMPTS).times
+    expect(occurrence.telnyx_calls.count).to eq(TelnyxCall::MAX_ATTEMPTS)
+  end
+
+  it "waits out the retry window before trying again" do
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+    travel_to(at(10) + TelnyxCall::RETRY_AFTER - 1.minute) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).to have_received(:dial).once
   end
 
   it "places no call at 3am, whatever the occurrence says it is due" do

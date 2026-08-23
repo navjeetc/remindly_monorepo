@@ -7,7 +7,6 @@
 class VoiceReminderSchedulerJob < ApplicationJob
   queue_as :default
 
-  LOOKAHEAD = 2.minutes
 
   def perform(now: Time.current)
     # Occurrences that are now due, still pending, for users with a phone and
@@ -19,8 +18,23 @@ class VoiceReminderSchedulerJob < ApplicationJob
       .joins(reminder: :user)
       .where(users: { voice_reminders_enabled: true })
       .where.not(users: { phone: [ nil, "" ] })
+      # Skip what cannot be dialled yet or any more. Correctness does not rest on
+      # this -- TelnyxCall.reserve refuses the same cases atomically, and must,
+      # because two runs can pass these checks simultaneously. This is here so
+      # the common case does not enqueue jobs that exist only to decline.
+      #
+      # Both clauses are per-occurrence rather than a single "called recently"
+      # window. The window alone was the bug: attempts reused one row, so its
+      # created_at never advanced and an unanswered senior was re-dialled every
+      # minute for the full hour before the missed sweep closed the occurrence.
       .where.not(
-        id: TelnyxCall.select(:occurrence_id).where("telnyx_calls.created_at > ?", now - LOOKAHEAD)
+        id: TelnyxCall.select(:occurrence_id)
+          .where("telnyx_calls.created_at > ?", now - TelnyxCall::RETRY_AFTER)
+      )
+      .where.not(
+        id: TelnyxCall.select(:occurrence_id)
+          .group(:occurrence_id)
+          .having("COUNT(*) >= ?", TelnyxCall::MAX_ATTEMPTS)
       )
       .includes(reminder: :user)
       .find_each do |occ|

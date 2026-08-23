@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **An unanswered senior could be telephoned dozens of times.** The scheduler
+  skipped occurrences called within the last two minutes, but every dial reused
+  one `TelnyxCall` row per occurrence, so its `created_at` never moved past the
+  first attempt and the window stopped excluding anything. Running every minute
+  against an occurrence that stays `pending` for the full 60-minute miss grace,
+  that is around fifty consecutive calls to someone who did not pick up — all
+  inside legal hours, so the calling-hours guard could not help. Attempts are
+  now one row each, capped at three and spaced five minutes apart, per the
+  design document's "retries after a few minutes, twice at most, then stops".
+- **Two runs could both dial the same dose.** Nothing was written before the
+  provider was called, so a redelivered job or two overlapping scheduler runs
+  each POSTed without being able to see the other. An attempt is now claimed
+  first, and a unique index on `(occurrence_id, attempt_number)` decides the
+  race in the database — the loser is told before it dials rather than after.
+- **A failed keypress was reported to Telnyx as success.** The handlers rescued
+  every error, logged it, and still answered `200`, so the provider considered
+  the event delivered and never resent it. A transient write failure therefore
+  discarded the senior's "1" for good: the occurrence stayed pending and the
+  caregiver was later emailed that she had not marked it done. Failures now
+  propagate and the endpoint answers `500` so Telnyx retries; every handler is
+  idempotent, and there are specs for the redelivered case.
+
 - **A reminder that was never called said the senior hadn't marked it done**:
   once calls are confined to 8am–9pm, a 6am dose for a senior whose only channel
   is the telephone is suppressed at 6:00, marked `missed` at 7:00 by the sweep,
