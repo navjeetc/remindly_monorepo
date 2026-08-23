@@ -91,11 +91,34 @@ the schema (allowances, billing) and the copy.
 Three gates, in order. Two are not engineering.
 
 1. **Decide the monetisation model.** Above.
-2. **Ask three or four families whether their parent answers unknown numbers.**
-   This demographic is trained — correctly — not to. If the answer is mostly no,
-   the feature is dead on arrival and the conversation costs an afternoon against
-   weeks of work. Ask also what happens today: many already have a pill box that
+2. **Ask three or four families whether the caregiver could get one number saved
+   on their parent's phone.** The original form of this question was "does your
+   parent answer unknown numbers", and the answer is no — this demographic is
+   trained, correctly, not to. But the `from` number is static, so it is only
+   unknown once. Saved as a contact it displays a name, and it also clears iOS
+   **Silence Unknown Callers**, which otherwise routes the call to voicemail with
+   no ring at all.
+
+   That moves the risk somewhere more interesting. It is no longer "will she
+   answer a stranger" but "will a caregiver four hundred miles away get one
+   contact saved on someone else's phone" — which is precisely the class of task
+   this product exists because it is hard. Measure that, not the stranger
+   question. Ask also what happens today: many already have a pill box that
    beeps, and it may be enough.
+
+   Two cases the contact does not cover, and both are setup work rather than
+   blockers. **A landline cannot hold a contact** — there the only signal is
+   CNAM, which is reliable on landlines and patchy on mobile, the reverse of the
+   contact story, so CNAM registration is a real task. And **carrier spam
+   labelling sits upstream of the contact list**: a number with a poor reputation
+   can be flagged or blocked before the handset ever consults its contacts, which
+   is the argument below for a dedicated number.
+
+   If saving the contact is load-bearing, it is a setup step and not FAQ advice —
+   arguably a gate, with nothing scheduled until the caregiver confirms it is
+   done. That also fixes an ordering problem, because the consent call is itself
+   the first call and is the one that most needs to land. The sequence is: save
+   the contact, then the consent call, then anything scheduled.
 3. **Establish what the phone number actually is.** Navjeet has a number in a
    GoHighLevel subaccount, A2P-verified. Two things follow, both settled before
    anyone writes code:
