@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Four more ways a caregiver could be told the wrong thing.** An accepted call
+  whose `call_control_id` failed to persist could never be correlated, so every
+  callback asked for a retry until the provider gave up and the senior stayed
+  connected to a call that never spoke — the event's `client_state` now names
+  the occurrence, so the reserved attempt is adopted and the call proceeds. The
+  scheduler skipped out-of-hours occurrences before `VoiceReminderJob` ever ran,
+  so the suppression recording added for exactly this case never executed in
+  production, where the scheduler is the only caller. `phone_failure_reason`
+  consulted the senior's *current* preferences before the durable record, so
+  switching voice reminders off after a failure retroactively turned a call
+  nobody placed into a reminder she had ignored. And duplicate notification
+  deliveries could race: the "already notified" check was a SELECT against an
+  unindexable json column, so both workers passed it — `notifications` now has a
+  real `occurrence_id` column with a partial unique index, and the insert
+  decides rather than the check.
+
 - **The caregiver email stated the wrong calling window.** `CALLING_HOURS` is
   the exclusive range `(8...21)`, and Ruby's `Range#last` returns the range's
   *end* regardless of exclusivity — so `last + 1 - 12` gave `10` and the mail

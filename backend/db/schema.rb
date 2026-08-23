@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_070000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -91,11 +91,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_060000) do
     t.text "message"
     t.json "metadata"
     t.string "notification_type", null: false
+    t.integer "occurrence_id"
     t.datetime "read_at"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["notification_type"], name: "index_notifications_on_notification_type"
+    t.index ["user_id", "notification_type", "occurrence_id"], name: "index_notifications_on_user_type_and_occurrence", unique: true, where: "occurrence_id IS NOT NULL"
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end

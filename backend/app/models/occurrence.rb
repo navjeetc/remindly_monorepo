@@ -20,13 +20,13 @@ class Occurrence < ApplicationRecord
   # attempt row says. Testing mere existence would let a reservation that failed
   # before the API call masquerade as a call that rang.
   #
-  # Derived rather than stored, because every input is recorded already and the
-  # answer must be read against the senior's *current* timezone.
+  # Reads only what was recorded, never the senior's current preferences. A
+  # senior who turns voice reminders off, or whose number is cleared, after a
+  # call was suppressed or failed does not thereby become someone who ignored a
+  # reminder — durable evidence of what happened outranks a mutable setting read
+  # later, when the email is finally rendered. Nothing recorded yields nil,
+  # which is the same answer the preference checks used to give.
   def phone_failure_reason
-    senior = reminder.user
-
-    return nil unless senior.voice_reminders_enabled?
-    return nil if senior.phone.blank?
     return nil if telnyx_calls.where.not(call_control_id: nil).exists?
 
     return :could_not_place if telnyx_calls.exists?

@@ -49,9 +49,12 @@ class ReminderNotificationService
     senior = reminder.user
 
     recipients(reminder).each do |caregiver|
-      next if already_notified?(caregiver, occurrence, kind)
-
-      create_notification(caregiver, senior, reminder, occurrence, kind)
+      # The insert decides, not the check. Two workers handling redelivered
+      # deliveries of the same event could both pass a SELECT and each create an
+      # alert and send an email; the unique index on
+      # (user_id, notification_type, occurrence_id) now refuses the second, and
+      # this returns nil so nothing further is done for that caregiver.
+      next unless create_notification(caregiver, senior, reminder, occurrence, kind)
 
       # Same rule as coverage gaps, and it matters more here: a coverage gap
       # mails once a day, while this fires on every completed and missed
@@ -66,20 +69,16 @@ class ReminderNotificationService
     end
   end
 
-  # Has this caregiver already been notified about this occurrence? SQLite has no
-  # JSON operators, so — as elsewhere in the app — filter this caregiver's recent
-  # same-type notifications in Ruby by the occurrence_id we stashed in metadata.
-  def self.already_notified?(caregiver, occurrence, kind)
-    Notification
-      .where(user: caregiver, notification_type: notification_type(kind))
-      .where(created_at: 2.days.ago..)
-      .any? { |n| n.metadata["occurrence_id"] == occurrence.id }
-  end
-
+  # Returns the notification, or nil when this caregiver has already been told
+  # about this occurrence. occurrence_id is a real column purely so this can be
+  # a uniqueness constraint — it used to live only inside the json metadata,
+  # where nothing is indexable, which left the check a SELECT that a concurrent
+  # worker could race. metadata keeps its copy for the readers that use it.
   def self.create_notification(caregiver, senior, reminder, occurrence, kind)
     Notification.create!(
       user: caregiver,
       notification_type: notification_type(kind),
+      occurrence_id: occurrence.id,
       title: title(senior, reminder, kind),
       message: message(reminder, occurrence, kind),
       metadata: {
@@ -91,6 +90,8 @@ class ReminderNotificationService
         scheduled_at: occurrence.scheduled_at&.iso8601 # UTC, for machine use
       }
     )
+  rescue ActiveRecord::RecordNotUnique
+    nil
   end
 
   def self.deliver_email(caregiver, senior, reminder, occurrence, kind)
@@ -124,6 +125,6 @@ class ReminderNotificationService
     end
   end
 
-  private_class_method :notify, :already_notified?, :create_notification, :deliver_email,
+  private_class_method :notify, :create_notification, :deliver_email,
                        :notification_type, :title, :message
 end

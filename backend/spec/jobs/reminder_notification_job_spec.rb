@@ -36,4 +36,13 @@ RSpec.describe ReminderNotificationJob do
     expect { described_class.perform_now(-1, "acknowledged") }
       .not_to change { Notification.count }
   end
+  # The check used to be a SELECT against an unindexable json column, so two
+  # workers handling redelivered deliveries of the same event could both pass it.
+  it "creates one notification per caregiver even when the same delivery arrives twice" do
+    occ = occurrence(status: :acknowledged)
+
+    expect {
+      2.times { described_class.perform_now(occ.id, "acknowledged") }
+    }.to change { caregiver.notifications.count }.by(1)
+  end
 end

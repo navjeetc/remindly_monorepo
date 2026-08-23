@@ -163,10 +163,13 @@ RSpec.describe "Telnyx webhooks", type: :request do
       expect(telnyx_call.reload.answered_at).to be_nil
     end
 
-    # A callback can outrun dial() writing call_control_id back. If that event is
-    # call.answered, retiring it means the senior is connected to a call that
-    # never speaks.
-    it "asks for a retry when the call id is unknown but client_state names one of ours" do
+    # dial() can fail to persist call_control_id after Telnyx has accepted the
+    # call, and its rescue loses the id for good — so a retry would never
+    # correlate. The event carries client_state, which names the occurrence.
+    it "adopts the reserved attempt when the call id is unknown but client_state names ours" do
+      reserved = TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: 1,
+                                    call_control_id: nil, status: "reserved", outcome: "pending")
+
       post "/telnyx/webhooks", params: {
         token: "test-token",
         data: {
@@ -178,7 +181,32 @@ RSpec.describe "Telnyx webhooks", type: :request do
         }
       }
 
-      expect(response).to have_http_status(:internal_server_error)
+      expect(response).to have_http_status(:ok)
+      expect(reserved.reload.call_control_id).to eq("v3:not-recorded-yet")
+      expect(reserved.answered_at).to be_present
+    end
+
+    it "revives an attempt dial() had already given up on, since the provider says it is real" do
+      TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: 1,
+                         call_control_id: nil, status: "failed", outcome: "error",
+                         completed_at: Time.current)
+
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.gather.ended",
+          payload: {
+            call_control_id: "v3:accepted-but-unrecorded",
+            digits: "1",
+            client_state: Base64.strict_encode64({ occurrence_id: occurrence.id, user_id: senior.id }.to_json)
+          }
+        }
+      }
+
+      revived = TelnyxCall.find_by(call_control_id: "v3:accepted-but-unrecorded")
+
+      expect(occurrence.reload.status).to eq("acknowledged")
+      expect(revived.outcome).to eq("taken")
     end
 
     it "accepts and drops an unknown call that is not ours, rather than retrying forever" do
@@ -190,7 +218,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    it "does not retry forever on client_state naming an occurrence that no longer exists" do
+    it "drops an event whose client_state names an occurrence that no longer exists" do
       post "/telnyx/webhooks", params: {
         token: "test-token",
         data: {

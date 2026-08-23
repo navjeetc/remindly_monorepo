@@ -46,7 +46,14 @@ class VoiceReminderSchedulerJob < ApplicationJob
         # dose due at 2am stays pending until the missed sweep claims it an hour
         # later, and without this every one of those minutes would enqueue a job
         # that only exists to decline.
-        next unless occ.reminder.user.within_calling_hours?(at: now)
+        unless occ.reminder.user.within_calling_hours?(at: now)
+          # Recorded here, not only in the job. In production the scheduler is
+          # the only caller, so skipping straight past meant the refusal was
+          # never written down anywhere — and an hour later the caregiver was
+          # told the senior had not marked it done, for a call nobody placed.
+          occ.suppress_call!(:outside_calling_hours, at: now)
+          next
+        end
 
         VoiceReminderJob.perform_later(occ.id)
       end

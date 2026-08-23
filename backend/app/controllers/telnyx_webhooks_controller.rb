@@ -22,24 +22,9 @@ class TelnyxWebhooksController < ApplicationController
     event_id = event["id"]
 
     call_control_id = payload["call_control_id"]
-    call = TelnyxCall.find_by(call_control_id: call_control_id)
+    call = TelnyxCall.find_by(call_control_id: call_control_id) || correlate(event, call_control_id)
 
     unless call
-      # A dial that the provider accepted can produce a callback before dial()
-      # has written call_control_id back. Answering 200 to that would retire the
-      # event for good — and if the lost event is call.answered, the senior is
-      # connected to a call that never speaks.
-      #
-      # client_state tells us whether it is ours: it carries the occurrence this
-      # call was placed for. If it names an occurrence we hold, ask for a retry
-      # and the reservation will have caught up by then. If it names nothing we
-      # recognise, the event genuinely is not ours and retrying it forever would
-      # be its own bug.
-      if ours?(event)
-        Rails.logger.warn "Telnyx webhook for a call not yet correlated, asking for retry: #{call_control_id}"
-        return head :internal_server_error
-      end
-
       Rails.logger.warn "Telnyx webhook for unknown call: #{call_control_id}"
       return head :ok
     end
@@ -197,17 +182,42 @@ class TelnyxWebhooksController < ApplicationController
     Rails.logger.info "Voice snooze for call #{call.call_control_id}: next occurrence #{later.id} at #{later.scheduled_at}"
   end
 
-  # Whether this event belongs to a call we placed, decided from client_state
-  # rather than from the call id we have not managed to record yet.
-  def ours?(event)
-    state = event.dig("payload", "client_state")
-    return false if state.blank?
+  # Adopt a reserved attempt whose call_control_id never got written back.
+  #
+  # dial() can fail to persist the id after Telnyx has already accepted the
+  # call — its rescue marks the attempt failed and the id is lost with it.
+  # Asking for a retry does not recover that: nothing else correlates the
+  # event, so every redelivery takes the same branch until the provider gives
+  # up, and the senior stays connected to a call that never speaks. The event
+  # itself carries enough to repair the link, because client_state names the
+  # occurrence the call was placed for.
+  def correlate(event, call_control_id)
+    occurrence_id = client_state_occurrence_id(event)
+    return nil if occurrence_id.blank?
 
-    occurrence_id = JSON.parse(Base64.decode64(state))["occurrence_id"]
-    occurrence_id.present? && Occurrence.exists?(id: occurrence_id)
+    attempt = TelnyxCall.where(occurrence_id: occurrence_id, call_control_id: nil)
+                        .order(:attempt_number).last
+    return nil unless attempt
+
+    # Telnyx is calling back about it, so the call is real whatever dial()
+    # concluded. Put the attempt back into a state the handlers can act on.
+    attempt.update!(call_control_id: call_control_id, status: "initiated",
+                    outcome: "pending", completed_at: nil)
+    Rails.logger.info "Telnyx webhook correlated #{call_control_id} to attempt #{attempt.id}"
+    attempt
+  rescue ActiveRecord::RecordNotUnique
+    # Another delivery of the same event correlated it first.
+    TelnyxCall.find_by(call_control_id: call_control_id)
+  end
+
+  def client_state_occurrence_id(event)
+    state = event.dig("payload", "client_state")
+    return nil if state.blank?
+
+    JSON.parse(Base64.decode64(state))["occurrence_id"]
   rescue JSON::ParserError, ArgumentError => e
     Rails.logger.warn "Telnyx webhook client_state unreadable: #{e.message}"
-    false
+    nil
   end
 
   def webhook_event
