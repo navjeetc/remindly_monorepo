@@ -15,7 +15,7 @@ class FeatureFlag
       env_var: "ENABLE_EXTERNAL_SCHEDULING"
     },
     # The outer of two locks on reminder phone calls. This one says the code may
-    # run at all; a senior's own voice_reminders_enabled and phone say whether it
+    # run at all; a senior's own call_reminders_enabled and phone say whether it
     # runs for them.
     #
     # It exists because the inner lock is two ordinary columns, and the only way

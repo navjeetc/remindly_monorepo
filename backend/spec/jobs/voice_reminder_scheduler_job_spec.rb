@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe VoiceReminderSchedulerJob do
   include ActiveSupport::Testing::TimeHelpers
 
-  let(:senior) { create(:user, :senior, name: "Peter", tz: "America/New_York", phone: "+15551234567", voice_reminders_enabled: true) }
+  let(:senior) { create(:user, :senior, name: "Peter", tz: "America/New_York", phone: "+15551234567", call_reminders_enabled: true) }
   let(:reminder) { Reminder.create!(user: senior, title: "Take meds", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
 
   def at(hour, zone: "America/New_York")
@@ -63,7 +63,7 @@ RSpec.describe VoiceReminderSchedulerJob do
   end
 
   it "leaves alone a senior who has not turned voice reminders on" do
-    senior.update!(voice_reminders_enabled: false)
+    senior.update!(call_reminders_enabled: false)
     due_at(at(10))
 
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)

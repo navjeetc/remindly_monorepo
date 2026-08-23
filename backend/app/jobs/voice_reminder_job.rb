@@ -24,7 +24,7 @@ class VoiceReminderJob < ApplicationJob
     # long after it was enqueued, and is reachable directly — so a senior who
     # opted out in between, or who never opted in at all, must not be dialled on
     # the strength of a query that ran earlier.
-    unless senior.voice_reminders_enabled? && senior.phone.present?
+    unless senior.call_reminders_enabled? && senior.phone.present?
       Rails.logger.info "Voice reminder for occurrence #{occurrence.id} skipped: user #{senior.id} is not opted in to phone reminders"
       return
     end

@@ -25,7 +25,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
   describe "#missed when no call was ever placed" do
     let(:senior) do
       create(:user, :senior, name: "Mom", tz: "America/New_York",
-                             phone: "+15551234567", voice_reminders_enabled: true)
+                             phone: "+15551234567", call_reminders_enabled: true)
     end
     let(:occurrence) do
       Occurrence.create!(reminder: reminder, status: :missed,
@@ -64,7 +64,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     # reminders off does not retroactively make her someone who ignored a
     # reminder nobody delivered.
     it "still says Remindly could not call after voice reminders are switched off" do
-      senior.update!(voice_reminders_enabled: false)
+      senior.update!(call_reminders_enabled: false)
 
       expect(mail_for(:missed).subject).to eq("Remindly couldn't call Mom about Metformin")
     end
@@ -102,7 +102,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
 
   it "says a call was withheld even when the schedule looks like it was inside the window" do
     senior = create(:user, :senior, name: "Mom", tz: "America/New_York",
-                                    phone: "+15551234567", voice_reminders_enabled: true)
+                                    phone: "+15551234567", call_reminders_enabled: true)
     reminder = Reminder.create!(user: senior, title: "Metformin", category: :medication,
                                 rrule: "FREQ=DAILY", tz: senior.tz)
     # Due at 20:59, inside the window; the job did not run until 21:01, outside it.
@@ -126,7 +126,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
   describe "#missed when the call was never attempted in time" do
     let(:senior) do
       create(:user, :senior, name: "Mom", tz: "America/New_York",
-                             phone: "+15551234567", voice_reminders_enabled: true)
+                             phone: "+15551234567", call_reminders_enabled: true)
     end
     let(:occurrence) do
       Occurrence.create!(reminder: reminder, status: :missed,
@@ -161,7 +161,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
   describe "#missed when the call could not be placed" do
     let(:senior) do
       create(:user, :senior, name: "Mom", tz: "America/New_York",
-                             phone: "+15551234567", voice_reminders_enabled: true)
+                             phone: "+15551234567", call_reminders_enabled: true)
     end
     let(:occurrence) do
       Occurrence.create!(reminder: reminder, status: :missed,

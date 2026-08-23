@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Telnyx webhooks", type: :request do
-  let(:senior) { create(:user, :senior, phone: "+15551234567", voice_reminders_enabled: true) }
+  let(:senior) { create(:user, :senior, phone: "+15551234567", call_reminders_enabled: true) }
   let(:reminder) { Reminder.create!(user: senior, title: "Metformin", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
   let(:occurrence) { Occurrence.create!(reminder: reminder, scheduled_at: Time.current, status: :pending) }
   let(:telnyx_call) do

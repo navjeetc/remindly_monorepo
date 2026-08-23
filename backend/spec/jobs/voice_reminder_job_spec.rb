@@ -7,7 +7,7 @@ require "rails_helper"
 RSpec.describe VoiceReminderJob do
   include ActiveSupport::Testing::TimeHelpers # the project's convention, see recurrence_spec
 
-  let(:senior) { create(:user, :senior, name: "Peter", tz: "America/New_York", phone: "+15551234567", voice_reminders_enabled: true) }
+  let(:senior) { create(:user, :senior, name: "Peter", tz: "America/New_York", phone: "+15551234567", call_reminders_enabled: true) }
   let(:reminder) { Reminder.create!(user: senior, title: "Take meds", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
   let(:occurrence) { Occurrence.create!(reminder: reminder, scheduled_at: Time.current, status: :pending) }
 
@@ -140,7 +140,7 @@ RSpec.describe VoiceReminderJob do
     expect(TelnyxVoiceService).not_to have_received(:dial)
   end
   it "does not dial a senior who has switched voice reminders off since the job was enqueued" do
-    senior.update!(voice_reminders_enabled: false)
+    senior.update!(call_reminders_enabled: false)
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
 
@@ -204,7 +204,7 @@ RSpec.describe VoiceReminderJob do
     expect(occurrence.reload.call_suppressed_at).to be_nil
   end
   it "records nothing about calls for a senior who does not take them" do
-    senior.update!(voice_reminders_enabled: false)
+    senior.update!(call_reminders_enabled: false)
     occurrence.update!(status: :missed)
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
