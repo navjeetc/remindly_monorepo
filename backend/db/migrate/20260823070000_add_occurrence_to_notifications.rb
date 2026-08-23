@@ -21,6 +21,21 @@ class AddOccurrenceToNotifications < ActiveRecord::Migration[8.1]
          AND json_extract(metadata, '$.occurrence_id') IS NOT NULL
     SQL
 
+    # Collapse any duplicates the old non-atomic check already let through,
+    # keeping the earliest of each set. Production had none when this was
+    # written, but the entrypoint runs db:prepare at container start, so a
+    # unique index that raises does not fail here — it aborts the boot and
+    # blocks the deploy.
+    execute <<~SQL
+      DELETE FROM notifications
+       WHERE occurrence_id IS NOT NULL
+         AND id NOT IN (
+           SELECT MIN(id) FROM notifications
+            WHERE occurrence_id IS NOT NULL
+            GROUP BY user_id, notification_type, occurrence_id
+         )
+    SQL
+
     add_index :notifications, [ :user_id, :notification_type, :occurrence_id ],
               unique: true, where: "occurrence_id IS NOT NULL",
               name: "index_notifications_on_user_type_and_occurrence"

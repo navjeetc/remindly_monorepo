@@ -29,7 +29,11 @@ class Occurrence < ApplicationRecord
   def phone_failure_reason
     return nil if telnyx_calls.where.not(call_control_id: nil).exists?
 
-    return :could_not_place if telnyx_calls.exists?
+    # Cancelled attempts are excluded deliberately. Those were claimed and then
+    # abandoned before the provider was contacted — because she resolved the
+    # reminder herself, or the sweep closed it — so "we tried to call and could
+    # not get through" would be untrue of them.
+    return :could_not_place if telnyx_calls.where.not(status: "cancelled").exists?
 
     # The recorded decision beats any re-derivation. Asking
     # within_calling_hours?(at: scheduled_at) now would answer for the schedule
@@ -43,10 +47,29 @@ class Occurrence < ApplicationRecord
 
   # Written when a delivery attempt is refused before it becomes an attempt.
   # Idempotent: the first refusal is the one worth dating.
+  # Idempotent: the first refusal is the one worth dating.
+  #
+  # A conditional UPDATE rather than check-then-write, following
+  # User#mark_email_undeliverable! for the same reason. Two callers can reach
+  # here for one occurrence — the scheduler refusing it for calling hours while
+  # a delayed job finds it already swept to missed — and both would read a blank
+  # timestamp before either wrote, so the later one would quietly replace the
+  # first reason. The WHERE clause makes the database pick.
   def suppress_call!(reason, at: Time.current)
-    return if call_suppressed_at.present?
+    claimed = self.class.where(id: id, call_suppressed_at: nil)
+                  .update_all(call_suppressed_at: at, call_suppressed_reason: reason.to_s,
+                              updated_at: Time.current)
 
-    update!(call_suppressed_at: at, call_suppressed_reason: reason.to_s)
+    # Keep this instance honest either way: adopt our own values if we won, the
+    # winner's if we did not.
+    if claimed.positive?
+      assign_attributes(call_suppressed_at: at, call_suppressed_reason: reason.to_s)
+    else
+      reload
+    end
+
+    clear_attribute_changes([ :call_suppressed_at, :call_suppressed_reason ])
+    self
   end
 
   SNOOZE_DEFAULT_MINUTES = 10

@@ -32,7 +32,7 @@ class ReminderActivityMailer < ApplicationMailer
     setup
 
     subject = case @phone_failure
-    when :outside_calling_hours
+    when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
     when :could_not_place
       "Remindly tried to call #{@senior.display_name} about #{@reminder.title} and couldn't get through"

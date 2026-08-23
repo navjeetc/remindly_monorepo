@@ -70,12 +70,19 @@ class TelnyxCall < ApplicationRecord
 
     return nil if previous && previous.attempt_number >= MAX_ATTEMPTS
     return nil if previous && previous.created_at > now - RETRY_AFTER
-    return nil if calls_today(user, now) >= MAX_CALLS_PER_DAY
+    day = local_day(user, now)
+    return nil if calls_on(user, day) >= MAX_CALLS_PER_DAY
 
     create!(
       occurrence: occurrence,
       user: user,
       attempt_number: (previous&.attempt_number || 0) + 1,
+      call_day: day,
+      # Monotonic, taken from the highest number used rather than from the count
+      # that decides the cap. A cancelled attempt keeps its number while giving
+      # its allowance back, so counting would hand the same number out twice and
+      # the index would refuse a call the senior is entitled to.
+      daily_sequence: (where(user_id: user.id, call_day: day).maximum(:daily_sequence) || 0) + 1,
       status: "reserved",
       outcome: "pending"
     )
@@ -87,28 +94,26 @@ class TelnyxCall < ApplicationRecord
     nil
   end
 
-  # Counted in the senior's own day, not the server's — the cap is about how
-  # often their phone rings, and a UTC boundary would cut their evening in half.
-  #
-  # Cancelled attempts do not count. Those are the ones where she resolved the
-  # reminder herself between the claim and the dial: nothing rang, and being
-  # prompt with her morning dose should not cost her the evening one. Failed
-  # attempts do count — they were a real attempt to reach her, and counting them
-  # bounds a broken integration that would otherwise burn the API against every
-  # occurrence of the day.
-  #
-  # A count followed by an insert is not atomic, so concurrent reserves for
-  # *different* occurrences can overshoot by the number running at once. The
-  # per-occurrence unique index bounds each occurrence to MAX_ATTEMPTS
-  # regardless, so the overshoot is small and cannot compound; a strictly atomic
-  # claim would need its own counter row, which is not worth a second table until
-  # the cap is doing real work.
-  def self.calls_today(user, now)
+  # The senior's own day, not the server's — the cap is about how often their
+  # phone rings, and a UTC boundary would cut their evening in half.
+  def self.local_day(user, now)
     zone = ActiveSupport::TimeZone[user.tz.to_s] || Time.zone
-    day = now.in_time_zone(zone)
+    now.in_time_zone(zone).to_date
+  end
 
-    where(user_id: user.id, created_at: day.beginning_of_day..day.end_of_day)
-      .where.not(status: "cancelled")
+  # What the senior's allowance has actually been spent on: calls that reached
+  # the provider, and reservations still in flight.
+  #
+  # Excluded are attempts where the phone demonstrably never rang — cancelled,
+  # because she resolved the reminder herself or the sweep closed it, and failed,
+  # because the provider was never successfully contacted. Counting those would
+  # let ten failures early in the day silence every later reminder even after the
+  # integration recovered, which is the opposite of a safety cap's purpose. The
+  # per-occurrence MAX_ATTEMPTS and RETRY_AFTER already bound a runaway failure
+  # loop; this bounds a ringing telephone.
+  def self.calls_on(user, day)
+    where(user_id: user.id, call_day: day)
+      .where.not(status: [ "cancelled", "failed" ])
       .count
   end
 end

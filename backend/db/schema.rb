@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_070000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_23_080000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -229,9 +229,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_070000) do
     t.datetime "answered_at"
     t.integer "attempt_number", default: 1, null: false
     t.string "call_control_id"
+    t.date "call_day"
     t.string "call_leg_id"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
+    t.integer "daily_sequence"
     t.string "dtmf"
     t.text "last_payload"
     t.integer "occurrence_id", null: false
@@ -243,6 +245,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_070000) do
     t.index ["call_leg_id"], name: "index_telnyx_calls_on_call_leg_id", unique: true, where: "call_leg_id IS NOT NULL"
     t.index ["occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_occurrence_and_attempt", unique: true
     t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
+    t.index ["user_id", "call_day", "daily_sequence"], name: "index_telnyx_calls_on_user_day_and_sequence", unique: true, where: "call_day IS NOT NULL"
     t.index ["user_id"], name: "index_telnyx_calls_on_user_id"
   end
 

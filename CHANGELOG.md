@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A fifth review round: seven more, one of them user-visible.** The missed
+  email's subject handled two of the three no-call reasons, so
+  `not_attempted_in_time` fell through to "hasn't marked it as done" while the
+  body of the same message said "Remindly did not call" — the subject blaming
+  the senior for a call that was never placed, which is the exact failure that
+  reason exists to prevent. The per-senior daily cap was a count followed by an
+  insert, which three Solid Queue worker threads can all pass at once; it is now
+  a `(user_id, call_day, daily_sequence)` unique index, so two reserves
+  computing the same slot cannot both win. That cap also counted attempts where
+  the phone never rang, so ten failures early in the day silenced every later
+  reminder even after the provider recovered. A `cancelled` attempt was
+  classified as "we tried and could not get through". `suppress_call!` decided
+  first-refusal with a read rather than a conditional update, so two callers
+  could each write a different reason. The cancel branch recorded nothing, so a
+  sweep that closed an occurrence mid-claim produced a caregiver email claiming
+  a call was attempted. And the notifications migration built a unique index
+  without collapsing duplicates first — harmless on today's data, but the
+  entrypoint runs `db:prepare` at container start, so a raise there aborts the
+  boot rather than surfacing in a test.
+
 - **Four more, from a fourth review pass.** The dialling job trusted the
   scheduler's `WHERE` clause for the per-user opt-in, so a senior who switched
   voice reminders off — or a job invoked directly for someone who never opted in

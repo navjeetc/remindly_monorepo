@@ -163,6 +163,7 @@ RSpec.describe VoiceReminderJob do
       other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :pending)
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          call_control_id: "spent-#{i}", status: "hangup", outcome: "no_response",
+                         call_day: at(9).to_date, daily_sequence: i + 1,
                          created_at: at(9) + i.minutes)
     end
 
@@ -177,6 +178,7 @@ RSpec.describe VoiceReminderJob do
       other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :pending)
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          call_control_id: "yesterday-#{i}", status: "hangup", outcome: "no_response",
+                         call_day: (at(10) - 1.day).to_date, daily_sequence: i + 1,
                          created_at: at(10) - 1.day)
     end
 
@@ -217,6 +219,22 @@ RSpec.describe VoiceReminderJob do
       other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :acknowledged)
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          status: "cancelled", outcome: "no_response",
+                         call_day: at(9).to_date, daily_sequence: i + 1,
+                         created_at: at(9) + i.minutes)
+    end
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).to have_received(:dial)
+  end
+  # Ten failures early in the day must not silence every later reminder once the
+  # integration recovers: the phone never rang for any of them.
+  it "does not spend the daily allowance on attempts that never reached the provider" do
+    (TelnyxCall::MAX_CALLS_PER_DAY + 2).times do |i|
+      other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :pending)
+      TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
+                         status: "failed", outcome: "error",
+                         call_day: at(9).to_date, daily_sequence: i + 1,
                          created_at: at(9) + i.minutes)
     end
 

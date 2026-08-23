@@ -98,6 +98,12 @@ class VoiceReminderJob < ApplicationJob
     # the dose done gets telephoned about it anyway.
     unless occurrence.reload.status_pending?
       attempt.update!(status: "cancelled", outcome: "no_response", completed_at: Time.current)
+
+      # If the sweep closed it rather than the senior resolving it, nobody was
+      # ever contacted and that has to be recorded here — a later job will not
+      # do it, because an attempt row now exists.
+      occurrence.suppress_call!(:not_attempted_in_time) if occurrence.status_missed?
+
       Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: resolved while the attempt was being claimed"
       return
     end
