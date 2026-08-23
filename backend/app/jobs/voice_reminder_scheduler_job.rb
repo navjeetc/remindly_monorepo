@@ -8,6 +8,22 @@ class VoiceReminderSchedulerJob < ApplicationJob
   queue_as :default
 
 
+  # How stale a reminder may be and still be worth telephoning about.
+  #
+  # Without a lower bound this matched every pending occurrence ever scheduled,
+  # and occurrences do not age out on their own: MarkMissedOccurrencesJob only
+  # sweeps within its own MARK_LOOKBACK of seven days, so anything unacknowledged
+  # for longer stays pending permanently. One account had accumulated thirty
+  # such rows over six months, the oldest from the previous November. Switching
+  # this feature on would have telephoned about all of them at once, then again
+  # every day, for ever.
+  #
+  # Two hours is long enough to survive a queue backlog or a delayed sweep, and
+  # short enough that nobody is rung at bedtime about a dose due at breakfast.
+  # A call is far more intrusive than the status write MarkMissedOccurrencesJob
+  # performs, so this window is deliberately much tighter than its.
+  LOOKBACK = 2.hours
+
   def perform(now: Time.current)
     return unless FeatureFlag.enabled?(:phone_call_reminders)
 
@@ -16,7 +32,7 @@ class VoiceReminderSchedulerJob < ApplicationJob
     # occurrence.
     Occurrence
       .status_pending
-      .where("occurrences.scheduled_at <= ?", now)
+      .where(scheduled_at: (now - LOOKBACK)..now)
       .joins(reminder: :user)
       .where(users: { voice_reminders_enabled: true })
       .where.not(users: { phone: [ nil, "" ] })

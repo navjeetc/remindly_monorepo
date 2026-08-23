@@ -85,4 +85,31 @@ RSpec.describe VoiceReminderSchedulerJob do
 
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
   end
+  # Occurrences do not age out: the missed sweep only looks back seven days, so
+  # anything unacknowledged for longer stays pending permanently. One production
+  # account had thirty such rows going back six months.
+  it "ignores an occurrence that has been pending since long before today" do
+    Occurrence.create!(reminder: reminder, scheduled_at: at(10) - 6.months, status: :pending)
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+
+  it "ignores one that fell outside the window while the queue was backed up" do
+    Occurrence.create!(reminder: reminder, scheduled_at: at(10) - described_class::LOOKBACK - 1.minute, status: :pending)
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+
+  it "still calls about one delayed within the window, so a brief backlog is survivable" do
+    occurrence = Occurrence.create!(reminder: reminder, scheduled_at: at(10) - described_class::LOOKBACK + 1.minute, status: :pending)
+
+    expect { described_class.new.perform(now: at(10)) }
+      .to have_enqueued_job(VoiceReminderJob).with(occurrence.id)
+  end
+
+  it "does not call about one that is not due yet" do
+    Occurrence.create!(reminder: reminder, scheduled_at: at(10) + 5.minutes, status: :pending)
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
 end

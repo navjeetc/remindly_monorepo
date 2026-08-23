@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Reminder calls had no upper age limit.** The scheduler matched every
+  pending occurrence ever scheduled, and occurrences do not age out on their
+  own: `MarkMissedOccurrencesJob` sweeps only within its seven-day
+  `MARK_LOOKBACK`, so anything unacknowledged for longer stays `pending` for
+  good. One production account had accumulated thirty such rows over six months,
+  the oldest from the previous November — switching the feature on would have
+  telephoned about ten of them within a minute of each other, then ten more
+  every day, indefinitely. `LOOKBACK` bounds it to two hours: enough to survive
+  a queue backlog, short enough that nobody is rung at bedtime about a dose due
+  at breakfast. A call is far more intrusive than the status write the missed
+  sweep performs, so its window is deliberately much tighter.
+
 - **The daily cap still was not a cap, and four more.** The slot number came
   from a moving `maximum` while the cap came from a separate `count`, which two
   workers defeat: both pass the count at nine, the first takes slot ten, the
