@@ -64,7 +64,10 @@ Rails.application.configure do
   # Links in emails must point at the canonical, branded host (matches
   # CANONICAL_HOST in ApplicationHelper), not the legacy remindly.anakhsoft.com.
   # Hardcoded rather than read from the base_url credential, which was stale and
-  # kept sending caregivers to the old domain. protocol is explicit because mailers
+  # kept sending caregivers to the old domain. That credential has since been
+  # corrected to this same host, but this stays hardcoded: login links are the
+  # highest-consequence path in the app, and they should not depend on a value
+  # that has drifted once already. protocol is explicit because mailers
   # render outside a request, where URL helpers default to http — and force_ssl
   # only redirects the browser after the insecure hop has already been made.
   config.action_mailer.default_url_options = {

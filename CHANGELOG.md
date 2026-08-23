@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Telnyx webhooks failed open when no token was configured**: a blank
+  `webhook_token` meant "accept anything", which reads as a lenient default and
+  is actually an open door — production has no `telnyx:` credentials, so on
+  deploy `/telnyx/webhooks` would have accepted any POST and let it acknowledge
+  a reminder. An unconfigured integration now rejects callbacks instead of
+  trusting them, and the token comparison is constant-time.
+- **The `base_url` credential still pointed at the legacy domain**: it said
+  `remindly.anakhsoft.com`, and two places in the codebase had already been
+  written to route around it — the production mailer host is hardcoded because
+  the credential "was stale and kept sending caregivers to the old domain", and
+  `MagicMailer` prefers the origin the login actually began on. It is now
+  `www.remindly.care`, matching `ApplicationHelper::CANONICAL_HOST`, so email
+  links, canonical tags and Telnyx callbacks finally agree on one host. The
+  mailer host stays hardcoded regardless: login links are the
+  highest-consequence path in the app.
+
 ### Added
 - **Reminders delivered as a phone call, acknowledged from the keypad**: every
   client until now assumed the senior has a screen, is signed in, and will look

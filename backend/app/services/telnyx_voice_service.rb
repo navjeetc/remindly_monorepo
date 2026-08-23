@@ -123,9 +123,15 @@ class TelnyxVoiceService
     return verify_signature(request, public_key) if public_key.present?
 
     token = credentials[:webhook_token]
-    return true if token.blank?
 
-    request.params["token"] == token
+    # Fail closed. A blank token used to mean "accept anything", which is not a
+    # lenient default but an open door: an environment with no Telnyx
+    # credentials configured -- production, at the time of writing -- would
+    # accept any POST to /telnyx/webhooks and let it acknowledge a reminder.
+    # An unconfigured integration must reject callbacks, not trust them.
+    return false if token.blank?
+
+    ActiveSupport::SecurityUtils.secure_compare(request.params["token"].to_s, token)
   end
 
   private

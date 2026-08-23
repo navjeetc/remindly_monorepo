@@ -131,6 +131,16 @@ RSpec.describe "Telnyx webhooks", type: :request do
   end
 
 
+  it "rejects every webhook when no token is configured, rather than trusting them" do
+    allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_token).and_return(nil)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("TELNYX_WEBHOOK_TOKEN").and_return(nil)
+
+    telnyx_post("call.answered")
+
+    expect(response).to have_http_status(:unauthorized)
+  end
+
   it "rejects webhooks without the shared token" do
     post "/telnyx/webhooks",
       params: { data: { event_type: "call.answered", payload: { call_control_id: telnyx_call.call_control_id } } }
