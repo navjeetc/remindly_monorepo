@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A senior could be telephoned twice at the same instant.** Found in a live
+  test: a dose falling due at the same moment as another occurrence's retry
+  placed two calls in the same second to the same phone. One was answered; the
+  other talked to voicemail, having spent a daily slot on a call that could not
+  possibly be picked up. Nothing prevented it — `MAX_CALLS_PER_DAY` bounds the
+  day and `MAX_ATTEMPTS` bounds the occurrence, and neither bounds concurrency.
+  A reservation is now refused while that senior has a call in progress; the
+  skipped occurrence stays pending and the scheduler, which runs every minute,
+  offers it again once the line is free. An attempt that never rang does not
+  occupy the line, and one abandoned by a dead worker stops counting after five
+  minutes rather than blocking the rest of the day.
+
 - **A missed call left two identical messages on the voicemail.** Found in a
   live test, not by a reviewer: Telnyx re-speaks a `gather_using_speak` prompt
   when no digit is collected, and `maximum_tries` was never set, so it used its

@@ -62,6 +62,7 @@ RSpec.describe TelnyxCall do
 
       granted = (described_class::MAX_CALLS_PER_DAY + 3).times.map do |i|
         described_class.reserve(occurrence_at(Time.current + i.hours), senior)
+          &.tap { |c| c.update!(completed_at: Time.current) } # the call ends before the next begins
       end.compact
 
       expect(granted.size).to eq(described_class::MAX_CALLS_PER_DAY)
@@ -71,7 +72,9 @@ RSpec.describe TelnyxCall do
 
     it "reuses a slot released by an attempt that never rang" do
       day = described_class.local_day(senior, Time.current)
-      described_class::MAX_CALLS_PER_DAY.times { |i| described_class.reserve(occurrence_at(Time.current + i.hours), senior) }
+      described_class::MAX_CALLS_PER_DAY.times do |i|
+        described_class.reserve(occurrence_at(Time.current + i.hours), senior)&.update!(completed_at: Time.current)
+      end
 
       expect(described_class.reserve(occurrence_at(Time.current + 20.hours), senior)).to be_nil
 
@@ -88,7 +91,9 @@ RSpec.describe TelnyxCall do
   it "does not hand back a fresh day's slots when the senior changes timezone" do
     travel_to(Time.utc(2026, 6, 24, 0, 30)) do
       senior.update!(tz: "Asia/Tokyo")
-      described_class::MAX_CALLS_PER_DAY.times { |i| described_class.reserve(occurrence_at(Time.current + i.hours), senior) }
+      described_class::MAX_CALLS_PER_DAY.times do |i|
+        described_class.reserve(occurrence_at(Time.current + i.hours), senior)&.update!(completed_at: Time.current)
+      end
 
       expect(described_class.reserve(occurrence_at(Time.current + 20.hours), senior)).to be_nil
 
@@ -102,7 +107,9 @@ RSpec.describe TelnyxCall do
     # The blunt version of the timezone backstop — any call in the last 24 hours
     # — refused this, which is ordinary scheduling rather than an anomaly.
     travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 20, 0)) do
-      described_class::MAX_CALLS_PER_DAY.times { |i| described_class.reserve(occurrence_at(Time.current + i.minutes), senior) }
+      described_class::MAX_CALLS_PER_DAY.times do |i|
+        described_class.reserve(occurrence_at(Time.current + i.minutes), senior)&.update!(completed_at: Time.current)
+      end
     end
 
     travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 16, 8, 0)) do
@@ -122,6 +129,49 @@ RSpec.describe TelnyxCall do
       senior.update_column(:tz, "Neverwhere/Nowhere")
 
       expect { described_class.local_day(senior, Time.current) }.not_to raise_error
+    end
+  end
+  # Found live: a dose falling due at the same moment as another occurrence's
+  # retry dialled the same phone twice in the same second. One was answered and
+  # the other talked to voicemail, having spent a daily slot on a call nobody
+  # could pick up.
+  describe "one call at a time" do
+    it "refuses a second reservation while a call is still in progress" do
+      first = described_class.reserve(occurrence_at(Time.current), senior)
+      expect(first).to be_present
+
+      expect(described_class.reserve(occurrence_at(Time.current + 1.hour), senior)).to be_nil
+    end
+
+    it "allows the next one once the call has finished" do
+      described_class.reserve(occurrence_at(Time.current), senior).update!(completed_at: Time.current)
+
+      expect(described_class.reserve(occurrence_at(Time.current + 1.hour), senior)).to be_present
+    end
+
+    it "is not blocked by an attempt that never rang" do
+      described_class.reserve(occurrence_at(Time.current), senior)
+                     .release_slot!(status: "failed", outcome: "error")
+
+      expect(described_class.reserve(occurrence_at(Time.current + 1.hour), senior)).to be_present
+    end
+
+    # A row abandoned by a dead worker must not hold the line for the rest of
+    # the day.
+    it "stops believing an unfinished attempt after the in-flight window" do
+      described_class.reserve(occurrence_at(Time.current), senior)
+                     .update!(created_at: described_class::IN_FLIGHT_WINDOW.ago - 1.minute)
+
+      expect(described_class.reserve(occurrence_at(Time.current + 1.hour), senior)).to be_present
+    end
+
+    it "does not block a different senior" do
+      other = create(:user, :senior, name: "Mary", tz: "America/New_York", phone: "+15559998888")
+      other_reminder = Reminder.create!(user: other, title: "Take meds", category: :medication, rrule: "FREQ=DAILY", tz: other.tz)
+      described_class.reserve(occurrence_at(Time.current), senior)
+
+      theirs = Occurrence.create!(reminder: other_reminder, scheduled_at: Time.current, status: :pending)
+      expect(described_class.reserve(theirs, other)).to be_present
     end
   end
 end

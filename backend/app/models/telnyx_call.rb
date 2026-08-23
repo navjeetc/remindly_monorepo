@@ -82,6 +82,19 @@ class TelnyxCall < ApplicationRecord
     # the loser is told before it dials. A released slot is reusable, so an
     # attempt that never rang gives its allowance back without leaving a hole
     # that a dense counter could not fill.
+    # One call at a time, per person. Nothing else enforces this: the daily cap
+    # bounds the day and MAX_ATTEMPTS bounds the occurrence, but neither bounds
+    # concurrency — so a dose falling due at the same moment as another
+    # occurrence's retry dials the same phone twice at once. A live test did
+    # exactly that: two calls in the same second, one answered and one left
+    # talking to voicemail, having burned a slot on a call that could not
+    # possibly be picked up. To the person holding the phone that is
+    # indistinguishable from being robocalled.
+    #
+    # The skipped occurrence is not lost. It stays pending and the scheduler,
+    # which runs every minute, offers it again once the line is free.
+    return nil if call_in_flight?(user, now)
+
     slot = free_slot(user, day)
     return nil if slot.nil?
 
@@ -151,6 +164,21 @@ class TelnyxCall < ApplicationRecord
       .where.not(daily_sequence: nil)
       .where.not(call_tz: current_zone)
       .count
+  end
+
+  # How long an attempt may stay unfinished before we stop believing it is a
+  # live call. Longer than any reminder call should last, short enough that a
+  # row abandoned by a dead worker cannot block the line for the rest of the day.
+  IN_FLIGHT_WINDOW = 5.minutes
+
+  # An attempt that is dialling, ringing or talking right now. Released
+  # attempts are excluded by the daily_sequence check: they never rang, so they
+  # are not occupying the line.
+  def self.call_in_flight?(user, now)
+    where(user_id: user.id, completed_at: nil)
+      .where.not(daily_sequence: nil)
+      .where(created_at: (now - IN_FLIGHT_WINDOW)..now)
+      .exists?
   end
 
   # Releases this attempt's hold on the day, for an attempt that never rang.
