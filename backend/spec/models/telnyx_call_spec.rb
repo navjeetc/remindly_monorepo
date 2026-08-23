@@ -174,4 +174,75 @@ RSpec.describe TelnyxCall do
       expect(described_class.reserve(theirs, other)).to be_present
     end
   end
+  # A verification call asks whether this number consents to be telephoned. It
+  # belongs to a number rather than to a dose, so it has no occurrence and holds
+  # no reminder slot — which is exactly why its own bounds have to be explicit.
+  describe "verification calls" do
+    before { senior.update!(phone: "+15551234567") }
+
+    it "is claimed without an occurrence" do
+      call = described_class.reserve_verification(senior)
+
+      expect(call.purpose).to eq("verification")
+      expect(call.occurrence_id).to be_nil
+      expect(call.daily_sequence).to be_nil
+    end
+
+    it "refuses to exist as a reminder without an occurrence" do
+      call = described_class.new(user: senior, purpose: "reminder", attempt_number: 1,
+                                 status: "reserved", outcome: "pending")
+
+      expect(call).not_to be_valid
+      expect(call.errors[:occurrence]).to be_present
+    end
+
+    it "refuses to claim an occurrence, since it announces no dose" do
+      call = described_class.new(user: senior, purpose: "verification", attempt_number: 1,
+                                 occurrence: occurrence_at(Time.current),
+                                 status: "reserved", outcome: "pending")
+
+      expect(call).not_to be_valid
+    end
+
+    it "stops after five in one day" do
+      granted = 7.times.map do
+        described_class.reserve_verification(senior)&.tap { |c| c.update!(completed_at: Time.current) }
+      end.compact
+
+      expect(granted.size).to eq(described_class::MAX_VERIFICATIONS_PER_DAY)
+    end
+
+    it "does not spend a reminder slot" do
+      described_class.reserve_verification(senior).update!(completed_at: Time.current)
+
+      expect(described_class.free_slot(senior, described_class.local_day(senior, Time.current))).to eq(1)
+    end
+
+    # The rule that matters most, and the one an earlier version exempted them
+    # from: a verification call and a reminder call must never ring one phone at
+    # the same moment.
+    it "blocks a reminder call while it is live" do
+      described_class.reserve_verification(senior)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_nil
+    end
+
+    it "is blocked by a live reminder call" do
+      described_class.reserve(occurrence_at(Time.current), senior)
+
+      expect(described_class.reserve_verification(senior)).to be_nil
+    end
+
+    it "does not block once it has ended" do
+      described_class.reserve_verification(senior).update!(completed_at: Time.current)
+
+      expect(described_class.reserve_verification(senior)).to be_present
+    end
+
+    it "is refused for a user with no number to verify" do
+      senior.update!(phone: nil)
+
+      expect(described_class.reserve_verification(senior)).to be_nil
+    end
+  end
 end

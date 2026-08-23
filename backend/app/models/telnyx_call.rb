@@ -1,5 +1,9 @@
 class TelnyxCall < ApplicationRecord
-  belongs_to :occurrence
+  # Optional at the association level and required by purpose below. A reminder
+  # call is always about an occurrence; a verification call is about a number and
+  # must not claim one, because an occurrence would imply a dose it is not
+  # announcing.
+  belongs_to :occurrence, optional: true
   belongs_to :user
 
   # Nullable: an attempt is claimed before the provider is called, so the id
@@ -7,6 +11,9 @@ class TelnyxCall < ApplicationRecord
   validates :call_control_id, uniqueness: true, allow_nil: true
   validates :status, presence: true
   validates :outcome, presence: true
+  validates :purpose, inclusion: { in: ->(_) { PURPOSES } }
+  validates :occurrence, presence: true, if: -> { purpose == "reminder" }
+  validates :occurrence_id, absence: true, if: -> { purpose == "verification" }
 
   STATUSES = %w[
     pending
@@ -33,7 +40,28 @@ class TelnyxCall < ApplicationRecord
     skip
     no_response
     error
+    consented
+    declined
+    opted_out
   ].freeze
+
+  # What a call is for. A reminder announces a dose; a verification asks whether
+  # this number agrees to be telephoned at all, and so belongs to a number rather
+  # than to an occurrence.
+  PURPOSES = %w[ reminder verification ].freeze
+
+  # Verification calls are excluded from MAX_CALLS_PER_DAY: they are setup rather
+  # than delivery, and someone who has just agreed should not find their first
+  # day's reminders short. That leaves them unbounded, since the cap was the only
+  # thing limiting how often a number could be rung -- so they get their own.
+  #
+  # Five is enough for a run of genuine mix-ups: wrong moment, phone in another
+  # room, wanted to think about it, rang back and missed it. A sixth attempt in
+  # one day is deliberate, and the caregiver is shown the count either way.
+  MAX_VERIFICATIONS_PER_DAY = 5
+
+  scope :reminders, -> { where(purpose: "reminder") }
+  scope :verifications, -> { where(purpose: "verification") }
 
   # The design document allows "no answer or busy retries after a few minutes,
   # twice at most, then stops" -- three attempts in all. How many, and how far
@@ -65,6 +93,36 @@ class TelnyxCall < ApplicationRecord
   #
   # Returns nil when this attempt is not ours to make -- another run won it, the
   # cap is reached, or the last attempt is too recent to follow up yet.
+  # Claims a verification call for a number. Unlike a reminder attempt this has
+  # no occurrence, so the (occurrence_id, attempt_number) index cannot arbitrate;
+  # the daily bound below is what stops a caregiver ringing a number repeatedly.
+  #
+  # Deliberately still subject to call_in_flight?: a verification call and a
+  # reminder call must never ring one phone at once, whatever they are each for.
+  def self.reserve_verification(user, now: Time.current)
+    return nil if user.phone.blank?
+    return nil if call_in_flight?(user, now)
+
+    day = local_day(user, now)
+    return nil if verifications.where(user_id: user.id, call_day: day).count >= MAX_VERIFICATIONS_PER_DAY
+
+    create!(
+      user: user,
+      occurrence: nil,
+      purpose: "verification",
+      attempt_number: verifications.where(user_id: user.id, call_day: day).count + 1,
+      call_day: day,
+      call_tz: zone_name(user),
+      # No daily_sequence: a verification does not spend a reminder slot, and
+      # leaving it nil keeps it out of both free_slot and call_in_flight?'s
+      # accounting. completed_at is what ends its hold on the line instead.
+      status: "reserved",
+      outcome: "pending"
+    )
+  rescue ActiveRecord::RecordNotUnique
+    nil
+  end
+
   def self.reserve(occurrence, user, now: Time.current)
     previous = where(occurrence_id: occurrence.id).order(:attempt_number).last
 
@@ -171,18 +229,24 @@ class TelnyxCall < ApplicationRecord
   # row abandoned by a dead worker cannot block the line for the rest of the day.
   IN_FLIGHT_WINDOW = 5.minutes
 
-  # An attempt that is dialling, ringing or talking right now. Released
-  # attempts are excluded by the daily_sequence check: they never rang, so they
-  # are not occupying the line.
+  # An attempt that is dialling, ringing or talking right now, whatever it is
+  # for. Keyed on completed_at alone: releasing a slot ends the attempt and
+  # records that, so a released row is not in flight, and a verification call --
+  # which holds no slot by design -- is correctly counted. An earlier version
+  # also required daily_sequence, which silently exempted verification calls
+  # from the one-call-at-a-time rule they most need.
   def self.call_in_flight?(user, now)
     where(user_id: user.id, completed_at: nil)
-      .where.not(daily_sequence: nil)
       .where(created_at: (now - IN_FLIGHT_WINDOW)..now)
       .exists?
   end
 
   # Releases this attempt's hold on the day, for an attempt that never rang.
+  #
+  # Ends the attempt as well as freeing the slot: an attempt being released is
+  # over, and completed_at is what tells call_in_flight? the line is free. A
+  # caller may pass its own completed_at; it may not leave it unset.
   def release_slot!(**attributes)
-    update!(attributes.merge(daily_sequence: nil))
+    update!({ completed_at: Time.current }.merge(attributes).merge(daily_sequence: nil))
   end
 end
