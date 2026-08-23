@@ -93,6 +93,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   highest-consequence path in the app.
 
 ### Added
+- **Phone reminders are behind a feature flag, off by default.** Until now the
+  only thing preventing calls in production was that no senior had
+  `voice_reminders_enabled` and a phone number — two ordinary columns, which a
+  single console command sets, and setting them is the only way to try the
+  feature there. Calls would then begin within the minute, and stopping them
+  would need a deploy. `FeatureFlag.enabled?(:phone_call_reminders)`
+  (`ENABLE_PHONE_CALL_REMINDERS`, default false) is the outer of two locks: it
+  says the code may run at all, while the senior's own columns say whether it
+  runs for them. It is checked in `VoiceReminderSchedulerJob` so no work is
+  enqueued, and again in `VoiceReminderJob` because that job is reachable from
+  a console or a retry — a flag that only guards the gate is not a kill switch.
+
 - **Reminder calls are confined to 8am–9pm in the called party's own
   timezone**: automated voice calls are regulated and the window belongs to the
   person answering, not the server. `User#within_calling_hours?` is checked in

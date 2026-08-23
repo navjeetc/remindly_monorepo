@@ -9,6 +9,8 @@ class VoiceReminderSchedulerJob < ApplicationJob
 
 
   def perform(now: Time.current)
+    return unless FeatureFlag.enabled?(:phone_call_reminders)
+
     # Occurrences that are now due, still pending, for users with a phone and
     # voice reminders turned on, and have not already been called for this
     # occurrence.

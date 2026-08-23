@@ -14,6 +14,23 @@ RSpec.describe VoiceReminderSchedulerJob do
     Occurrence.create!(reminder: reminder, scheduled_at: moment - 1.minute, status: :pending)
   end
 
+  # The feature is off by default, everywhere. These specs are about what
+  # happens once it is on; the two below assert that off means off.
+  before do
+    allow(FeatureFlag).to receive(:enabled?).and_call_original
+    allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+  end
+
+  # The outer lock. The inner one is two columns on the senior, and the only way
+  # to try this in production is to set them — so the flag has to be able to
+  # stop the whole thing without touching user records.
+  it "enqueues nothing while the feature flag is off, however due the occurrence is" do
+    allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(false)
+    due_at(at(10))
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+
   it "enqueues a call for an occurrence that has come due inside calling hours" do
     occurrence = due_at(at(10))
 

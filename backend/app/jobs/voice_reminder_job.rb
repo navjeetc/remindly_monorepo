@@ -9,6 +9,12 @@ class VoiceReminderJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 5
 
   def perform(occurrence_id)
+    # Checked here as well as in the scheduler, for the same reason the
+    # calling-hours guard is: this job is reachable from a console, from a
+    # retry, or from anything written later. A flag that only guards the gate
+    # is not a kill switch.
+    return unless FeatureFlag.enabled?(:phone_call_reminders)
+
     occurrence = Occurrence.find_by(id: occurrence_id)
     return unless occurrence
     return unless occurrence.status_pending?

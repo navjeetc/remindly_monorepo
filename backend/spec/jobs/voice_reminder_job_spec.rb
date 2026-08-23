@@ -17,6 +17,23 @@ RSpec.describe VoiceReminderJob do
 
   before { allow(TelnyxVoiceService).to receive(:dial) }
 
+  # The feature is off by default, everywhere. These specs are about what
+  # happens once it is on; the two below assert that off means off.
+  before do
+    allow(FeatureFlag).to receive(:enabled?).and_call_original
+    allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+  end
+
+  it "places no call at all while the feature flag is off" do
+    allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(false)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+    expect(occurrence.telnyx_calls).to be_empty
+  end
+
+
   it "dials inside calling hours" do
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
 
