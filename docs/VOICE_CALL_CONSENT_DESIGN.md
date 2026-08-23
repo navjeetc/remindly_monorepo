@@ -5,8 +5,8 @@ Status: **proposed, not built.** Implements phase 1 of
 and deliberately stopped short of deciding who may be called. Tracked as #77.
 
 The machinery works and is deployed, inert. `ENABLE_PHONE_CALL_REMINDERS` is off
-and nothing in the application can set `users.phone` or
-`users.voice_reminders_enabled` — both were set from a console during testing.
+and nothing in the application can set `users.phone` or the opt-in column —
+both were set from a console during testing.
 This document is about the missing half: how a number comes to be one Remindly
 is allowed to ring.
 
@@ -26,7 +26,7 @@ who has not acted. Consent to be called needs the same property — not a policy
 that says caregivers should ask first, but a design in which they cannot proceed
 until the senior has pressed a key.
 
-So `voice_reminders_enabled` stops being a setting and becomes a **consequence**.
+So `call_reminders_enabled` stops being a setting and becomes a **consequence**.
 Nothing writes it but a completed verification call.
 
 ## State
@@ -37,7 +37,8 @@ Five columns on `users`, four of them new:
     phone_verified_at        datetime   a call to this number was answered and agreed to
     call_consent_at          datetime   when the keypress happened
     call_opted_out_at        datetime   when they said stop
-    voice_reminders_enabled  boolean    already exists; derived, never set directly
+    call_reminders_enabled   boolean    renamed from voice_reminders_enabled;
+                                        derived, never set directly
 
 `phone_verified_at` and `call_consent_at` look redundant and are not. The first
 says the number reaches a person who agreed; the second is the dated record of
@@ -53,7 +54,7 @@ be an event.
 
 The single most important consequence, and the one easiest to get wrong:
 changing `users.phone` must clear `phone_verified_at`, `call_consent_at` and
-`voice_reminders_enabled`.
+`call_reminders_enabled`.
 
 Otherwise a caregiver edits the number and inherits consent for a number whose
 owner never agreed to anything — which is precisely the failure the whole design
@@ -102,7 +103,7 @@ announces a reminder, the other asks for agreement.
 3. Remindly places one verification call. It says who arranged this, what will
    happen, and asks for a keypress to agree.
 4. The keypress writes `phone_verified_at`, `call_consent_at`, and sets
-   `voice_reminders_enabled`. Nothing else does.
+   `call_reminders_enabled`. Nothing else does.
 5. A "call me now" button places a single test reminder call on demand, so the
    caregiver can hear what the senior will hear before depending on it.
 
@@ -123,7 +124,7 @@ this.
     "Press 9 to stop these calls."
 
 On every call, including the verification call itself. Honoured immediately and
-permanently: `call_opted_out_at` is set, `voice_reminders_enabled` cleared, and
+permanently: `call_opted_out_at` is set, `call_reminders_enabled` cleared, and
 no further call is placed for any reason.
 
 This matters more than it looks. The senior may have no other interface — the
@@ -132,11 +133,11 @@ sign in — so the keypad is their only way to say stop. Requiring them to ask t
 caregiver who arranged the calls inverts the power relationship the feature is
 supposed to respect.
 
-**Re-consent after an opt-out is an open question.** If a caregiver can simply
-request verification again, "permanent" means "until they ask again", and a
-senior could be re-enrolled repeatedly by the person they were trying to stop.
-A cooling-off period, or requiring the senior to initiate, would fix it; both
-need a decision rather than a default.
+**Re-consent after an opt-out is allowed** — see Decisions. A caregiver may
+propose the number again, so "permanent" means "until this senior agrees again",
+not "for ever". The safeguard is visibility rather than prohibition: every
+attempt is recorded and the count shown, so a number being proposed repeatedly
+after declining looks like what it is.
 
 ## Guards at dial time
 
@@ -156,7 +157,7 @@ can be withdrawn in between.
 1. **A call to a number that has not pressed a key to agree.** Including the
    number a caregiver just edited.
 2. **A caregiver enabling calls on a senior's behalf.** No path may write
-   `voice_reminders_enabled` except a completed verification call.
+   `call_reminders_enabled` except a completed verification call.
 3. **An opt-out that does not take effect immediately**, including for a call
    already scheduled or a job already queued.
 4. **Consent inferred from silence**, a voicemail, or an unanswered call.
@@ -177,22 +178,83 @@ than a 422.
 
 The senior needs no screen for any of this, which is the point.
 
-## Open questions
+## Decisions
 
-1. **What does the verification call actually say?** It is the first call a
-   senior receives, before they have agreed to anything, and it has to sound
-   like a service and not like a scam in about five seconds. Amber Nightingale
-   at AARP was asked this directly on 2026-08-23 and has not yet replied; her
-   answer should shape the script rather than be checked against it afterwards.
-2. **Re-consent after opt-out** — see above.
-3. **Does the caregiver hear the verification call's outcome?** Telling them "she
-   declined" is information about the senior that the senior did not choose to
-   share. Telling them nothing leaves them unable to act.
-4. **Does a verification call consume the daily cap?** It rings a real phone, so
-   probably yes — but a senior who declines three times would then be
-   uncallable for the rest of the day, which may be the correct outcome.
-5. **The column is named `voice_reminders_enabled`; the parent document calls it
-   `call_reminders_enabled`.** Worth reconciling before more code depends on it.
+Settled 2026-08-23. Recorded here because each was a genuine fork, and the
+reasoning is worth more later than the conclusion.
+
+### What the verification call says
+
+> Hello. This is Remindly, calling for **{senior}**.
+>
+> **{caregiver}** asked us to phone you with reminders — for example, when it's
+> time to take your tablets.
+>
+> We'll never ask you for personal details. All you ever need to do is press a
+> button.
+>
+> If you'd like these reminders, press **1** now. If you'd rather not, press
+> **9** and we won't call again.
+
+**The caregiver's name goes in early.** It is the one thing a scammer would not
+know, and it converts "who is this" into "my son arranged this" faster than any
+description of the service could.
+
+**We say what we will never do before asking for anything.** Every phone scam
+wants information; saying we do not want any is the clearest signal available in
+the few seconds before someone hangs up.
+
+An earlier draft also promised never to ask for money. It was cut deliberately:
+Remindly may be monetised, and a promise made in a recorded call to an elderly
+person is not one to walk back. *"All you ever need to do is press a button"*
+does the same work and survives any business model, because it is a promise
+about **calls** rather than about pricing — asking someone for payment during an
+automated voice call is the scam pattern itself, whoever ends up paying for the
+service. That line also earns its place twice, because it sets the expectation
+for every later call and not just this one.
+
+**One keypress, nothing else.** No name, no confirmation, no "press 1 to speak
+to an agent". And the way out is offered in the first call, so agreeing is not a
+trap.
+
+This has not been said to a real senior yet. Amber Nightingale at AARP was asked
+on 2026-08-23 whether a call of this shape reads as helpful or as suspicious;
+her answer should be allowed to change it.
+
+### Re-consent after an opt-out is allowed
+
+A caregiver may propose the number again after a 9. Every verification attempt
+is recorded and the count is shown to the caregiver, so a number declining
+repeatedly is visible rather than silent — a pattern of re-enrolment should look
+like what it is.
+
+### The caregiver sees the outcome
+
+*Declined*, *no answer* and *opted out* are shown separately rather than
+collapsed into "not set up", because they call for different responses. This is
+information about the senior that the senior did not volunteer, which is the
+cost; leaving a caregiver unable to tell whether anything happened, and ringing
+the number themselves to find out, was judged worse.
+
+### Verification calls do not consume the daily cap
+
+They are setup, not delivery, and a senior who has just agreed should not find
+their first day's reminders short. **Consequence: they need their own bound**,
+since the cap was the only thing limiting how often a number could be rung.
+**Five per number per day.** Enough for a run of genuine mix-ups — wrong moment,
+phone in another room, wanted to think about it, called back and missed it —
+without a caregiver having to wait a day to try again after a bad afternoon. Few
+enough that a sixth attempt is unmistakably deliberate, and every attempt is
+recorded and counted for the caregiver to see, so the bound is not the only thing
+making a pattern visible.
+
+### The column is `call_reminders_enabled`
+
+Renamed from `voice_reminders_enabled` to match the parent document and to
+distinguish calls from the voice announcements on `/voice_reminders`, which are
+a different feature entirely. Done now because the column is live in production
+with no row set true, so it is a rename with nothing to migrate — the cheapest
+it will ever be.
 
 ## What would make this unnecessary
 
