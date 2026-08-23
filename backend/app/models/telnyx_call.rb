@@ -90,6 +90,13 @@ class TelnyxCall < ApplicationRecord
   # Counted in the senior's own day, not the server's — the cap is about how
   # often their phone rings, and a UTC boundary would cut their evening in half.
   #
+  # Cancelled attempts do not count. Those are the ones where she resolved the
+  # reminder herself between the claim and the dial: nothing rang, and being
+  # prompt with her morning dose should not cost her the evening one. Failed
+  # attempts do count — they were a real attempt to reach her, and counting them
+  # bounds a broken integration that would otherwise burn the API against every
+  # occurrence of the day.
+  #
   # A count followed by an insert is not atomic, so concurrent reserves for
   # *different* occurrences can overshoot by the number running at once. The
   # per-occurrence unique index bounds each occurrence to MAX_ATTEMPTS
@@ -100,6 +107,8 @@ class TelnyxCall < ApplicationRecord
     zone = ActiveSupport::TimeZone[user.tz.to_s] || Time.zone
     day = now.in_time_zone(zone)
 
-    where(user_id: user.id, created_at: day.beginning_of_day..day.end_of_day).count
+    where(user_id: user.id, created_at: day.beginning_of_day..day.end_of_day)
+      .where.not(status: "cancelled")
+      .count
   end
 end

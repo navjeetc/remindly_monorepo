@@ -18,20 +18,6 @@ class VoiceReminderJob < ApplicationJob
     occurrence = Occurrence.find_by(id: occurrence_id)
     return unless occurrence
 
-    unless occurrence.status_pending?
-      # Solid Queue can hold this job past the missed sweep's 60-minute grace,
-      # and the sweep then closes the occurrence before any call is placed.
-      # Without a record of that, the caregiver email falls back to saying the
-      # senior did not mark it done — for a call that was still sitting in a
-      # queue. Only when it was swept to missed and nothing was ever attempted:
-      # an occurrence she acknowledged herself is resolved, not undelivered.
-      if occurrence.status_missed? && occurrence.telnyx_calls.empty?
-        occurrence.suppress_call!(:not_attempted_in_time)
-      end
-
-      return
-    end
-
     senior = occurrence.reminder.user
 
     # The scheduler's WHERE clause is a filter, not a guarantee. This job can run
@@ -40,6 +26,31 @@ class VoiceReminderJob < ApplicationJob
     # the strength of a query that ran earlier.
     unless senior.voice_reminders_enabled? && senior.phone.present?
       Rails.logger.info "Voice reminder for occurrence #{occurrence.id} skipped: user #{senior.id} is not opted in to phone reminders"
+      return
+    end
+
+    # Checked here as well as in the scheduler. The scheduler check exists to
+    # avoid enqueuing work that cannot run; this one exists because it is the
+    # last thing between a person and a ringing telephone, and this job can be
+    # reached without the scheduler -- a console, a retry hours after the
+    # failure that caused it, some future caller that does not exist yet. A
+    # call placed outside legal hours cannot be taken back, so the guard sits
+    # at the choke point rather than only at the gate.
+    # Checked after the opt-in above, deliberately. Recording an undelivered
+    # call for a senior who does not take phone calls would tell their caregiver
+    # that Remindly failed to ring someone who never asked to be rung.
+    #
+    # Solid Queue can hold this job past the missed sweep's 60-minute grace, and
+    # the sweep then closes the occurrence before any call is placed. Without a
+    # record of that, the caregiver email falls back to saying the senior did not
+    # mark it done — for a call still sitting in a queue. Recorded only when it
+    # was swept to missed and nothing was ever attempted: an occurrence she
+    # acknowledged herself is resolved, not undelivered.
+    unless occurrence.status_pending?
+      if occurrence.status_missed? && occurrence.telnyx_calls.empty?
+        occurrence.suppress_call!(:not_attempted_in_time)
+      end
+
       return
     end
 

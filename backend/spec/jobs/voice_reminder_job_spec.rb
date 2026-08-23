@@ -201,4 +201,27 @@ RSpec.describe VoiceReminderJob do
 
     expect(occurrence.reload.call_suppressed_at).to be_nil
   end
+  it "records nothing about calls for a senior who does not take them" do
+    senior.update!(voice_reminders_enabled: false)
+    occurrence.update!(status: :missed)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(occurrence.reload.call_suppressed_at).to be_nil
+  end
+
+  # She resolved it herself between the claim and the dial. Nothing rang, so
+  # being prompt with one reminder must not cost her a later one.
+  it "does not spend the daily allowance on attempts that were cancelled" do
+    (TelnyxCall::MAX_CALLS_PER_DAY + 2).times do |i|
+      other = Occurrence.create!(reminder: reminder, scheduled_at: at(9) + i.minutes, status: :acknowledged)
+      TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
+                         status: "cancelled", outcome: "no_response",
+                         created_at: at(9) + i.minutes)
+    end
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).to have_received(:dial)
+  end
 end
