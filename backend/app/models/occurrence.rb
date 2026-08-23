@@ -47,7 +47,6 @@ class Occurrence < ApplicationRecord
 
   # Written when a delivery attempt is refused before it becomes an attempt.
   # Idempotent: the first refusal is the one worth dating.
-  # Idempotent: the first refusal is the one worth dating.
   #
   # A conditional UPDATE rather than check-then-write, following
   # User#mark_email_undeliverable! for the same reason. Two callers can reach
