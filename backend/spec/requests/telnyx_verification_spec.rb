@@ -6,7 +6,10 @@ require "rails_helper"
 RSpec.describe "Telnyx verification calls", type: :request do
   let(:senior) { create(:user, :senior, name: "Mom", phone: "+15551234567", tz: "America/New_York") }
   let(:caregiver) { create(:user, :caregiver, name: "Jane", nickname: "Janey", email: "kid@example.com") }
-  let(:call) { TelnyxCall.reserve_verification(senior).tap { |c| c.update!(call_control_id: "verify-1") } }
+  let(:call) do
+    TelnyxCall.reserve_verification(senior, requested_by: caregiver)
+              .tap { |c| c.update!(call_control_id: "verify-1") }
+  end
 
   def telnyx_post(event_type, payload = {})
     post "/telnyx/webhooks",
@@ -29,6 +32,21 @@ RSpec.describe "Telnyx verification calls", type: :request do
   end
 
   describe "what it asks" do
+    # senior.caregivers.first was arbitrary with more than one caregiver, and
+    # naming the wrong person destroys the only anti-scam signal the script has.
+    it "names the caregiver who actually asked, not whichever link came first" do
+      create(:user, :caregiver, name: "Someone Else", nickname: "Sam", email: "other@example.com")
+        .then { |other| CaregiverLink.create!(senior: senior, caregiver: other) }
+
+      said = nil
+      allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
+
+      telnyx_post("call.answered")
+
+      expect(said).to include("Janey asked us")
+      expect(said).not_to include("Sam")
+    end
+
     it "names the caregiver who arranged it, which a stranger could not know" do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
@@ -98,6 +116,39 @@ RSpec.describe "Telnyx verification calls", type: :request do
       telnyx_post("call.gather.ended", digits: "1")
 
       expect(senior.reload.call_opted_out_at).to be_nil
+    end
+  end
+
+  # Consent belongs to the number that agreed. A caregiver can edit the number
+  # while this call is ringing, and a "1" from the old handset must not enable
+  # calls to a number nobody has agreed to.
+  describe "when the number changes mid-call" do
+    it "ignores a keypress from the number that is no longer on file" do
+      call # dialled while the old number was on file; the lets are lazy
+      senior.update!(phone: "+15559998888")
+
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(senior.reload.call_reminders_enabled).to be false
+      expect(senior.call_consent_at).to be_nil
+    end
+
+    it "records it as declined rather than as agreement" do
+      call
+      senior.update!(phone: "+15559998888")
+
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(call.reload.outcome).to eq("declined")
+    end
+
+    it "still honours an opt-out from the old handset, since stopping is theirs to say" do
+      call
+      senior.update!(phone: "+15559998888")
+
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(senior.reload.call_opted_out_at).to be_present
     end
   end
 

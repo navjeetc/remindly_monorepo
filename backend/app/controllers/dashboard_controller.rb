@@ -184,7 +184,7 @@ class DashboardController < WebController
                          alert: "#{senior.display_name} asked not to be called. Only they can change that, by agreeing on a call they answer."
     end
 
-    attempt = TelnyxCall.reserve_verification(senior)
+    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user)
 
     if attempt.nil?
       redirect_to senior_dashboard_path(senior),

@@ -190,7 +190,7 @@ class TelnyxWebhooksController < ApplicationController
   def handle_verification_answered(call, event_id)
     TelnyxVoiceService.gather_digit(
       call_control_id: call.call_control_id,
-      prompt: consent_request_for(call.user),
+      prompt: consent_request_for(call),
       command_id: event_id
     )
 
@@ -208,8 +208,9 @@ class TelnyxWebhooksController < ApplicationController
   # one to walk back. "All you ever need to do is press a button" does the same
   # work, survives any business model because it is a promise about calls rather
   # than about pricing, and sets the expectation for every later call too.
-  def consent_request_for(senior)
-    arranger = senior.caregivers.first
+  def consent_request_for(call)
+    senior = call.user
+    arranger = call.requested_by
 
     "Hello. This is Remindly, calling for #{senior.display_name}. " \
     "#{arranger ? "#{arranger.friendly_name} asked us" : "You asked us"} to phone you with reminders — " \
@@ -243,6 +244,19 @@ class TelnyxWebhooksController < ApplicationController
   # reads it.
   def consent!(call)
     senior = call.user
+
+    # Consent belongs to the number that agreed, not to the person. A caregiver
+    # can edit users.phone while this call is ringing, and then a "1" pressed on
+    # the old handset would enable calls to a number nobody has agreed to. The
+    # number dialled is recorded on the attempt precisely so the two can be
+    # compared at the moment it matters.
+    if call.to_number.present? && call.to_number != senior.phone
+      Rails.logger.warn(
+        "Verification consent ignored for user #{senior.id}: agreed on #{call.to_number}, " \
+        "but the number on file is now #{senior.phone.inspect}"
+      )
+      return call.update!(outcome: "declined", completed_at: Time.current)
+    end
 
     ActiveRecord::Base.transaction do
       senior.update!(

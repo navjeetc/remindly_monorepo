@@ -6,6 +6,10 @@ class TelnyxCall < ApplicationRecord
   belongs_to :occurrence, optional: true
   belongs_to :user
 
+  # Who asked for this call to be placed. Only meaningful for a verification,
+  # where the script names them aloud — see consent_request_for.
+  belongs_to :requested_by, class_name: "User", optional: true
+
   # Nullable: an attempt is claimed before the provider is called, so the id
   # only arrives afterwards.
   validates :call_control_id, uniqueness: true, allow_nil: true
@@ -99,18 +103,25 @@ class TelnyxCall < ApplicationRecord
   #
   # Deliberately still subject to call_in_flight?: a verification call and a
   # reminder call must never ring one phone at once, whatever they are each for.
-  def self.reserve_verification(user, now: Time.current)
+  def self.reserve_verification(user, requested_by: nil, now: Time.current)
     return nil if user.phone.blank?
     return nil if call_in_flight?(user, now)
 
     day = local_day(user, now)
-    return nil if verifications.where(user_id: user.id, call_day: day).count >= MAX_VERIFICATIONS_PER_DAY
+    taken = verifications.where(user_id: user.id, call_day: day).count
+    return nil if taken >= MAX_VERIFICATIONS_PER_DAY
 
     create!(
       user: user,
       occurrence: nil,
+      requested_by: requested_by,
       purpose: "verification",
-      attempt_number: verifications.where(user_id: user.id, call_day: day).count + 1,
+      attempt_number: taken + 1,
+      # The number as it stands now. Consent is checked against this rather than
+      # against users.phone at the time of the keypress, because a caregiver can
+      # edit the number while the call is ringing — and an agreement given on one
+      # handset must not enable calls to another.
+      to_number: user.phone,
       call_day: day,
       call_tz: zone_name(user),
       # No daily_sequence: a verification does not spend a reminder slot, and
@@ -120,6 +131,9 @@ class TelnyxCall < ApplicationRecord
       outcome: "pending"
     )
   rescue ActiveRecord::RecordNotUnique
+    # Another request claimed this attempt number first. Previously unreachable:
+    # nothing constrained verification attempts, so two concurrent reserves both
+    # succeeded and the daily bound was advisory.
     nil
   end
 

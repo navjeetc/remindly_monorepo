@@ -204,6 +204,34 @@ RSpec.describe TelnyxCall do
       expect(call).not_to be_valid
     end
 
+    # Counted, then created, with nothing behind it: two caregivers or one
+    # double-click could both read the same count and both insert. The rescue
+    # for RecordNotUnique had nothing that could raise it.
+    it "refuses a second claim on the same attempt number" do
+      first = described_class.reserve_verification(senior)
+
+      duplicate = described_class.new(user: senior, purpose: "verification",
+                                      attempt_number: first.attempt_number,
+                                      call_day: first.call_day,
+                                      status: "reserved", outcome: "pending")
+
+      expect { duplicate.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
+    end
+
+    it "records the number it is about to dial, so consent can be checked against it" do
+      call = described_class.reserve_verification(senior)
+
+      expect(call.to_number).to eq(senior.phone)
+    end
+
+    it "records who asked for it, because the call says their name aloud" do
+      asker = create(:user, :caregiver, name: "Jane", email: "asker@example.com")
+
+      call = described_class.reserve_verification(senior, requested_by: asker)
+
+      expect(call.requested_by).to eq(asker)
+    end
+
     it "stops after five in one day" do
       granted = 7.times.map do
         described_class.reserve_verification(senior)&.tap { |c| c.update!(completed_at: Time.current) }
