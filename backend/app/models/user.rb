@@ -51,6 +51,19 @@ class User < ApplicationRecord
   validate :tz_resolves_to_a_real_zone
   validate :phone_is_e164, if: -> { phone.present? }
 
+  # Consent is to a number, not to a person.
+  #
+  # Change the number and every fact about the old one stops applying: the new
+  # number has not been verified and its owner has not agreed to anything. A
+  # caregiver editing this field would otherwise inherit consent given by
+  # somebody else — which is the failure the whole consent design exists to
+  # prevent, reached through a text field rather than a form full of promises.
+  #
+  # An opt-out is deliberately *not* cleared. Someone who said stop said it about
+  # being telephoned, not about a particular number, and a caregiver must not be
+  # able to undo that by editing a field. Lifting it takes a fresh keypress.
+  before_save :forget_consent_when_the_number_changes
+
   # Addresses a mail provider has permanently refused — a hard bounce, meaning
   # the mailbox does not exist. Postmark marks such an address inactive and
   # rejects every later send, so continuing to try achieves nothing and actively
@@ -191,15 +204,50 @@ class User < ApplicationRecord
   # is not.
   CALLING_HOURS = (8...21)
 
-  def within_calling_hours?(at: Time.current)
+  # Whether Remindly may telephone this person at all.
+  #
+  # Deliberately not the same question as call_reminders_enabled?. That flag is
+  # written by one thing only -- a completed verification call -- but it is still
+  # a cached answer, and the facts underneath it can change without it: a number
+  # cleared, an opt-out recorded. Reading the facts means a stale flag cannot
+  # authorise a call on its own.
+  #
+  # An opt-out beats everything, including a consent recorded afterwards by some
+  # other route, because there is no other route.
+  def callable_by_phone?
+    return false if call_opted_out_at.present?
+    return false if phone.blank?
+    return false if call_consent_at.blank?
+
+    call_reminders_enabled?
+  end
+
+  # This person's own clock, or nil when tz does not resolve.
+  #
+  # Callers must handle the nil rather than formatting whatever comes back:
+  # in_time_zone raises ArgumentError on an unknown identifier, so the naive
+  # version turns a bad tz into a 500 in whichever request touches it first.
+  # tz_resolves_to_a_real_zone should keep that from happening, so this is
+  # defence in depth rather than a hole being plugged -- but the validation is
+  # newer than the column, it cannot speak for a row written by a migration or
+  # by hand, and VoiceReminderJob already decided this same field was worth
+  # guarding this same way.
+  def local_time(at: Time.current)
     zone = ActiveSupport::TimeZone[tz.to_s]
+    return nil if zone.nil?
+
+    at.in_time_zone(zone)
+  end
+
+  def within_calling_hours?(at: Time.current)
+    local = local_time(at: at)
 
     # A zone we cannot resolve means we do not know what time it is where this
     # person is, and "probably daytime" is not a defence. Blocking is the only
     # safe default -- a call placed at 3am cannot be taken back.
-    return false if zone.nil?
+    return false if local.nil?
 
-    CALLING_HOURS.cover?(at.in_time_zone(zone).hour)
+    CALLING_HOURS.cover?(local.hour)
   end
 
   private
@@ -208,6 +256,31 @@ class User < ApplicationRecord
     return if tz.blank?
 
     errors.add(:tz, "is not a valid timezone") unless ActiveSupport::TimeZone[tz]
+  end
+
+  def forget_consent_when_the_number_changes
+    return unless will_save_change_to_phone?
+
+    # Nothing to forget when there was no previous number *and* no consent facts
+    # to inherit — a new record, or the first number on a record that has none.
+    # Without some form of this the callback wipes consent being granted in the
+    # same save, which reads as security and is simply a bug: it defeats any
+    # single write that sets both, silently.
+    #
+    # The consent columns are checked as well as the number, because a record can
+    # hold consent with no phone: consent! writes the timestamps through
+    # update_all, and a later console repair or data fix could blank the number
+    # without touching them. Skipping on a blank previous number alone would then
+    # let the *first* number saved afterwards inherit an agreement given for a
+    # different handset — arriving at the exact failure this callback exists to
+    # prevent, by the one door left open.
+    return if phone_in_database.blank? &&
+              call_consent_at_in_database.blank? &&
+              phone_verified_at_in_database.blank?
+
+    self.phone_verified_at = nil
+    self.call_consent_at = nil
+    self.call_reminders_enabled = false
   end
 
   def phone_is_e164

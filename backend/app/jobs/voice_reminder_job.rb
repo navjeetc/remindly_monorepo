@@ -24,8 +24,15 @@ class VoiceReminderJob < ApplicationJob
     # long after it was enqueued, and is reachable directly — so a senior who
     # opted out in between, or who never opted in at all, must not be dialled on
     # the strength of a query that ran earlier.
-    unless senior.voice_reminders_enabled? && senior.phone.present?
-      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} skipped: user #{senior.id} is not opted in to phone reminders"
+    # Consent is re-read here, not trusted from the scheduler's query. This job
+    # can run long after it was enqueued and is reachable directly, and consent
+    # can be withdrawn in between — a senior who presses 9 during one call must
+    # not be telephoned by a job that was queued before they said it.
+    unless senior.callable_by_phone?
+      Rails.logger.info(
+        "Voice reminder for occurrence #{occurrence.id} skipped: user #{senior.id} " \
+        "#{senior.call_opted_out_at.present? ? "has opted out of" : "has not consented to"} phone reminders"
+      )
       return
     end
 
@@ -89,6 +96,17 @@ class VoiceReminderJob < ApplicationJob
     # about the occurrence being resolved meanwhile through the web page or a
     # keypress on an earlier attempt. Without this, a senior who has just marked
     # the dose done gets telephoned about it anyway.
+    # Consent re-read after the claim, immediately before the provider call. The
+    # check at the top of this job happens before reserving, and a senior can
+    # press 9 on an earlier call in between — at which point the old call
+    # completes, releases the live-call claim, and this job is free to reserve
+    # and dial somebody who has just said stop.
+    unless senior.reload.callable_by_phone?
+      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: consent withdrawn while the attempt was being claimed"
+      return
+    end
+
     unless occurrence.reload.status_pending?
       # One transaction, because these two writes have to be true together. If
       # the process exits between them the row is cancelled with no reason
@@ -119,9 +137,9 @@ class VoiceReminderJob < ApplicationJob
   # job's retry_on StandardError -- would turn a correctly suppressed call into
   # five retried failures.
   def local_time_for(senior)
-    zone = ActiveSupport::TimeZone[senior.tz.to_s]
-    return "an unresolvable timezone (#{senior.tz.inspect})" if zone.nil?
+    local = senior.local_time
+    return "an unresolvable timezone (#{senior.tz.inspect})" if local.nil?
 
-    Time.current.in_time_zone(zone).strftime("%H:%M %Z")
+    local.strftime("%H:%M %Z")
   end
 end

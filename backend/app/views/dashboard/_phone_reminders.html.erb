@@ -1,0 +1,167 @@
+<%#
+  Phone reminders, from the caregiver's side.
+
+  The screen this replaces would have been a number field and a checkbox, and
+  the checkbox is the whole problem: it would let one person arrange automated
+  calls to another who had never agreed. So there is no control here that turns
+  calls on. A caregiver may write down a number and ask it a question; only the
+  person who answers can say yes, by pressing a key.
+
+  The copy has to make that read as reasonable rather than obstructive, which is
+  why the state line says what is true of the senior rather than what the
+  caregiver is not allowed to do.
+%>
+<div class="bg-white overflow-hidden shadow rounded-lg">
+  <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+    <h3 class="text-lg font-medium text-gray-900">Phone reminders</h3>
+
+    <% if senior.call_opted_out_at.present? %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Stopped</span>
+    <% elsif senior.callable_by_phone? %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">On</span>
+    <% elsif senior.phone.present? %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Waiting for <%= senior.display_name %></span>
+    <% else %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Not set up</span>
+    <% end %>
+  </div>
+
+  <div class="p-5 space-y-4">
+    <% if senior.call_opted_out_at.present? %>
+      <p class="text-sm text-gray-700">
+        <%= senior.display_name %> asked us to stop calling on
+        <%= (senior.local_time(at: senior.call_opted_out_at) || senior.call_opted_out_at).strftime("%B %-d") %>.
+        We won't call again unless they say otherwise on a call they answer —
+        that isn't something you or we can change for them.
+      </p>
+
+    <% elsif senior.callable_by_phone? %>
+      <p class="text-sm text-gray-700">
+        <%= senior.display_name %> agreed to phone reminders on
+        <%= (senior.local_time(at: senior.call_consent_at) || senior.call_consent_at).strftime("%B %-d") %>.
+        We'll call <strong><%= senior.phone %></strong> when a reminder is due, between
+        <%= User::CALLING_HOURS.first %>am and <%= User::CALLING_HOURS.max + 1 - 12 %>pm their time.
+        They can stop the calls at any point by pressing 9.
+      </p>
+
+    <% elsif senior.phone.present? %>
+      <p class="text-sm text-gray-700">
+        We have <strong><%= senior.phone %></strong> but haven't been told it's alright to use it.
+        We'll ring once and ask <%= senior.display_name %> to press 1. Nothing is scheduled until they do.
+      </p>
+      <p class="text-sm text-gray-500">
+        Save this number in <%= senior.display_name %>'s phone first, as
+        <strong>Remindly</strong> — otherwise the call shows up as an unknown
+        number, and many phones send those straight to voicemail.
+      </p>
+
+    <% else %>
+      <p class="text-sm text-gray-700">
+        Remindly can telephone <%= senior.display_name %> when a reminder is due, and they
+        press a key to say they've done it. Useful if they don't use a screen.
+      </p>
+    <% end %>
+
+    <%#
+      Not gated on the opt-out. The verification call is the only thing whose
+      keypress can lift one, so hiding the button here made the stopped-state
+      copy above — "unless they say otherwise on a call they answer" — a promise
+      the screen itself made impossible to keep, reachable only by hand-crafting
+      a POST. Asking again is permitted by design; the safeguards are that the
+      senior still decides, that every attempt is recorded, and that the count
+      sits under the button where a pattern of re-asking is visible.
+    %>
+    <% if permission == "manage" %>
+      <%= form_with url: senior_phone_path(senior_id: senior.id), method: :patch, class: "flex items-end gap-3" do |f| %>
+        <div class="flex-1">
+          <label for="user_phone" class="block text-sm font-medium text-gray-700">Their phone number</label>
+          <%= f.telephone_field :phone, value: senior.phone, name: "user[phone]", id: "user_phone",
+                placeholder: "+15551234567",
+                class: "mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+          <p class="mt-1 text-xs text-gray-500">Include the country code. Changing it means asking again.</p>
+        </div>
+        <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+      <% end %>
+
+      <% if senior.phone.present? %>
+        <div class="pt-2 border-t border-gray-100">
+          <%#
+            The caregiver's own clock is not the one that governs this, and it
+            is often not the one they are picturing -- the product assumes a
+            daughter some hours from her mother. verify_phone says the local
+            time too, but only once the button has been pressed and only when
+            the guard fires, so it cannot help with the case this line exists
+            for: a tz that resolves cleanly and is simply wrong reads as
+            permission, and the guard stays quiet. Nobody but the caregiver
+            looking at this screen can tell that "10:30am" is nonsense for a
+            number they dial themselves, so the clock has to be in front of
+            them before they act, not after they are refused.
+          %>
+          <% local_now = senior.local_time %>
+          <% may_call = senior.within_calling_hours? %>
+
+          <% if local_now %>
+            <p class="mb-3 text-sm <%= may_call ? "text-gray-600" : "text-amber-700" %>">
+              It's <strong><%= local_now.strftime("%-l:%M%P") %> (<%= local_now.strftime("%Z") %>)</strong>
+              for <%= senior.display_name %>.
+              <% unless may_call %>
+                We only call between <%= User::CALLING_HOURS.first %>am and
+                <%= User::CALLING_HOURS.max + 1 - 12 %>pm, so this won't ring yet.
+              <% end %>
+            </p>
+          <% elsif !may_call %>
+            <%#
+              The button is disabled below, and a disabled control with nothing
+              explaining it is worse than no control. An unresolvable zone is the
+              other way within_calling_hours? says no, and it is the caregiver who
+              can fix it — so it has to be named rather than left to look broken.
+            %>
+            <p class="mb-3 text-sm text-amber-700">
+              We can't tell what time it is where <%= senior.display_name %> is —
+              their timezone is set to <strong><%= senior.tz.presence || "nothing" %></strong>,
+              which isn't one we recognise. We won't call until that's corrected.
+            </p>
+          <% end %>
+
+          <%#
+            Disabled outside calling hours rather than left to fail on submit.
+            The controller still refuses -- that guard is what actually protects
+            the senior, and it stays -- but a button that round-trips to an alert
+            repeating the sentence directly above it is the same defect this file
+            objects to a few lines down, where the attempt count is kept honest
+            precisely so the screen never offers what the model will refuse.
+          %>
+          <%= button_to "Call and ask #{senior.display_name}",
+                verify_senior_phone_path(senior_id: senior.id),
+                method: :post,
+                disabled: !may_call,
+                class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white #{may_call ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"}" %>
+          <p class="mt-2 text-xs text-gray-500">
+            <%#
+              "in the last day" is literal: verifications_in_window counts a
+              rolling 24 hours from now, per number. An earlier version of this
+              comment said "per UTC day", which is what the row's call_day stamp
+              records for the uniqueness index — but the *bound* has never been
+              the calendar day, and describing it as one would have the next
+              person expecting the allowance to refill at midnight. The count is
+              clamped because a screen offering a negative number of attempts has
+              clearly lost track of something.
+            %>
+            <% if senior.call_opted_out_at.present? %>
+              <%= senior.display_name %> has asked us to stop, so this only asks again —
+              it cannot undo that. Nothing changes unless they press 1 themselves.
+            <% end %>
+            <% if attempts.any? %>
+              Asked <%= pluralize(attempts.size, "time") %> in the last day<%= ", most recently #{time_ago_in_words(attempts.last.created_at)} ago" if attempts.last.created_at %>.
+              <%= pluralize([ TelnyxCall::MAX_VERIFICATIONS_PER_DAY - attempts.size, 0 ].max, "attempt") %> left.
+            <% elsif senior.call_opted_out_at.blank? %>
+              We'll ring once. If nobody answers, or they'd rather not, nothing changes.
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+    <% elsif permission != "manage" %>
+      <p class="text-xs text-gray-500">You have view-only access, so you can't change this.</p>
+    <% end %>
+  </div>
+</div>

@@ -1,12 +1,23 @@
 class TelnyxCall < ApplicationRecord
-  belongs_to :occurrence
+  # Optional at the association level and required by purpose below. A reminder
+  # call is always about an occurrence; a verification call is about a number and
+  # must not claim one, because an occurrence would imply a dose it is not
+  # announcing.
+  belongs_to :occurrence, optional: true
   belongs_to :user
+
+  # Who asked for this call to be placed. Only meaningful for a verification,
+  # where the script names them aloud — see consent_request_for.
+  belongs_to :requested_by, class_name: "User", optional: true
 
   # Nullable: an attempt is claimed before the provider is called, so the id
   # only arrives afterwards.
   validates :call_control_id, uniqueness: true, allow_nil: true
   validates :status, presence: true
   validates :outcome, presence: true
+  validates :purpose, inclusion: { in: ->(_) { PURPOSES } }
+  validates :occurrence, presence: true, if: -> { purpose == "reminder" }
+  validates :occurrence_id, absence: true, if: -> { purpose == "verification" }
 
   STATUSES = %w[
     pending
@@ -33,7 +44,38 @@ class TelnyxCall < ApplicationRecord
     skip
     no_response
     error
+    consented
+    declined
+    opted_out
   ].freeze
+
+  # What a call is for. A reminder announces a dose; a verification asks whether
+  # this number agrees to be telephoned at all, and so belongs to a number rather
+  # than to an occurrence.
+  PURPOSES = %w[ reminder verification ].freeze
+
+  # Verification calls are excluded from MAX_CALLS_PER_DAY: they are setup rather
+  # than delivery, and someone who has just agreed should not find their first
+  # day's reminders short. That leaves them unbounded, since the cap was the only
+  # thing limiting how often a number could be rung -- so they get their own.
+  #
+  # Five is enough for a run of genuine mix-ups: wrong moment, phone in another
+  # room, wanted to think about it, rang back and missed it. A sixth attempt in
+  # one day is deliberate, and the caregiver is shown the count either way.
+  MAX_VERIFICATIONS_PER_DAY = 5
+
+  # A rolling window rather than a calendar bucket, because every bucket has a
+  # boundary and every boundary is inside somebody's calling hours. UTC midnight
+  # is 8pm in New York: five calls at 19:59 and five more at 20:01 would satisfy
+  # a per-UTC-day bound while ringing one handset ten times in two minutes. A
+  # local day has no such boundary problem — local midnight is never inside
+  # 8am–9pm — but it is derived from an editable timezone, which is what moved
+  # this off the local day in the first place. A rolling window has neither
+  # weakness: nothing to reset, and no instant at which the allowance refills.
+  VERIFICATION_WINDOW = 24.hours
+
+  scope :reminders, -> { where(purpose: "reminder") }
+  scope :verifications, -> { where(purpose: "verification") }
 
   # The design document allows "no answer or busy retries after a few minutes,
   # twice at most, then stops" -- three attempts in all. How many, and how far
@@ -65,6 +107,62 @@ class TelnyxCall < ApplicationRecord
   #
   # Returns nil when this attempt is not ours to make -- another run won it, the
   # cap is reached, or the last attempt is too recent to follow up yet.
+  # Claims a verification call for a number. Unlike a reminder attempt this has
+  # no occurrence, so the (occurrence_id, attempt_number) index cannot arbitrate;
+  # the daily bound below is what stops a caregiver ringing a number repeatedly.
+  #
+  # Deliberately still subject to call_in_flight?: a verification call and a
+  # reminder call must never ring one phone at once, whatever they are each for.
+  # reconcile: false skips the provider round trips, for callers that cannot
+  # afford them — a web request, where three timeouts plus the dial can occupy a
+  # worker for half a minute during a provider slowdown. Those callers enqueue
+  # ReconcileStaleCallsJob instead and ask the caregiver to try again.
+  def self.reserve_verification(user, requested_by: nil, now: Time.current, reconcile: true)
+    return nil if user.phone.blank?
+
+    # A verification call rings a real telephone, so the window that protects
+    # every reminder call protects this one too. Nothing else enforced it: a
+    # caregiver pressing the button at three in the morning would have woken
+    # somebody who had not yet agreed to be telephoned at all.
+    return nil unless user.within_calling_hours?(at: now)
+
+    expire_stale_attempts(user, now) if reconcile
+    return nil if call_in_flight?(user, now)
+
+    # Counted over a rolling window, per number. The day stamped on the row is
+    # still the UTC one, because the uniqueness index needs a bucket to make
+    # concurrent claims collide — but the *bound* is the window, which has no
+    # boundary to wait for and no timezone to edit.
+    day = now.utc.to_date
+    taken = verifications_in_window(user.phone, now).count
+    return nil if taken >= MAX_VERIFICATIONS_PER_DAY
+
+    create!(
+      user: user,
+      occurrence: nil,
+      requested_by: requested_by,
+      purpose: "verification",
+      attempt_number: taken + 1,
+      # The number as it stands now. Consent is checked against this rather than
+      # against users.phone at the time of the keypress, because a caregiver can
+      # edit the number while the call is ringing — and an agreement given on one
+      # handset must not enable calls to another.
+      to_number: user.phone,
+      call_day: day,
+      call_tz: zone_name(user),
+      # No daily_sequence: a verification does not spend a reminder slot, and
+      # leaving it nil keeps it out of both free_slot and call_in_flight?'s
+      # accounting. completed_at is what ends its hold on the line instead.
+      status: "reserved",
+      outcome: "pending"
+    )
+  rescue ActiveRecord::RecordNotUnique
+    # Another request claimed this attempt number first. Previously unreachable:
+    # nothing constrained verification attempts, so two concurrent reserves both
+    # succeeded and the daily bound was advisory.
+    nil
+  end
+
   def self.reserve(occurrence, user, now: Time.current)
     previous = where(occurrence_id: occurrence.id).order(:attempt_number).last
 
@@ -93,6 +191,15 @@ class TelnyxCall < ApplicationRecord
     #
     # The skipped occurrence is not lost. It stays pending and the scheduler,
     # which runs every minute, offers it again once the line is free.
+    #
+    # The check is an early exit, not the guarantee. Two reservations can both
+    # read an idle line before either writes, and a verification racing a
+    # reminder collides on no other index — so the unique index on to_number
+    # where completed_at is null is what actually decides, and the loser lands
+    # in the rescue below. Keyed on the number rather than the account because
+    # users.phone is not unique: two records can hold one handset, and it is the
+    # telephone that can only take one call.
+    expire_stale_attempts(user, now)
     return nil if call_in_flight?(user, now)
 
     slot = free_slot(user, day)
@@ -113,6 +220,9 @@ class TelnyxCall < ApplicationRecord
       occurrence: occurrence,
       user: user,
       attempt_number: (previous&.attempt_number || 0) + 1,
+      # Recorded for reminders too, not only verifications: the live-call claim
+      # is keyed on the number, because two accounts can hold one telephone.
+      to_number: user.phone,
       call_day: day,
       call_tz: zone_name(user),
       daily_sequence: slot,
@@ -148,6 +258,13 @@ class TelnyxCall < ApplicationRecord
     (1..MAX_CALLS_PER_DAY).find { |slot| taken.exclude?(slot) }
   end
 
+  # Verification calls to a number within the rolling window. The one query the
+  # bound and the screen must both use, or the screen offers attempts the model
+  # refuses.
+  def self.verifications_in_window(number, now = Time.current)
+    verifications.where(to_number: number, created_at: (now - VERIFICATION_WINDOW)..now)
+  end
+
   def self.zone_name(user)
     (ActiveSupport::TimeZone[user.tz.to_s] || Time.zone).name
   end
@@ -171,18 +288,98 @@ class TelnyxCall < ApplicationRecord
   # row abandoned by a dead worker cannot block the line for the rest of the day.
   IN_FLIGHT_WINDOW = 5.minutes
 
-  # An attempt that is dialling, ringing or talking right now. Released
-  # attempts are excluded by the daily_sequence check: they never rang, so they
-  # are not occupying the line.
+  # After this, a dialled call is assumed over whatever the provider says or
+  # fails to say. No reminder call lasts an hour, and the alternative is worse:
+  # the live-call claim is a unique index, so a hangup webhook that never
+  # arrives would otherwise make that number permanently uncallable.
+  ABANDONED_AFTER = 1.hour
+
+  # An attempt that is dialling, ringing or talking right now, whatever it is
+  # for. Keyed on completed_at alone: releasing a slot ends the attempt and
+  # records that, so a released row is not in flight, and a verification call --
+  # which holds no slot by design -- is correctly counted. An earlier version
+  # also required daily_sequence, which silently exempted verification calls
+  # from the one-call-at-a-time rule they most need.
+  # Asked of the telephone rather than the account. Two user records can hold
+  # the same number, and it is the handset that can only take one call at a time.
   def self.call_in_flight?(user, now)
-    where(user_id: user.id, completed_at: nil)
-      .where.not(daily_sequence: nil)
+    return false if user.phone.blank?
+
+    where(to_number: user.phone, completed_at: nil)
       .where(created_at: (now - IN_FLIGHT_WINDOW)..now)
       .exists?
   end
 
+  # Ends any attempt that stopped mattering without saying so — a row whose
+  # worker died between claiming and dialling. Called before claiming, because
+  # the unique index on (to_number) WHERE completed_at IS NULL is absolute: it
+  # cannot be told that a row is merely old, so something has to close it, and
+  # the live-call claim must not outlive the call.
+  #
+  # Three cases, because they are knowable to different degrees. A claim that
+  # never reached the provider can be closed on age alone. A dialled call is
+  # asked about — the provider knows whether it is still connected, and age does
+  # not. And a dialled call still unresolved an hour later is closed regardless,
+  # because no reminder call lasts an hour and a lost hangup webhook must not
+  # disable a telephone for ever.
+  def self.expire_stale_attempts(user, now)
+    expire_undialled(user, now)
+    reconcile_dialled(user, now)
+  end
+
+  def self.reconcile_dialled(user, now)
+    where(to_number: user.phone, completed_at: nil)
+      .where.not(call_control_id: nil)
+      .where(created_at: ...(now - IN_FLIGHT_WINDOW))
+      .find_each do |attempt|
+        alive = TelnyxVoiceService.alive?(attempt.call_control_id)
+        expired = attempt.created_at < now - ABANDONED_AFTER
+
+        # nil means we could not tell. Closing on a failed lookup would free the
+        # line while somebody was still talking, so only a definite "no" counts
+        # — until ABANDONED_AFTER, when not knowing stops being a reason to wait.
+        next unless alive == false || expired
+
+        # Anything short of a definite "it has ended" gets hung up first.
+        #
+        # Only `alive == false` is knowledge. Both `true` and `nil` mean the call
+        # may still be connected, and releasing the claim would put a second call
+        # on a line somebody is holding — an hour-old call is broken, but broken
+        # and connected is not the same as over. The earlier version hung up only
+        # on an affirmative `true`, so a lookup that timed out at the cutoff fell
+        # straight through to release.
+        #
+        # If the hangup cannot be confirmed the claim is kept and the next
+        # reservation tries again, so an unreachable provider delays calls rather
+        # than stranding a number for ever.
+        if alive != false
+          TelnyxVoiceService.hangup(call_control_id: attempt.call_control_id)
+          next if TelnyxVoiceService.alive?(attempt.call_control_id) != false
+        end
+
+        attempt.update!(status: "hangup", outcome: attempt.outcome == "pending" ? "no_response" : attempt.outcome,
+                        completed_at: now)
+      end
+  end
+
+  def self.expire_undialled(user, now)
+    where(to_number: user.phone, completed_at: nil)
+      # Only claims that never became calls. A row holding a call_control_id is
+      # a call the provider accepted, and age says nothing about whether it has
+      # ended — an answered webhook can be delayed, and a long call is just a
+      # long call. Those are reconciled against the provider instead.
+      .where(call_control_id: nil)
+      .where(created_at: ...(now - IN_FLIGHT_WINDOW))
+      .update_all(status: "failed", outcome: "error", daily_sequence: nil,
+                  completed_at: now, updated_at: now)
+  end
+
   # Releases this attempt's hold on the day, for an attempt that never rang.
+  #
+  # Ends the attempt as well as freeing the slot: an attempt being released is
+  # over, and completed_at is what tells call_in_flight? the line is free. A
+  # caller may pass its own completed_at; it may not leave it unset.
   def release_slot!(**attributes)
-    update!(attributes.merge(daily_sequence: nil))
+    update!({ completed_at: Time.current }.merge(attributes).merge(daily_sequence: nil))
   end
 end

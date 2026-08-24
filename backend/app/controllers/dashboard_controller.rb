@@ -154,6 +154,104 @@ class DashboardController < WebController
     @expires_at = link.created_at + 7.days
   end
 
+  # Writes down a number to try. Deliberately not the same act as calling it, and
+  # incapable of granting consent: the callback on User clears verification and
+  # consent whenever the number changes, so proposing a new one always leaves the
+  # senior uncallable until they say otherwise themselves.
+  def update_phone
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+
+    if senior.update(phone: params.require(:user).permit(:phone)[:phone].presence)
+      redirect_to senior_dashboard_path(senior), notice: "Number saved. Nothing will ring until #{senior.display_name} agrees to it."
+    else
+      redirect_to senior_dashboard_path(senior), alert: senior.errors.full_messages.to_sentence
+    end
+  end
+
+  # Asks the number whether it agrees. This is the only thing a caregiver can do
+  # towards enabling calls, and it can only ask.
+  def verify_phone
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+
+    # An opt-out is deliberately not a block here. The verification call is the
+    # only thing whose keypress can lift one, so refusing to place it would have
+    # made the alert's own promise — that only the senior can change this, by
+    # agreeing on a call — impossible to keep. Asking again is allowed; the
+    # safeguard is that every attempt is recorded and counted where the caregiver
+    # can see it, and that five a day is all anyone gets.
+    # reconcile: false — closing a stale claim can take three provider round
+    # trips, and this is a web request. If something is in the way, a worker
+    # clears it while the caregiver reads the message.
+    # Named before reserving, because reserve_verification answers a missing
+    # number with the same nil it uses for "a call is in progress" and "the
+    # allowance is spent" -- and the caregiver would be told to try again in a
+    # moment for a condition no amount of waiting fixes. The UI hides the button
+    # without a number; a second caregiver clearing it between render and click
+    # does not.
+    if senior.phone.blank?
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "There's no phone number saved for #{senior.display_name} yet. Add one first, then ask them."
+    end
+
+    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false)
+
+    # An unresolvable tz is one of the two ways within_calling_hours? says no, so
+    # this branch is exactly where a bad identifier arrives -- and in_time_zone
+    # raises on it, which would answer a refused call with a 500. Say the hours
+    # without the clock when we cannot read the clock.
+    unless senior.within_calling_hours?
+      local = senior.local_time
+      where = local ? "It's #{local.strftime('%-l:%M%P')} where #{senior.display_name} is. " : ""
+
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "#{where}We only call between #{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm #{senior.display_name}'s time."
+    end
+
+    if attempt.nil?
+      # Two conditions reach here and they call for opposite advice. A spent
+      # allowance does not clear by waiting a moment -- it clears when the oldest
+      # attempt ages out of the window -- and reconciling stale calls cannot
+      # create an attempt that the bound is refusing, so the job would be work
+      # done for nothing. Telling somebody to retry a thing that cannot succeed
+      # is how a screen teaches people to ignore it.
+      #
+      # Read from the database rather than inferred: reserve_verification answers
+      # every refusal with the same nil, so the reason has to be asked for.
+      spent = TelnyxCall.verifications_in_window(senior.phone)
+
+      if spent.count >= TelnyxCall::MAX_VERIFICATIONS_PER_DAY
+        oldest = spent.minimum(:created_at)
+        frees_at = oldest && senior.local_time(at: oldest + TelnyxCall::VERIFICATION_WINDOW)
+        when_ = frees_at ? " Another is available after #{frees_at.strftime('%-l:%M%P')} their time." : ""
+
+        return redirect_to senior_dashboard_path(senior),
+                           alert: "#{senior.display_name} has been asked #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times in the last day, which is all we allow.#{when_}"
+      end
+
+      ReconcileStaleCallsJob.perform_later(senior.id)
+
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "There's already a call in progress to #{senior.phone}. Try again in a moment."
+    end
+
+    # verify returns nil when the provider refused it, having marked the attempt
+    # failed. Reporting success regardless would leave a caregiver waiting for a
+    # call that was never placed, and waiting is exactly what they cannot debug.
+    if TelnyxVoiceService.verify(attempt).present?
+      redirect_to senior_dashboard_path(senior),
+                  notice: "Calling #{attempt.to_number} now. Ask #{senior.display_name} to press 1 if they'd like reminders."
+    else
+      redirect_to senior_dashboard_path(senior),
+                  alert: "Couldn't place the call to #{attempt.to_number}. Nothing has changed — try again in a moment."
+    end
+  end
+
   # View senior's activity
   def senior
     @senior_id = params[:id]
@@ -162,7 +260,14 @@ class DashboardController < WebController
     @permission = link.permission
 
     # Get today's reminders
-    tz = ActiveSupport::TimeZone[@senior.tz]
+    #
+    # Falls back the way TelnyxCall does. A zone that does not resolve used to
+    # make this whole page 500 on the next line, which now takes the phone panel
+    # down with it -- and the caregiver would lose the one screen showing that
+    # the timezone is the thing at fault. Guessing the server's zone is wrong for
+    # deciding whether to ring someone, which is why within_calling_hours?
+    # refuses instead; for listing what is due it is only a display.
+    tz = ActiveSupport::TimeZone[@senior.tz.to_s] || Time.zone
     now = tz.now.beginning_of_day
     end_of_day = now.end_of_day
 
@@ -170,6 +275,23 @@ class DashboardController < WebController
       .where(reminders: { user_id: @senior.id }, scheduled_at: now..end_of_day)
       .order(:scheduled_at)
       .includes(:reminder, :acknowledgements)
+
+    # Exactly the query the bound uses. Anything else and the screen eventually
+    # offers attempts the model refuses, which reads as a button that does
+    # nothing.
+    #
+    # Ordered by created_at, not attempt_number. The view reads .last to say when
+    # the number was most recently rung, and attempt_number does not track
+    # recency: it restarts per destination, so a fresh attempt 1 for a new number
+    # sorts below an older attempt 2 for the previous one and the screen reports
+    # the wrong time. Skipped entirely when there is no number, since a nil there
+    # matches nothing and asking is just a query that cannot inform anybody.
+    @verification_attempts =
+      if @senior.phone.present?
+        TelnyxCall.verifications_in_window(@senior.phone).order(:created_at)
+      else
+        TelnyxCall.none
+      end
 
     # Get 7-day activity
     start_date = now - 6.days

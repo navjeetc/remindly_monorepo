@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_030000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -237,16 +237,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_090000) do
     t.integer "daily_sequence"
     t.string "dtmf"
     t.text "last_payload"
-    t.integer "occurrence_id", null: false
+    t.integer "occurrence_id"
     t.string "outcome", default: "pending", null: false
+    t.string "purpose", default: "reminder", null: false
+    t.integer "requested_by_id"
     t.string "status", default: "pending", null: false
+    t.string "to_number"
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
     t.index ["call_control_id"], name: "index_telnyx_calls_on_call_control_id", unique: true
     t.index ["call_leg_id"], name: "index_telnyx_calls_on_call_leg_id", unique: true, where: "call_leg_id IS NOT NULL"
     t.index ["occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_occurrence_and_attempt", unique: true
     t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
+    t.index ["requested_by_id"], name: "index_telnyx_calls_on_requested_by_id"
+    t.index ["to_number", "call_day", "attempt_number"], name: "index_telnyx_calls_on_number_day_and_verification_attempt", unique: true, where: "purpose = 'verification' AND to_number IS NOT NULL"
+    t.index ["to_number"], name: "index_telnyx_calls_one_live_call_per_number", unique: true, where: "completed_at IS NULL AND to_number IS NOT NULL"
     t.index ["user_id", "call_day", "daily_sequence"], name: "index_telnyx_calls_on_user_day_and_sequence", unique: true, where: "call_day IS NOT NULL"
+    t.index ["user_id", "purpose", "call_day"], name: "index_telnyx_calls_on_user_purpose_and_day"
     t.index ["user_id"], name: "index_telnyx_calls_on_user_id"
   end
 
@@ -266,6 +273,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_090000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.datetime "call_consent_at"
+    t.datetime "call_opted_out_at"
+    t.boolean "call_reminders_enabled", default: false, null: false
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.datetime "email_undeliverable_at"
@@ -275,10 +285,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_090000) do
     t.boolean "notify_on_task_assigned_to_others", default: false
     t.json "notify_reminder_categories", default: ["medication"], null: false
     t.string "phone"
+    t.datetime "phone_verified_at"
     t.integer "role"
     t.string "tz", default: "America/New_York"
     t.datetime "updated_at", null: false
-    t.boolean "voice_reminders_enabled", default: false, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
@@ -300,5 +310,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_090000) do
   add_foreign_key "tasks", "users", column: "senior_id"
   add_foreign_key "telnyx_calls", "occurrences"
   add_foreign_key "telnyx_calls", "users"
+  add_foreign_key "telnyx_calls", "users", column: "requested_by_id"
   add_foreign_key "time_blocks", "users"
 end

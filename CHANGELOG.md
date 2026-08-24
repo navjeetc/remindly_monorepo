@@ -213,6 +213,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   highest-consequence path in the app.
 
 ### Added
+- **Consent to be telephoned, and the only thing that can grant it.** Phone
+  reminders shipped inert because nothing in the app could set a number or opt
+  anyone in — deliberately, since the obvious screen (a number field and a
+  checkbox) would let one person arrange automated calls to another who had
+  never agreed. A caregiver can now propose a number and ask its owner a
+  question; that is the entire surface. `TelnyxWebhooksController#consent!` is
+  the only thing that can *enable* calls — nothing else sets
+  `call_reminders_enabled` to true — and its single input is a `1` pressed
+  during a verification call. Several paths clear it: an opt-out, and a change
+  of number. Pressing `9` stops calls
+  immediately and permanently; pressing nothing is declined, which is neither
+  consent nor an opt-out, because someone who said nothing has not said stop.
+  Changing the number forgets what the old one agreed to. An opt-out survives a
+  number change, so a caregiver cannot undo a senior's "stop" by editing a
+  field. Verification calls are bounded separately at five per number per day,
+  since they are excluded from the daily cap that otherwise limits how often a
+  number can be rung.
+
 - **Phone reminders are behind a feature flag, off by default.** Until now the
   only thing preventing calls in production was that no senior had
   `voice_reminders_enabled` and a phone number — two ordinary columns, which a

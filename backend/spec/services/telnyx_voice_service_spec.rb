@@ -4,6 +4,13 @@ require "rails_helper"
 # entirely silent: get it wrong and the call still connects, still rings, and
 # the senior hears nothing until it times out. There is no error anywhere.
 RSpec.describe TelnyxVoiceService do
+  include ActiveSupport::Testing::TimeHelpers
+
+  # These specs place verification calls, which are now refused outside the
+  # senior's calling window — so without a fixed clock they pass by day and fail
+  # by night. Mid-morning in New York, which is inside every window here.
+  around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
   describe ".webhook_url" do
     def with(base_url: nil, app_url: nil, token: "shhh")
       allow(Rails.application.credentials).to receive(:base_url).and_return(base_url)
@@ -69,6 +76,66 @@ RSpec.describe TelnyxVoiceService do
 
       expect { described_class.gather_digit(call_control_id: "v3:abc", prompt: "x") }
         .to raise_error(/gather_using_speak failed/)
+    end
+  end
+  describe ".verify" do
+    let(:senior) { create(:user, :senior, name: "Mom", phone: "+15551234567") }
+
+    before do
+      allow(Rails.application.credentials).to receive(:dig).and_call_original
+      allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :from_number).and_return("+15550000000")
+      allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :connection_id).and_return("conn-1")
+    end
+
+    # A caregiver can edit users.phone between the attempt being claimed and
+    # this POST. Dialling the current value would ring a number nobody set out
+    # to verify, and consent! would then compare the keypress against a number
+    # that was never called.
+    it "dials the number recorded on the attempt, not the one on the user now" do
+      attempt = TelnyxCall.reserve_verification(senior)
+      senior.update!(phone: "+15559998888")
+
+      sent = nil
+      allow(described_class).to receive(:post) { |_p, body, **| sent = body; { "data" => { "call_control_id" => "v3:x" } } }
+
+      described_class.verify(attempt)
+
+      expect(sent[:to]).to eq("+15551234567")
+    end
+
+    it "refuses to dial an attempt with no recorded number" do
+      attempt = TelnyxCall.reserve_verification(senior)
+      attempt.update_columns(to_number: nil)
+      allow(described_class).to receive(:post)
+
+      expect(described_class.verify(attempt)).to be_nil
+      expect(attempt.reload.outcome).to eq("error")
+    end
+  end
+  describe ".alive?" do
+    it "reports a live call" do
+      allow(described_class).to receive(:get).and_return({ "data" => { "is_alive" => true } })
+
+      expect(described_class.alive?("v3:x")).to be true
+    end
+
+    it "reports an ended call" do
+      allow(described_class).to receive(:get).and_return({ "data" => { "is_alive" => false } })
+
+      expect(described_class.alive?("v3:x")).to be false
+    end
+
+    # The distinction the reconciliation depends on: absent is not false.
+    it "says unknown when the payload has no liveness field at all" do
+      allow(described_class).to receive(:get).and_return({ "data" => { "record_type" => "call" } })
+
+      expect(described_class.alive?("v3:x")).to be_nil
+    end
+
+    it "says unknown when the provider cannot be reached" do
+      allow(described_class).to receive(:get).and_return(nil)
+
+      expect(described_class.alive?("v3:x")).to be_nil
     end
   end
 end

@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Telnyx webhooks", type: :request do
-  let(:senior) { create(:user, :senior, phone: "+15551234567", voice_reminders_enabled: true) }
+  let(:senior) { create(:user, :senior, phone: "+15551234567", call_reminders_enabled: true) }
   let(:reminder) { Reminder.create!(user: senior, title: "Metformin", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
   let(:occurrence) { Occurrence.create!(reminder: reminder, scheduled_at: Time.current, status: :pending) }
   let(:telnyx_call) do
@@ -62,7 +62,8 @@ RSpec.describe "Telnyx webhooks", type: :request do
         "Hello #{senior.display_name}. This is Remindly, with your reminder. " \
         "Take your morning vitamins. " \
         "Press 1 if you have done it. " \
-        "Press 2 to be reminded again in 10 minutes."
+        "Press 2 to be reminded again in 10 minutes. " \
+        "Press 9 to stop these calls."
       )
     end
 
@@ -186,6 +187,39 @@ RSpec.describe "Telnyx webhooks", type: :request do
       expect(reserved.answered_at).to be_present
     end
 
+    # Two numbers, one senior, one call_day. Verification attempt numbers restart
+    # per destination, so both reservations are attempt 1 and every descriptive
+    # field in client_state matches both rows. Matching on the description made
+    # update_all try to give two rows one call_control_id: the unique index rolled
+    # it back, correlate returned nothing, and the senior who had just answered
+    # heard silence. The row id is the only identifier here that cannot collide.
+    it "claims the exact verification attempt when another number holds the same attempt number" do
+      day = Time.current.utc.to_date
+      old_number = TelnyxCall.create!(user: senior, occurrence: nil, purpose: "verification",
+                                      attempt_number: 1, to_number: "+15550000001", call_day: day,
+                                      call_control_id: nil, status: "reserved", outcome: "pending")
+      new_number = TelnyxCall.create!(user: senior, occurrence: nil, purpose: "verification",
+                                      attempt_number: 1, to_number: "+15550000002", call_day: day,
+                                      call_control_id: nil, status: "reserved", outcome: "pending")
+
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.answered",
+          payload: {
+            call_control_id: "v3:second-number",
+            client_state: Base64.strict_encode64({ attempt_id: new_number.id, user_id: senior.id,
+                                                   attempt_number: 1, call_day: day.to_s,
+                                                   purpose: "verification" }.to_json)
+          }
+        }
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(new_number.reload.call_control_id).to eq("v3:second-number")
+      expect(old_number.reload.call_control_id).to be_nil
+    end
+
     it "revives an attempt dial() had already given up on, since the provider says it is real" do
       TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: 1,
                          call_control_id: nil, status: "failed", outcome: "error",
@@ -286,6 +320,42 @@ RSpec.describe "Telnyx webhooks", type: :request do
       telnyx_post("call.gather.ended", digits: "")
 
       expect(TelnyxCall.call_in_flight?(senior, Time.current)).to be false
+    end
+  end
+
+  # Invariant 8 of the design document: the senior can stop the calls without
+  # signing in, without a caregiver and without a screen. Offering that only on
+  # the verification call would mean refusing at setup or never — and the call
+  # they hear every day is the one they would actually want to stop.
+  describe "pressing 9 on an ordinary reminder call" do
+    it "stops future calls immediately and permanently" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(senior.reload.call_opted_out_at).to be_present
+      expect(senior.call_reminders_enabled).to be false
+    end
+
+    it "is offered aloud, not merely accepted" do
+      said = nil
+      allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
+
+      telnyx_post("call.answered")
+
+      expect(said).to include("Press 9 to stop these calls")
+    end
+
+    # They said stop calling, not that the dose was taken.
+    it "leaves the occurrence pending so the missed sweep still claims it" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(occurrence.reload.status).to eq("pending")
+      expect(occurrence.acknowledgements).to be_empty
+    end
+
+    it "records the call as opted out rather than as no response" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(telnyx_call.reload.outcome).to eq("opted_out")
     end
   end
 

@@ -7,7 +7,7 @@ require "rails_helper"
 RSpec.describe VoiceReminderJob do
   include ActiveSupport::Testing::TimeHelpers # the project's convention, see recurrence_spec
 
-  let(:senior) { create(:user, :senior, name: "Peter", tz: "America/New_York", phone: "+15551234567", voice_reminders_enabled: true) }
+  let(:senior) { create(:user, :senior, :takes_calls, name: "Peter", tz: "America/New_York") }
   let(:reminder) { Reminder.create!(user: senior, title: "Take meds", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
   let(:occurrence) { Occurrence.create!(reminder: reminder, scheduled_at: Time.current, status: :pending) }
 
@@ -140,7 +140,7 @@ RSpec.describe VoiceReminderJob do
     expect(TelnyxVoiceService).not_to have_received(:dial)
   end
   it "does not dial a senior who has switched voice reminders off since the job was enqueued" do
-    senior.update!(voice_reminders_enabled: false)
+    senior.update!(call_reminders_enabled: false)
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
 
@@ -164,7 +164,7 @@ RSpec.describe VoiceReminderJob do
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          call_control_id: "spent-#{i}", status: "hangup", outcome: "no_response",
                          call_day: at(9).to_date, daily_sequence: i + 1,
-                         created_at: at(9) + i.minutes)
+                         created_at: at(9) + i.minutes, completed_at: at(9) + i.minutes)
     end
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
@@ -179,7 +179,7 @@ RSpec.describe VoiceReminderJob do
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          call_control_id: "yesterday-#{i}", status: "hangup", outcome: "no_response",
                          call_day: (at(10) - 1.day).to_date, daily_sequence: i + 1,
-                         created_at: at(10) - 1.day)
+                         created_at: at(10) - 1.day, completed_at: at(10) - 1.day)
     end
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
@@ -204,7 +204,7 @@ RSpec.describe VoiceReminderJob do
     expect(occurrence.reload.call_suppressed_at).to be_nil
   end
   it "records nothing about calls for a senior who does not take them" do
-    senior.update!(voice_reminders_enabled: false)
+    senior.update!(call_reminders_enabled: false)
     occurrence.update!(status: :missed)
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
@@ -220,7 +220,7 @@ RSpec.describe VoiceReminderJob do
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          status: "cancelled", outcome: "no_response",
                          call_day: at(9).to_date, daily_sequence: nil, # slot released
-                         created_at: at(9) + i.minutes)
+                         created_at: at(9) + i.minutes, completed_at: at(9) + i.minutes)
     end
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
@@ -235,11 +235,50 @@ RSpec.describe VoiceReminderJob do
       TelnyxCall.create!(occurrence: other, user: senior, attempt_number: 1,
                          status: "failed", outcome: "error",
                          call_day: at(9).to_date, daily_sequence: nil, # slot released
-                         created_at: at(9) + i.minutes)
+                         created_at: at(9) + i.minutes, completed_at: at(9) + i.minutes)
     end
 
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
 
     expect(TelnyxVoiceService).to have_received(:dial)
+  end
+  # Consent can be withdrawn between a job being enqueued and its running. A
+  # senior who presses 9 during one call must not be telephoned by a job that
+  # was already queued when they said it.
+  describe "consent at dial time" do
+    it "does not dial someone who has opted out since the job was queued" do
+      senior.update!(call_opted_out_at: Time.current)
+
+      travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+      expect(TelnyxVoiceService).not_to have_received(:dial)
+      expect(occurrence.telnyx_calls).to be_empty
+    end
+
+    it "does not dial a number that never agreed, whatever the flag says" do
+      senior.update!(call_consent_at: nil)
+
+      travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+      expect(TelnyxVoiceService).not_to have_received(:dial)
+    end
+
+    it "does not dial once the number has been cleared" do
+      senior.update!(phone: nil)
+
+      travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+      expect(TelnyxVoiceService).not_to have_received(:dial)
+    end
+
+    # An opt-out outranks the cached flag, so a stale true cannot authorise a
+    # call on its own.
+    it "refuses even when the flag was left true" do
+      senior.update_columns(call_opted_out_at: Time.current, call_reminders_enabled: true)
+
+      travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+      expect(TelnyxVoiceService).not_to have_received(:dial)
+    end
   end
 end

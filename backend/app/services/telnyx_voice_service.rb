@@ -17,6 +17,15 @@ require "base64"
 class TelnyxVoiceService
   API_BASE = URI("https://api.telnyx.com/v2").freeze
 
+  # Net::HTTP's defaults are tens of seconds, and reconciliation calls the
+  # provider from inside reserve — which runs in a web request as well as a job.
+  # A provider that accepts a connection and then stalls would hold a web worker
+  # for the whole default, and enough concurrent requests during a degradation
+  # would exhaust the pool. Short and explicit: a lookup that has not answered in
+  # a few seconds is not going to.
+  OPEN_TIMEOUT = 2
+  READ_TIMEOUT = 5
+
   # Initiate an outbound call for the given occurrence. Returns the call_control_id
   # from Telnyx so we can correlate webhooks.
   # `attempt` is a TelnyxCall already claimed by TelnyxCall.reserve. Requiring it
@@ -36,12 +45,14 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: phone,
       from: from,
-      # attempt_number is here so a late callback can be matched to the exact
-      # attempt that produced it. Without it, correlation can only guess at the
-      # most recent uncorrelated row, and a delayed callback from attempt 1
-      # attaches itself to attempt 2.
+      # attempt_id names the exact row, which is the only identifier here that
+      # cannot become ambiguous: every other field is a description of the
+      # attempt, and descriptions collide. The occurrence and attempt_number are
+      # still sent so a call already ringing when this deploys still correlates
+      # on the old terms.
       client_state: Base64.strict_encode64(
-        { occurrence_id: occurrence.id, user_id: senior.id, attempt_number: attempt.attempt_number }.to_json
+        { attempt_id: attempt.id, occurrence_id: occurrence.id, user_id: senior.id,
+          attempt_number: attempt.attempt_number }.to_json
       ),
       command_id: command_id_for("dial")
     }
@@ -82,6 +93,68 @@ class TelnyxVoiceService
     # them a later reminder once whatever failed here recovers.
     attempt&.release_slot!(status: "failed", outcome: "error", completed_at: Time.current)
     nil
+  end
+
+  # Places the call that asks whether this number consents to be telephoned.
+  #
+  # Almost the same as dial, and deliberately not folded into it. The two differ
+  # in what client_state carries -- a verification has no occurrence to name --
+  # and in what the webhook does on answer, and collapsing them would mean a
+  # boolean threaded through both, which is how the wrong branch eventually
+  # speaks the wrong words to somebody.
+  def self.verify(attempt)
+    senior = attempt.user
+    # The number recorded on the attempt, not the one on the user now. A
+    # caregiver can edit users.phone between the attempt being claimed and this
+    # POST, and dialling the new one would ring a number nobody set out to
+    # verify — while consent! later compared the keypress against a value that
+    # never got called.
+    number = attempt.to_number.presence
+    return record_failure(attempt) if number.blank?
+
+    from = credentials[:from_number]
+    connection_id = credentials[:connection_id]
+    return record_failure(attempt) if from.blank? || connection_id.blank?
+
+    payload = {
+      connection_id: connection_id,
+      to: number,
+      from: from,
+      # attempt_id, because the descriptive fields cannot separate these rows.
+      # Verification attempt numbers restart per *destination*, so one senior
+      # moving from number A to number B on the same call_day has an attempt 1
+      # for each. If A's reservation never got its call_control_id written back,
+      # B's callback matches both rows, update_all tries to give them the same
+      # id, the unique index rolls the whole thing back -- and B is answered by
+      # somebody who then hears nothing. call_day and attempt_number stay for
+      # calls already in flight across a deploy.
+      client_state: Base64.strict_encode64(
+        { attempt_id: attempt.id, user_id: senior.id, attempt_number: attempt.attempt_number,
+          call_day: attempt.call_day.to_s, purpose: "verification" }.to_json
+      ),
+      command_id: command_id_for("verify")
+    }
+
+    hook = webhook_url
+    payload[:webhook_url] = hook if hook.present?
+
+    response = post("/calls", payload, command_id: payload[:command_id])
+    unless response&.key?("data")
+      Rails.logger.error "Telnyx verification dial failed for user #{senior.id}: #{response.inspect}"
+      return record_failure(attempt)
+    end
+
+    data = response["data"]
+    attempt.update!(
+      call_control_id: data["call_control_id"],
+      call_leg_id: data["call_leg_id"],
+      status: "initiated",
+      outcome: "pending"
+    )
+    data["call_control_id"]
+  rescue => e
+    Rails.logger.error "Telnyx verification dial failed for user #{attempt.user_id}: #{e.message}"
+    record_failure(attempt)
   end
 
   # Play the reminder message using TTS.
@@ -135,6 +208,45 @@ class TelnyxVoiceService
     raise "Telnyx gather_using_speak failed for call #{call_control_id}" if response.nil?
 
     response
+  end
+
+  # Whether the provider still considers this call live.
+  #
+  # Returns nil when we cannot tell — the API is unreachable, or answered
+  # something unexpected. The caller must treat that as "unknown" rather than
+  # "ended": closing a claim on a failed lookup would free the line while
+  # somebody was still talking on it.
+  def self.alive?(call_control_id)
+    response = get("/calls/#{call_control_id}")
+    return nil unless response&.key?("data")
+
+    # A missing is_alive is not a "no". Coercing it would turn an unexpected
+    # payload — a field renamed, a partial response — into a confident "the call
+    # has ended", and free the claim on a line somebody is still holding. Absent
+    # means unknown, and unknown means wait.
+    live = response.dig("data", "is_alive")
+    return nil if live.nil?
+
+    !!live
+  rescue => e
+    Rails.logger.warn "Telnyx call lookup failed for #{call_control_id}: #{e.message}"
+    nil
+  end
+
+  def self.get(path)
+    uri = URI("#{API_BASE}#{path}")
+    request = Net::HTTP::Get.new(uri)
+    request["Authorization"] = "Bearer #{credentials[:api_key]}"
+
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https",
+                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) { |http| http.request(request) }
+
+    # 404 means the provider has no record of it, which for our purposes is the
+    # same as ended — there is nothing left to hang up.
+    return { "data" => { "is_alive" => false } } if response.is_a?(Net::HTTPNotFound)
+    return nil unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body)
   end
 
   # Hang up a call. Used after a digit is collected or the call is done.
@@ -246,7 +358,7 @@ class TelnyxVoiceService
     false
   end
 
-  private_class_method :credentials, :setting, :command_id_for, :verify_signature, :record_failure
+  private_class_method :credentials, :setting, :command_id_for, :verify_signature, :record_failure, :get
 
   def self.post(path, body, command_id: nil)
     body[:command_id] = command_id if command_id.present?
@@ -261,7 +373,8 @@ class TelnyxVoiceService
     request["Authorization"] = "Bearer #{credentials[:api_key]}"
     request.body = body.to_json
 
-    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https",
+                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) do |http|
       http.request(request)
     end
 

@@ -1,5 +1,5 @@
 # Watches for pending reminder occurrences that have reached their scheduled time
-# and enqueues a voice call for seniors who have voice reminders enabled.
+# and enqueues a phone call for seniors who have call reminders enabled.
 #
 # Runs frequently (e.g., every minute) so a 9:00 AM dose is called at 9:00 AM in
 # the senior's timezone. It is deliberately separate from the missed sweep; a
@@ -28,14 +28,16 @@ class VoiceReminderSchedulerJob < ApplicationJob
     return unless FeatureFlag.enabled?(:phone_call_reminders)
 
     # Occurrences that are now due, still pending, for users with a phone and
-    # voice reminders turned on, and have not already been called for this
+    # call reminders turned on, and have not already been called for this
     # occurrence.
     Occurrence
       .status_pending
       .where(scheduled_at: (now - LOOKBACK)..now)
       .joins(reminder: :user)
-      .where(users: { voice_reminders_enabled: true })
+      .where(users: { call_reminders_enabled: true })
       .where.not(users: { phone: [ nil, "" ] })
+      .where.not(users: { call_consent_at: nil })
+      .where(users: { call_opted_out_at: nil })
       # Skip what cannot be dialled yet or any more. Correctness does not rest on
       # this -- TelnyxCall.reserve refuses the same cases atomically, and must,
       # because two runs can pass these checks simultaneously. This is here so
