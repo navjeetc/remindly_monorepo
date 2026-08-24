@@ -93,7 +93,13 @@ class TelnyxVoiceService
   # speaks the wrong words to somebody.
   def self.verify(attempt)
     senior = attempt.user
-    return record_failure(attempt) if senior&.phone.blank?
+    # The number recorded on the attempt, not the one on the user now. A
+    # caregiver can edit users.phone between the attempt being claimed and this
+    # POST, and dialling the new one would ring a number nobody set out to
+    # verify — while consent! later compared the keypress against a value that
+    # never got called.
+    number = attempt.to_number.presence
+    return record_failure(attempt) if number.blank?
 
     from = credentials[:from_number]
     connection_id = credentials[:connection_id]
@@ -101,7 +107,7 @@ class TelnyxVoiceService
 
     payload = {
       connection_id: connection_id,
-      to: senior.phone,
+      to: number,
       from: from,
       client_state: Base64.strict_encode64(
         { user_id: senior.id, attempt_number: attempt.attempt_number, purpose: "verification" }.to_json

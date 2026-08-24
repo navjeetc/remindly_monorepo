@@ -71,4 +71,38 @@ RSpec.describe TelnyxVoiceService do
         .to raise_error(/gather_using_speak failed/)
     end
   end
+  describe ".verify" do
+    let(:senior) { create(:user, :senior, name: "Mom", phone: "+15551234567") }
+
+    before do
+      allow(Rails.application.credentials).to receive(:dig).and_call_original
+      allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :from_number).and_return("+15550000000")
+      allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :connection_id).and_return("conn-1")
+    end
+
+    # A caregiver can edit users.phone between the attempt being claimed and
+    # this POST. Dialling the current value would ring a number nobody set out
+    # to verify, and consent! would then compare the keypress against a number
+    # that was never called.
+    it "dials the number recorded on the attempt, not the one on the user now" do
+      attempt = TelnyxCall.reserve_verification(senior)
+      senior.update!(phone: "+15559998888")
+
+      sent = nil
+      allow(described_class).to receive(:post) { |_p, body, **| sent = body; { "data" => { "call_control_id" => "v3:x" } } }
+
+      described_class.verify(attempt)
+
+      expect(sent[:to]).to eq("+15551234567")
+    end
+
+    it "refuses to dial an attempt with no recorded number" do
+      attempt = TelnyxCall.reserve_verification(senior)
+      attempt.update_columns(to_number: nil)
+      allow(described_class).to receive(:post)
+
+      expect(described_class.verify(attempt)).to be_nil
+      expect(attempt.reload.outcome).to eq("error")
+    end
+  end
 end

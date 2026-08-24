@@ -16,7 +16,7 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
   end
 
   before do
-    allow(TelnyxVoiceService).to receive(:verify)
+    allow(TelnyxVoiceService).to receive(:verify).and_return("v3:placed")
     sign_in(caregiver)
   end
 
@@ -131,5 +131,38 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
 
     expect(response).to have_http_status(:not_found)
     expect(TelnyxVoiceService).not_to have_received(:verify)
+  end
+  # verify returns nil when the provider refuses, having marked the attempt
+  # failed. Reporting success anyway leaves a caregiver waiting for a call that
+  # was never placed — and waiting is the one state they cannot debug.
+  describe "when the provider refuses the call" do
+    before { senior.update!(phone: "+15551234567") }
+
+    it "says so rather than claiming the phone is ringing" do
+      allow(TelnyxVoiceService).to receive(:verify).and_return(nil)
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(flash[:notice]).to be_nil
+      expect(flash[:alert]).to include("Couldn't place the call")
+    end
+
+    it "reports success when the call was placed" do
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(flash[:notice]).to include("Calling +15551234567")
+    end
+  end
+
+  # The number can be edited between the attempt being claimed and the POST.
+  # Dialling the current value would ring a number nobody set out to verify.
+  it "dials the number recorded on the attempt, not whatever is on file now" do
+    senior.update!(phone: "+15551234567")
+    dialled = nil
+    allow(TelnyxVoiceService).to receive(:verify) { |attempt| dialled = attempt.to_number; "v3:placed" }
+
+    post "/dashboard/senior/#{senior.id}/verify_phone"
+
+    expect(dialled).to eq("+15551234567")
   end
 end

@@ -188,11 +188,19 @@ class DashboardController < WebController
     attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user)
 
     if attempt.nil?
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has already been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times today."
+    end
+
+    # verify returns nil when the provider refused it, having marked the attempt
+    # failed. Reporting success regardless would leave a caregiver waiting for a
+    # call that was never placed, and waiting is exactly what they cannot debug.
+    if TelnyxVoiceService.verify(attempt).present?
       redirect_to senior_dashboard_path(senior),
-                  alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has already been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times today."
+                  notice: "Calling #{attempt.to_number} now. Ask #{senior.display_name} to press 1 if they'd like reminders."
     else
-      TelnyxVoiceService.verify(attempt)
-      redirect_to senior_dashboard_path(senior), notice: "Calling #{senior.phone} now. Ask #{senior.display_name} to press 1 if they'd like reminders."
+      redirect_to senior_dashboard_path(senior),
+                  alert: "Couldn't place the call to #{attempt.to_number}. Nothing has changed — try again in a moment."
     end
   end
 
