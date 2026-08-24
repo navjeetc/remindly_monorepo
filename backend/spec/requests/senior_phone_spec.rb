@@ -92,8 +92,8 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     end
 
     it "stops after the day's allowance" do
-      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do
-        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current)
+      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do |i|
+        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current, call_control_id: "v3:spent-#{i}")
       end
 
       post "/dashboard/senior/#{senior.id}/verify_phone"
@@ -106,8 +106,8 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     # advice, and telling somebody to retry something that cannot succeed is how a
     # screen teaches them to stop reading it.
     it "says the allowance is spent rather than suggesting a retry" do
-      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do
-        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current)
+      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do |i|
+        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current, call_control_id: "v3:spent-#{i}")
       end
 
       post "/dashboard/senior/#{senior.id}/verify_phone"
@@ -117,8 +117,8 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     end
 
     it "does not spend a reconcile job on a bound no reconciliation can lift" do
-      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do
-        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current)
+      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do |i|
+        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current, call_control_id: "v3:spent-#{i}")
       end
 
       expect { post "/dashboard/senior/#{senior.id}/verify_phone" }

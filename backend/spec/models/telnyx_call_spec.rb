@@ -238,8 +238,9 @@ RSpec.describe TelnyxCall do
     end
 
     it "stops after five in one day" do
-      granted = 7.times.map do
-        described_class.reserve_verification(senior)&.tap { |c| c.update!(completed_at: Time.current) }
+      granted = 7.times.map do |i|
+        described_class.reserve_verification(senior)
+                       &.tap { |c| c.update!(completed_at: Time.current, call_control_id: "v3:granted-#{i}") }
       end.compact
 
       expect(granted.size).to eq(described_class::MAX_VERIFICATIONS_PER_DAY)
@@ -267,9 +268,34 @@ RSpec.describe TelnyxCall do
     end
 
     it "does not block once it has ended" do
-      described_class.reserve_verification(senior).update!(completed_at: Time.current)
+      described_class.reserve_verification(senior).update!(completed_at: Time.current, call_control_id: "v3:ended")
 
       expect(described_class.reserve_verification(senior)).to be_present
+    end
+
+    # The bound is on ringing somebody's telephone. A row that finished without
+    # ever reaching the provider did not ring, and charging the caregiver for it
+    # takes away a fifth of the day for a call nobody received. Three ways to get
+    # one: the window shutting between reserving and dialling, a provider refusal
+    # through record_failure, or a claim released when consent was withdrawn.
+    it "does not spend an attempt on a reservation that never reached the provider" do
+      4.times do |i|
+        described_class.reserve_verification(senior)
+                       .update!(completed_at: Time.current, call_control_id: "v3:rang-#{i}")
+      end
+      described_class.reserve_verification(senior)
+                     .update!(completed_at: Time.current, status: "cancelled", outcome: "no_response")
+
+      expect(described_class.verifications_in_window(senior.phone).count).to eq(4)
+      expect(described_class.reserve_verification(senior)).to be_present
+    end
+
+    # Deliberately narrow: an open row is either about to ring or ringing now,
+    # and excusing it would let two reservations past the bound.
+    it "still counts a reservation that has not finished yet" do
+      described_class.reserve_verification(senior)
+
+      expect(described_class.verifications_in_window(senior.phone).count).to eq(1)
     end
 
     it "is refused for a user with no number to verify" do
@@ -497,9 +523,13 @@ RSpec.describe TelnyxCall do
   # Every calendar bucket has a boundary, and every boundary sits inside
   # somebody's calling hours.
   describe "the verification bound" do
+    # call_control_id, because the bound counts calls that reached the provider.
+    # A completed row without one never rang and is deliberately not counted, so
+    # exhausting the allowance with those would exhaust nothing.
     def exhaust(user)
-      described_class::MAX_VERIFICATIONS_PER_DAY.times do
-        described_class.reserve_verification(user)&.update!(completed_at: Time.current)
+      described_class::MAX_VERIFICATIONS_PER_DAY.times do |i|
+        described_class.reserve_verification(user)
+                       &.update!(completed_at: Time.current, call_control_id: "v3:exhaust-#{user.id}-#{i}")
       end
     end
 
