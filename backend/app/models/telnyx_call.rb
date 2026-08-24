@@ -64,6 +64,16 @@ class TelnyxCall < ApplicationRecord
   # one day is deliberate, and the caregiver is shown the count either way.
   MAX_VERIFICATIONS_PER_DAY = 5
 
+  # A rolling window rather than a calendar bucket, because every bucket has a
+  # boundary and every boundary is inside somebody's calling hours. UTC midnight
+  # is 8pm in New York: five calls at 19:59 and five more at 20:01 would satisfy
+  # a per-UTC-day bound while ringing one handset ten times in two minutes. A
+  # local day has no such boundary problem — local midnight is never inside
+  # 8am–9pm — but it is derived from an editable timezone, which is what moved
+  # this off the local day in the first place. A rolling window has neither
+  # weakness: nothing to reset, and no instant at which the allowance refills.
+  VERIFICATION_WINDOW = 24.hours
+
   scope :reminders, -> { where(purpose: "reminder") }
   scope :verifications, -> { where(purpose: "verification") }
 
@@ -103,7 +113,11 @@ class TelnyxCall < ApplicationRecord
   #
   # Deliberately still subject to call_in_flight?: a verification call and a
   # reminder call must never ring one phone at once, whatever they are each for.
-  def self.reserve_verification(user, requested_by: nil, now: Time.current)
+  # reconcile: false skips the provider round trips, for callers that cannot
+  # afford them — a web request, where three timeouts plus the dial can occupy a
+  # worker for half a minute during a provider slowdown. Those callers enqueue
+  # ReconcileStaleCallsJob instead and ask the caregiver to try again.
+  def self.reserve_verification(user, requested_by: nil, now: Time.current, reconcile: true)
     return nil if user.phone.blank?
 
     # A verification call rings a real telephone, so the window that protects
@@ -112,21 +126,15 @@ class TelnyxCall < ApplicationRecord
     # somebody who had not yet agreed to be telephoned at all.
     return nil unless user.within_calling_hours?(at: now)
 
-    expire_stale_attempts(user, now)
+    expire_stale_attempts(user, now) if reconcile
     return nil if call_in_flight?(user, now)
 
-    # UTC, not the senior's local day, and deliberately unlike a reminder's.
-    #
-    # A reminder's cap uses the local day so that a senior's evening is not cut
-    # in half by a UTC boundary. This bound has the opposite requirement: it must
-    # not be resettable. call_day comes from users.tz, which is editable, so two
-    # records sharing one handset in different zones — or one record moved from
-    # Los Angeles afternoon to Tokyo morning — would land on different local days
-    # and each draw a full allowance, ten calls to one telephone in a moment.
+    # Counted over a rolling window, per number. The day stamped on the row is
+    # still the UTC one, because the uniqueness index needs a bucket to make
+    # concurrent claims collide — but the *bound* is the window, which has no
+    # boundary to wait for and no timezone to edit.
     day = now.utc.to_date
-    # Counted per number, not per account. users.phone is not unique, so two
-    # records sharing a landline would otherwise carry five attempts each.
-    taken = verifications.where(to_number: user.phone, call_day: day).count
+    taken = verifications_in_window(user.phone, now).count
     return nil if taken >= MAX_VERIFICATIONS_PER_DAY
 
     create!(
@@ -250,6 +258,13 @@ class TelnyxCall < ApplicationRecord
     (1..MAX_CALLS_PER_DAY).find { |slot| taken.exclude?(slot) }
   end
 
+  # Verification calls to a number within the rolling window. The one query the
+  # bound and the screen must both use, or the screen offers attempts the model
+  # refuses.
+  def self.verifications_in_window(number, now = Time.current)
+    verifications.where(to_number: number, created_at: (now - VERIFICATION_WINDOW)..now)
+  end
+
   def self.zone_name(user)
     (ActiveSupport::TimeZone[user.tz.to_s] || Time.zone).name
   end
@@ -326,11 +341,19 @@ class TelnyxCall < ApplicationRecord
         # — until ABANDONED_AFTER, when not knowing stops being a reason to wait.
         next unless alive == false || expired
 
-        # An affirmative "still connected" is not overridden by the clock. A
-        # reminder call an hour old is broken, but it is broken and *connected*,
-        # and releasing the claim would put a second call on a line somebody is
-        # still holding. End it for real first; if that fails, keep the claim.
-        if alive
+        # Anything short of a definite "it has ended" gets hung up first.
+        #
+        # Only `alive == false` is knowledge. Both `true` and `nil` mean the call
+        # may still be connected, and releasing the claim would put a second call
+        # on a line somebody is holding — an hour-old call is broken, but broken
+        # and connected is not the same as over. The earlier version hung up only
+        # on an affirmative `true`, so a lookup that timed out at the cutoff fell
+        # straight through to release.
+        #
+        # If the hangup cannot be confirmed the claim is kept and the next
+        # reservation tries again, so an unreachable provider delays calls rather
+        # than stranding a number for ever.
+        if alive != false
           TelnyxVoiceService.hangup(call_control_id: attempt.call_control_id)
           next if TelnyxVoiceService.alive?(attempt.call_control_id) != false
         end

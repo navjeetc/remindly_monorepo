@@ -185,7 +185,10 @@ class DashboardController < WebController
     # agreeing on a call — impossible to keep. Asking again is allowed; the
     # safeguard is that every attempt is recorded and counted where the caregiver
     # can see it, and that five a day is all anyone gets.
-    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user)
+    # reconcile: false — closing a stale claim can take three provider round
+    # trips, and this is a web request. If something is in the way, a worker
+    # clears it while the caregiver reads the message.
+    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false)
 
     unless senior.within_calling_hours?
       return redirect_to senior_dashboard_path(senior),
@@ -193,8 +196,10 @@ class DashboardController < WebController
     end
 
     if attempt.nil?
+      ReconcileStaleCallsJob.perform_later(senior.id)
+
       return redirect_to senior_dashboard_path(senior),
-                         alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has already been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times today."
+                         alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times in the last day. Try again in a moment."
     end
 
     # verify returns nil when the provider refused it, having marked the attempt
@@ -226,13 +231,10 @@ class DashboardController < WebController
       .order(:scheduled_at)
       .includes(:reminder, :acknowledgements)
 
-    # The same day definition reserve_verification uses, and per number rather
-    # than per account for the same reason it does. A local day here would
-    # disagree with the model around UTC midnight: the screen would offer
-    # attempts the model refuses, which reads as a broken button.
-    @verification_attempts = TelnyxCall.verifications
-                                       .where(to_number: @senior.phone, call_day: Time.current.utc.to_date)
-                                       .order(:attempt_number)
+    # Exactly the query the bound uses. Anything else and the screen eventually
+    # offers attempts the model refuses, which reads as a button that does
+    # nothing.
+    @verification_attempts = TelnyxCall.verifications_in_window(@senior.phone).order(:attempt_number)
 
     # Get 7-day activity
     start_date = now - 6.days

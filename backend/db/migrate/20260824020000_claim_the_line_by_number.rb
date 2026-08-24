@@ -27,6 +27,30 @@ class ClaimTheLineByNumber < ActiveRecord::Migration[8.1]
     # impossible to create. The entrypoint runs db:prepare at container start,
     # so a failure here aborts the boot rather than surfacing in a test.
     #
+    # Two rows that both reached the provider cannot be resolved here. One of
+    # them may be a live call, ending it needs the provider rather than the
+    # database, and a migration that guesses would mark a connected call failed
+    # without hanging it up — leaving its keypresses ignored, because the outcome
+    # is no longer pending, while the senior is still on the line.
+    #
+    # So this refuses rather than guessing. It cannot happen from application
+    # code: the per-user index added by the previous migration already forbids
+    # two unfinished rows for one account, and a shared number needs two
+    # accounts. If it somehow does, a deploy stopping with a legible message
+    # beats a call orphaned in silence.
+    duplicated = select_values(<<~SQL)
+      SELECT to_number FROM telnyx_calls
+       WHERE completed_at IS NULL AND to_number IS NOT NULL AND call_control_id IS NOT NULL
+       GROUP BY to_number HAVING COUNT(*) > 1
+    SQL
+
+    if duplicated.any?
+      raise ActiveRecord::IrreversibleMigration,
+            "Two live provider calls share #{duplicated.join(', ')}. Hang one up in the " \
+            "Telnyx portal and set its completed_at before deploying; picking one here " \
+            "would orphan a call somebody may still be holding."
+    end
+
     # A row holding a call_control_id is a call the provider accepted; one
     # without is a reservation that never rang. Insertion order is not liveness:
     # keeping the newest would sometimes keep an inert reservation and close the

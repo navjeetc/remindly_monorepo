@@ -429,14 +429,33 @@ RSpec.describe TelnyxCall do
       expect(call.reload.completed_at).to be_nil
     end
 
-    # ...but not for ever. No reminder call lasts an hour.
-    it "gives up waiting after an hour, so a lost webhook cannot disable a number" do
+    # At the cutoff an unknown result is not permission to release. Only
+    # `alive == false` is knowledge; nil may still be a connected call, and
+    # releasing would put a second call on a line somebody is holding.
+    it "hangs up an hour-old call it cannot get an answer about, before releasing it" do
+      call = stale_dialled_call
+      call.update_columns(created_at: described_class::ABANDONED_AFTER.ago - 1.minute)
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(nil, false)
+      allow(TelnyxVoiceService).to receive(:hangup)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
+      expect(TelnyxVoiceService).to have_received(:hangup).with(call_control_id: "v3:dialled")
+      expect(call.reload.completed_at).to be_present
+    end
+
+    # Kept rather than stranded: the next reservation tries the hangup again, so
+    # an unreachable provider delays calls instead of disabling a number.
+    it "keeps the claim when it cannot confirm the hangup, and retries next time" do
       call = stale_dialled_call
       call.update_columns(created_at: described_class::ABANDONED_AFTER.ago - 1.minute)
       allow(TelnyxVoiceService).to receive(:alive?).and_return(nil)
+      allow(TelnyxVoiceService).to receive(:hangup)
 
-      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
-      expect(call.reload.completed_at).to be_present
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_nil
+      expect(call.reload.completed_at).to be_nil
+
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(nil, false)
+      expect(described_class.reserve(occurrence_at(Time.current + 1.hour), senior)).to be_present
     end
   end
   # Follow-ups to the reconciliation fix itself.
@@ -475,18 +494,46 @@ RSpec.describe TelnyxCall do
     end
   end
 
-  # users.tz is editable, so a day derived from it can be reset. The reminder cap
-  # uses the local day deliberately; this bound must not be resettable.
-  it "counts a verification day in UTC, so a timezone change cannot refill the allowance" do
-    travel_to(Time.utc(2026, 6, 24, 12, 0)) do
-      senior.update!(phone: "+15551234567", tz: "America/New_York")
+  # Every calendar bucket has a boundary, and every boundary sits inside
+  # somebody's calling hours.
+  describe "the verification bound" do
+    def exhaust(user)
       described_class::MAX_VERIFICATIONS_PER_DAY.times do
-        described_class.reserve_verification(senior)&.update!(completed_at: Time.current)
+        described_class.reserve_verification(user)&.update!(completed_at: Time.current)
       end
+    end
 
-      senior.update!(tz: "Asia/Tokyo")
+    it "cannot be refilled by editing the timezone" do
+      travel_to(Time.utc(2026, 6, 24, 12, 0)) do
+        senior.update!(phone: "+15551234567", tz: "America/New_York")
+        exhaust(senior)
 
-      expect(described_class.reserve_verification(senior)).to be_nil
+        senior.update!(tz: "Asia/Tokyo")
+
+        expect(described_class.reserve_verification(senior)).to be_nil
+      end
+    end
+
+    # UTC midnight is 8pm in New York — inside calling hours — so a per-UTC-day
+    # bound allowed five calls at 19:59 and five more at 20:01.
+    it "does not refill at UTC midnight, which falls inside western calling hours" do
+      senior.update!(phone: "+15551234567", tz: "America/New_York")
+
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 24, 19, 59)) { exhaust(senior) }
+
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 24, 20, 1)) do
+        expect(described_class.reserve_verification(senior)).to be_nil
+      end
+    end
+
+    it "does let the allowance return once the window has passed" do
+      senior.update!(phone: "+15551234567", tz: "America/New_York")
+
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 24, 10, 0)) { exhaust(senior) }
+
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 25, 10, 1)) do
+        expect(described_class.reserve_verification(senior)).to be_present
+      end
     end
   end
 end

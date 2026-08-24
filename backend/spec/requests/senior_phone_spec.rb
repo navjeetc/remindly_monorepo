@@ -172,4 +172,29 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
 
     expect(dialled).to eq("+15551234567")
   end
+  # Reconciliation asks the provider whether an old call is still connected, and
+  # may hang it up and ask again — three round trips with their own timeouts.
+  # Fine in a job; not fine in a request a caregiver is waiting on.
+  describe "when something is already holding the line" do
+    before do
+      senior.update!(phone: "+15551234567")
+      TelnyxCall.reserve_verification(senior)
+    end
+
+    it "does not call the provider from inside the request" do
+      allow(TelnyxVoiceService).to receive(:alive?)
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:alive?)
+    end
+
+    it "hands the clearing-up to a worker and says to try again" do
+      expect {
+        post "/dashboard/senior/#{senior.id}/verify_phone"
+      }.to have_enqueued_job(ReconcileStaleCallsJob).with(senior.id)
+
+      expect(flash[:alert]).to include("Try again in a moment")
+    end
+  end
 end
