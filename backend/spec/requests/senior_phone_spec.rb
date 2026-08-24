@@ -23,6 +23,12 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
   end
 
   before do
+    # The feature is off by default, including in production. These specs are
+    # about what a caregiver can do once it is on; the specs that it stays shut
+    # while it is off are at the bottom of this file.
+    allow(FeatureFlag).to receive(:enabled?).and_call_original
+    allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+
     allow(TelnyxVoiceService).to receive(:verify).and_return("v3:placed")
     sign_in(caregiver)
   end
@@ -464,6 +470,52 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       }.to have_enqueued_job(ReconcileStaleCallsJob).with(senior.id)
 
       expect(flash[:alert]).to include("Try again in a moment")
+    end
+  end
+
+  # ENABLE_PHONE_CALL_REMINDERS is the kill switch, and until now it did not
+  # cover the one endpoint that makes a telephone ring. VoiceReminderJob and the
+  # scheduler both check it, so *scheduled* calls were off — but a caregiver
+  # pressing "Call and ask" reached Telnyx regardless. Shipping this feature
+  # switched off would still have let anyone with manage permission dial a real
+  # senior, which is the opposite of what shipping it switched off means.
+  describe "while the feature is switched off" do
+    before do
+      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(false)
+      senior.update!(phone: "+15551234567")
+    end
+
+    it "will not make a telephone ring" do
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(response).to have_http_status(:forbidden)
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+    end
+
+    it "reserves nothing, so the flag cannot be worked around by retrying" do
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change(TelnyxCall, :count)
+    end
+
+    it "will not record a senior's number through a screen nobody can see" do
+      patch "/dashboard/senior/#{senior.id}/phone", params: { user: { phone: "+15559990000" } }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(senior.reload.phone).to eq("+15551234567")
+    end
+
+    it "does not show the caregiver a panel they cannot act on" do
+      get senior_dashboard_path(senior)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Phone reminders")
+      expect(response.body).not_to include("Call and ask")
+    end
+
+    it "still shows the rest of the senior's page" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("Timezone:")
     end
   end
 end

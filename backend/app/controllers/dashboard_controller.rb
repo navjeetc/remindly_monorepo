@@ -159,6 +159,12 @@ class DashboardController < WebController
   # consent whenever the number changes, so proposing a new one always leaves the
   # senior uncallable until they say otherwise themselves.
   def update_phone
+    # Gated too. A number saved while the feature is off rings nobody, but the
+    # panel that collects it is hidden, so the only way here is a hand-made
+    # request — and writing a senior's telephone number into the database through
+    # a screen nobody can see is not something a disabled feature should permit.
+    return head :forbidden unless FeatureFlag.enabled?(:phone_call_reminders)
+
     link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
     return head :forbidden unless link.permission == "manage"
 
@@ -174,6 +180,16 @@ class DashboardController < WebController
   # Asks the number whether it agrees. This is the only thing a caregiver can do
   # towards enabling calls, and it can only ask.
   def verify_phone
+    # The kill switch has to cover the one endpoint that makes a telephone ring.
+    #
+    # It did not. VoiceReminderJob and the scheduler both check it, so scheduled
+    # calls were off — but a caregiver pressing "Call and ask" reached Telnyx
+    # regardless, which meant shipping this feature switched off still let anyone
+    # with manage permission dial a real senior. The flag's own comment calls it
+    # "the outer of two locks ... this one says the code may run at all", and a
+    # lock with a door beside it is not a lock.
+    return head :forbidden unless FeatureFlag.enabled?(:phone_call_reminders)
+
     link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
     return head :forbidden unless link.permission == "manage"
 

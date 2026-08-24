@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The phone-calls kill switch did not cover the button that places a call.**
+  `ENABLE_PHONE_CALL_REMINDERS` gated the scheduler and the delivery job, so
+  scheduled calls were off — but a caregiver pressing "Call and ask" reached
+  Telnyx regardless, and the panel offering it rendered unconditionally.
+  Shipping the feature switched off would still have let anyone with manage
+  permission telephone a real senior. Both endpoints now refuse while the flag
+  is off, and the panel is hidden with them.
 - **A verification call could be placed after 9pm, or leave a reservation that
   never rang.** `verify_phone` reserved the attempt and then asked about calling
   hours on a second reading of the clock, so a request straddling 21:00:00 could

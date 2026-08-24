@@ -13,7 +13,12 @@
     </div>
   </div>
 
-  <%= render "dashboard/phone_reminders", senior: @senior, permission: @permission, attempts: @verification_attempts %>
+  <%# Hidden with the feature, not merely disabled: with the flag off there is
+      nothing here a caregiver could act on, and a panel describing calls that
+      cannot be placed only raises a question nobody can answer yet. %>
+  <% if FeatureFlag.enabled?(:phone_call_reminders) %>
+    <%= render "dashboard/phone_reminders", senior: @senior, permission: @permission, attempts: @verification_attempts %>
+  <% end %>
 
   <!-- Stats -->
   <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
