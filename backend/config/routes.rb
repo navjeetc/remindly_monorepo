@@ -73,6 +73,13 @@ Rails.application.routes.draw do
   post "dashboard/pair",     to: "dashboard#process_pair"
   get  "dashboard/generate", to: "dashboard#generate_token", as: :generate_token_dashboard
   get  "dashboard/senior/:id", to: "dashboard#senior", as: :senior_dashboard
+
+  # Proposing a number and asking its owner whether they agree to be telephoned.
+  # Two separate actions because they are two separate acts: writing down a
+  # number commits nobody to anything, and only the second one makes a phone
+  # ring. Nothing here can grant consent — that is the verification call's alone.
+  patch "dashboard/senior/:senior_id/phone", to: "dashboard#update_phone", as: :senior_phone
+  post  "dashboard/senior/:senior_id/verify_phone", to: "dashboard#verify_phone", as: :verify_senior_phone
   get  "dashboard/senior/:senior_id/reminder/new", to: "dashboard#new_reminder", as: :new_reminder_dashboard
   post "dashboard/senior/:senior_id/reminder", to: "dashboard#create_reminder", as: :create_reminder_dashboard
   get  "dashboard/senior/:senior_id/reminder/:reminder_id/edit", to: "dashboard#edit_reminder", as: :edit_reminder_dashboard

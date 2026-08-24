@@ -154,6 +154,47 @@ class DashboardController < WebController
     @expires_at = link.created_at + 7.days
   end
 
+  # Writes down a number to try. Deliberately not the same act as calling it, and
+  # incapable of granting consent: the callback on User clears verification and
+  # consent whenever the number changes, so proposing a new one always leaves the
+  # senior uncallable until they say otherwise themselves.
+  def update_phone
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+
+    if senior.update(phone: params.require(:user).permit(:phone)[:phone].presence)
+      redirect_to senior_dashboard_path(senior), notice: "Number saved. Nothing will ring until #{senior.display_name} agrees to it."
+    else
+      redirect_to senior_dashboard_path(senior), alert: senior.errors.full_messages.to_sentence
+    end
+  end
+
+  # Asks the number whether it agrees. This is the only thing a caregiver can do
+  # towards enabling calls, and it can only ask.
+  def verify_phone
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+
+    if senior.call_opted_out_at.present?
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "#{senior.display_name} asked not to be called. Only they can change that, by agreeing on a call they answer."
+    end
+
+    attempt = TelnyxCall.reserve_verification(senior)
+
+    if attempt.nil?
+      redirect_to senior_dashboard_path(senior),
+                  alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has already been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times today."
+    else
+      TelnyxVoiceService.verify(attempt)
+      redirect_to senior_dashboard_path(senior), notice: "Calling #{senior.phone} now. Ask #{senior.display_name} to press 1 if they'd like reminders."
+    end
+  end
+
   # View senior's activity
   def senior
     @senior_id = params[:id]
@@ -170,6 +211,10 @@ class DashboardController < WebController
       .where(reminders: { user_id: @senior.id }, scheduled_at: now..end_of_day)
       .order(:scheduled_at)
       .includes(:reminder, :acknowledgements)
+
+    @verification_attempts = TelnyxCall.verifications
+                                       .where(user_id: @senior.id, call_day: tz.today)
+                                       .order(:attempt_number)
 
     # Get 7-day activity
     start_date = now - 6.days
