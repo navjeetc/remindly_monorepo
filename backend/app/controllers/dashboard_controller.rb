@@ -226,8 +226,12 @@ class DashboardController < WebController
       .order(:scheduled_at)
       .includes(:reminder, :acknowledgements)
 
+    # The same day definition reserve_verification uses, and per number rather
+    # than per account for the same reason it does. A local day here would
+    # disagree with the model around UTC midnight: the screen would offer
+    # attempts the model refuses, which reads as a broken button.
     @verification_attempts = TelnyxCall.verifications
-                                       .where(user_id: @senior.id, call_day: tz.today)
+                                       .where(to_number: @senior.phone, call_day: Time.current.utc.to_date)
                                        .order(:attempt_number)
 
     # Get 7-day activity

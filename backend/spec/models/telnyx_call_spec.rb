@@ -411,6 +411,16 @@ RSpec.describe TelnyxCall do
 
     # Closing on a failed lookup would free the line while somebody was still
     # talking on it.
+    # An unexpected payload is not a "no". Coercing a missing field would turn a
+    # renamed key or a partial response into a confident "the call has ended".
+    it "treats a response with no liveness field as unknown, not as ended" do
+      call = stale_dialled_call
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(nil)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_nil
+      expect(call.reload.completed_at).to be_nil
+    end
+
     it "waits rather than guessing when the provider cannot be reached" do
       call = stale_dialled_call
       allow(TelnyxVoiceService).to receive(:alive?).and_return(nil)

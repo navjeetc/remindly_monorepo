@@ -9,10 +9,16 @@
 # claim can be made against what will actually be dialled.
 class ClaimTheLineByNumber < ActiveRecord::Migration[8.1]
   def up
+    # Only rows the new constraints need: the ones still in flight. A completed
+    # call's destination is not knowable from users.phone, which may have been
+    # edited since — filling it in would make every historical row claim it
+    # dialled the current number, and an audit trail that confidently states
+    # something false is worse than one that admits it does not know.
     execute <<~SQL
       UPDATE telnyx_calls
          SET to_number = (SELECT phone FROM users WHERE users.id = telnyx_calls.user_id)
        WHERE to_number IS NULL
+         AND completed_at IS NULL
     SQL
 
     # Reconcile before constraining. The previous index arbitrated per account,

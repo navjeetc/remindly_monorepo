@@ -81,9 +81,16 @@
                 method: :post,
                 class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
           <p class="mt-2 text-xs text-gray-500">
+            <%#
+              "in the last day" rather than "today": the allowance is counted
+              per UTC day so that editing a timezone cannot refill it, and
+              saying "today" would promise the caregiver's own day. The count is
+              clamped because a screen that offers a negative number of attempts
+              has clearly lost track of something.
+            %>
             <% if attempts.any? %>
-              Asked <%= pluralize(attempts.size, "time") %> today<%= ", most recently #{time_ago_in_words(attempts.last.created_at)} ago" if attempts.last.created_at %>.
-              <%= TelnyxCall::MAX_VERIFICATIONS_PER_DAY - attempts.size %> left today.
+              Asked <%= pluralize(attempts.size, "time") %> in the last day<%= ", most recently #{time_ago_in_words(attempts.last.created_at)} ago" if attempts.last.created_at %>.
+              <%= pluralize([ TelnyxCall::MAX_VERIFICATIONS_PER_DAY - attempts.size, 0 ].max, "attempt") %> left.
             <% else %>
               We'll ring once. If nobody answers, or they'd rather not, nothing changes.
             <% end %>

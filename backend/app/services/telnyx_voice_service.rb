@@ -210,7 +210,14 @@ class TelnyxVoiceService
     response = get("/calls/#{call_control_id}")
     return nil unless response&.key?("data")
 
-    !!response.dig("data", "is_alive")
+    # A missing is_alive is not a "no". Coercing it would turn an unexpected
+    # payload — a field renamed, a partial response — into a confident "the call
+    # has ended", and free the claim on a line somebody is still holding. Absent
+    # means unknown, and unknown means wait.
+    live = response.dig("data", "is_alive")
+    return nil if live.nil?
+
+    !!live
   rescue => e
     Rails.logger.warn "Telnyx call lookup failed for #{call_control_id}: #{e.message}"
     nil

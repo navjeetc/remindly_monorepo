@@ -112,4 +112,30 @@ RSpec.describe TelnyxVoiceService do
       expect(attempt.reload.outcome).to eq("error")
     end
   end
+  describe ".alive?" do
+    it "reports a live call" do
+      allow(described_class).to receive(:get).and_return({ "data" => { "is_alive" => true } })
+
+      expect(described_class.alive?("v3:x")).to be true
+    end
+
+    it "reports an ended call" do
+      allow(described_class).to receive(:get).and_return({ "data" => { "is_alive" => false } })
+
+      expect(described_class.alive?("v3:x")).to be false
+    end
+
+    # The distinction the reconciliation depends on: absent is not false.
+    it "says unknown when the payload has no liveness field at all" do
+      allow(described_class).to receive(:get).and_return({ "data" => { "record_type" => "call" } })
+
+      expect(described_class.alive?("v3:x")).to be_nil
+    end
+
+    it "says unknown when the provider cannot be reached" do
+      allow(described_class).to receive(:get).and_return(nil)
+
+      expect(described_class.alive?("v3:x")).to be_nil
+    end
+  end
 end
