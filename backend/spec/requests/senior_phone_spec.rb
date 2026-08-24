@@ -315,6 +315,43 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
         .not_to change(TelnyxCall, :count)
     end
 
+    # The other half of the boundary, and the more serious one. Capturing a single
+    # `now` makes the decision self-consistent, but consistency is not currency:
+    # reserving on a 20:59:59.9 reading and dialling at 21:00:00.1 would place a
+    # real call outside the legally enforced window. Trading a stranded
+    # reservation for an illegal call is much the worse bargain, so the clock is
+    # read once more immediately before the provider call.
+    #
+    # true, true, false: the controller's check, reserve_verification's own, and
+    # then the window shutting before the dial.
+    it "places no call when the window shuts between reserving and dialling" do
+      answers = [ true, true, false ]
+      allow_any_instance_of(User).to receive(:within_calling_hours?) do
+        answers.empty? ? false : answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+      expect(flash[:alert]).to include("We only call between")
+    end
+
+    # And it must not reintroduce the stranded row this change exists to remove:
+    # completed_at is what frees the senior's line.
+    it "lets go of the reservation it made, rather than stranding it" do
+      answers = [ true, true, false ]
+      allow_any_instance_of(User).to receive(:within_calling_hours?) do
+        answers.empty? ? false : answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      attempt = TelnyxCall.verifications.where(user_id: senior.id).last
+      expect(attempt.completed_at).to be_present
+      expect(attempt.status).to eq("cancelled")
+      expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be false
+    end
+
     # The same guarantee stated as the mechanism, which is what the fix actually
     # changed: one clock is read and threaded through, so the model cannot judge
     # a different instant than the controller did.
