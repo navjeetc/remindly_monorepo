@@ -20,19 +20,19 @@ RSpec.describe TelnyxCall do
 
       described_class.create!(occurrence: occurrence_at(Time.current), user: senior,
                               attempt_number: 1, call_day: day, daily_sequence: 1,
-                              status: "initiated", outcome: "pending")
+                              status: "hangup", outcome: "no_response", completed_at: Time.current)
 
       expect {
         described_class.create!(occurrence: occurrence_at(Time.current + 1.hour), user: senior,
                                 attempt_number: 1, call_day: day, daily_sequence: 1,
-                                status: "initiated", outcome: "pending")
+                                status: "hangup", outcome: "no_response", completed_at: Time.current)
       }.to raise_error(ActiveRecord::RecordNotUnique)
     end
 
     it "allows the same slot number on a different day" do
       described_class.create!(occurrence: occurrence_at(Time.current), user: senior,
                               attempt_number: 1, call_day: Date.new(2026, 6, 15), daily_sequence: 1,
-                              status: "initiated", outcome: "pending")
+                              status: "hangup", outcome: "no_response", completed_at: Time.current)
 
       expect {
         described_class.create!(occurrence: occurrence_at(Time.current + 1.day), user: senior,
@@ -271,6 +271,47 @@ RSpec.describe TelnyxCall do
       senior.update!(phone: nil)
 
       expect(described_class.reserve_verification(senior)).to be_nil
+    end
+  end
+  # call_in_flight? is a read, so two reservations can both see an idle line
+  # before either writes. A verification racing a reminder collides on no other
+  # index — verification holds no daily_sequence and has no occurrence — so the
+  # partial unique index on user_id is what actually decides.
+  describe "one live call per senior, enforced" do
+    before { senior.update!(phone: "+15551234567") }
+
+    it "refuses a second live call however it is claimed" do
+      described_class.reserve_verification(senior)
+
+      expect {
+        described_class.create!(occurrence: occurrence_at(Time.current), user: senior,
+                                attempt_number: 1, status: "reserved", outcome: "pending")
+      }.to raise_error(ActiveRecord::RecordNotUnique)
+    end
+
+    it "allows the next one once the first has ended" do
+      described_class.reserve_verification(senior).update!(completed_at: Time.current)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
+    end
+
+    # The index cannot be told a row is merely old, so something has to close
+    # one whose worker died — otherwise a senior's line is held for ever.
+    it "closes an attempt abandoned past the in-flight window and lets the next through" do
+      stale = described_class.reserve_verification(senior)
+      stale.update_columns(created_at: described_class::IN_FLIGHT_WINDOW.ago - 1.minute)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
+      expect(stale.reload.completed_at).to be_present
+      expect(stale.outcome).to eq("error")
+    end
+
+    it "does not close an attempt that is merely in progress" do
+      live = described_class.reserve_verification(senior)
+
+      described_class.reserve(occurrence_at(Time.current), senior)
+
+      expect(live.reload.completed_at).to be_nil
     end
   end
 end

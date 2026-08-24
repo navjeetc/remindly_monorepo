@@ -171,7 +171,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     before do
       2.times do |i|
         TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: i + 1,
-                           status: "failed", outcome: "error")
+                           status: "failed", outcome: "error", completed_at: Time.current)
       end
     end
 

@@ -179,11 +179,12 @@ class DashboardController < WebController
 
     senior = link.senior
 
-    if senior.call_opted_out_at.present?
-      return redirect_to senior_dashboard_path(senior),
-                         alert: "#{senior.display_name} asked not to be called. Only they can change that, by agreeing on a call they answer."
-    end
-
+    # An opt-out is deliberately not a block here. The verification call is the
+    # only thing whose keypress can lift one, so refusing to place it would have
+    # made the alert's own promise — that only the senior can change this, by
+    # agreeing on a call — impossible to keep. Asking again is allowed; the
+    # safeguard is that every attempt is recorded and counted where the caregiver
+    # can see it, and that five a day is all anyone gets.
     attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user)
 
     if attempt.nil?

@@ -62,7 +62,8 @@ RSpec.describe "Telnyx webhooks", type: :request do
         "Hello #{senior.display_name}. This is Remindly, with your reminder. " \
         "Take your morning vitamins. " \
         "Press 1 if you have done it. " \
-        "Press 2 to be reminded again in 10 minutes."
+        "Press 2 to be reminded again in 10 minutes. " \
+        "Press 9 to stop these calls."
       )
     end
 
@@ -286,6 +287,42 @@ RSpec.describe "Telnyx webhooks", type: :request do
       telnyx_post("call.gather.ended", digits: "")
 
       expect(TelnyxCall.call_in_flight?(senior, Time.current)).to be false
+    end
+  end
+
+  # Invariant 8 of the design document: the senior can stop the calls without
+  # signing in, without a caregiver and without a screen. Offering that only on
+  # the verification call would mean refusing at setup or never — and the call
+  # they hear every day is the one they would actually want to stop.
+  describe "pressing 9 on an ordinary reminder call" do
+    it "stops future calls immediately and permanently" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(senior.reload.call_opted_out_at).to be_present
+      expect(senior.call_reminders_enabled).to be false
+    end
+
+    it "is offered aloud, not merely accepted" do
+      said = nil
+      allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
+
+      telnyx_post("call.answered")
+
+      expect(said).to include("Press 9 to stop these calls")
+    end
+
+    # They said stop calling, not that the dose was taken.
+    it "leaves the occurrence pending so the missed sweep still claims it" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(occurrence.reload.status).to eq("pending")
+      expect(occurrence.acknowledgements).to be_empty
+    end
+
+    it "records the call as opted out rather than as no response" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(telnyx_call.reload.outcome).to eq("opted_out")
     end
   end
 

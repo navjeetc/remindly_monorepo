@@ -62,13 +62,26 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(senior.reload.callable_by_phone?).to be false
     end
 
-    it "refuses once the senior has said stop" do
+    # Refusing here made re-consent unreachable: this call is the only thing
+    # whose keypress can lift an opt-out, so blocking it would have made the
+    # promise "only they can change this, by agreeing on a call" impossible to
+    # keep. Asking again is allowed; the bound and the visible count are the
+    # safeguard.
+    it "may still ask someone who previously said stop" do
       senior.update!(call_opted_out_at: 1.day.ago)
 
       post "/dashboard/senior/#{senior.id}/verify_phone"
 
-      expect(TelnyxVoiceService).not_to have_received(:verify)
-      expect(flash[:alert]).to include("asked not to be called")
+      expect(TelnyxVoiceService).to have_received(:verify).once
+    end
+
+    it "grants nothing by asking — the opt-out stands until they say otherwise" do
+      senior.update!(call_opted_out_at: 1.day.ago)
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(senior.reload.call_opted_out_at).to be_present
+      expect(senior.callable_by_phone?).to be false
     end
 
     it "stops after the day's allowance" do

@@ -105,6 +105,8 @@ class TelnyxCall < ApplicationRecord
   # reminder call must never ring one phone at once, whatever they are each for.
   def self.reserve_verification(user, requested_by: nil, now: Time.current)
     return nil if user.phone.blank?
+
+    expire_stale_attempts(user, now)
     return nil if call_in_flight?(user, now)
 
     day = local_day(user, now)
@@ -165,6 +167,13 @@ class TelnyxCall < ApplicationRecord
     #
     # The skipped occurrence is not lost. It stays pending and the scheduler,
     # which runs every minute, offers it again once the line is free.
+    #
+    # The check is an early exit, not the guarantee. Two reservations can both
+    # read an idle line before either writes, and a verification racing a
+    # reminder collides on no other index — so the unique index on user_id where
+    # completed_at is null is what actually decides, and the loser lands in the
+    # rescue below.
+    expire_stale_attempts(user, now)
     return nil if call_in_flight?(user, now)
 
     slot = free_slot(user, day)
@@ -253,6 +262,17 @@ class TelnyxCall < ApplicationRecord
     where(user_id: user.id, completed_at: nil)
       .where(created_at: (now - IN_FLIGHT_WINDOW)..now)
       .exists?
+  end
+
+  # Ends any attempt that stopped mattering without saying so — a row whose
+  # worker died between claiming and dialling. Called before claiming, because
+  # the unique index on (user_id) WHERE completed_at IS NULL is absolute: it
+  # cannot be told that a row is merely old, so something has to close it.
+  def self.expire_stale_attempts(user, now)
+    where(user_id: user.id, completed_at: nil)
+      .where(created_at: ...(now - IN_FLIGHT_WINDOW))
+      .update_all(status: "failed", outcome: "error", daily_sequence: nil,
+                  completed_at: now, updated_at: now)
   end
 
   # Releases this attempt's hold on the day, for an attempt that never rang.

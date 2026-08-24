@@ -206,4 +206,72 @@ RSpec.describe "Telnyx verification calls", type: :request do
 
     expect(Acknowledgement.count).to eq(0)
   end
+  # A caregiver-created senior may have no name at all — SENIOR_ACCESS_DESIGN.md
+  # contemplates exactly that. User validates name on update, so writing consent
+  # with update! would raise, the webhook would answer 500, Telnyx would retry
+  # into the same wall, and the senior could never stop the calls.
+  describe "a senior with an incomplete profile" do
+    let(:senior) { User.create!(email: "nameless@example.com", role: :senior, tz: "America/New_York", phone: "+15551234567") }
+
+    it "can still say stop" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(senior.reload.call_opted_out_at).to be_present
+      expect(senior.call_reminders_enabled).to be false
+    end
+
+    it "can still agree" do
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(senior.reload.call_consent_at).to be_present
+      expect(senior.call_reminders_enabled).to be true
+    end
+
+    it "does not answer the provider with an error it would retry forever" do
+      telnyx_post("call.gather.ended", digits: "9")
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  # dial can succeed while writing call_control_id back fails. Reminder calls
+  # recover through correlate; verification calls could not, because correlate
+  # demanded an occurrence_id that a verification never has — so the senior
+  # answered to silence and no keypress could reach us.
+  describe "a callback that arrives before the call id was recorded" do
+    it "adopts the reserved verification attempt" do
+      reserved = TelnyxCall.reserve_verification(senior, requested_by: caregiver)
+
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.answered",
+          payload: {
+            call_control_id: "v3:not-recorded-yet",
+            client_state: Base64.strict_encode64(
+              { user_id: senior.id, attempt_number: reserved.attempt_number, purpose: "verification" }.to_json
+            )
+          }
+        }
+      }
+
+      expect(reserved.reload.call_control_id).to eq("v3:not-recorded-yet")
+      expect(reserved.answered_at).to be_present
+    end
+
+    it "still drops an event that names nothing we hold" do
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.answered",
+          payload: {
+            call_control_id: "v3:someone-elses",
+            client_state: Base64.strict_encode64({ user_id: senior.id, attempt_number: 99, purpose: "verification" }.to_json)
+          }
+        }
+      }
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
 end

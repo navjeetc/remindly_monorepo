@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_010000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -254,6 +254,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_000000) do
     t.index ["user_id", "call_day", "daily_sequence"], name: "index_telnyx_calls_on_user_day_and_sequence", unique: true, where: "call_day IS NOT NULL"
     t.index ["user_id", "purpose", "call_day"], name: "index_telnyx_calls_on_user_purpose_and_day"
     t.index ["user_id"], name: "index_telnyx_calls_on_user_id"
+    t.index ["user_id"], name: "index_telnyx_calls_one_live_call_per_user", unique: true, where: "completed_at IS NULL"
   end
 
   create_table "time_blocks", force: :cascade do |t|
