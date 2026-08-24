@@ -271,6 +271,104 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
 
       expect(TelnyxVoiceService).not_to have_received(:verify)
     end
+
+    # The observable half of the boundary race. Hours used to be checked after
+    # reserving, on a second Time.current, so a request landing on 21:00 could
+    # create a row and then refuse to dial it — leaving a reservation that held
+    # the line and spent one of the five daily attempts for good, because the
+    # allowance counts rows by created_at whether or not anything was dialled.
+    #
+    # Asserted as "no row exists", which holds however the ordering is written
+    # and does not depend on catching a sub-second window.
+    it "reserves nothing at all when it refuses on calling hours" do
+      senior.update!(tz: "Asia/Tokyo")
+
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change(TelnyxCall, :count)
+    end
+
+    it "leaves the day's allowance untouched when it refuses on calling hours" do
+      senior.update!(tz: "Asia/Tokyo")
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxCall.verifications_in_window(senior.phone).count).to eq(0)
+    end
+
+    # The two above assert a property worth keeping, but neither of them fails
+    # against the old ordering — reserve_verification guards hours itself, so no
+    # row is created outside hours either way. The bug needed the clock to MOVE
+    # between two reads, which a frozen-clock spec cannot produce.
+    #
+    # So this models it directly: the guard answers "inside" once and "outside"
+    # immediately after, exactly as a request straddling 21:00:00 would see it.
+    # Under the old code the first answer went to reserve_verification, which
+    # created a row, and the second refused to dial it — stranding a reservation
+    # that held the line and spent one of the five daily attempts for good.
+    it "cannot strand a reservation when the clock crosses the boundary mid-request" do
+      answers = [ true, false ]
+      allow_any_instance_of(User).to receive(:within_calling_hours?) do
+        answers.empty? ? false : answers.shift
+      end
+
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change(TelnyxCall, :count)
+    end
+
+    # The other half of the boundary, and the more serious one. Capturing a single
+    # `now` makes the decision self-consistent, but consistency is not currency:
+    # reserving on a 20:59:59.9 reading and dialling at 21:00:00.1 would place a
+    # real call outside the legally enforced window. Trading a stranded
+    # reservation for an illegal call is much the worse bargain, so the clock is
+    # read once more immediately before the provider call.
+    #
+    # true, true, false: the controller's check, reserve_verification's own, and
+    # then the window shutting before the dial.
+    it "places no call when the window shuts between reserving and dialling" do
+      answers = [ true, true, false ]
+      allow_any_instance_of(User).to receive(:within_calling_hours?) do
+        answers.empty? ? false : answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+      expect(flash[:alert]).to include("We only call between")
+    end
+
+    # And it must not leave the reservation behind in any form. Nothing was sent
+    # to the provider — the row was made moments earlier in the same request and
+    # the refusal happens before TelnyxVoiceService is reached — so it is
+    # definitively undialled and undoing it costs nothing. Completing it instead
+    # would leave the caregiver a fifth of the day poorer, and the screen
+    # reporting an attempt, for a call this code deliberately declined to place.
+    it "undoes the reservation it made, rather than banking it against the caregiver" do
+      answers = [ true, true, false ]
+      allow_any_instance_of(User).to receive(:within_calling_hours?) do
+        answers.empty? ? false : answers.shift
+      end
+
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change(TelnyxCall, :count)
+
+      expect(TelnyxCall.verifications_in_window(senior.phone).count).to eq(0)
+      expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be false
+    end
+
+    # The same guarantee stated as the mechanism, which is what the fix actually
+    # changed: one clock is read and threaded through, so the model cannot judge
+    # a different instant than the controller did.
+    it "judges the reservation by the same instant it checked the hours against" do
+      captured = :never_called
+      allow(TelnyxCall).to receive(:reserve_verification).and_wrap_original do |original, *args, **kwargs|
+        captured = kwargs[:now]
+        original.call(*args, **kwargs)
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(captured).to be_a(ActiveSupport::TimeWithZone)
+    end
   end
 
   describe "a view-only caregiver" do

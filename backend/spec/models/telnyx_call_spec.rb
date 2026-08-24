@@ -497,6 +497,12 @@ RSpec.describe TelnyxCall do
   # Every calendar bucket has a boundary, and every boundary sits inside
   # somebody's calling hours.
   describe "the verification bound" do
+    # Completed, and deliberately without a call_control_id. The bound counts
+    # every verification row in the window, including one that finished without
+    # reaching the provider — an accepted-but-unrecorded call may be ringing
+    # right now, and correlate exists to repair exactly that row. Excusing this
+    # shape from the cap would free the line and the allowance while the handset
+    # rings, so these tests exist to fail if anybody tries it. See #82.
     def exhaust(user)
       described_class::MAX_VERIFICATIONS_PER_DAY.times do
         described_class.reserve_verification(user)&.update!(completed_at: Time.current)

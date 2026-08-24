@@ -199,19 +199,27 @@ class DashboardController < WebController
                          alert: "There's no phone number saved for #{senior.display_name} yet. Add one first, then ask them."
     end
 
-    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false)
+    # One clock for the whole decision. This used to reserve first and ask about
+    # calling hours afterwards, on a second Time.current -- so a request landing
+    # on the boundary could pass reserve_verification's own hours guard at
+    # 20:59:59.9, create the row, and be refused at 21:00:00.1. Nothing was
+    # dialled, but the row held the line for IN_FLIGHT_WINDOW and spent one of
+    # the five daily attempts for good, since the allowance counts rows by
+    # created_at and does not care whether a call was placed.
+    #
+    # Asking before reserving also means an out-of-hours click stops costing a
+    # reservation attempt at all, rather than relying on the model to refuse it.
+    now = Time.current
 
     # An unresolvable tz is one of the two ways within_calling_hours? says no, so
     # this branch is exactly where a bad identifier arrives -- and in_time_zone
     # raises on it, which would answer a refused call with a 500. Say the hours
     # without the clock when we cannot read the clock.
-    unless senior.within_calling_hours?
-      local = senior.local_time
-      where = local ? "It's #{local.strftime('%-l:%M%P')} where #{senior.display_name} is. " : ""
-
-      return redirect_to senior_dashboard_path(senior),
-                         alert: "#{where}We only call between #{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm #{senior.display_name}'s time."
+    unless senior.within_calling_hours?(at: now)
+      return redirect_to senior_dashboard_path(senior), alert: outside_calling_hours_alert(senior, at: now)
     end
+
+    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false, now: now)
 
     if attempt.nil?
       # Two conditions reach here and they call for opposite advice. A spent
@@ -223,7 +231,7 @@ class DashboardController < WebController
       #
       # Read from the database rather than inferred: reserve_verification answers
       # every refusal with the same nil, so the reason has to be asked for.
-      spent = TelnyxCall.verifications_in_window(senior.phone)
+      spent = TelnyxCall.verifications_in_window(senior.phone, now)
 
       if spent.count >= TelnyxCall::MAX_VERIFICATIONS_PER_DAY
         oldest = spent.minimum(:created_at)
@@ -243,6 +251,36 @@ class DashboardController < WebController
     # verify returns nil when the provider refused it, having marked the attempt
     # failed. Reporting success regardless would leave a caregiver waiting for a
     # call that was never placed, and waiting is exactly what they cannot debug.
+    # Re-read the clock immediately before the provider call, and let go of the
+    # reservation if the window shut while we were claiming it.
+    #
+    # The single captured `now` above is what makes the decision self-consistent,
+    # but consistency is not the same as currency: reserving on a 20:59:59.9
+    # reading and dialling at 21:00:00.1 would place a real call outside the
+    # legally enforced window. The previous ordering prevented that by accident,
+    # and removing it traded a stranded reservation for an illegal call — much
+    # the worse of the two, however narrow the window.
+    #
+    # Destroyed rather than completed, and this is the one place that is safe.
+    #
+    # Nothing was sent: the row was created moments ago in this same request and
+    # we have not reached TelnyxVoiceService yet, so no provider knows it exists
+    # and no webhook can ever name it. That makes it *definitively* undialled,
+    # which the general case is not — a row completed by verify's rescue may be a
+    # call Telnyx already accepted and is ringing now, which is why the bound
+    # deliberately counts every row and why #82 is not a query filter.
+    #
+    # Merely completing it would leave the caregiver a fifth of the day poorer,
+    # and the screen reporting an attempt, for a call that was never placed by a
+    # refusal this code performed on purpose.
+    at_dial = Time.current
+
+    unless senior.within_calling_hours?(at: at_dial)
+      attempt.destroy!
+
+      return redirect_to senior_dashboard_path(senior), alert: outside_calling_hours_alert(senior, at: at_dial)
+    end
+
     if TelnyxVoiceService.verify(attempt).present?
       redirect_to senior_dashboard_path(senior),
                   notice: "Calling #{attempt.to_number} now. Ask #{senior.display_name} to press 1 if they'd like reminders."
@@ -575,6 +613,23 @@ class DashboardController < WebController
   end
 
   private
+
+  # Said in two places now — once when the window is already shut, and once when
+  # it shuts between reserving and dialling — so it is written once. The clock is
+  # a parameter because those two callers mean different instants: the first is
+  # reporting the instant it judged, the second the instant it discovered.
+  #
+  # An unresolvable tz is one of the two ways within_calling_hours? says no, so
+  # both callers can arrive here with one — and in_time_zone raises on exactly
+  # that identifier, which would answer a correctly refused call with a 500. Say
+  # the hours without the clock when the clock cannot be read.
+  def outside_calling_hours_alert(senior, at: Time.current)
+    local = senior.local_time(at: at)
+    where = local ? "It's #{local.strftime('%-l:%M%P')} where #{senior.display_name} is. " : ""
+
+    "#{where}We only call between #{User::CALLING_HOURS.first}am and " \
+      "#{User::CALLING_HOURS.max + 1 - 12}pm #{senior.display_name}'s time."
+  end
 
   def check_role!
     render "choose_role", layout: "dashboard" if current_user.role.nil?
