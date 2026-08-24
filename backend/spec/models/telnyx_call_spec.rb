@@ -238,9 +238,8 @@ RSpec.describe TelnyxCall do
     end
 
     it "stops after five in one day" do
-      granted = 7.times.map do |i|
-        described_class.reserve_verification(senior)
-                       &.tap { |c| c.update!(completed_at: Time.current, call_control_id: "v3:granted-#{i}") }
+      granted = 7.times.map do
+        described_class.reserve_verification(senior)&.tap { |c| c.update!(completed_at: Time.current) }
       end.compact
 
       expect(granted.size).to eq(described_class::MAX_VERIFICATIONS_PER_DAY)
@@ -268,7 +267,7 @@ RSpec.describe TelnyxCall do
     end
 
     it "does not block once it has ended" do
-      described_class.reserve_verification(senior).update!(completed_at: Time.current, call_control_id: "v3:ended")
+      described_class.reserve_verification(senior).update!(completed_at: Time.current)
 
       expect(described_class.reserve_verification(senior)).to be_present
     end
@@ -498,13 +497,15 @@ RSpec.describe TelnyxCall do
   # Every calendar bucket has a boundary, and every boundary sits inside
   # somebody's calling hours.
   describe "the verification bound" do
-    # call_control_id, because the bound counts calls that reached the provider.
-    # A completed row without one never rang and is deliberately not counted, so
-    # exhausting the allowance with those would exhaust nothing.
+    # Completed, and deliberately without a call_control_id. The bound counts
+    # every verification row in the window, including one that finished without
+    # reaching the provider — an accepted-but-unrecorded call may be ringing
+    # right now, and correlate exists to repair exactly that row. Excusing this
+    # shape from the cap would free the line and the allowance while the handset
+    # rings, so these tests exist to fail if anybody tries it. See #82.
     def exhaust(user)
-      described_class::MAX_VERIFICATIONS_PER_DAY.times do |i|
-        described_class.reserve_verification(user)
-                       &.update!(completed_at: Time.current, call_control_id: "v3:exhaust-#{user.id}-#{i}")
+      described_class::MAX_VERIFICATIONS_PER_DAY.times do
+        described_class.reserve_verification(user)&.update!(completed_at: Time.current)
       end
     end
 
