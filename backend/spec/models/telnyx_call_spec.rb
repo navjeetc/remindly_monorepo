@@ -178,6 +178,10 @@ RSpec.describe TelnyxCall do
   # belongs to a number rather than to a dose, so it has no occurrence and holds
   # no reminder slot — which is exactly why its own bounds have to be explicit.
   describe "verification calls" do
+    # Verification calls are refused outside the senior's calling window, so
+    # without a fixed clock these pass by day and fail by night.
+    around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
     before { senior.update!(phone: "+15551234567") }
 
     it "is claimed without an occurrence" do
@@ -279,6 +283,10 @@ RSpec.describe TelnyxCall do
   # index — verification holds no daily_sequence and has no occurrence — so the
   # partial unique index on user_id is what actually decides.
   describe "one live call per senior, enforced" do
+    # Verification calls are refused outside the senior's calling window, so
+    # without a fixed clock these pass by day and fail by night.
+    around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
     before { senior.update!(phone: "+15551234567") }
 
     it "refuses a second live call however it is claimed" do
@@ -372,6 +380,10 @@ RSpec.describe TelnyxCall do
   # arrives would make a number permanently uncallable. Age alone cannot settle
   # it — a long call is just long — so the provider is asked.
   describe "reconciling a dialled call whose hangup never arrived" do
+    # Verification calls are refused outside the senior's calling window, so
+    # without a fixed clock these pass by day and fail by night.
+    around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
     before { senior.update!(phone: "+15551234567") }
 
     def stale_dialled_call
@@ -415,6 +427,56 @@ RSpec.describe TelnyxCall do
 
       expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
       expect(call.reload.completed_at).to be_present
+    end
+  end
+  # Follow-ups to the reconciliation fix itself.
+  describe "reconciliation edge cases" do
+    around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+    before { senior.update!(phone: "+15551234567") }
+
+    def stale_dialled_call(age:)
+      described_class.reserve_verification(senior).tap do |c|
+        c.update!(call_control_id: "v3:dialled")
+        c.update_columns(created_at: age.ago)
+      end
+    end
+
+    # The clock must not override the provider. A call an hour old is broken,
+    # but it is broken and connected, and releasing the claim would put a second
+    # call on a line somebody is still holding.
+    it "hangs up an hour-old call the provider says is still connected, rather than abandoning it" do
+      call = stale_dialled_call(age: described_class::ABANDONED_AFTER + 1.minute)
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(true, false)
+      allow(TelnyxVoiceService).to receive(:hangup)
+
+      described_class.reserve(occurrence_at(Time.current), senior)
+
+      expect(TelnyxVoiceService).to have_received(:hangup).with(call_control_id: "v3:dialled")
+      expect(call.reload.completed_at).to be_present
+    end
+
+    it "keeps the claim when the hangup does not take" do
+      call = stale_dialled_call(age: described_class::ABANDONED_AFTER + 1.minute)
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(true)
+      allow(TelnyxVoiceService).to receive(:hangup)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_nil
+      expect(call.reload.completed_at).to be_nil
+    end
+  end
+
+  # users.tz is editable, so a day derived from it can be reset. The reminder cap
+  # uses the local day deliberately; this bound must not be resettable.
+  it "counts a verification day in UTC, so a timezone change cannot refill the allowance" do
+    travel_to(Time.utc(2026, 6, 24, 12, 0)) do
+      senior.update!(phone: "+15551234567", tz: "America/New_York")
+      described_class::MAX_VERIFICATIONS_PER_DAY.times do
+        described_class.reserve_verification(senior)&.update!(completed_at: Time.current)
+      end
+
+      senior.update!(tz: "Asia/Tokyo")
+
+      expect(described_class.reserve_verification(senior)).to be_nil
     end
   end
 end

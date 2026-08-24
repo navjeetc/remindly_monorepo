@@ -17,6 +17,15 @@ require "base64"
 class TelnyxVoiceService
   API_BASE = URI("https://api.telnyx.com/v2").freeze
 
+  # Net::HTTP's defaults are tens of seconds, and reconciliation calls the
+  # provider from inside reserve — which runs in a web request as well as a job.
+  # A provider that accepts a connection and then stalls would hold a web worker
+  # for the whole default, and enough concurrent requests during a degradation
+  # would exhaust the pool. Short and explicit: a lookup that has not answered in
+  # a few seconds is not going to.
+  OPEN_TIMEOUT = 2
+  READ_TIMEOUT = 5
+
   # Initiate an outbound call for the given occurrence. Returns the call_control_id
   # from Telnyx so we can correlate webhooks.
   # `attempt` is a TelnyxCall already claimed by TelnyxCall.reserve. Requiring it
@@ -212,7 +221,8 @@ class TelnyxVoiceService
     request = Net::HTTP::Get.new(uri)
     request["Authorization"] = "Bearer #{credentials[:api_key]}"
 
-    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") { |http| http.request(request) }
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https",
+                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) { |http| http.request(request) }
 
     # 404 means the provider has no record of it, which for our purposes is the
     # same as ended — there is nothing left to hang up.
@@ -346,7 +356,8 @@ class TelnyxVoiceService
     request["Authorization"] = "Bearer #{credentials[:api_key]}"
     request.body = body.to_json
 
-    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https",
+                               open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) do |http|
       http.request(request)
     end
 

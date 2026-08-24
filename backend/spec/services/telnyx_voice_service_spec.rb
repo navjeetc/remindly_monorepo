@@ -4,6 +4,13 @@ require "rails_helper"
 # entirely silent: get it wrong and the call still connects, still rings, and
 # the senior hears nothing until it times out. There is no error anywhere.
 RSpec.describe TelnyxVoiceService do
+  include ActiveSupport::Testing::TimeHelpers
+
+  # These specs place verification calls, which are now refused outside the
+  # senior's calling window — so without a fixed clock they pass by day and fail
+  # by night. Mid-morning in New York, which is inside every window here.
+  around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
   describe ".webhook_url" do
     def with(base_url: nil, app_url: nil, token: "shhh")
       allow(Rails.application.credentials).to receive(:base_url).and_return(base_url)

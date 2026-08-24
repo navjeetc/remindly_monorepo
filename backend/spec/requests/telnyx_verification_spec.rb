@@ -4,6 +4,13 @@ require "rails_helper"
 # number may be telephoned. Everything else reads that decision; nothing else
 # writes it.
 RSpec.describe "Telnyx verification calls", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  # These specs place verification calls, which are now refused outside the
+  # senior's calling window — so without a fixed clock they pass by day and fail
+  # by night. Mid-morning in New York, which is inside every window here.
+  around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
   let(:senior) { create(:user, :senior, name: "Mom", phone: "+15551234567", tz: "America/New_York") }
   let(:caregiver) { create(:user, :caregiver, name: "Jane", nickname: "Janey", email: "kid@example.com") }
   let(:call) do

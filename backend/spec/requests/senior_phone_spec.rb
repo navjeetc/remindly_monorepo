@@ -5,6 +5,13 @@ require "rails_helper"
 # to another who had never agreed. These specs exist to make sure no such control
 # creeps back in.
 RSpec.describe "Caregiver managing a senior's phone reminders", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  # These specs place verification calls, which are now refused outside the
+  # senior's calling window — so without a fixed clock they pass by day and fail
+  # by night. Mid-morning in New York, which is inside every window here.
+  around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
   let(:caregiver) { create(:user, :caregiver, name: "Jane", email: "kid@example.com") }
   let(:senior) { create(:user, :senior, name: "Mom", tz: "America/New_York") }
   let!(:link) { CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage) }

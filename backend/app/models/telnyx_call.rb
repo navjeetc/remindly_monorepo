@@ -115,10 +115,17 @@ class TelnyxCall < ApplicationRecord
     expire_stale_attempts(user, now)
     return nil if call_in_flight?(user, now)
 
-    day = local_day(user, now)
+    # UTC, not the senior's local day, and deliberately unlike a reminder's.
+    #
+    # A reminder's cap uses the local day so that a senior's evening is not cut
+    # in half by a UTC boundary. This bound has the opposite requirement: it must
+    # not be resettable. call_day comes from users.tz, which is editable, so two
+    # records sharing one handset in different zones — or one record moved from
+    # Los Angeles afternoon to Tokyo morning — would land on different local days
+    # and each draw a full allowance, ten calls to one telephone in a moment.
+    day = now.utc.to_date
     # Counted per number, not per account. users.phone is not unique, so two
-    # records sharing a landline would otherwise carry five attempts each and
-    # ring one handset ten times.
+    # records sharing a landline would otherwise carry five attempts each.
     taken = verifications.where(to_number: user.phone, call_day: day).count
     return nil if taken >= MAX_VERIFICATIONS_PER_DAY
 
@@ -311,14 +318,25 @@ class TelnyxCall < ApplicationRecord
       .where.not(call_control_id: nil)
       .where(created_at: ...(now - IN_FLIGHT_WINDOW))
       .find_each do |attempt|
+        alive = TelnyxVoiceService.alive?(attempt.call_control_id)
+        expired = attempt.created_at < now - ABANDONED_AFTER
+
         # nil means we could not tell. Closing on a failed lookup would free the
-        # line while somebody was still talking, so only a definite "no" counts —
-        # until ABANDONED_AFTER, when not knowing stops being a reason to wait.
-        ended = TelnyxVoiceService.alive?(attempt.call_control_id) == false
-        next unless ended || attempt.created_at < now - ABANDONED_AFTER
+        # line while somebody was still talking, so only a definite "no" counts
+        # — until ABANDONED_AFTER, when not knowing stops being a reason to wait.
+        next unless alive == false || expired
+
+        # An affirmative "still connected" is not overridden by the clock. A
+        # reminder call an hour old is broken, but it is broken and *connected*,
+        # and releasing the claim would put a second call on a line somebody is
+        # still holding. End it for real first; if that fails, keep the claim.
+        if alive
+          TelnyxVoiceService.hangup(call_control_id: attempt.call_control_id)
+          next if TelnyxVoiceService.alive?(attempt.call_control_id) != false
+        end
 
         attempt.update!(status: "hangup", outcome: attempt.outcome == "pending" ? "no_response" : attempt.outcome,
-                        daily_sequence: attempt.daily_sequence, completed_at: now)
+                        completed_at: now)
       end
   end
 

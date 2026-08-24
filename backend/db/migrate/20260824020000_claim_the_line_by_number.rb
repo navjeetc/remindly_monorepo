@@ -21,8 +21,15 @@ class ClaimTheLineByNumber < ActiveRecord::Migration[8.1]
     # impossible to create. The entrypoint runs db:prepare at container start,
     # so a failure here aborts the boot rather than surfacing in a test.
     #
-    # The most recent claim on a number survives; older ones are closed, since a
-    # call that has been superseded is not the one still ringing.
+    # A row holding a call_control_id is a call the provider accepted; one
+    # without is a reservation that never rang. Insertion order is not liveness:
+    # keeping the newest would sometimes keep an inert reservation and close the
+    # real call underneath it — which does not hang that call up, and leaves its
+    # keypresses ignored because the outcome is no longer pending.
+    #
+    # So a dialled row always outranks an undialled one, and the newest dialled
+    # row wins among equals. Undialled duplicates are closed, which costs
+    # nothing: they never reached the provider.
     execute <<~SQL
       UPDATE telnyx_calls
          SET completed_at = CURRENT_TIMESTAMP,
@@ -32,9 +39,16 @@ class ClaimTheLineByNumber < ActiveRecord::Migration[8.1]
        WHERE completed_at IS NULL
          AND to_number IS NOT NULL
          AND id NOT IN (
-           SELECT MAX(id) FROM telnyx_calls
-            WHERE completed_at IS NULL AND to_number IS NOT NULL
-            GROUP BY to_number
+           SELECT id FROM telnyx_calls AS keep
+            WHERE keep.completed_at IS NULL
+              AND keep.to_number IS NOT NULL
+              AND keep.id = (
+                SELECT c.id FROM telnyx_calls AS c
+                 WHERE c.completed_at IS NULL
+                   AND c.to_number = keep.to_number
+                 ORDER BY (c.call_control_id IS NOT NULL) DESC, c.id DESC
+                 LIMIT 1
+              )
          )
     SQL
 
