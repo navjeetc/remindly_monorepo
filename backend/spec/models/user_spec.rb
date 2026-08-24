@@ -227,6 +227,28 @@ RSpec.describe User do
     end
   end
 
+  # The caregiver screen shows this so a wrong tz is visible to the one person
+  # who would recognise it. within_calling_hours? cannot help there: a zone that
+  # resolves and is simply wrong reads as permission and the guard stays quiet.
+  describe "#local_time" do
+    it "reads the clock where the senior is, not where the server is" do
+      senior = build(:user, tz: "Asia/Tokyo")
+      moment = ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 21, 30)
+
+      expect(senior.local_time(at: moment).strftime("%-l:%M%P")).to eq("10:30am")
+    end
+
+    # The whole reason this returns nil instead of a Time: in_time_zone raises
+    # ArgumentError on an unknown identifier, and the callers that need this are
+    # the ones already handling a senior whose zone did not resolve.
+    it "returns nil rather than raising when the zone cannot be resolved" do
+      senior = build(:user, tz: "Neverwhere/Nowhere")
+
+      expect { senior.local_time }.not_to raise_error
+      expect(senior.local_time).to be_nil
+    end
+  end
+
   describe "#notified_for?" do
     it "is true only for chosen categories" do
       user = create(:user, :caregiver, name: "Kid", notify_reminder_categories: %w[medication])

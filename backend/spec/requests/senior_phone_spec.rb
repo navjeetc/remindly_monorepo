@@ -100,6 +100,58 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
 
       expect(TelnyxVoiceService).not_to have_received(:verify)
     end
+
+    # An unresolvable tz is one of the two ways within_calling_hours? says no,
+    # so the refusal branch is exactly where a bad identifier arrives -- and
+    # naming the clock there with in_time_zone raises on it. tz is validated, so
+    # this needs update_column to reach; the point is that a row written around
+    # the validation refuses the call rather than 500ing at the caregiver.
+    it "refuses without raising when the senior's timezone does not resolve" do
+      senior.update_column(:tz, "Neverwhere/Nowhere")
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(response).to redirect_to(senior_dashboard_path(senior))
+      expect(flash[:alert]).to include("We only call between")
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+    end
+  end
+
+  # The clock the caregiver is deciding by is their own, and the product assumes
+  # it is not the senior's. The refusal message names the local time too, but
+  # only after the button is pressed and only when the guard fires -- which is
+  # never, in the case that matters: a tz that resolves cleanly and is simply
+  # wrong reads as permission. Showing it up front is what puts a wrong zone in
+  # front of the one person able to recognise it.
+  describe "the senior's clock on the caregiver's screen" do
+    before { senior.update!(phone: "+15551234567") }
+
+    it "shows the senior's local time, not the caregiver's" do
+      senior.update!(tz: "Asia/Tokyo")
+
+      get senior_dashboard_path(senior)
+
+      # 10:00 in New York, fixed by the around hook, is 23:00 in Tokyo.
+      expect(response.body).to include("11:00pm")
+      expect(response.body).to include("for Mom")
+    end
+
+    it "says so when the senior's clock puts them outside calling hours" do
+      senior.update!(tz: "Asia/Tokyo")
+
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("won't ring yet")
+    end
+
+    it "says nothing about a clock it cannot read" do
+      senior.update_column(:tz, "Neverwhere/Nowhere")
+
+      get senior_dashboard_path(senior)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("for Mom.")
+    end
   end
 
   describe "a view-only caregiver" do

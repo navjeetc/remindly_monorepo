@@ -222,15 +222,32 @@ class User < ApplicationRecord
     call_reminders_enabled?
   end
 
-  def within_calling_hours?(at: Time.current)
+  # This person's own clock, or nil when tz does not resolve.
+  #
+  # Callers must handle the nil rather than formatting whatever comes back:
+  # in_time_zone raises ArgumentError on an unknown identifier, so the naive
+  # version turns a bad tz into a 500 in whichever request touches it first.
+  # tz_resolves_to_a_real_zone should keep that from happening, so this is
+  # defence in depth rather than a hole being plugged -- but the validation is
+  # newer than the column, it cannot speak for a row written by a migration or
+  # by hand, and VoiceReminderJob already decided this same field was worth
+  # guarding this same way.
+  def local_time(at: Time.current)
     zone = ActiveSupport::TimeZone[tz.to_s]
+    return nil if zone.nil?
+
+    at.in_time_zone(zone)
+  end
+
+  def within_calling_hours?(at: Time.current)
+    local = local_time(at: at)
 
     # A zone we cannot resolve means we do not know what time it is where this
     # person is, and "probably daytime" is not a defence. Blocking is the only
     # safe default -- a call placed at 3am cannot be taken back.
-    return false if zone.nil?
+    return false if local.nil?
 
-    CALLING_HOURS.cover?(at.in_time_zone(zone).hour)
+    CALLING_HOURS.cover?(local.hour)
   end
 
   private

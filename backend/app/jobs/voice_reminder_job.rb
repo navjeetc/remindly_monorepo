@@ -137,9 +137,9 @@ class VoiceReminderJob < ApplicationJob
   # job's retry_on StandardError -- would turn a correctly suppressed call into
   # five retried failures.
   def local_time_for(senior)
-    zone = ActiveSupport::TimeZone[senior.tz.to_s]
-    return "an unresolvable timezone (#{senior.tz.inspect})" if zone.nil?
+    local = senior.local_time
+    return "an unresolvable timezone (#{senior.tz.inspect})" if local.nil?
 
-    Time.current.in_time_zone(zone).strftime("%H:%M %Z")
+    local.strftime("%H:%M %Z")
   end
 end

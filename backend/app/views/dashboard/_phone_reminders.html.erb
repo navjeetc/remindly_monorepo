@@ -76,6 +76,30 @@
 
       <% if senior.phone.present? %>
         <div class="pt-2 border-t border-gray-100">
+          <%#
+            The caregiver's own clock is not the one that governs this, and it
+            is often not the one they are picturing -- the product assumes a
+            daughter some hours from her mother. verify_phone says the local
+            time too, but only once the button has been pressed and only when
+            the guard fires, so it cannot help with the case this line exists
+            for: a tz that resolves cleanly and is simply wrong reads as
+            permission, and the guard stays quiet. Nobody but the caregiver
+            looking at this screen can tell that "10:30am" is nonsense for a
+            number they dial themselves, so the clock has to be in front of
+            them before they act, not after they are refused.
+          %>
+          <% local_now = senior.local_time %>
+          <% if local_now %>
+            <p class="mb-3 text-sm <%= senior.within_calling_hours? ? "text-gray-600" : "text-amber-700" %>">
+              It's <strong><%= local_now.strftime("%-l:%M%P") %> (<%= local_now.strftime("%Z") %>)</strong>
+              for <%= senior.display_name %>.
+              <% unless senior.within_calling_hours? %>
+                We only call between <%= User::CALLING_HOURS.first %>am and
+                <%= User::CALLING_HOURS.max + 1 - 12 %>pm, so this won't ring yet.
+              <% end %>
+            </p>
+          <% end %>
+
           <%= button_to "Call and ask #{senior.display_name}",
                 verify_senior_phone_path(senior_id: senior.id),
                 method: :post,

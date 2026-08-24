@@ -190,9 +190,16 @@ class DashboardController < WebController
     # clears it while the caregiver reads the message.
     attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false)
 
+    # An unresolvable tz is one of the two ways within_calling_hours? says no, so
+    # this branch is exactly where a bad identifier arrives -- and in_time_zone
+    # raises on it, which would answer a refused call with a 500. Say the hours
+    # without the clock when we cannot read the clock.
     unless senior.within_calling_hours?
+      local = senior.local_time
+      where = local ? "It's #{local.strftime('%-l:%M%P')} where #{senior.display_name} is. " : ""
+
       return redirect_to senior_dashboard_path(senior),
-                         alert: "It's #{Time.current.in_time_zone(senior.tz).strftime('%-l:%M%P')} where #{senior.display_name} is. We only call between #{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm."
+                         alert: "#{where}We only call between #{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm #{senior.display_name}'s time."
     end
 
     if attempt.nil?
@@ -222,7 +229,14 @@ class DashboardController < WebController
     @permission = link.permission
 
     # Get today's reminders
-    tz = ActiveSupport::TimeZone[@senior.tz]
+    #
+    # Falls back the way TelnyxCall does. A zone that does not resolve used to
+    # make this whole page 500 on the next line, which now takes the phone panel
+    # down with it -- and the caregiver would lose the one screen showing that
+    # the timezone is the thing at fault. Guessing the server's zone is wrong for
+    # deciding whether to ring someone, which is why within_calling_hours?
+    # refuses instead; for listing what is due it is only a display.
+    tz = ActiveSupport::TimeZone[@senior.tz.to_s] || Time.zone
     now = tz.now.beginning_of_day
     end_of_day = now.end_of_day
 
