@@ -196,6 +196,50 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     end
   end
 
+  # The server guard is what protects the senior and it stays. This is about not
+  # offering the caregiver an action that cannot succeed: pressing it only
+  # round-trips to an alert repeating the sentence already on the screen.
+  describe "the button outside calling hours" do
+    before { senior.update!(phone: "+15551234567") }
+
+    it "is available while the senior's clock is inside the window" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("Call and ask Mom")
+      expect(response.body).not_to match(/disabled[^>]*>\s*Call and ask Mom/m)
+    end
+
+    it "is disabled once it is too late where the senior is" do
+      senior.update!(tz: "Asia/Tokyo") # 23:00 there, from the fixed clock
+
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to match(/disabled/)
+      expect(response.body).to include("won't ring yet")
+    end
+
+    # A disabled control with nothing explaining it reads as a broken page, and
+    # an unresolvable zone is the other way the guard says no.
+    it "explains itself when the zone cannot be read at all" do
+      senior.update_column(:tz, "Neverwhere/Nowhere")
+
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to match(/disabled/)
+      expect(response.body).to include("isn't one we recognise")
+    end
+
+    # Belt and braces: the screen not offering it must never be the only thing
+    # stopping it, since the endpoint is reachable without the screen.
+    it "still refuses the call when the endpoint is reached anyway" do
+      senior.update!(tz: "Asia/Tokyo")
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+    end
+  end
+
   describe "a view-only caregiver" do
     let!(:link) { CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :view) }
 

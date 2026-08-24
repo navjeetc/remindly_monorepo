@@ -98,21 +98,44 @@
             them before they act, not after they are refused.
           %>
           <% local_now = senior.local_time %>
+          <% may_call = senior.within_calling_hours? %>
+
           <% if local_now %>
-            <p class="mb-3 text-sm <%= senior.within_calling_hours? ? "text-gray-600" : "text-amber-700" %>">
+            <p class="mb-3 text-sm <%= may_call ? "text-gray-600" : "text-amber-700" %>">
               It's <strong><%= local_now.strftime("%-l:%M%P") %> (<%= local_now.strftime("%Z") %>)</strong>
               for <%= senior.display_name %>.
-              <% unless senior.within_calling_hours? %>
+              <% unless may_call %>
                 We only call between <%= User::CALLING_HOURS.first %>am and
                 <%= User::CALLING_HOURS.max + 1 - 12 %>pm, so this won't ring yet.
               <% end %>
             </p>
+          <% elsif !may_call %>
+            <%#
+              The button is disabled below, and a disabled control with nothing
+              explaining it is worse than no control. An unresolvable zone is the
+              other way within_calling_hours? says no, and it is the caregiver who
+              can fix it — so it has to be named rather than left to look broken.
+            %>
+            <p class="mb-3 text-sm text-amber-700">
+              We can't tell what time it is where <%= senior.display_name %> is —
+              their timezone is set to <strong><%= senior.tz.presence || "nothing" %></strong>,
+              which isn't one we recognise. We won't call until that's corrected.
+            </p>
           <% end %>
 
+          <%#
+            Disabled outside calling hours rather than left to fail on submit.
+            The controller still refuses -- that guard is what actually protects
+            the senior, and it stays -- but a button that round-trips to an alert
+            repeating the sentence directly above it is the same defect this file
+            objects to a few lines down, where the attempt count is kept honest
+            precisely so the screen never offers what the model will refuse.
+          %>
           <%= button_to "Call and ask #{senior.display_name}",
                 verify_senior_phone_path(senior_id: senior.id),
                 method: :post,
-                class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+                disabled: !may_call,
+                class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white #{may_call ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"}" %>
           <p class="mt-2 text-xs text-gray-500">
             <%#
               "in the last day" is literal: verifications_in_window counts a
