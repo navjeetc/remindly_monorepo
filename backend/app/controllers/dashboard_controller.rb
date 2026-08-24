@@ -199,19 +199,31 @@ class DashboardController < WebController
                          alert: "There's no phone number saved for #{senior.display_name} yet. Add one first, then ask them."
     end
 
-    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false)
+    # One clock for the whole decision. This used to reserve first and ask about
+    # calling hours afterwards, on a second Time.current -- so a request landing
+    # on the boundary could pass reserve_verification's own hours guard at
+    # 20:59:59.9, create the row, and be refused at 21:00:00.1. Nothing was
+    # dialled, but the row held the line for IN_FLIGHT_WINDOW and spent one of
+    # the five daily attempts for good, since the allowance counts rows by
+    # created_at and does not care whether a call was placed.
+    #
+    # Asking before reserving also means an out-of-hours click stops costing a
+    # reservation attempt at all, rather than relying on the model to refuse it.
+    now = Time.current
 
     # An unresolvable tz is one of the two ways within_calling_hours? says no, so
     # this branch is exactly where a bad identifier arrives -- and in_time_zone
     # raises on it, which would answer a refused call with a 500. Say the hours
     # without the clock when we cannot read the clock.
-    unless senior.within_calling_hours?
-      local = senior.local_time
+    unless senior.within_calling_hours?(at: now)
+      local = senior.local_time(at: now)
       where = local ? "It's #{local.strftime('%-l:%M%P')} where #{senior.display_name} is. " : ""
 
       return redirect_to senior_dashboard_path(senior),
                          alert: "#{where}We only call between #{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm #{senior.display_name}'s time."
     end
+
+    attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false, now: now)
 
     if attempt.nil?
       # Two conditions reach here and they call for opposite advice. A spent
