@@ -45,12 +45,14 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: phone,
       from: from,
-      # attempt_number is here so a late callback can be matched to the exact
-      # attempt that produced it. Without it, correlation can only guess at the
-      # most recent uncorrelated row, and a delayed callback from attempt 1
-      # attaches itself to attempt 2.
+      # attempt_id names the exact row, which is the only identifier here that
+      # cannot become ambiguous: every other field is a description of the
+      # attempt, and descriptions collide. The occurrence and attempt_number are
+      # still sent so a call already ringing when this deploys still correlates
+      # on the old terms.
       client_state: Base64.strict_encode64(
-        { occurrence_id: occurrence.id, user_id: senior.id, attempt_number: attempt.attempt_number }.to_json
+        { attempt_id: attempt.id, occurrence_id: occurrence.id, user_id: senior.id,
+          attempt_number: attempt.attempt_number }.to_json
       ),
       command_id: command_id_for("dial")
     }
@@ -118,8 +120,16 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: number,
       from: from,
+      # attempt_id, because the descriptive fields cannot separate these rows.
+      # Verification attempt numbers restart per *destination*, so one senior
+      # moving from number A to number B on the same call_day has an attempt 1
+      # for each. If A's reservation never got its call_control_id written back,
+      # B's callback matches both rows, update_all tries to give them the same
+      # id, the unique index rolls the whole thing back -- and B is answered by
+      # somebody who then hears nothing. call_day and attempt_number stay for
+      # calls already in flight across a deploy.
       client_state: Base64.strict_encode64(
-        { user_id: senior.id, attempt_number: attempt.attempt_number,
+        { attempt_id: attempt.id, user_id: senior.id, attempt_number: attempt.attempt_number,
           call_day: attempt.call_day.to_s, purpose: "verification" }.to_json
       ),
       command_id: command_id_for("verify")

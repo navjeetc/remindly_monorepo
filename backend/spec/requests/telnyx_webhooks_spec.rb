@@ -187,6 +187,39 @@ RSpec.describe "Telnyx webhooks", type: :request do
       expect(reserved.answered_at).to be_present
     end
 
+    # Two numbers, one senior, one call_day. Verification attempt numbers restart
+    # per destination, so both reservations are attempt 1 and every descriptive
+    # field in client_state matches both rows. Matching on the description made
+    # update_all try to give two rows one call_control_id: the unique index rolled
+    # it back, correlate returned nothing, and the senior who had just answered
+    # heard silence. The row id is the only identifier here that cannot collide.
+    it "claims the exact verification attempt when another number holds the same attempt number" do
+      day = Time.current.utc.to_date
+      old_number = TelnyxCall.create!(user: senior, occurrence: nil, purpose: "verification",
+                                      attempt_number: 1, to_number: "+15550000001", call_day: day,
+                                      call_control_id: nil, status: "reserved", outcome: "pending")
+      new_number = TelnyxCall.create!(user: senior, occurrence: nil, purpose: "verification",
+                                      attempt_number: 1, to_number: "+15550000002", call_day: day,
+                                      call_control_id: nil, status: "reserved", outcome: "pending")
+
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.answered",
+          payload: {
+            call_control_id: "v3:second-number",
+            client_state: Base64.strict_encode64({ attempt_id: new_number.id, user_id: senior.id,
+                                                   attempt_number: 1, call_day: day.to_s,
+                                                   purpose: "verification" }.to_json)
+          }
+        }
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(new_number.reload.call_control_id).to eq("v3:second-number")
+      expect(old_number.reload.call_control_id).to be_nil
+    end
+
     it "revives an attempt dial() had already given up on, since the provider says it is real" do
       TelnyxCall.create!(occurrence: occurrence, user: senior, attempt_number: 1,
                          call_control_id: nil, status: "failed", outcome: "error",

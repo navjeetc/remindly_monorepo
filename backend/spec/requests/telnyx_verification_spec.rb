@@ -64,6 +64,22 @@ RSpec.describe "Telnyx verification calls", type: :request do
       expect(said).to include("Mom")
     end
 
+    # With nobody recorded as having arranged the call, the script used to say
+    # "You asked us to phone you" -- to somebody who had not. That is false, and
+    # it is the opening move of the scam the rest of this script is written to
+    # sound unlike.
+    it "does not tell the called party they asked for a call they never asked for" do
+      call.update!(requested_by: nil)
+      said = nil
+      allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
+
+      telnyx_post("call.answered")
+
+      expect(said).not_to include("You asked us")
+      expect(said).to include("We have been asked")
+      expect(said).to include("Mom")
+    end
+
     it "says what it will never ask for, before asking for anything" do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }

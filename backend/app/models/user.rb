@@ -261,11 +261,22 @@ class User < ApplicationRecord
   def forget_consent_when_the_number_changes
     return unless will_save_change_to_phone?
 
-    # Nothing to forget when there was no previous number — a new record, or the
-    # first number set on an existing one. Without this the callback wipes
-    # consent being granted in the same save, which reads as security and is
-    # simply a bug: it defeats any single write that sets both, silently.
-    return if phone_in_database.blank?
+    # Nothing to forget when there was no previous number *and* no consent facts
+    # to inherit — a new record, or the first number on a record that has none.
+    # Without some form of this the callback wipes consent being granted in the
+    # same save, which reads as security and is simply a bug: it defeats any
+    # single write that sets both, silently.
+    #
+    # The consent columns are checked as well as the number, because a record can
+    # hold consent with no phone: consent! writes the timestamps through
+    # update_all, and a later console repair or data fix could blank the number
+    # without touching them. Skipping on a blank previous number alone would then
+    # let the *first* number saved afterwards inherit an agreement given for a
+    # different handset — arriving at the exact failure this callback exists to
+    # prevent, by the one door left open.
+    return if phone_in_database.blank? &&
+              call_consent_at_in_database.blank? &&
+              phone_verified_at_in_database.blank?
 
     self.phone_verified_at = nil
     self.call_consent_at = nil

@@ -30,7 +30,7 @@
     <% if senior.call_opted_out_at.present? %>
       <p class="text-sm text-gray-700">
         <%= senior.display_name %> asked us to stop calling on
-        <%= senior.call_opted_out_at.in_time_zone(senior.tz).strftime("%B %-d") %>.
+        <%= (senior.local_time(at: senior.call_opted_out_at) || senior.call_opted_out_at).strftime("%B %-d") %>.
         We won't call again unless they say otherwise on a call they answer —
         that isn't something you or we can change for them.
       </p>
@@ -38,7 +38,7 @@
     <% elsif senior.callable_by_phone? %>
       <p class="text-sm text-gray-700">
         <%= senior.display_name %> agreed to phone reminders on
-        <%= senior.call_consent_at.in_time_zone(senior.tz).strftime("%B %-d") %>.
+        <%= (senior.local_time(at: senior.call_consent_at) || senior.call_consent_at).strftime("%B %-d") %>.
         We'll call <strong><%= senior.phone %></strong> when a reminder is due, between
         <%= User::CALLING_HOURS.first %>am and <%= User::CALLING_HOURS.max + 1 - 12 %>pm their time.
         They can stop the calls at any point by pressing 9.
@@ -62,7 +62,16 @@
       </p>
     <% end %>
 
-    <% if permission == "manage" && senior.call_opted_out_at.blank? %>
+    <%#
+      Not gated on the opt-out. The verification call is the only thing whose
+      keypress can lift one, so hiding the button here made the stopped-state
+      copy above — "unless they say otherwise on a call they answer" — a promise
+      the screen itself made impossible to keep, reachable only by hand-crafting
+      a POST. Asking again is permitted by design; the safeguards are that the
+      senior still decides, that every attempt is recorded, and that the count
+      sits under the button where a pattern of re-asking is visible.
+    %>
+    <% if permission == "manage" %>
       <%= form_with url: senior_phone_path(senior_id: senior.id), method: :patch, class: "flex items-end gap-3" do |f| %>
         <div class="flex-1">
           <label for="user_phone" class="block text-sm font-medium text-gray-700">Their phone number</label>
@@ -106,16 +115,23 @@
                 class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
           <p class="mt-2 text-xs text-gray-500">
             <%#
-              "in the last day" rather than "today": the allowance is counted
-              per UTC day so that editing a timezone cannot refill it, and
-              saying "today" would promise the caregiver's own day. The count is
-              clamped because a screen that offers a negative number of attempts
-              has clearly lost track of something.
+              "in the last day" is literal: verifications_in_window counts a
+              rolling 24 hours from now, per number. An earlier version of this
+              comment said "per UTC day", which is what the row's call_day stamp
+              records for the uniqueness index — but the *bound* has never been
+              the calendar day, and describing it as one would have the next
+              person expecting the allowance to refill at midnight. The count is
+              clamped because a screen offering a negative number of attempts has
+              clearly lost track of something.
             %>
+            <% if senior.call_opted_out_at.present? %>
+              <%= senior.display_name %> has asked us to stop, so this only asks again —
+              it cannot undo that. Nothing changes unless they press 1 themselves.
+            <% end %>
             <% if attempts.any? %>
               Asked <%= pluralize(attempts.size, "time") %> in the last day<%= ", most recently #{time_ago_in_words(attempts.last.created_at)} ago" if attempts.last.created_at %>.
               <%= pluralize([ TelnyxCall::MAX_VERIFICATIONS_PER_DAY - attempts.size, 0 ].max, "attempt") %> left.
-            <% else %>
+            <% elsif senior.call_opted_out_at.blank? %>
               We'll ring once. If nobody answers, or they'd rather not, nothing changes.
             <% end %>
           </p>

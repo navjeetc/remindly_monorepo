@@ -117,6 +117,48 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     end
   end
 
+  # The controller allows a verification call after an opt-out, because its
+  # keypress is the only thing that can lift one. The screen has to offer it, or
+  # that permission exists only for someone willing to craft a POST by hand --
+  # and the stopped-state copy promises a route the UI would have closed.
+  describe "asking again after an opt-out" do
+    before do
+      senior.update!(phone: "+15551234567")
+      senior.update!(call_opted_out_at: 1.day.ago)
+    end
+
+    it "still offers the caregiver a way to ask" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("Call and ask Mom")
+    end
+
+    it "says plainly that asking cannot undo the opt-out" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("it cannot undo that")
+    end
+
+    it "places the call when asked" do
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).to have_received(:verify).once
+      expect(senior.reload.call_opted_out_at).to be_present
+    end
+  end
+
+  # reserve_verification answers a missing number with the same nil it uses for
+  # "a call is in progress" — so without this the caregiver is told to try again
+  # in a moment for a condition that waiting cannot fix.
+  describe "asking when no number is saved" do
+    it "says what is actually wrong" do
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(flash[:alert]).to include("no phone number saved")
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+    end
+  end
+
   # The clock the caregiver is deciding by is their own, and the product assumes
   # it is not the senior's. The refusal message names the local time too, but
   # only after the button is pressed and only when the guard fires -- which is

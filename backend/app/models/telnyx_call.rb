@@ -313,9 +313,8 @@ class TelnyxCall < ApplicationRecord
   # Ends any attempt that stopped mattering without saying so — a row whose
   # worker died between claiming and dialling. Called before claiming, because
   # the unique index on (to_number) WHERE completed_at IS NULL is absolute: it
-  # cannot be told that a row is merely old, so something has to close it.
-  # Closes attempts that have stopped mattering, so the live-call claim does not
-  # outlive the call.
+  # cannot be told that a row is merely old, so something has to close it, and
+  # the live-call claim must not outlive the call.
   #
   # Three cases, because they are knowable to different degrees. A claim that
   # never reached the provider can be closed on age alone. A dialled call is

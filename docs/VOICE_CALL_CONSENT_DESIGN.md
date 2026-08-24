@@ -1,15 +1,22 @@
 # Design: consent to be telephoned
 
-Status: **built, unproven, and switched off.** Implements phase 1 of
+Status: **built, live-tested, and switched off.** Implements phase 1 of
 `PHONE_CALL_REMINDERS_DESIGN.md`, which built the delivery machinery in PR #75
 and deliberately stopped short of deciding who may be called. Tracked as #77 and
 built in PR #78.
 
 Everything below exists: the consent columns, the verification call, the three
 keypresses, the guards at dial time, and the caregiver screen that can propose a
-number and ask its owner. What has *not* happened is a single real call through
-any of it — every spec stubs the provider, and the delivery work it builds on
-shipped three defects that only a handset found.
+number and ask its owner. Four calls to a real handset on 2026-08-23 proved all
+five items under *What must be impossible*, including the two nothing else could
+— a `9` clearing consent inside one transaction, and an answered call that
+pressed nothing recording `no_response` while writing nothing.
+
+Live testing earned its place again. It found a hole no spec could: the calling
+hours guard refuses a zone it cannot *resolve*, but a zone that resolves cleanly
+and is simply **wrong** reads as permission, and a call went out at 9:30pm local
+with the guard satisfied. No guard can catch that, so the caregiver screen now
+shows the senior's own clock before the button rather than after a refusal.
 
 `ENABLE_PHONE_CALL_REMINDERS` remains off in production, and answering-machine
 detection (#76) is still open: a verification call answered by voicemail cannot
@@ -33,7 +40,13 @@ that says caregivers should ask first, but a design in which they cannot proceed
 until the senior has pressed a key.
 
 So `call_reminders_enabled` stops being a setting and becomes a **consequence**.
-Nothing writes it but a completed verification call.
+Nothing can set it **true** but a completed verification call.
+
+The invariant is directional, and stating it as "nothing writes it" is wrong in a
+way that matters: an opt-out clears it, and so does a change of number. Both
+*must* keep writing it. Turning calls on takes a keypress from the person who
+will receive them; anything that casts doubt on that agreement may turn them
+off.
 
 ## State
 
@@ -110,8 +123,10 @@ announces a reminder, the other asks for agreement.
    happen, and asks for a keypress to agree.
 4. The keypress writes `phone_verified_at`, `call_consent_at`, and sets
    `call_reminders_enabled`. Nothing else does.
-5. A "call me now" button places a single test reminder call on demand, so the
-   caregiver can hear what the senior will hear before depending on it.
+5. *(Not built.)* A "call me now" button would place a single test reminder call
+   on demand, so the caregiver could hear what the senior will hear before
+   depending on it. Nothing in PR #78 implements this; it is written down here
+   because it is the obvious next affordance, not because it exists.
 
 **No scheduled calls in phase 1.** The scheduler stays off. This proves the
 consent path end to end without anything running unattended.

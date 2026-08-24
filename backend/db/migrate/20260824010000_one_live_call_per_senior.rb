@@ -19,6 +19,16 @@ class OneLiveCallPerSenior < ActiveRecord::Migration[8.1]
     # the database. Without this the index cannot be created, and because the
     # entrypoint runs db:prepare at container start, that aborts the boot before
     # the later number-based migration gets a chance to reconcile anything.
+    # Insertion order is not liveness. MAX(id) here would sometimes keep a
+    # reservation that never rang and close the dialled row underneath it --
+    # which does not hang that call up, and leaves its keypresses ignored,
+    # because the outcome is no longer pending while the senior is still on the
+    # line. A row holding a call_control_id is a call the provider accepted; one
+    # without never reached it and costs nothing to close.
+    #
+    # The same rule as the number-keyed migration that follows this one, and for
+    # the same reason. It has to be applied here too, because this migration runs
+    # first and the later one cannot undo a live call closed by this one.
     execute <<~SQL
       UPDATE telnyx_calls
          SET completed_at = CURRENT_TIMESTAMP,
@@ -27,9 +37,15 @@ class OneLiveCallPerSenior < ActiveRecord::Migration[8.1]
              daily_sequence = NULL
        WHERE completed_at IS NULL
          AND id NOT IN (
-           SELECT MAX(id) FROM telnyx_calls
-            WHERE completed_at IS NULL
-            GROUP BY user_id
+           SELECT keep.id FROM telnyx_calls AS keep
+            WHERE keep.completed_at IS NULL
+              AND keep.id = (
+                SELECT c.id FROM telnyx_calls AS c
+                 WHERE c.completed_at IS NULL
+                   AND c.user_id = keep.user_id
+                 ORDER BY (c.call_control_id IS NOT NULL) DESC, c.id DESC
+                 LIMIT 1
+              )
          )
     SQL
 

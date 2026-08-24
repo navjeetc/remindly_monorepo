@@ -188,6 +188,17 @@ class DashboardController < WebController
     # reconcile: false — closing a stale claim can take three provider round
     # trips, and this is a web request. If something is in the way, a worker
     # clears it while the caregiver reads the message.
+    # Named before reserving, because reserve_verification answers a missing
+    # number with the same nil it uses for "a call is in progress" and "the
+    # allowance is spent" -- and the caregiver would be told to try again in a
+    # moment for a condition no amount of waiting fixes. The UI hides the button
+    # without a number; a second caregiver clearing it between render and click
+    # does not.
+    if senior.phone.blank?
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "There's no phone number saved for #{senior.display_name} yet. Add one first, then ask them."
+    end
+
     attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user, reconcile: false)
 
     # An unresolvable tz is one of the two ways within_calling_hours? says no, so
@@ -248,7 +259,19 @@ class DashboardController < WebController
     # Exactly the query the bound uses. Anything else and the screen eventually
     # offers attempts the model refuses, which reads as a button that does
     # nothing.
-    @verification_attempts = TelnyxCall.verifications_in_window(@senior.phone).order(:attempt_number)
+    #
+    # Ordered by created_at, not attempt_number. The view reads .last to say when
+    # the number was most recently rung, and attempt_number does not track
+    # recency: it restarts per destination, so a fresh attempt 1 for a new number
+    # sorts below an older attempt 2 for the previous one and the screen reports
+    # the wrong time. Skipped entirely when there is no number, since a nil there
+    # matches nothing and asking is just a query that cannot inform anybody.
+    @verification_attempts =
+      if @senior.phone.present?
+        TelnyxCall.verifications_in_window(@senior.phone).order(:created_at)
+      else
+        TelnyxCall.none
+      end
 
     # Get 7-day activity
     start_date = now - 6.days

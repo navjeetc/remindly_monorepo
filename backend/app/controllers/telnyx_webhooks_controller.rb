@@ -221,8 +221,15 @@ class TelnyxWebhooksController < ApplicationController
     senior = call.user
     arranger = call.requested_by
 
+    # Naming the arranger is the anti-scam move -- it is the one thing a stranger
+    # ringing out of the blue could not know. With nobody to name, the fallback
+    # has to stay neutral: "You asked us" told the called party they had asked for
+    # a call they did not ask for, which is both false and precisely how a scam
+    # call opens.
+    asked = arranger ? "#{arranger.friendly_name} asked us" : "We have been asked"
+
     "Hello. This is Remindly, calling for #{senior.display_name}. " \
-    "#{arranger ? "#{arranger.friendly_name} asked us" : "You asked us"} to phone you with reminders — " \
+    "#{asked} to phone you with reminders — " \
     "for example, when it is time to take your tablets. " \
     "We will never ask you for personal details. All you ever need to do is press a button. " \
     "If you would like these reminders, press 1 now. " \
@@ -249,8 +256,14 @@ class TelnyxWebhooksController < ApplicationController
     hang_up_unless_already_gone(call, payload, event_id)
   end
 
-  # The only writer of call_reminders_enabled in the application. Everything else
-  # reads it.
+  # The only thing in the application that can set call_reminders_enabled *true*.
+  #
+  # Stated that way deliberately. Two other writers clear it -- opt_out!, and
+  # User#forget_consent_when_the_number_changes -- and describing this as the
+  # only writer at all invites the next person to treat one of those as a bug and
+  # remove it. The invariant is directional: turning calls on takes a keypress
+  # from the person who will receive them, while anything that casts doubt on
+  # consent may turn them off.
   def consent!(call)
     senior = call.user
 
@@ -345,6 +358,22 @@ class TelnyxWebhooksController < ApplicationController
   def correlate(event, call_control_id)
     state = client_state(event)
     attempt_number = state["attempt_number"]
+
+    # The row's own id, when the call carried one. Everything below matches on a
+    # *description* of the attempt, and descriptions collide -- verification
+    # attempt numbers restart per destination number, so one senior moving from
+    # number A to number B within a call_day holds an attempt 1 for each, and a
+    # callback for B matched both. update_all then tried to give two rows one
+    # call_control_id, the unique index rolled it back, and the answered call was
+    # left in silence.
+    #
+    # attempt_number is still required alongside it: claim refuses without one,
+    # and an id that names a row belonging to some other attempt number means the
+    # state has been tampered with or truncated, which is not something to act on.
+    if (attempt_id = state["attempt_id"]).present?
+      return claim(TelnyxCall.where(id: attempt_id, attempt_number: attempt_number, call_control_id: nil),
+                   call_control_id, attempt_number)
+    end
 
     # A verification names no occurrence, so the reminder path's identifiers do
     # not apply. Without this branch every verification callback was unknown:

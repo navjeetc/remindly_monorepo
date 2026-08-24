@@ -149,6 +149,35 @@ RSpec.describe User do
       expect(senior.call_reminders_enabled).to be false
     end
 
+    # The callback skips a blank previous number so it cannot wipe consent being
+    # granted in the same save. That skip must not extend to a record already
+    # holding consent facts: consent! writes them through update_all, so a record
+    # can carry an agreement with no number on it, and the *first* number saved
+    # afterwards would otherwise inherit an agreement given for another handset.
+    it "does not let a first number inherit consent left over from another one" do
+      orphan = create(:user, :senior, name: "Nan", phone: nil)
+      orphan.update_columns(phone_verified_at: Time.current, call_consent_at: Time.current,
+                            call_reminders_enabled: true)
+
+      orphan.update!(phone: "+15553330000")
+
+      expect(orphan.reload.call_consent_at).to be_nil
+      expect(orphan.phone_verified_at).to be_nil
+      expect(orphan.call_reminders_enabled).to be false
+      expect(orphan.callable_by_phone?).to be false
+    end
+
+    # The other half of that rule, and the reason the skip exists at all.
+    it "still allows a number and its consent to be written in one save" do
+      fresh = create(:user, :senior, name: "New", phone: "+15554440000",
+                                     phone_verified_at: Time.current,
+                                     call_consent_at: Time.current,
+                                     call_reminders_enabled: true)
+
+      expect(fresh.reload.call_consent_at).to be_present
+      expect(fresh.call_reminders_enabled).to be true
+    end
+
     # There is nothing to forget when there was no previous number. Clearing here
     # would defeat any single save that sets a number and its consent together,
     # silently — which reads as caution and is simply a bug.
