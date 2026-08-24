@@ -170,9 +170,11 @@ class TelnyxCall < ApplicationRecord
     #
     # The check is an early exit, not the guarantee. Two reservations can both
     # read an idle line before either writes, and a verification racing a
-    # reminder collides on no other index — so the unique index on user_id where
-    # completed_at is null is what actually decides, and the loser lands in the
-    # rescue below.
+    # reminder collides on no other index — so the unique index on to_number
+    # where completed_at is null is what actually decides, and the loser lands
+    # in the rescue below. Keyed on the number rather than the account because
+    # users.phone is not unique: two records can hold one handset, and it is the
+    # telephone that can only take one call.
     expire_stale_attempts(user, now)
     return nil if call_in_flight?(user, now)
 
@@ -273,7 +275,7 @@ class TelnyxCall < ApplicationRecord
 
   # Ends any attempt that stopped mattering without saying so — a row whose
   # worker died between claiming and dialling. Called before claiming, because
-  # the unique index on (user_id) WHERE completed_at IS NULL is absolute: it
+  # the unique index on (to_number) WHERE completed_at IS NULL is absolute: it
   # cannot be told that a row is merely old, so something has to close it.
   def self.expire_stale_attempts(user, now)
     where(to_number: user.phone, completed_at: nil)

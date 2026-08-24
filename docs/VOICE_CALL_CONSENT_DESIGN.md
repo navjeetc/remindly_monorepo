@@ -1,14 +1,20 @@
 # Design: consent to be telephoned
 
-Status: **proposed, not built.** Implements phase 1 of
+Status: **built, unproven, and switched off.** Implements phase 1 of
 `PHONE_CALL_REMINDERS_DESIGN.md`, which built the delivery machinery in PR #75
-and deliberately stopped short of deciding who may be called. Tracked as #77.
+and deliberately stopped short of deciding who may be called. Tracked as #77 and
+built in PR #78.
 
-The machinery works and is deployed, inert. `ENABLE_PHONE_CALL_REMINDERS` is off
-and nothing in the application can set `users.phone` or the opt-in column —
-both were set from a console during testing.
-This document is about the missing half: how a number comes to be one Remindly
-is allowed to ring.
+Everything below exists: the consent columns, the verification call, the three
+keypresses, the guards at dial time, and the caregiver screen that can propose a
+number and ask its owner. What has *not* happened is a single real call through
+any of it — every spec stubs the provider, and the delivery work it builds on
+shipped three defects that only a handset found.
+
+`ENABLE_PHONE_CALL_REMINDERS` remains off in production, and answering-machine
+detection (#76) is still open: a verification call answered by voicemail cannot
+count as consent today, but only because a machine presses nothing, which is
+luck rather than design.
 
 ## The thing that must not be built
 
