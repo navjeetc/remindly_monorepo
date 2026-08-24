@@ -96,6 +96,17 @@ class VoiceReminderJob < ApplicationJob
     # about the occurrence being resolved meanwhile through the web page or a
     # keypress on an earlier attempt. Without this, a senior who has just marked
     # the dose done gets telephoned about it anyway.
+    # Consent re-read after the claim, immediately before the provider call. The
+    # check at the top of this job happens before reserving, and a senior can
+    # press 9 on an earlier call in between — at which point the old call
+    # completes, releases the live-call claim, and this job is free to reserve
+    # and dial somebody who has just said stop.
+    unless senior.reload.callable_by_phone?
+      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: consent withdrawn while the attempt was being claimed"
+      return
+    end
+
     unless occurrence.reload.status_pending?
       # One transaction, because these two writes have to be true together. If
       # the process exits between them the row is cancelled with no reason

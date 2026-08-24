@@ -110,7 +110,8 @@ class TelnyxVoiceService
       to: number,
       from: from,
       client_state: Base64.strict_encode64(
-        { user_id: senior.id, attempt_number: attempt.attempt_number, purpose: "verification" }.to_json
+        { user_id: senior.id, attempt_number: attempt.attempt_number,
+          call_day: attempt.call_day.to_s, purpose: "verification" }.to_json
       ),
       command_id: command_id_for("verify")
     }

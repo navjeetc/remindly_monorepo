@@ -249,7 +249,8 @@ RSpec.describe "Telnyx verification calls", type: :request do
           payload: {
             call_control_id: "v3:not-recorded-yet",
             client_state: Base64.strict_encode64(
-              { user_id: senior.id, attempt_number: reserved.attempt_number, purpose: "verification" }.to_json
+              { user_id: senior.id, attempt_number: reserved.attempt_number,
+                call_day: reserved.call_day.to_s, purpose: "verification" }.to_json
             )
           }
         }
@@ -266,7 +267,8 @@ RSpec.describe "Telnyx verification calls", type: :request do
           event_type: "call.answered",
           payload: {
             call_control_id: "v3:someone-elses",
-            client_state: Base64.strict_encode64({ user_id: senior.id, attempt_number: 99, purpose: "verification" }.to_json)
+            client_state: Base64.strict_encode64({ user_id: senior.id, attempt_number: 99,
+                                                   call_day: Date.current.to_s, purpose: "verification" }.to_json)
           }
         }
       }

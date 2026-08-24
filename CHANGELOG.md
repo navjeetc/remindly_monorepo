@@ -219,8 +219,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checkbox) would let one person arrange automated calls to another who had
   never agreed. A caregiver can now propose a number and ask its owner a
   question; that is the entire surface. `TelnyxWebhooksController#consent!` is
-  the only writer of `call_reminders_enabled` in the application, and its single
-  input is a `1` pressed during a verification call. Pressing `9` stops calls
+  the only thing that can *enable* calls — nothing else sets
+  `call_reminders_enabled` to true — and its single input is a `1` pressed
+  during a verification call. Several paths clear it: an opt-out, and a change
+  of number. Pressing `9` stops calls
   immediately and permanently; pressing nothing is declined, which is neither
   consent nor an opt-out, because someone who said nothing has not said stop.
   Changing the number forgets what the old one agreed to. An opt-out survives a

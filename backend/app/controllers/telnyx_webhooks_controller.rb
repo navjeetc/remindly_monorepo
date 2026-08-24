@@ -259,7 +259,7 @@ class TelnyxWebhooksController < ApplicationController
     # the old handset would enable calls to a number nobody has agreed to. The
     # number dialled is recorded on the attempt precisely so the two can be
     # compared at the moment it matters.
-    if call.to_number.present? && call.to_number != senior.phone
+    if call.to_number.blank? || call.to_number != senior.phone
       Rails.logger.warn(
         "Verification consent ignored for user #{senior.id}: agreed on #{call.to_number}, " \
         "but the number on file is now #{senior.phone.inspect}"
@@ -267,14 +267,24 @@ class TelnyxWebhooksController < ApplicationController
       return call.update!(outcome: "declined", completed_at: Time.current)
     end
 
-    ActiveRecord::Base.transaction do
-      record_on(senior,
-                phone_verified_at: Time.current,
-                call_consent_at: Time.current,
-                call_opted_out_at: nil,
-                call_reminders_enabled: true)
-      call.update!(outcome: "consented", completed_at: Time.current)
+    # Compare and write in one statement. Checking and then writing leaves a gap
+    # in which update_phone can commit: its callback clears consent for the new
+    # number, and an unconditional write here would then restore it — so the old
+    # handset's "1" would authorise a number nobody called. The WHERE clause
+    # makes the database decide, the same handshake the acknowledgement path uses.
+    granted = User.where(id: senior.id, phone: call.to_number)
+                  .update_all(phone_verified_at: Time.current,
+                              call_consent_at: Time.current,
+                              call_opted_out_at: nil,
+                              call_reminders_enabled: true,
+                              updated_at: Time.current)
+
+    if granted.zero?
+      Rails.logger.warn "Verification consent ignored for user #{senior.id}: the number changed while the call was in progress"
+      return call.update!(outcome: "declined", completed_at: Time.current)
     end
+
+    call.update!(outcome: "consented", completed_at: Time.current)
   end
 
   # Immediate and permanent, per the design document, and available on every call
@@ -340,8 +350,16 @@ class TelnyxWebhooksController < ApplicationController
     # not apply. Without this branch every verification callback was unknown:
     # if dial succeeded but writing call_control_id back failed, the senior
     # would answer to silence and no keypress could ever reach us.
+    # call_day matters: verification attempt numbers restart each local day, so
+    # (user_id, attempt_number) alone can match yesterday's undialled attempt 1
+    # as well as today's. update_all would then try to give both rows the same
+    # call_control_id, hit the unique index, roll back, and return nothing — the
+    # webhook acknowledged while the senior listens to silence.
     if state["purpose"] == "verification"
+      return nil if state["call_day"].blank?
+
       return claim(TelnyxCall.verifications.where(user_id: state["user_id"],
+                                                  call_day: state["call_day"],
                                                   attempt_number: attempt_number,
                                                   call_control_id: nil),
                    call_control_id, attempt_number)

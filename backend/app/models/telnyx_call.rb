@@ -194,6 +194,9 @@ class TelnyxCall < ApplicationRecord
       occurrence: occurrence,
       user: user,
       attempt_number: (previous&.attempt_number || 0) + 1,
+      # Recorded for reminders too, not only verifications: the live-call claim
+      # is keyed on the number, because two accounts can hold one telephone.
+      to_number: user.phone,
       call_day: day,
       call_tz: zone_name(user),
       daily_sequence: slot,
@@ -258,8 +261,12 @@ class TelnyxCall < ApplicationRecord
   # which holds no slot by design -- is correctly counted. An earlier version
   # also required daily_sequence, which silently exempted verification calls
   # from the one-call-at-a-time rule they most need.
+  # Asked of the telephone rather than the account. Two user records can hold
+  # the same number, and it is the handset that can only take one call at a time.
   def self.call_in_flight?(user, now)
-    where(user_id: user.id, completed_at: nil)
+    return false if user.phone.blank?
+
+    where(to_number: user.phone, completed_at: nil)
       .where(created_at: (now - IN_FLIGHT_WINDOW)..now)
       .exists?
   end
@@ -269,7 +276,19 @@ class TelnyxCall < ApplicationRecord
   # the unique index on (user_id) WHERE completed_at IS NULL is absolute: it
   # cannot be told that a row is merely old, so something has to close it.
   def self.expire_stale_attempts(user, now)
-    where(user_id: user.id, completed_at: nil)
+    where(to_number: user.phone, completed_at: nil)
+      # Only claims that never became calls. A row holding a call_control_id is
+      # a call the provider accepted, and age says nothing about whether it has
+      # ended — an answered webhook can be delayed, and a long call is just a
+      # long call. Declaring one over on a timer would free the live-call claim
+      # while the senior was still talking, admit a second call to the same
+      # phone, and let a late answered event make the "expired" one start
+      # speaking underneath it.
+      #
+      # A dialled call is ended by its hangup webhook. If that never arrives the
+      # row stays and blocks further calls to that senior, which is the safe
+      # direction to fail: silence rather than two voices.
+      .where(call_control_id: nil)
       .where(created_at: ...(now - IN_FLIGHT_WINDOW))
       .update_all(status: "failed", outcome: "error", daily_sequence: nil,
                   completed_at: now, updated_at: now)

@@ -285,8 +285,30 @@ RSpec.describe TelnyxCall do
 
       expect {
         described_class.create!(occurrence: occurrence_at(Time.current), user: senior,
-                                attempt_number: 1, status: "reserved", outcome: "pending")
+                                attempt_number: 1, to_number: senior.phone,
+                                status: "reserved", outcome: "pending")
       }.to raise_error(ActiveRecord::RecordNotUnique)
+    end
+
+    # users.phone is not unique. Two accounts can hold one handset — a couple
+    # sharing a landline, or a duplicate record — and it is the telephone that
+    # can only take one call, not the account.
+    it "refuses a call to a number another account is already calling" do
+      described_class.reserve_verification(senior)
+
+      housemate = create(:user, :senior, name: "Dad", tz: senior.tz, phone: senior.phone)
+      other_reminder = Reminder.create!(user: housemate, title: "Take meds", category: :medication,
+                                        rrule: "FREQ=DAILY", tz: housemate.tz)
+      theirs = Occurrence.create!(reminder: other_reminder, scheduled_at: Time.current, status: :pending)
+
+      expect(described_class.reserve(theirs, housemate)).to be_nil
+    end
+
+    it "does not block a different number on the same account" do
+      described_class.reserve_verification(senior).update!(completed_at: Time.current)
+      senior.update!(phone: "+15557776666")
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
     end
 
     it "allows the next one once the first has ended" do
