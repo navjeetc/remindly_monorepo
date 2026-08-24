@@ -84,6 +84,53 @@ class TelnyxVoiceService
     nil
   end
 
+  # Places the call that asks whether this number consents to be telephoned.
+  #
+  # Almost the same as dial, and deliberately not folded into it. The two differ
+  # in what client_state carries -- a verification has no occurrence to name --
+  # and in what the webhook does on answer, and collapsing them would mean a
+  # boolean threaded through both, which is how the wrong branch eventually
+  # speaks the wrong words to somebody.
+  def self.verify(attempt)
+    senior = attempt.user
+    return record_failure(attempt) if senior&.phone.blank?
+
+    from = credentials[:from_number]
+    connection_id = credentials[:connection_id]
+    return record_failure(attempt) if from.blank? || connection_id.blank?
+
+    payload = {
+      connection_id: connection_id,
+      to: senior.phone,
+      from: from,
+      client_state: Base64.strict_encode64(
+        { user_id: senior.id, attempt_number: attempt.attempt_number, purpose: "verification" }.to_json
+      ),
+      command_id: command_id_for("verify")
+    }
+
+    hook = webhook_url
+    payload[:webhook_url] = hook if hook.present?
+
+    response = post("/calls", payload, command_id: payload[:command_id])
+    unless response&.key?("data")
+      Rails.logger.error "Telnyx verification dial failed for user #{senior.id}: #{response.inspect}"
+      return record_failure(attempt)
+    end
+
+    data = response["data"]
+    attempt.update!(
+      call_control_id: data["call_control_id"],
+      call_leg_id: data["call_leg_id"],
+      status: "initiated",
+      outcome: "pending"
+    )
+    data["call_control_id"]
+  rescue => e
+    Rails.logger.error "Telnyx verification dial failed for user #{attempt.user_id}: #{e.message}"
+    record_failure(attempt)
+  end
+
   # Play the reminder message using TTS.
   def self.speak(call_control_id:, message:, command_id: nil, call: nil)
     post(

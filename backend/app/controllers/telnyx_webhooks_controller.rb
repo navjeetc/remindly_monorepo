@@ -70,6 +70,8 @@ class TelnyxWebhooksController < ApplicationController
   def handle_answered(call, event_id)
     return if call.answered_at.present?
 
+    return handle_verification_answered(call, event_id) if call.purpose == "verification"
+
     occurrence = call.occurrence
     reminder = occurrence.reminder
     senior = call.user
@@ -107,6 +109,8 @@ class TelnyxWebhooksController < ApplicationController
   end
 
   def handle_gather_ended(call, payload, event_id)
+    return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
+
     digits = payload["digits"]
 
     if call.outcome == "pending"
@@ -179,6 +183,95 @@ class TelnyxWebhooksController < ApplicationController
 
       call.update!(outcome: kind, completed_at: Time.current)
     end
+  end
+
+  # The verification call. Asks whether this number agrees to be telephoned at
+  # all, and is the only thing in the application permitted to answer yes.
+  def handle_verification_answered(call, event_id)
+    TelnyxVoiceService.gather_digit(
+      call_control_id: call.call_control_id,
+      prompt: consent_request_for(call.user),
+      command_id: event_id
+    )
+
+    call.update!(answered_at: Time.current)
+  end
+
+  # Named for the caregiver who arranged it, in the first breath, because that is
+  # the one thing a stranger calling out of the blue could not know. What we will
+  # never ask for comes before what we are asking for, since every telephone scam
+  # wants information and saying we do not want any is the clearest signal
+  # available in the seconds before somebody hangs up.
+  #
+  # An earlier draft promised never to ask for money. It was cut: Remindly may be
+  # monetised, and a promise made in a recorded call to an elderly person is not
+  # one to walk back. "All you ever need to do is press a button" does the same
+  # work, survives any business model because it is a promise about calls rather
+  # than about pricing, and sets the expectation for every later call too.
+  def consent_request_for(senior)
+    arranger = senior.caregivers.first
+
+    "Hello. This is Remindly, calling for #{senior.display_name}. " \
+    "#{arranger ? "#{arranger.friendly_name} asked us" : "You asked us"} to phone you with reminders — " \
+    "for example, when it is time to take your tablets. " \
+    "We will never ask you for personal details. All you ever need to do is press a button. " \
+    "If you would like these reminders, press 1 now. " \
+    "If you would rather not, press 9 and we will not call again."
+  end
+
+  def handle_verification_gather_ended(call, payload, event_id)
+    if call.outcome == "pending"
+      digits = payload["digits"]
+      call.update!(dtmf: digits, status: "completed")
+
+      case digits
+      when "1" then consent!(call)
+      when "9" then opt_out!(call)
+      else
+        # No digit, or one we do not offer. Not consent — and deliberately not an
+        # opt-out either: someone who said nothing has not said stop, and burning
+        # their opt-out on a silence would take away the one thing that is
+        # supposed to be theirs to say.
+        call.update!(outcome: "declined", completed_at: Time.current)
+      end
+    end
+
+    hang_up_unless_already_gone(call, payload, event_id)
+  end
+
+  # The only writer of call_reminders_enabled in the application. Everything else
+  # reads it.
+  def consent!(call)
+    senior = call.user
+
+    ActiveRecord::Base.transaction do
+      senior.update!(
+        phone_verified_at: Time.current,
+        call_consent_at: Time.current,
+        call_opted_out_at: nil,
+        call_reminders_enabled: true
+      )
+      call.update!(outcome: "consented", completed_at: Time.current)
+    end
+  end
+
+  # Immediate and permanent, per the design document, and available on every call
+  # rather than only this one. The senior may have no other interface at all, so
+  # the keypad is their only way to say stop; requiring them to ask the caregiver
+  # who arranged the calls inverts the relationship this is supposed to respect.
+  def opt_out!(call)
+    senior = call.user
+
+    ActiveRecord::Base.transaction do
+      senior.update!(call_opted_out_at: Time.current, call_reminders_enabled: false)
+      call.update!(outcome: "opted_out", completed_at: Time.current)
+    end
+  end
+
+  def hang_up_unless_already_gone(call, payload, event_id)
+    return if payload["status"] == "call_hangup"
+
+    TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
   end
 
   # Snoozing writes the acknowledgement AND schedules the next occurrence, which
