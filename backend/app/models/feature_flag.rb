@@ -15,8 +15,10 @@ class FeatureFlag
       env_var: "ENABLE_EXTERNAL_SCHEDULING"
     },
     # The outer of two locks on reminder phone calls. This one says the code may
-    # run at all; a senior's own call_reminders_enabled and phone say whether it
-    # runs for them.
+    # run at all; whether it runs for a given senior is User#callable_by_phone?,
+    # which is a good deal more than a boolean: a number, a recorded consent, no
+    # opt-out, and only then call_reminders_enabled -- read as facts rather than
+    # trusted from the flag, so a stale true cannot authorise a call on its own.
     #
     # It exists because the inner lock is two ordinary columns, and the only way
     # to try this in production is to set them — after which calls begin within

@@ -101,6 +101,39 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(TelnyxVoiceService).not_to have_received(:verify)
     end
 
+    # reserve_verification answers every refusal with the same nil, so the reason
+    # has to be read back out. A spent allowance and a busy line call for opposite
+    # advice, and telling somebody to retry something that cannot succeed is how a
+    # screen teaches them to stop reading it.
+    it "says the allowance is spent rather than suggesting a retry" do
+      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do
+        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current)
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(flash[:alert]).to include("which is all we allow")
+      expect(flash[:alert]).not_to include("Try again in a moment")
+    end
+
+    it "does not spend a reconcile job on a bound no reconciliation can lift" do
+      TelnyxCall::MAX_VERIFICATIONS_PER_DAY.times do
+        TelnyxCall.reserve_verification(senior).update!(completed_at: Time.current)
+      end
+
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to have_enqueued_job(ReconcileStaleCallsJob)
+    end
+
+    it "says a call is in progress when that is what is in the way" do
+      TelnyxCall.reserve_verification(senior) # left unfinished: holds the line
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(flash[:alert]).to include("already a call in progress")
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+    end
+
     # An unresolvable tz is one of the two ways within_calling_hours? says no,
     # so the refusal branch is exactly where a bad identifier arrives -- and
     # naming the clock there with in_time_zone raises on it. tz is validated, so

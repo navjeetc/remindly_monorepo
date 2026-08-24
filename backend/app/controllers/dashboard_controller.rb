@@ -214,10 +214,30 @@ class DashboardController < WebController
     end
 
     if attempt.nil?
+      # Two conditions reach here and they call for opposite advice. A spent
+      # allowance does not clear by waiting a moment -- it clears when the oldest
+      # attempt ages out of the window -- and reconciling stale calls cannot
+      # create an attempt that the bound is refusing, so the job would be work
+      # done for nothing. Telling somebody to retry a thing that cannot succeed
+      # is how a screen teaches people to ignore it.
+      #
+      # Read from the database rather than inferred: reserve_verification answers
+      # every refusal with the same nil, so the reason has to be asked for.
+      spent = TelnyxCall.verifications_in_window(senior.phone)
+
+      if spent.count >= TelnyxCall::MAX_VERIFICATIONS_PER_DAY
+        oldest = spent.minimum(:created_at)
+        frees_at = oldest && senior.local_time(at: oldest + TelnyxCall::VERIFICATION_WINDOW)
+        when_ = frees_at ? " Another is available after #{frees_at.strftime('%-l:%M%P')} their time." : ""
+
+        return redirect_to senior_dashboard_path(senior),
+                           alert: "#{senior.display_name} has been asked #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times in the last day, which is all we allow.#{when_}"
+      end
+
       ReconcileStaleCallsJob.perform_later(senior.id)
 
       return redirect_to senior_dashboard_path(senior),
-                         alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times in the last day. Try again in a moment."
+                         alert: "There's already a call in progress to #{senior.phone}. Try again in a moment."
     end
 
     # verify returns nil when the provider refused it, having marked the attempt
