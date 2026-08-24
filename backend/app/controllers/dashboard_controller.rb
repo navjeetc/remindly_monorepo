@@ -187,6 +187,11 @@ class DashboardController < WebController
     # can see it, and that five a day is all anyone gets.
     attempt = TelnyxCall.reserve_verification(senior, requested_by: current_user)
 
+    unless senior.within_calling_hours?
+      return redirect_to senior_dashboard_path(senior),
+                         alert: "It's #{Time.current.in_time_zone(senior.tz).strftime('%-l:%M%P')} where #{senior.display_name} is. We only call between #{User::CALLING_HOURS.first}am and #{User::CALLING_HOURS.max + 1 - 12}pm."
+    end
+
     if attempt.nil?
       return redirect_to senior_dashboard_path(senior),
                          alert: "Can't call right now — either a call is already in progress, or #{senior.display_name} has already been called #{TelnyxCall::MAX_VERIFICATIONS_PER_DAY} times today."

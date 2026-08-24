@@ -106,11 +106,20 @@ class TelnyxCall < ApplicationRecord
   def self.reserve_verification(user, requested_by: nil, now: Time.current)
     return nil if user.phone.blank?
 
+    # A verification call rings a real telephone, so the window that protects
+    # every reminder call protects this one too. Nothing else enforced it: a
+    # caregiver pressing the button at three in the morning would have woken
+    # somebody who had not yet agreed to be telephoned at all.
+    return nil unless user.within_calling_hours?(at: now)
+
     expire_stale_attempts(user, now)
     return nil if call_in_flight?(user, now)
 
     day = local_day(user, now)
-    taken = verifications.where(user_id: user.id, call_day: day).count
+    # Counted per number, not per account. users.phone is not unique, so two
+    # records sharing a landline would otherwise carry five attempts each and
+    # ring one handset ten times.
+    taken = verifications.where(to_number: user.phone, call_day: day).count
     return nil if taken >= MAX_VERIFICATIONS_PER_DAY
 
     create!(
@@ -257,6 +266,12 @@ class TelnyxCall < ApplicationRecord
   # row abandoned by a dead worker cannot block the line for the rest of the day.
   IN_FLIGHT_WINDOW = 5.minutes
 
+  # After this, a dialled call is assumed over whatever the provider says or
+  # fails to say. No reminder call lasts an hour, and the alternative is worse:
+  # the live-call claim is a unique index, so a hangup webhook that never
+  # arrives would otherwise make that number permanently uncallable.
+  ABANDONED_AFTER = 1.hour
+
   # An attempt that is dialling, ringing or talking right now, whatever it is
   # for. Keyed on completed_at alone: releasing a slot ends the attempt and
   # records that, so a released row is not in flight, and a verification call --
@@ -277,19 +292,42 @@ class TelnyxCall < ApplicationRecord
   # worker died between claiming and dialling. Called before claiming, because
   # the unique index on (to_number) WHERE completed_at IS NULL is absolute: it
   # cannot be told that a row is merely old, so something has to close it.
+  # Closes attempts that have stopped mattering, so the live-call claim does not
+  # outlive the call.
+  #
+  # Three cases, because they are knowable to different degrees. A claim that
+  # never reached the provider can be closed on age alone. A dialled call is
+  # asked about — the provider knows whether it is still connected, and age does
+  # not. And a dialled call still unresolved an hour later is closed regardless,
+  # because no reminder call lasts an hour and a lost hangup webhook must not
+  # disable a telephone for ever.
   def self.expire_stale_attempts(user, now)
+    expire_undialled(user, now)
+    reconcile_dialled(user, now)
+  end
+
+  def self.reconcile_dialled(user, now)
+    where(to_number: user.phone, completed_at: nil)
+      .where.not(call_control_id: nil)
+      .where(created_at: ...(now - IN_FLIGHT_WINDOW))
+      .find_each do |attempt|
+        # nil means we could not tell. Closing on a failed lookup would free the
+        # line while somebody was still talking, so only a definite "no" counts —
+        # until ABANDONED_AFTER, when not knowing stops being a reason to wait.
+        ended = TelnyxVoiceService.alive?(attempt.call_control_id) == false
+        next unless ended || attempt.created_at < now - ABANDONED_AFTER
+
+        attempt.update!(status: "hangup", outcome: attempt.outcome == "pending" ? "no_response" : attempt.outcome,
+                        daily_sequence: attempt.daily_sequence, completed_at: now)
+      end
+  end
+
+  def self.expire_undialled(user, now)
     where(to_number: user.phone, completed_at: nil)
       # Only claims that never became calls. A row holding a call_control_id is
       # a call the provider accepted, and age says nothing about whether it has
       # ended — an answered webhook can be delayed, and a long call is just a
-      # long call. Declaring one over on a timer would free the live-call claim
-      # while the senior was still talking, admit a second call to the same
-      # phone, and let a late answered event make the "expired" one start
-      # speaking underneath it.
-      #
-      # A dialled call is ended by its hangup webhook. If that never arrives the
-      # row stays and blocks further calls to that senior, which is the safe
-      # direction to fail: silence rather than two voices.
+      # long call. Those are reconciled against the provider instead.
       .where(call_control_id: nil)
       .where(created_at: ...(now - IN_FLIGHT_WINDOW))
       .update_all(status: "failed", outcome: "error", daily_sequence: nil,

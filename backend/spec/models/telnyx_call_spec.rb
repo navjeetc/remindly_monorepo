@@ -213,6 +213,7 @@ RSpec.describe TelnyxCall do
       duplicate = described_class.new(user: senior, purpose: "verification",
                                       attempt_number: first.attempt_number,
                                       call_day: first.call_day,
+                                      to_number: first.to_number,
                                       status: "reserved", outcome: "pending")
 
       expect { duplicate.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
@@ -334,6 +335,86 @@ RSpec.describe TelnyxCall do
       described_class.reserve(occurrence_at(Time.current), senior)
 
       expect(live.reload.completed_at).to be_nil
+    end
+  end
+  # A verification call rings a real telephone, so the window protecting every
+  # reminder call protects this one too. Nothing else enforced it.
+  describe "verification calls and the calling window" do
+    before { senior.update!(phone: "+15551234567") }
+
+    it "refuses to ring somebody at three in the morning" do
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 3, 0)) do
+        expect(described_class.reserve_verification(senior)).to be_nil
+      end
+    end
+
+    it "allows it inside the window" do
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) do
+        expect(described_class.reserve_verification(senior)).to be_present
+      end
+    end
+  end
+
+  # users.phone is not unique, so two records sharing a landline would otherwise
+  # carry five attempts each and ring one handset ten times.
+  it "counts the verification allowance against the number, not the account" do
+    senior.update!(phone: "+15551234567")
+    housemate = create(:user, :senior, name: "Dad", tz: senior.tz, phone: senior.phone)
+
+    described_class::MAX_VERIFICATIONS_PER_DAY.times do
+      described_class.reserve_verification(senior)&.update!(completed_at: Time.current)
+    end
+
+    expect(described_class.reserve_verification(housemate)).to be_nil
+  end
+
+  # The live-call claim is a unique index, so a hangup webhook that never
+  # arrives would make a number permanently uncallable. Age alone cannot settle
+  # it — a long call is just long — so the provider is asked.
+  describe "reconciling a dialled call whose hangup never arrived" do
+    before { senior.update!(phone: "+15551234567") }
+
+    def stale_dialled_call
+      described_class.reserve_verification(senior).tap do |c|
+        c.update!(call_control_id: "v3:dialled")
+        c.update_columns(created_at: described_class::IN_FLIGHT_WINDOW.ago - 1.minute)
+      end
+    end
+
+    it "closes the claim when the provider says the call has ended" do
+      call = stale_dialled_call
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(false)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
+      expect(call.reload.completed_at).to be_present
+    end
+
+    it "leaves it alone while the provider says it is still connected" do
+      call = stale_dialled_call
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(true)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_nil
+      expect(call.reload.completed_at).to be_nil
+    end
+
+    # Closing on a failed lookup would free the line while somebody was still
+    # talking on it.
+    it "waits rather than guessing when the provider cannot be reached" do
+      call = stale_dialled_call
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(nil)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_nil
+      expect(call.reload.completed_at).to be_nil
+    end
+
+    # ...but not for ever. No reminder call lasts an hour.
+    it "gives up waiting after an hour, so a lost webhook cannot disable a number" do
+      call = stale_dialled_call
+      call.update_columns(created_at: described_class::ABANDONED_AFTER.ago - 1.minute)
+      allow(TelnyxVoiceService).to receive(:alive?).and_return(nil)
+
+      expect(described_class.reserve(occurrence_at(Time.current), senior)).to be_present
+      expect(call.reload.completed_at).to be_present
     end
   end
 end

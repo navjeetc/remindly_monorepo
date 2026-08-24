@@ -191,6 +191,37 @@ class TelnyxVoiceService
     response
   end
 
+  # Whether the provider still considers this call live.
+  #
+  # Returns nil when we cannot tell — the API is unreachable, or answered
+  # something unexpected. The caller must treat that as "unknown" rather than
+  # "ended": closing a claim on a failed lookup would free the line while
+  # somebody was still talking on it.
+  def self.alive?(call_control_id)
+    response = get("/calls/#{call_control_id}")
+    return nil unless response&.key?("data")
+
+    !!response.dig("data", "is_alive")
+  rescue => e
+    Rails.logger.warn "Telnyx call lookup failed for #{call_control_id}: #{e.message}"
+    nil
+  end
+
+  def self.get(path)
+    uri = URI("#{API_BASE}#{path}")
+    request = Net::HTTP::Get.new(uri)
+    request["Authorization"] = "Bearer #{credentials[:api_key]}"
+
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") { |http| http.request(request) }
+
+    # 404 means the provider has no record of it, which for our purposes is the
+    # same as ended — there is nothing left to hang up.
+    return { "data" => { "is_alive" => false } } if response.is_a?(Net::HTTPNotFound)
+    return nil unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body)
+  end
+
   # Hang up a call. Used after a digit is collected or the call is done.
   def self.hangup(call_control_id:, command_id: nil)
     post(
@@ -300,7 +331,7 @@ class TelnyxVoiceService
     false
   end
 
-  private_class_method :credentials, :setting, :command_id_for, :verify_signature, :record_failure
+  private_class_method :credentials, :setting, :command_id_for, :verify_signature, :record_failure, :get
 
   def self.post(path, body, command_id: nil)
     body[:command_id] = command_id if command_id.present?
