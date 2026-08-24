@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe VoiceReminderSchedulerJob do
   include ActiveSupport::Testing::TimeHelpers
 
-  let(:senior) { create(:user, :senior, name: "Peter", tz: "America/New_York", phone: "+15551234567", call_reminders_enabled: true) }
+  let(:senior) { create(:user, :senior, :takes_calls, name: "Peter", tz: "America/New_York") }
   let(:reminder) { Reminder.create!(user: senior, title: "Take meds", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
 
   def at(hour, zone: "America/New_York")
@@ -109,6 +109,19 @@ RSpec.describe VoiceReminderSchedulerJob do
 
   it "does not call about one that is not due yet" do
     Occurrence.create!(reminder: reminder, scheduled_at: at(10) + 5.minutes, status: :pending)
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+  it "enqueues nothing for a senior who has opted out" do
+    senior.update!(call_opted_out_at: Time.current)
+    due_at(at(10))
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+
+  it "enqueues nothing for a number that never agreed" do
+    senior.update!(call_consent_at: nil)
+    due_at(at(10))
 
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
   end

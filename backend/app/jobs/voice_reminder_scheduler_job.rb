@@ -36,6 +36,8 @@ class VoiceReminderSchedulerJob < ApplicationJob
       .joins(reminder: :user)
       .where(users: { call_reminders_enabled: true })
       .where.not(users: { phone: [ nil, "" ] })
+      .where.not(users: { call_consent_at: nil })
+      .where(users: { call_opted_out_at: nil })
       # Skip what cannot be dialled yet or any more. Correctness does not rest on
       # this -- TelnyxCall.reserve refuses the same cases atomically, and must,
       # because two runs can pass these checks simultaneously. This is here so

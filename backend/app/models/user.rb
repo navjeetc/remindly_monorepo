@@ -204,6 +204,24 @@ class User < ApplicationRecord
   # is not.
   CALLING_HOURS = (8...21)
 
+  # Whether Remindly may telephone this person at all.
+  #
+  # Deliberately not the same question as call_reminders_enabled?. That flag is
+  # written by one thing only -- a completed verification call -- but it is still
+  # a cached answer, and the facts underneath it can change without it: a number
+  # cleared, an opt-out recorded. Reading the facts means a stale flag cannot
+  # authorise a call on its own.
+  #
+  # An opt-out beats everything, including a consent recorded afterwards by some
+  # other route, because there is no other route.
+  def callable_by_phone?
+    return false if call_opted_out_at.present?
+    return false if phone.blank?
+    return false if call_consent_at.blank?
+
+    call_reminders_enabled?
+  end
+
   def within_calling_hours?(at: Time.current)
     zone = ActiveSupport::TimeZone[tz.to_s]
 
