@@ -138,17 +138,13 @@
                 class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white #{may_call ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"}" %>
           <p class="mt-2 text-xs text-gray-500">
             <%#
-              "Asked" means rang. verifications_in_window counts a rolling 24
-              hours from now, per number, and leaves out rows that finished
-              without ever reaching the provider — a reservation released when
-              the calling window shut, or a call Telnyx refused to place. Neither
-              rang, so neither is something this senior was asked, and neither
-              should cost the caregiver one of five.
-              An earlier version of this comment said "per UTC day", which is what
-              the row's call_day stamp records for the uniqueness index — but the
-              *bound* has never been the calendar day, and describing it as one
-              would have the next person expecting the allowance to refill at
-              midnight. The count is clamped because a screen offering a negative
+              "in the last day" is literal: verifications_in_window counts a
+              rolling 24 hours from now, per number. An earlier version of this
+              comment said "per UTC day", which is what the row's call_day stamp
+              records for the uniqueness index — but the *bound* has never been
+              the calendar day, and describing it as one would have the next
+              person expecting the allowance to refill at midnight. The count is
+              clamped because a screen offering a negative
               number of attempts has clearly lost track of something.
             %>
             <% if senior.call_opted_out_at.present? %>

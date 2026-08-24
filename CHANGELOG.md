@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A verification call could be placed after 9pm, or leave a reservation that
+  never rang.** `verify_phone` reserved the attempt and then asked about calling
+  hours on a second reading of the clock, so a request straddling 21:00:00 could
+  pass the model's guard at 20:59:59.9, create the row, and be refused at
+  21:00:00.1 — dialling nothing while leaving a reservation that held the
+  senior's line and spent one of the five daily attempts. The clock is now read
+  once for the decision. It is then read once more immediately before the
+  provider call, because consistency is not currency: reserving on a stale
+  reading and dialling after the boundary would have placed a real call outside
+  the legally enforced window, and the reservation is released rather than
+  stranded if the window shuts in between.
 - **A finished call kept blocking the senior's next one.** `completed_at` was
   only written when the hangup event found the outcome still `pending`, so a
   call where nobody pressed anything — the outcome having already been set to

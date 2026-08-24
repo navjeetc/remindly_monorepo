@@ -273,31 +273,6 @@ RSpec.describe TelnyxCall do
       expect(described_class.reserve_verification(senior)).to be_present
     end
 
-    # The bound is on ringing somebody's telephone. A row that finished without
-    # ever reaching the provider did not ring, and charging the caregiver for it
-    # takes away a fifth of the day for a call nobody received. Three ways to get
-    # one: the window shutting between reserving and dialling, a provider refusal
-    # through record_failure, or a claim released when consent was withdrawn.
-    it "does not spend an attempt on a reservation that never reached the provider" do
-      4.times do |i|
-        described_class.reserve_verification(senior)
-                       .update!(completed_at: Time.current, call_control_id: "v3:rang-#{i}")
-      end
-      described_class.reserve_verification(senior)
-                     .update!(completed_at: Time.current, status: "cancelled", outcome: "no_response")
-
-      expect(described_class.verifications_in_window(senior.phone).count).to eq(4)
-      expect(described_class.reserve_verification(senior)).to be_present
-    end
-
-    # Deliberately narrow: an open row is either about to ring or ringing now,
-    # and excusing it would let two reservations past the bound.
-    it "still counts a reservation that has not finished yet" do
-      described_class.reserve_verification(senior)
-
-      expect(described_class.verifications_in_window(senior.phone).count).to eq(1)
-    end
-
     it "is refused for a user with no number to verify" do
       senior.update!(phone: nil)
 

@@ -263,10 +263,12 @@ class DashboardController < WebController
     #
     # Released rather than left open, so this cannot reintroduce the stranded row
     # this PR exists to remove: completed_at is what frees the senior's line.
-    unless senior.within_calling_hours?
+    at_dial = Time.current
+
+    unless senior.within_calling_hours?(at: at_dial)
       attempt.release_slot!(status: "cancelled", outcome: "no_response")
 
-      return redirect_to senior_dashboard_path(senior), alert: outside_calling_hours_alert(senior)
+      return redirect_to senior_dashboard_path(senior), alert: outside_calling_hours_alert(senior, at: at_dial)
     end
 
     if TelnyxVoiceService.verify(attempt).present?

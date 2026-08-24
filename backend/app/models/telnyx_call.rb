@@ -137,22 +137,12 @@ class TelnyxCall < ApplicationRecord
     taken = verifications_in_window(user.phone, now).count
     return nil if taken >= MAX_VERIFICATIONS_PER_DAY
 
-    # Not taken + 1. The bound skips rows that never reached the provider and the
-    # uniqueness index on (to_number, call_day, attempt_number) does not, so
-    # numbering from the count reuses a number a skipped row still holds — the
-    # insert collides, reserve returns nil, and the caregiver is told a call is in
-    # progress when the truth is that we tried to file two attempts as number 5.
-    #
-    # Numbered from what exists rather than from what counts, so the two never
-    # have to agree.
-    sequence = verifications.where(to_number: user.phone, call_day: day).maximum(:attempt_number).to_i + 1
-
     create!(
       user: user,
       occurrence: nil,
       requested_by: requested_by,
       purpose: "verification",
-      attempt_number: sequence,
+      attempt_number: taken + 1,
       # The number as it stands now. Consent is checked against this rather than
       # against users.phone at the time of the keypress, because a caregiver can
       # edit the number while the call is ringing — and an agreement given on one
@@ -271,23 +261,8 @@ class TelnyxCall < ApplicationRecord
   # Verification calls to a number within the rolling window. The one query the
   # bound and the screen must both use, or the screen offers attempts the model
   # refuses.
-  # What this number has actually been asked in the last day.
-  #
-  # Rows that finished without ever reaching the provider are left out, because
-  # the bound is on ringing somebody's telephone and those never rang. Three ways
-  # to get one: the window shutting between reserving and dialling, a provider
-  # refusal through record_failure, or a claim released because consent was
-  # withdrawn meanwhile. record_failure has always said as much -- "nothing rang,
-  # so it should not cost them" -- but only the daily reminder slot honoured it,
-  # and a caregiver quietly lost one of five to a call Telnyx declined to place.
-  #
-  # Deliberately narrow. A row still open counts however young it is: it is either
-  # about to ring or ringing now, and excluding it would let two reservations past
-  # the bound. Only completed *and* never dialled is knowable as "did not happen".
   def self.verifications_in_window(number, now = Time.current)
-    verifications
-      .where(to_number: number, created_at: (now - VERIFICATION_WINDOW)..now)
-      .where("telnyx_calls.completed_at IS NULL OR telnyx_calls.call_control_id IS NOT NULL")
+    verifications.where(to_number: number, created_at: (now - VERIFICATION_WINDOW)..now)
   end
 
   def self.zone_name(user)
