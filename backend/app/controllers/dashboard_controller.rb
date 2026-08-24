@@ -261,12 +261,22 @@ class DashboardController < WebController
     # and removing it traded a stranded reservation for an illegal call — much
     # the worse of the two, however narrow the window.
     #
-    # Released rather than left open, so this cannot reintroduce the stranded row
-    # this PR exists to remove: completed_at is what frees the senior's line.
+    # Destroyed rather than completed, and this is the one place that is safe.
+    #
+    # Nothing was sent: the row was created moments ago in this same request and
+    # we have not reached TelnyxVoiceService yet, so no provider knows it exists
+    # and no webhook can ever name it. That makes it *definitively* undialled,
+    # which the general case is not — a row completed by verify's rescue may be a
+    # call Telnyx already accepted and is ringing now, which is why the bound
+    # deliberately counts every row and why #82 is not a query filter.
+    #
+    # Merely completing it would leave the caregiver a fifth of the day poorer,
+    # and the screen reporting an attempt, for a call that was never placed by a
+    # refusal this code performed on purpose.
     at_dial = Time.current
 
     unless senior.within_calling_hours?(at: at_dial)
-      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      attempt.destroy!
 
       return redirect_to senior_dashboard_path(senior), alert: outside_calling_hours_alert(senior, at: at_dial)
     end

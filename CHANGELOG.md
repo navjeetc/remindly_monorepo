@@ -17,8 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once for the decision. It is then read once more immediately before the
   provider call, because consistency is not currency: reserving on a stale
   reading and dialling after the boundary would have placed a real call outside
-  the legally enforced window, and the reservation is released rather than
-  stranded if the window shuts in between.
+  the legally enforced window. If the window does shut in between, the
+  reservation is undone rather than banked: nothing was sent to the provider, so
+  it costs the caregiver none of their five daily attempts.
 - **A finished call kept blocking the senior's next one.** `completed_at` was
   only written when the hangup event found the outcome still `pending`, so a
   call where nobody pressed anything — the outcome having already been set to

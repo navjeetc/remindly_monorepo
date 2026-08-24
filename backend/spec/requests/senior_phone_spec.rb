@@ -336,19 +336,22 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(flash[:alert]).to include("We only call between")
     end
 
-    # And it must not reintroduce the stranded row this change exists to remove:
-    # completed_at is what frees the senior's line.
-    it "lets go of the reservation it made, rather than stranding it" do
+    # And it must not leave the reservation behind in any form. Nothing was sent
+    # to the provider — the row was made moments earlier in the same request and
+    # the refusal happens before TelnyxVoiceService is reached — so it is
+    # definitively undialled and undoing it costs nothing. Completing it instead
+    # would leave the caregiver a fifth of the day poorer, and the screen
+    # reporting an attempt, for a call this code deliberately declined to place.
+    it "undoes the reservation it made, rather than banking it against the caregiver" do
       answers = [ true, true, false ]
       allow_any_instance_of(User).to receive(:within_calling_hours?) do
         answers.empty? ? false : answers.shift
       end
 
-      post "/dashboard/senior/#{senior.id}/verify_phone"
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change(TelnyxCall, :count)
 
-      attempt = TelnyxCall.verifications.where(user_id: senior.id).last
-      expect(attempt.completed_at).to be_present
-      expect(attempt.status).to eq("cancelled")
+      expect(TelnyxCall.verifications_in_window(senior.phone).count).to eq(0)
       expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be false
     end
 
