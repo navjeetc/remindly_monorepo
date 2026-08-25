@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Editing a reminder could telephone the senior about a dose whose time had
+  already passed.** `Recurrence.expand` deliberately back-fills the most recent
+  past slot of the day, so editing a reminder writes a pending occurrence dated
+  earlier today — which keeps a same-day reminder visible on the dashboard and
+  is the right behaviour there. The call scheduler could not tell that row from
+  one that had just come due, so editing a reminder at 8pm to ring at 7pm would
+  have rung the senior immediately. Neither the scheduler nor the delivery job
+  will now call about an occurrence written after the time it names.
 - **The phone-calls kill switch did not cover the button that places a call.**
   `ENABLE_PHONE_CALL_REMINDERS` gated the scheduler and the delivery job, so
   scheduled calls were off — but a caregiver pressing "Call and ask" reached

@@ -24,6 +24,26 @@ class VoiceReminderSchedulerJob < ApplicationJob
   # performs, so this window is deliberately much tighter than its.
   LOOKBACK = 2.hours
 
+  # How late a row may be written and still be treated as having come due
+  # naturally.
+  #
+  # Recurrence.expand deliberately back-fills the most recent past slot of the
+  # day — its own comment explains why, and the reason is good: it keeps a
+  # same-day reminder visible after its clock time has passed, for a caregiver in
+  # one timezone setting a reminder for a senior in another. Harmless on a
+  # dashboard.
+  #
+  # Not harmless here. Editing a reminder regenerates its pending occurrences, so
+  # the back-filled row is created *now* and dated earlier today — and a row dated
+  # inside LOOKBACK is indistinguishable, to the query above, from one that just
+  # came due. Editing a reminder at 8pm to ring at 7pm would therefore telephone
+  # the senior straight away about a dose whose time had already passed.
+  #
+  # A minute of grace, because a reminder created for the current minute is a real
+  # thing a caregiver does, and the row is written a moment after the time it
+  # names.
+  BACKFILL_GRACE = 1.minute
+
   def perform(now: Time.current)
     return unless FeatureFlag.enabled?(:phone_call_reminders)
 
@@ -58,6 +78,22 @@ class VoiceReminderSchedulerJob < ApplicationJob
       )
       .includes(reminder: :user)
       .find_each do |occ|
+        # Never telephone about an occurrence that did not exist when its time
+        # came. Skipped rather than suppressed: suppress_call! records that a
+        # call was withheld, and nothing was withheld here — this row was never
+        # due in real time, so there was no call to withhold.
+        if occ.created_at > occ.scheduled_at + BACKFILL_GRACE
+          # debug, not info: the scheduler runs every minute and this row stays in
+          # scope for up to LOOKBACK, so one edit would otherwise print the same
+          # line 120 times. The job logs at info when it declines, and that
+          # happens once.
+          Rails.logger.debug(
+            "Voice reminder for occurrence #{occ.id} skipped: back-filled at " \
+            "#{occ.created_at.iso8601} for #{occ.scheduled_at.iso8601}, which had already passed"
+          )
+          next
+        end
+
         # Calling hours are per-person, in their own timezone, so this cannot be
         # a WHERE clause -- every senior's window lands on a different UTC hour.
         # Filtering here rather than letting the job drop it matters because a

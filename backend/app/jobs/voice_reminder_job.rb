@@ -54,6 +54,22 @@ class VoiceReminderJob < ApplicationJob
       return
     end
 
+    # Re-checked here for the same reason as the rest: this job is reachable from
+    # a console and from a retry, and the scheduler's WHERE clause is a filter,
+    # not a guarantee.
+    #
+    # Recurrence.expand back-fills the most recent past slot of the day when a
+    # reminder is created or edited, so a pending row can be written now and
+    # dated hours ago. That is right for the dashboard and wrong for a telephone:
+    # nothing came due, so nothing should ring.
+    if occurrence.created_at > occurrence.scheduled_at + VoiceReminderSchedulerJob::BACKFILL_GRACE
+      Rails.logger.info(
+        "Voice reminder for occurrence #{occurrence.id} skipped: back-filled at " \
+        "#{occurrence.created_at.iso8601} for #{occurrence.scheduled_at.iso8601}, which had already passed"
+      )
+      return
+    end
+
     # Checked here as well as in the scheduler. The scheduler check exists to
     # avoid enqueuing work that cannot run; this one exists because it is the
     # last thing between a person and a ringing telephone, and this job can be
