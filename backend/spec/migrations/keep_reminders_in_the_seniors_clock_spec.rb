@@ -16,9 +16,13 @@ RSpec.describe KeepRemindersInTheSeniorsClock do
   # The shape this migration exists to repair: stamped with a zone that is not
   # the senior's, which only update_column can produce now that the model
   # forbids it.
+  # Anchored in November, as the production rows were: 8:41pm EST is 01:41 UTC,
+  # New Delhi holds that instant all year, and in August it reads 9:41pm Eastern.
+  # An August-anchored fixture does not drift at all in August, which is how a
+  # first draft of these specs tested nothing.
   def drifted_reminder
     senior.reminders.create!(title: "Take sleep medicine", category: :medication, rrule: "FREQ=DAILY",
-                             start_time: eastern.local(2026, 8, 20, 20, 41))
+                             start_time: eastern.local(2025, 11, 26, 20, 41))
           .tap { |r| r.update_column(:tz, "New Delhi") }
   end
 
@@ -117,33 +121,56 @@ RSpec.describe KeepRemindersInTheSeniorsClock do
   # Preserving a stateful row is only half the job: expansion back-fills the
   # corrected slot for the same day, and the missed sweep then tells the caregiver
   # the senior missed a dose she has already marked done.
-  describe "a day that is already settled" do
-    it "is not re-opened by the corrected schedule" do
+  describe "a dose that already has an answer" do
+    # 9:41pm is the drifted rendering of the 8:41pm the caregiver set.
+    def acknowledged_dose(reminder, at)
+      Occurrence.create!(reminder: reminder, scheduled_at: at, status: :acknowledged)
+                .tap { |o| Acknowledgement.create!(occurrence: o, kind: "taken", at: Time.current) }
+    end
+
+    it "is not re-opened an hour away by the corrected schedule" do
       reminder = drifted_reminder
       travel_to(eastern.local(2026, 8, 21, 22, 0)) do
-        done = Occurrence.create!(reminder: reminder, scheduled_at: eastern.local(2026, 8, 21, 21, 41),
-                                  status: :acknowledged)
-        Acknowledgement.create!(occurrence: done, kind: "taken", at: Time.current)
+        done = acknowledged_dose(reminder, eastern.local(2026, 8, 21, 21, 41))
 
         described_class.new.up
 
-        on_that_day = reminder.occurrences.reload.select { |o| o.scheduled_at.in_time_zone(eastern).to_date == Date.new(2026, 8, 21) }
-        expect(on_that_day.map(&:id)).to eq([ done.id ])
+        that_evening = reminder.occurrences.reload.select { |o| o.scheduled_at.in_time_zone(eastern).to_date == Date.new(2026, 8, 21) }
+        expect(that_evening.map(&:id)).to eq([ done.id ])
       end
     end
 
     it "leaves later days alone, which still need their corrected slot" do
       reminder = drifted_reminder
       travel_to(eastern.local(2026, 8, 21, 22, 0)) do
-        done = Occurrence.create!(reminder: reminder, scheduled_at: eastern.local(2026, 8, 21, 21, 41),
-                                  status: :acknowledged)
-        Acknowledgement.create!(occurrence: done, kind: "taken", at: Time.current)
+        acknowledged_dose(reminder, eastern.local(2026, 8, 21, 21, 41))
 
         described_class.new.up
 
         later = reminder.occurrences.reload.select { |o| o.scheduled_at.in_time_zone(eastern).to_date > Date.new(2026, 8, 21) }
         expect(later).not_to be_empty
-        expect(later.map { |o| o.scheduled_at.in_time_zone(eastern).strftime("%-l:%M%P") }.uniq).to eq([ "8:41pm" ])
+      end
+    end
+
+    # The reason this matches by nearness rather than by date. An hourly reminder
+    # has many doses in one day; treating the date as settled would delete every
+    # corrected dose after the first — removing the rest of that day's reminders
+    # and their calls, which is worse than the contradiction it prevents.
+    it "does not take the rest of an hourly day down with it" do
+      reminder = senior.reminders.create!(title: "Sip water", category: :hydration, rrule: "FREQ=HOURLY",
+                                          start_time: eastern.local(2025, 11, 26, 9, 0))
+      reminder.update_column(:tz, "New Delhi")
+
+      travel_to(eastern.local(2026, 8, 21, 12, 0)) do
+        acknowledged_dose(reminder, eastern.local(2026, 8, 21, 9, 0))
+
+        described_class.new.up
+
+        rest_of_day = reminder.occurrences.reload.select do |o|
+          local = o.scheduled_at.in_time_zone(eastern)
+          local.to_date == Date.new(2026, 8, 21) && local.hour > 9
+        end
+        expect(rest_of_day).not_to be_empty
       end
     end
   end

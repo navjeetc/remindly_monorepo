@@ -39,12 +39,12 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
       # re-stamp, because it is the old schedule they belong to.
       replaceable = replaceable_slots(reminder)
 
+      # Worked out before the re-stamp, while the drifted rows are still the only
+      # ones present.
+      spoken_for = settled_times(reminder)
+
       reminder.update_column(:tz, senior_tz)
       replaceable.each(&:destroy)
-
-      # Which days already have an occurrence somebody has acted on, once the
-      # replaceable ones are gone. Expansion must not add a second one to those.
-      spoken_for = days_already_settled(reminder, senior_tz)
       known = reminder.occurrences.pluck(:id)
 
       # Rescued for the same reason replaceable_slots is: Recurrence.expand parses
@@ -59,7 +59,7 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
         next
       end
 
-      drop_contradictions(reminder, senior_tz, spoken_for, known)
+      drop_contradictions(reminder, spoken_for, known)
     end
   end
 
@@ -120,7 +120,8 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
     []
   end
 
-  # Days whose occurrence has already been resolved, called about, or refused.
+  # Times that already have an answer: resolved, called about, suppressed, or
+  # acknowledged.
   #
   # Keeping a stateful drifted row is only half the job. Recurrence.expand
   # back-fills the most recent past slot of the day, so a dose acknowledged at
@@ -128,9 +129,7 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
   # sweep then reports to the caregiver as missed, flatly contradicting the
   # acknowledgement sitting beside it. Other offsets produce an upcoming row
   # instead, eligible for a second call about a dose already taken.
-  def days_already_settled(reminder, zone_name)
-    zone = ActiveSupport::TimeZone[zone_name.to_s] || Time.zone
-
+  def settled_times(reminder)
     reminder.occurrences
             .left_joins(:telnyx_calls, :acknowledgements)
             .where("occurrences.status != ? OR occurrences.call_suppressed_at IS NOT NULL " \
@@ -138,26 +137,54 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
                    Occurrence.statuses[:pending])
             .distinct
             .pluck(:scheduled_at)
-            .map { |t| t.in_time_zone(zone).to_date }
-            .to_set
+            .map(&:to_i)
   end
 
-  # Removes what expansion just added to a day that was already settled. Only
-  # rows it created in this run, and only ones nothing has touched.
-  def drop_contradictions(reminder, zone_name, spoken_for, known_before)
-    return if spoken_for.empty?
+  # Removes what expansion just added on top of a time that already has an
+  # answer. Only rows it created in this run, and only ones nothing has touched.
+  #
+  # Matched by nearness rather than by date. A date is far too coarse: an hourly
+  # reminder has many doses in one, and settling the first would delete every
+  # corrected dose after it — removing the rest of that day's reminders and their
+  # calls, which is worse than the contradiction it set out to prevent. Matching
+  # exactly is too strict, since the whole point is that the corrected slot sits
+  # an offset away from the drifted one.
+  #
+  # So: half the schedule's own smallest gap. Two rows closer together than that
+  # cannot be separate doses of this reminder, and a drift is always smaller than
+  # the interval it drifts within. An hourly schedule tolerates thirty minutes and
+  # keeps its later doses; a daily one tolerates twelve hours and drops the
+  # duplicate an hour away.
+  def drop_contradictions(reminder, settled, known_before)
+    return if settled.empty?
 
-    zone = ActiveSupport::TimeZone[zone_name.to_s] || Time.zone
+    fresh = reminder.occurrences.where.not(id: known_before)
+                    .where(status: :pending, call_suppressed_at: nil)
+                    .where.missing(:telnyx_calls).where.missing(:acknowledgements)
+                    .order(:scheduled_at).to_a
+    return if fresh.empty?
 
-    reminder.occurrences.where.not(id: known_before)
-            .where(status: :pending, call_suppressed_at: nil)
-            .where.missing(:telnyx_calls).where.missing(:acknowledgements)
-            .find_each do |fresh|
-              next unless spoken_for.include?(fresh.scheduled_at.in_time_zone(zone).to_date)
+    tolerance = smallest_gap(fresh.map { |o| o.scheduled_at.to_i }) / 2
 
-              say "  not re-opening #{fresh.scheduled_at.in_time_zone(zone).to_date}: that day is already settled"
-              fresh.destroy
-            end
+    fresh.each do |occurrence|
+      at = occurrence.scheduled_at.to_i
+      next unless settled.any? { |answered| (answered - at).abs < tolerance }
+
+      say "  not re-opening #{occurrence.scheduled_at}: that dose already has an answer"
+      occurrence.destroy
+    end
+  end
+
+  # The smallest interval the corrected schedule runs at, read from the slots it
+  # just produced rather than parsed out of the RRULE.
+  #
+  # Measured across the *new* slots only. Measuring across all of them included
+  # the duplicate this method exists to find — a settled 9:41pm beside a corrected
+  # 8:41pm looks like a one-hour schedule, which shrinks the tolerance to thirty
+  # minutes and lets the very row through that it was called to catch.
+  def smallest_gap(times)
+    gaps = times.sort.each_cons(2).map { |a, b| b - a }.reject(&:zero?)
+    gaps.empty? ? 1.day.to_i : gaps.min
   end
 
   def same_zone?(one, other)
