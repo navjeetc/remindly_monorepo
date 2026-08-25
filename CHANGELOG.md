@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A caregiver looking after three parents read a column of mailboxes and had to
   translate each one back into a person. `User#display_name` already resolved
   this and the senior list already used it; the senior's page, both reminder
-  forms, the invite page and the task form now do too. The address is gone from
-  the senior's page entirely: disambiguation belongs in the list where a
-  caregiver chooses between people, which already shows it, and a
-  caregiver-created senior may have no meaningful address at all.
+  forms, the invite page and the task form now do too. The senior's page no
+  longer shows the address as detail beside the timezone: disambiguation belongs
+  in the list where a caregiver chooses between people, which already shows it,
+  and a caregiver-created senior may have no meaningful address at all. It can
+  still appear as the heading itself, since `display_name` falls back to it for
+  a senior with no name yet — better than a blank heading.
 
 ### Fixed
 - **Editing a reminder could telephone the senior about a dose whose time had

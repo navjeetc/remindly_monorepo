@@ -1,13 +1,18 @@
 <div class="space-y-6">
   <div class="flex justify-between items-center">
     <div>
-      <%# The person, not the account. No email address here: disambiguation
-          belongs where a caregiver is choosing between people — the dashboard
-          list, which already shows it — and by this point they have chosen.
-          A caregiver-created senior may have no meaningful address at all,
-          since the access design lets one exist who can never sign in, so the
-          address is an artefact of account creation rather than a fact worth
-          heading the page about somebody's day with. %>
+      <%# The person, not the account. The address is no longer shown as detail
+          beside the timezone: disambiguation belongs where a caregiver is
+          choosing between people — the dashboard list, which shows it — and by
+          this point they have chosen. A caregiver-created senior may have no
+          meaningful address at all, since the access design lets one exist who
+          can never sign in, so it is an artefact of account creation rather
+          than a fact worth heading somebody's day with.
+
+          It can still appear here, as the heading itself: display_name falls
+          back to the address for a senior with no name or nickname yet, which
+          beats a blank heading. That is the only route by which one shows on
+          this page now. %>
       <h2 class="text-3xl font-bold text-gray-900"><%= @senior.display_name %></h2>
       <p class="mt-1 text-sm text-gray-500">Timezone: <%= @senior.tz %> | Permission: <%= @permission.titleize %></p>
     </div>
