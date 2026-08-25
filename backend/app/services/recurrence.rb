@@ -1,6 +1,27 @@
 class Recurrence
   def self.expand(reminder, horizon_hours: 24)
-    tz   = ActiveSupport::TimeZone[reminder.tz]
+    # The reminder's stamp, then the senior's clock, then the server's.
+    #
+    # The stamp comes first deliberately, even though the senior's clock is the
+    # thing it is meant to equal. Reminder now keeps them equal on every write
+    # and the repair migration fixes the rows written before that, so preferring
+    # the stamp costs nothing — and preferring the *user* has a cost that is not
+    # obvious: a senior editing their profile timezone would leave every reminder
+    # stamped with the old zone, and the next dashboard load would expand in the
+    # new one without removing what the old one had already materialised. A daily
+    # 9am dose would gain a second row an hour away, and with phone reminders on
+    # that is two calls for one tablet.
+    #
+    # Deciding what should happen when somebody moves — does 9am follow them, or
+    # stay put? — is a real question and not this change's to answer. Keeping the
+    # stamp first means this change does not answer it by accident.
+    #
+    # The fallbacks are the safety this method lacked: the naive lookup returned
+    # nil for a zone that does not resolve and raised NoMethodError on the next
+    # line, taking down whichever request touched that reminder first.
+    tz   = ActiveSupport::TimeZone[reminder.tz.to_s] ||
+           ActiveSupport::TimeZone[reminder.user&.tz.to_s] ||
+           Time.zone
     now  = tz.now
     stop = now + horizon_hours.hours
 
