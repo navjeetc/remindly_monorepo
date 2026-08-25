@@ -157,13 +157,18 @@ RSpec.describe Recurrence do
         .to eq([ "8:39am" ])
     end
 
-    # The one that actually catches the drift. Within a single season a New Delhi
-    # stamp and an Eastern one produce the same wall-clock time, which is why this
-    # went unnoticed for months and why the shorter specs above cannot tell them
-    # apart. It only shows when the clocks change: pinned to a zone with no
-    # daylight saving, the reminder holds its UTC instant and the senior's evening
-    # moves away from it.
-    it "does not drift across the clock change, though its stamped zone never changes" do
+    # Still expanded in the stamped zone, and deliberately so — which means such a
+    # row goes on drifting until the repair migration reaches it. That migration
+    # runs from the Docker entrypoint before the app serves a request, so the
+    # window is a deploy rather than a season, and its own specs cover the repair.
+    #
+    # The alternative, preferring the user's zone here, quietly answers a question
+    # this change has no business answering: a senior editing their profile
+    # timezone would leave every reminder stamped with the old zone, and the next
+    # dashboard load would expand in the new one without removing what the old one
+    # had materialised — a second row an hour away from the first, and with phone
+    # reminders on, two calls for one tablet.
+    it "keeps using the stamped zone, leaving the repair to the migration" do
       eastern = ActiveSupport::TimeZone["America/New_York"]
       reminder = senior.reminders.create!(title: "Take sleep medicine", category: :medication,
                                           rrule: "FREQ=DAILY",
@@ -173,8 +178,25 @@ RSpec.describe Recurrence do
       travel_to(eastern.local(2026, 11, 3, 12, 0))
       described_class.expand(reminder.reload)
 
+      # 8:41pm EDT is 00:41 UTC; New Delhi never changes, so November keeps that
+      # instant and the senior's evening has moved an hour away from it.
       expect(reminder.occurrences.reload.map { |o| o.scheduled_at.in_time_zone("America/New_York").strftime("%-l:%M%P") }.uniq)
-        .to eq([ "8:41pm" ])
+        .to eq([ "7:41pm" ])
+    end
+
+    # A senior changing their own timezone must not silently double their
+    # reminders. Nothing here re-stamps on their behalf, so the schedule stays
+    # where it was until something saves the reminder.
+    it "does not start expanding in a new zone the moment the senior edits their profile" do
+      reminder = senior.reminders.create!(title: "Pills", category: :medication, rrule: "FREQ=DAILY",
+                                          start_time: ActiveSupport::TimeZone[tz].local(2026, 7, 9, 9, 0))
+      described_class.expand(reminder)
+      before = reminder.occurrences.reload.map { |o| o.scheduled_at.to_i }.sort
+
+      senior.update!(name: "Mum", tz: "America/Chicago")
+      described_class.expand(reminder.reload)
+
+      expect(reminder.occurrences.reload.map { |o| o.scheduled_at.to_i }.sort).to eq(before)
     end
 
     it "does not raise when the stamped zone does not resolve at all" do

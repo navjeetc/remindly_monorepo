@@ -73,6 +73,34 @@ RSpec.describe KeepRemindersInTheSeniorsClock do
       expect(TelnyxCall.exists?(call.id)).to be true
     end
 
+    # A slot refused outside calling hours carries a suppression reason and no
+    # telnyx_calls at all, so it looked replaceable. Destroying it loses the only
+    # evidence that no call was placed, and the caregiver email then says the
+    # senior did not mark it done — for a call Remindly itself withheld.
+    it "keeps an occurrence whose call was suppressed, and why" do
+      reminder = drifted_reminder
+      occ = Occurrence.create!(reminder: reminder, scheduled_at: eastern.local(2026, 8, 21, 20, 41), status: :pending)
+      occ.suppress_call!(:outside_calling_hours)
+
+      described_class.new.up
+
+      expect(Occurrence.exists?(occ.id)).to be true
+      expect(occ.reload.call_suppressed_reason).to eq("outside_calling_hours")
+    end
+
+    # Falling back to the server's zone would compute slots for a schedule this
+    # reminder never had, then delete whatever happened to coincide with them.
+    it "deletes nothing at all when the stamped zone cannot be resolved" do
+      reminder = drifted_reminder
+      Recurrence.expand(reminder)
+      reminder.update_column(:tz, "Neverwhere/Nowhere")
+      before = reminder.occurrences.pluck(:id).sort
+
+      described_class.new.up
+
+      expect(reminder.occurrences.reload.pluck(:id)).to include(*before)
+    end
+
     it "keeps an occurrence somebody has already acknowledged something about" do
       reminder = drifted_reminder
       occ = Occurrence.create!(reminder: reminder, scheduled_at: eastern.local(2026, 8, 21, 20, 41), status: :pending)

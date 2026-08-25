@@ -41,7 +41,17 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
 
       reminder.update_column(:tz, senior_tz)
       replaceable.each(&:destroy)
-      Recurrence.expand(reminder.reload)
+
+      # Rescued for the same reason replaceable_slots is: Recurrence.expand parses
+      # the RRULE too, so a corrupt one would have aborted the deploy regardless
+      # of the care taken a few lines earlier. The re-stamp is the repair that
+      # matters and it has already happened; the occurrences will be rebuilt by
+      # the next dashboard load, which expands anyway.
+      begin
+        Recurrence.expand(reminder.reload)
+      rescue StandardError => e
+        say "  could not re-expand reminder #{reminder.id} (#{e.class}); its zone is fixed, occurrences will rebuild on next view"
+      end
     end
   end
 
@@ -71,11 +81,22 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
   # So: only rows that sit exactly on a slot of the *old* schedule, and that
   # nothing has happened to. Anything else is somebody's state, not our cache.
   def replaceable_slots(reminder)
-    pending = reminder.occurrences.where(status: :pending)
+    # call_suppressed_at is the fourth thing that makes a row somebody's state.
+    # An occurrence refused outside calling hours carries a suppression reason and
+    # no telnyx_calls at all, so it looked replaceable — and destroying it loses
+    # the only evidence that no call was placed. The caregiver email then falls
+    # back to saying the senior did not mark it done, for a call Remindly itself
+    # withheld.
+    pending = reminder.occurrences.where(status: :pending, call_suppressed_at: nil)
                       .where.missing(:telnyx_calls).where.missing(:acknowledgements).to_a
     return [] if pending.empty?
 
-    zone = ActiveSupport::TimeZone[reminder.tz.to_s] || Time.zone
+    # No fallback here, unlike Recurrence. Falling back to the server's zone would
+    # compute slots for a schedule this reminder never had, and then delete the
+    # pending rows that happened to coincide with them — guessing, in the one
+    # place that stated it would not guess.
+    zone = ActiveSupport::TimeZone[reminder.tz.to_s]
+    return [] if zone.nil?
     schedule = IceCube::Schedule.new((reminder.start_time || pending.first.scheduled_at).in_time_zone(zone))
     schedule.add_recurrence_rule(IceCube::Rule.from_ical(reminder.rrule))
 
