@@ -2,7 +2,7 @@
   <div class="flex justify-between items-center">
     <div>
       <h2 class="text-3xl font-bold text-gray-900">New Task</h2>
-      <p class="mt-1 text-sm text-gray-500">Create a new task for <%= @senior.email %></p>
+      <p class="mt-1 text-sm text-gray-500">Create a new task for <%= @senior.display_name %></p>
     </div>
     <%= link_to "← Back to Tasks", senior_tasks_path(@senior), class: "text-blue-600 hover:text-blue-800" %>
   </div>

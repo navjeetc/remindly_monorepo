@@ -1,8 +1,15 @@
 <div class="space-y-6">
   <div class="flex justify-between items-center">
     <div>
-      <h2 class="text-3xl font-bold text-gray-900"><%= @senior.email %></h2>
-      <p class="mt-1 text-sm text-gray-500">Timezone: <%= @senior.tz %> | Permission: <%= @permission.titleize %></p>
+      <%# The name a caregiver thinks in, with the address kept underneath: it is
+          the only unambiguous identifier when two seniors share a first name, so
+          dropping it trades one confusion for another. Shown only when it adds
+          something — display_name falls back to the email, and printing it twice
+          reads as a bug. Same shape as the caregiver dashboard's senior list. %>
+      <h2 class="text-3xl font-bold text-gray-900"><%= @senior.display_name %></h2>
+      <p class="mt-1 text-sm text-gray-500">
+        <% if @senior.display_name != @senior.email %><%= @senior.email %> &middot; <% end %>Timezone: <%= @senior.tz %> | Permission: <%= @permission.titleize %>
+      </p>
     </div>
     <div class="flex space-x-4">
       <%= link_to "Invite Caregiver", invite_caregiver_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>

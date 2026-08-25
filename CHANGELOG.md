@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Caregiver screens name the senior instead of showing their email address.**
+  A caregiver looking after three parents read a column of mailboxes and had to
+  translate each one back into a person. `User#display_name` already resolved
+  this and the senior list already used it; the senior's page, both reminder
+  forms, the invite page and the task form now do too. The address is kept as a
+  subtitle on the senior's page, because it is the only unambiguous identifier
+  when two seniors share a first name — and omitted when it is already the
+  heading, which happens for a senior with no name yet.
+
 ### Fixed
 - **Editing a reminder could telephone the senior about a dose whose time had
   already passed.** `Recurrence.expand` deliberately back-fills the most recent
