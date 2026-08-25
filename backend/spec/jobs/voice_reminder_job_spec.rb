@@ -281,4 +281,30 @@ RSpec.describe VoiceReminderJob do
       expect(TelnyxVoiceService).not_to have_received(:dial)
     end
   end
+
+  # Re-checked at the choke point for the same reason as every other guard here:
+  # this job is reachable from a console and from a retry, and the scheduler's
+  # WHERE clause is a filter, not a guarantee.
+  describe "an occurrence back-filled after its time had passed" do
+    it "is not dialled, even when the job is reached directly" do
+      travel_to(at(10)) do
+        occurrence.update_columns(created_at: occurrence.scheduled_at + 5.minutes)
+        described_class.new.perform(occurrence.id)
+      end
+
+      expect(TelnyxVoiceService).not_to have_received(:dial)
+    end
+
+    # The control. Without it the spec above passes for any reason at all — the
+    # first draft ran outside calling hours and was blocked by that guard
+    # instead, so it went green with the back-fill check deleted.
+    it "is dialled when the same row was written before its time, as a real one is" do
+      travel_to(at(10)) do
+        occurrence.update_columns(created_at: occurrence.scheduled_at - 1.day)
+        described_class.new.perform(occurrence.id)
+      end
+
+      expect(TelnyxVoiceService).to have_received(:dial)
+    end
+  end
 end

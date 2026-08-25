@@ -10,8 +10,17 @@ RSpec.describe VoiceReminderSchedulerJob do
     ActiveSupport::TimeZone[zone].local(2026, 6, 15, hour, 0)
   end
 
+  # created_at before scheduled_at, because that is what a real occurrence looks
+  # like: the recurrence expansion writes it ahead of the time it names. A row
+  # written *after* its time is a back-fill, which must not ring a phone — see
+  # the spec for that at the bottom of this file.
+  def occurrence_at(moment, created: nil)
+    Occurrence.create!(reminder: reminder, scheduled_at: moment, status: :pending)
+              .tap { |o| o.update_columns(created_at: created || moment - 1.day) }
+  end
+
   def due_at(moment)
-    Occurrence.create!(reminder: reminder, scheduled_at: moment - 1.minute, status: :pending)
+    occurrence_at(moment - 1.minute)
   end
 
   # The feature is off by default, everywhere. These specs are about what
@@ -95,20 +104,20 @@ RSpec.describe VoiceReminderSchedulerJob do
   end
 
   it "ignores one that fell outside the window while the queue was backed up" do
-    Occurrence.create!(reminder: reminder, scheduled_at: at(10) - described_class::LOOKBACK - 1.minute, status: :pending)
+    occurrence_at(at(10) - described_class::LOOKBACK - 1.minute)
 
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
   end
 
   it "still calls about one delayed within the window, so a brief backlog is survivable" do
-    occurrence = Occurrence.create!(reminder: reminder, scheduled_at: at(10) - described_class::LOOKBACK + 1.minute, status: :pending)
+    occurrence = occurrence_at(at(10) - described_class::LOOKBACK + 1.minute)
 
     expect { described_class.new.perform(now: at(10)) }
       .to have_enqueued_job(VoiceReminderJob).with(occurrence.id)
   end
 
   it "does not call about one that is not due yet" do
-    Occurrence.create!(reminder: reminder, scheduled_at: at(10) + 5.minutes, status: :pending)
+    occurrence_at(at(10) + 5.minutes)
 
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
   end
@@ -124,5 +133,31 @@ RSpec.describe VoiceReminderSchedulerJob do
     due_at(at(10))
 
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+
+  # Recurrence.expand deliberately back-fills the most recent past slot of the
+  # day, so editing a reminder writes a pending row dated earlier today. Right
+  # for the dashboard — it keeps a same-day reminder visible after its clock time
+  # has passed — and wrong for a telephone, because to the query that row is
+  # indistinguishable from one that has just come due.
+  #
+  # Found in production: a reminder edited from 8:36am to 8:15am at 9:53pm
+  # materialised a pending 8:15am occurrence dated that morning. It was outside
+  # LOOKBACK by then and nothing rang, but the same edit made at 9pm for an 8pm
+  # slot would have telephoned the senior immediately, about a dose whose time
+  # had already passed.
+  describe "an occurrence back-filled after its time had passed" do
+    it "is not called about, however recently it was due" do
+      occurrence_at(at(10) - 30.minutes, created: at(10))
+
+      expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+    end
+
+    it "is still called about when written a moment late, which is ordinary latency" do
+      occurrence = occurrence_at(at(10) - 30.minutes, created: at(10) - 30.minutes + 30.seconds)
+
+      expect { described_class.new.perform(now: at(10)) }
+        .to have_enqueued_job(VoiceReminderJob).with(occurrence.id)
+    end
   end
 end
