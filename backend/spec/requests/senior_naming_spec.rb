@@ -26,13 +26,15 @@ RSpec.describe "How caregiver screens name a senior", type: :request do
       expect(response.body).to include("Margaret")
     end
 
-    # Kept, not dropped: it is the only unambiguous identifier when two seniors
-    # share a first name, and a caregiver who needs to tell them apart has
-    # nowhere else to look.
-    it "still shows the address underneath" do
+    # Deliberately absent. Disambiguation belongs where a caregiver chooses
+    # between people — the dashboard list, which shows the address — and by this
+    # point they have chosen. A caregiver-created senior may have no meaningful
+    # address at all, so it is an artefact of account creation rather than
+    # something to head a page about somebody's day with.
+    it "does not show their email address" do
       get senior_dashboard_path(senior)
 
-      expect(response.body).to include("mum@example.com")
+      expect(response.body).not_to include("mum@example.com")
     end
 
     it "prefers a nickname over the full name, as display_name does" do
@@ -44,9 +46,9 @@ RSpec.describe "How caregiver screens name a senior", type: :request do
     end
   end
 
-  # display_name falls back to the email, so a senior with no name renders it as
-  # the heading — and printing it again underneath reads as a bug rather than as
-  # detail.
+  # display_name falls back to the email, so a senior with no name still gets a
+  # heading rather than a blank one. That fallback is the only reason an address
+  # appears on this page at all.
   describe "a senior with no name yet" do
     before { senior.update_columns(name: nil, nickname: nil) }
 
@@ -56,7 +58,7 @@ RSpec.describe "How caregiver screens name a senior", type: :request do
       expect(response.body).to include("mum@example.com")
     end
 
-    it "does not print the address twice" do
+    it "shows it once, as the heading, and not again as detail" do
       get senior_dashboard_path(senior)
 
       expect(response.body.scan("mum@example.com").size).to eq(1)
