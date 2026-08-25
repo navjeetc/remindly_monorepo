@@ -1,6 +1,15 @@
 class Recurrence
   def self.expand(reminder, horizon_hours: 24)
-    tz   = ActiveSupport::TimeZone[reminder.tz]
+    # The person's clock, then the reminder's stamp, then the server's.
+    #
+    # Reminder keeps tz equal to its user's, so the first almost always answers.
+    # The order matters for the rows written before it did: a legacy reminder can
+    # carry a zone that is not the senior's, or one that does not resolve at all,
+    # and the naive lookup returned nil and raised NoMethodError on the next line
+    # — taking down whichever request touched it first.
+    tz   = ActiveSupport::TimeZone[reminder.user&.tz.to_s] ||
+           ActiveSupport::TimeZone[reminder.tz.to_s] ||
+           Time.zone
     now  = tz.now
     stop = now + horizon_hours.hours
 
