@@ -29,6 +29,12 @@ env:
     RAILS_ENV: "production"
     APP_VERSION: "0.5.0"
     ENABLE_NATIVE_SCHEDULING: "true"
+    # The outer of two locks on reminder phone calls, and the reason it lives
+    # here rather than in a console: turning calls on is a reviewed change to the
+    # deploy configuration, and turning them off again is a revert rather than an
+    # incident. The inner lock is User#callable_by_phone? -- a number, a recorded
+    # consent, no opt-out -- which no caregiver can set on a senior's behalf.
+    ENABLE_PHONE_CALL_REMINDERS: "true"
     # Run the Solid Queue supervisor (worker + dispatcher + recurring scheduler)
     # inside Puma. This single-server box has no separate job role, so without
     # this nothing drains the queue: recurring jobs (missed sweep, coverage-gap
