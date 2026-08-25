@@ -141,11 +141,17 @@ RSpec.describe Recurrence do
   end
 
   # Reminder keeps tz equal to its user's now, so this shape can only arrive from
-  # a row written before that rule existed. expand resolves the senior's clock
-  # first, so those are scheduled correctly even before the repair migration
-  # reaches them — and a zone that does not resolve at all no longer raises.
+  # a row written before that rule existed. expand still honours the stamp — see
+  # the comment there for why preferring the user would answer the moving-senior
+  # question by accident — so such a row keeps drifting until the repair
+  # migration reaches it, which happens at deploy. The senior's zone is a
+  # fallback, for a stamp that does not resolve at all.
   describe "a legacy reminder carrying somebody else's clock" do
-    it "is expanded in the senior's zone, not the stamped one" do
+    # Note this passes under either precedence: within a single DST season a New
+    # Delhi stamp and an Eastern one render the same wall-clock time. It is here
+    # to show the ordinary case is unaffected, not to pin the precedence — the
+    # spec below the next one does that, across the clock change.
+    it "is scheduled at the same wall-clock time within a single season" do
       reminder = senior.reminders.create!(title: "Pills", category: :medication,
                                           rrule: "FREQ=DAILY",
                                           start_time: ActiveSupport::TimeZone[tz].local(2026, 7, 9, 8, 39))

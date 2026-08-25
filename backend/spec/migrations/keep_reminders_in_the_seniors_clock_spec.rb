@@ -8,6 +8,8 @@ require Rails.root.join("db/migrate/20260825030000_keep_reminders_in_the_seniors
 # never recreates), the delivery history hanging off an occurrence
 # (has_many :telnyx_calls, dependent: :destroy), and its acknowledgements.
 RSpec.describe KeepRemindersInTheSeniorsClock do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:eastern) { ActiveSupport::TimeZone["America/New_York"] }
   let(:senior) { create(:user, :senior, name: "Mum", tz: "America/New_York") }
 
@@ -109,6 +111,40 @@ RSpec.describe KeepRemindersInTheSeniorsClock do
       described_class.new.up
 
       expect(Occurrence.exists?(occ.id)).to be true
+    end
+  end
+
+  # Preserving a stateful row is only half the job: expansion back-fills the
+  # corrected slot for the same day, and the missed sweep then tells the caregiver
+  # the senior missed a dose she has already marked done.
+  describe "a day that is already settled" do
+    it "is not re-opened by the corrected schedule" do
+      reminder = drifted_reminder
+      travel_to(eastern.local(2026, 8, 21, 22, 0)) do
+        done = Occurrence.create!(reminder: reminder, scheduled_at: eastern.local(2026, 8, 21, 21, 41),
+                                  status: :acknowledged)
+        Acknowledgement.create!(occurrence: done, kind: "taken", at: Time.current)
+
+        described_class.new.up
+
+        on_that_day = reminder.occurrences.reload.select { |o| o.scheduled_at.in_time_zone(eastern).to_date == Date.new(2026, 8, 21) }
+        expect(on_that_day.map(&:id)).to eq([ done.id ])
+      end
+    end
+
+    it "leaves later days alone, which still need their corrected slot" do
+      reminder = drifted_reminder
+      travel_to(eastern.local(2026, 8, 21, 22, 0)) do
+        done = Occurrence.create!(reminder: reminder, scheduled_at: eastern.local(2026, 8, 21, 21, 41),
+                                  status: :acknowledged)
+        Acknowledgement.create!(occurrence: done, kind: "taken", at: Time.current)
+
+        described_class.new.up
+
+        later = reminder.occurrences.reload.select { |o| o.scheduled_at.in_time_zone(eastern).to_date > Date.new(2026, 8, 21) }
+        expect(later).not_to be_empty
+        expect(later.map { |o| o.scheduled_at.in_time_zone(eastern).strftime("%-l:%M%P") }.uniq).to eq([ "8:41pm" ])
+      end
     end
   end
 
