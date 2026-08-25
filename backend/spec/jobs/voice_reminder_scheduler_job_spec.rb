@@ -15,8 +15,9 @@ RSpec.describe VoiceReminderSchedulerJob do
   # written *after* its time is a back-fill, which must not ring a phone — see
   # the spec for that at the bottom of this file.
   def occurrence_at(moment, created: nil)
-    Occurrence.create!(reminder: reminder, scheduled_at: moment, status: :pending)
-              .tap { |o| o.update_columns(created_at: created || moment - 1.day) }
+    travel_to(created || moment - 1.day) do
+      Occurrence.create!(reminder: reminder, scheduled_at: moment, status: :pending)
+    end
   end
 
   def due_at(moment)

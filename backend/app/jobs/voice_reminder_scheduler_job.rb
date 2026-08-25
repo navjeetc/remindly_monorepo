@@ -83,7 +83,11 @@ class VoiceReminderSchedulerJob < ApplicationJob
         # call was withheld, and nothing was withheld here — this row was never
         # due in real time, so there was no call to withhold.
         if occ.created_at > occ.scheduled_at + BACKFILL_GRACE
-          Rails.logger.info(
+          # debug, not info: the scheduler runs every minute and this row stays in
+          # scope for up to LOOKBACK, so one edit would otherwise print the same
+          # line 120 times. The job logs at info when it declines, and that
+          # happens once.
+          Rails.logger.debug(
             "Voice reminder for occurrence #{occ.id} skipped: back-filled at " \
             "#{occ.created_at.iso8601} for #{occ.scheduled_at.iso8601}, which had already passed"
           )
