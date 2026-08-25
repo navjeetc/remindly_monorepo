@@ -286,11 +286,22 @@ RSpec.describe VoiceReminderJob do
   # this job is reachable from a console and from a retry, and the scheduler's
   # WHERE clause is a filter, not a guarantee.
   describe "an occurrence back-filled after its time had passed" do
-    it "is not dialled, even when the job is reached directly" do
-      travel_to(at(10)) do
-        occurrence.update_columns(created_at: occurrence.scheduled_at + 5.minutes)
-        described_class.new.perform(occurrence.id)
+    # Written by travelling rather than by writing created_at directly. The two
+    # differ in what they leave behind: update_columns sets one column and leaves
+    # updated_at at the real test runtime, which is a row shaped like nothing the
+    # application would ever produce. Creating at the intended moment gives both
+    # timestamps honestly, and the difference between these two specs is then a
+    # difference in *when the row was made*, which is the thing under test.
+    def occurrence_written_at(written, scheduled_at:)
+      travel_to(written) do
+        Occurrence.create!(reminder: reminder, scheduled_at: scheduled_at, status: :pending)
       end
+    end
+
+    it "is not dialled, even when the job is reached directly" do
+      backfilled = occurrence_written_at(at(10), scheduled_at: at(10) - 5.minutes)
+
+      travel_to(at(10)) { described_class.new.perform(backfilled.id) }
 
       expect(TelnyxVoiceService).not_to have_received(:dial)
     end
@@ -299,10 +310,9 @@ RSpec.describe VoiceReminderJob do
     # first draft ran outside calling hours and was blocked by that guard
     # instead, so it went green with the back-fill check deleted.
     it "is dialled when the same row was written before its time, as a real one is" do
-      travel_to(at(10)) do
-        occurrence.update_columns(created_at: occurrence.scheduled_at - 1.day)
-        described_class.new.perform(occurrence.id)
-      end
+      normal = occurrence_written_at(at(10) - 1.day, scheduled_at: at(10) - 5.minutes)
+
+      travel_to(at(10)) { described_class.new.perform(normal.id) }
 
       expect(TelnyxVoiceService).to have_received(:dial)
     end
