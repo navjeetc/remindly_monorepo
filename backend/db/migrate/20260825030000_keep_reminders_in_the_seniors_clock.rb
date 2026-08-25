@@ -13,8 +13,8 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
   def up
     Reminder.reset_column_information
 
-    Reminder.find_each do |reminder|
-      senior_tz = User.find_by(id: reminder.user_id)&.tz
+    Reminder.includes(:user).find_each do |reminder|
+      senior_tz = reminder.user&.tz
       next if senior_tz.blank?
       next if reminder.tz == senior_tz
 
@@ -33,14 +33,14 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
       # start_time read in the senior's zone -- which is what the edit form has
       # always shown them -- and re-stamping the zone preserves exactly that
       # while handing the schedule back to a clock that observes daylight saving.
-      #
-      # The pending occurrences have to go. expand() only ever creates, so
-      # without this the drifted ones survive beside the corrected ones and the
-      # senior is reminded twice, an hour apart. Resolved occurrences are kept:
-      # they are the record of what actually happened.
       say "reminder #{reminder.id} (#{reminder.title.inspect}): #{reminder.tz.inspect} -> #{senior_tz.inspect}"
+
+      # Which pending rows are safe to drop has to be worked out BEFORE the
+      # re-stamp, because it is the old schedule they belong to.
+      replaceable = replaceable_slots(reminder)
+
       reminder.update_column(:tz, senior_tz)
-      reminder.occurrences.where(status: :pending).destroy_all
+      replaceable.each(&:destroy)
       Recurrence.expand(reminder.reload)
     end
   end
@@ -52,6 +52,44 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
   end
 
   private
+
+  # Pending occurrences the corrected schedule can rebuild, and nothing else.
+  #
+  # The drifted ones have to go: expand() only ever creates, so without this they
+  # survive beside the corrected ones and the senior is reminded twice, an hour
+  # apart. But "pending" is not the same as "replaceable", and deleting on status
+  # alone destroys three things it should not:
+  #
+  #   - a live snooze. Occurrence#snooze! materialises a one-off pending row at
+  #     the snoozed time, which is not an RRULE slot, so expand would never
+  #     recreate it. Deleting it silently cancels the snooze a senior asked for.
+  #   - delivery history. Occurrence has_many :telnyx_calls, dependent: :destroy,
+  #     so the cascade takes the record of every call placed about that dose --
+  #     the audit trail the consent design exists to keep.
+  #   - acknowledgements, by the same cascade.
+  #
+  # So: only rows that sit exactly on a slot of the *old* schedule, and that
+  # nothing has happened to. Anything else is somebody's state, not our cache.
+  def replaceable_slots(reminder)
+    pending = reminder.occurrences.where(status: :pending)
+                      .where.missing(:telnyx_calls).where.missing(:acknowledgements).to_a
+    return [] if pending.empty?
+
+    zone = ActiveSupport::TimeZone[reminder.tz.to_s] || Time.zone
+    schedule = IceCube::Schedule.new((reminder.start_time || pending.first.scheduled_at).in_time_zone(zone))
+    schedule.add_recurrence_rule(IceCube::Rule.from_ical(reminder.rrule))
+
+    span = pending.map(&:scheduled_at).minmax
+    slots = schedule.occurrences_between(span.first - 1.day, span.last + 1.day).map { |t| t.to_i }.to_set
+
+    pending.select { |o| slots.include?(o.scheduled_at.to_i) }
+  rescue StandardError => e
+    # An RRULE IceCube cannot parse is not a reason to abort a deploy, and it is
+    # not a reason to guess either. Leave those rows alone; the duplicate is
+    # visible and recoverable, a deleted snooze is neither.
+    say "  could not compute replaceable slots for reminder #{reminder.id} (#{e.class}); leaving its occurrences alone"
+    []
+  end
 
   def same_zone?(one, other)
     a = ActiveSupport::TimeZone[one.to_s]
