@@ -17,8 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reminder stayed where it was. Two on the production account had drifted an
   hour, and one had drifted past 9pm, out of the calling window, where it would
   silently have stopped ringing at all. A reminder is now always kept in the
-  clock of the person it is for, whatever a caller supplies, and a migration
-  repairs the rows written before that.
+  clock of the person it is for, whatever a caller supplies, and saving one
+  repairs it. A migration normalises the zone spellings and reports any reminder
+  still stamped with somebody else's clock, without touching it: repairing one
+  safely means reconciling occurrences that already exist at the old times, which
+  is a tool somebody runs and reads, not an unattended deploy step.
 
 ### Changed
 - **Caregiver screens name the senior instead of showing their email address.**
