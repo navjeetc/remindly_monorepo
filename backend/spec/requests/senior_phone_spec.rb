@@ -198,6 +198,51 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(flash[:notice]).to include("already agreed")
     end
 
+    # The race Codex found on #93: the check at the top of the action reads false,
+    # and consent lands while this request is still working — the first senior's
+    # keypress records it and completes their call, which frees the in-flight
+    # claim that would otherwise have blocked the reservation.
+    it "refuses even when consent lands while the request is being handled" do
+      senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
+      # Exactly two reads: the guard at the top of the action, then the re-read
+      # after the claim. reserve_verification does not consult it.
+      #
+      # Raises rather than defaulting once exhausted, because the count is the
+      # thing under test. A stub that keeps answering would let the action grow a
+      # third read — changing when consent is judged, in an action whose whole
+      # difficulty is when consent is judged — without any spec noticing.
+      answers = [ false, true ]
+      allow_any_instance_of(User).to receive(:callable_by_phone?) do
+        raise "callable_by_phone? was read more than the two times this race describes" if answers.empty?
+
+        answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+      expect(flash[:notice]).to include("agreed while this was being arranged")
+    end
+
+    it "undoes the attempt it claimed in that race, rather than banking it" do
+      senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
+      answers = [ false, true ]
+      allow_any_instance_of(User).to receive(:callable_by_phone?) do
+        raise "callable_by_phone? was read more than the two times this race describes" if answers.empty?
+
+        answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      # Destroyed, not completed: a completed row still counts against the day's
+      # five, so a senior who opts out that evening would find the allowance
+      # partly spent on calls nobody received.
+      expect(TelnyxCall.verifications.where(user_id: senior.id)).to be_empty
+      expect(TelnyxCall.verifications_in_window(senior.phone).count).to eq(0)
+      expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be false
+    end
+
     it "spends none of the day's allowance on a request it refuses" do
       expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
         .not_to change(TelnyxCall, :count)

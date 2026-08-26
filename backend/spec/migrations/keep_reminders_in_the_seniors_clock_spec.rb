@@ -1,4 +1,9 @@
 require "rails_helper"
+# Required explicitly, per backend/AGENTS.md:96, because the around hook below
+# uses Object#with. It happens to be loaded already through some other path
+# today; depending on that means this file breaks whenever that path changes,
+# with an undefined method on a line that has nothing to do with the change.
+require "active_support/core_ext/object/with"
 require Rails.root.join("db/migrate/20260825030000_keep_reminders_in_the_seniors_clock.rb")
 
 # What this migration does, and — more importantly — what it declines to do.
@@ -14,8 +19,10 @@ RSpec.describe KeepRemindersInTheSeniorsClock do
   let(:eastern) { ActiveSupport::TimeZone["America/New_York"] }
   let(:senior) { create(:user, :senior, name: "Mum", tz: "America/New_York") }
 
-  before { ActiveRecord::Migration.verbose = false }
-  after { ActiveRecord::Migration.verbose = true }
+  # Object#with, per backend/AGENTS.md, which names the manual capture-and-restore
+  # this replaces as the pattern to avoid. It restores whatever was there rather
+  # than a guess, and does so even if the example raises.
+  around { |example| ActiveRecord::Migration.with(verbose: false) { example.run } }
 
   describe "a zone that differs only in spelling" do
     it "is normalised, so the two columns can be compared at all" do

@@ -282,6 +282,39 @@ class DashboardController < WebController
                          alert: "There's already a call in progress to #{senior.phone}. Try again in a moment."
     end
 
+    # Consent re-read after the claim, on the same pattern VoiceReminderJob uses
+    # and for the same reason: the check at the top of this action happens before
+    # reserving, and the gap between them is long enough to matter.
+    #
+    # The sequence, in order. A verification call is already ringing when this
+    # request arrives. The guard at the top asks callable_by_phone? and gets
+    # false, which is the right answer at that moment — nobody has agreed yet.
+    # Then, while this request is still working, the senior presses 1. The
+    # webhook records their consent and marks that call completed, and completing
+    # it releases the in-flight claim that would otherwise have made
+    # reserve_verification refuse. So the reservation succeeds, and a second
+    # verification is dialled to somebody who agreed seconds ago — offering them
+    # a 9 to switch off the reminders they have just turned on.
+    #
+    # An opt-out is deliberately not caught here either: callable_by_phone? is
+    # false for a senior who has said stop, and re-consent is the one thing this
+    # action exists to make possible.
+    if senior.reload.callable_by_phone?
+      # Destroyed, not completed — the same rule as the calling-hours refusal a
+      # few lines below, and for the same reason: nothing was sent. The row was
+      # made moments ago in this request and we have not reached
+      # TelnyxVoiceService, so no provider knows it exists.
+      #
+      # Completing it instead leaves it in verifications_in_window, whose bound
+      # counts every row created in the last day regardless of whether it rang.
+      # A senior who opts out that evening and wants to agree again would find
+      # the day's allowance partly spent on calls nobody received.
+      attempt.destroy!
+
+      return redirect_to senior_dashboard_path(senior),
+                         notice: "#{senior.display_name} agreed while this was being arranged, so there was nothing to ask."
+    end
+
     # verify returns nil when the provider refused it, having marked the attempt
     # failed. Reporting success regardless would leave a caregiver waiting for a
     # call that was never placed, and waiting is exactly what they cannot debug.

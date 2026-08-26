@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A second verification call could still reach a senior who had just agreed.**
+  `verify_phone` checked consent before reserving, so a request that began while
+  the first call was still ringing read "not yet consented", and if that call
+  then landed its keypress — recording consent and freeing the in-flight claim —
+  the reservation succeeded and dialled somebody who had agreed a moment
+  earlier, offering them a 9 to switch off what they had just turned on.
+  Consent is re-read after the claim now, on the pattern `VoiceReminderJob`
+  already used.
+- **Reminder titles no longer appear in deploy logs.** The timezone repair
+  migration named each affected reminder in its output, and a title is often a
+  medication name — read by anyone with access to CI or deploy logs, long after
+  the deploy. Identifiers only.
 - **The caregiver screen kept offering to ask a senior who had already agreed.**
   The *Call and ask* button rendered whenever a number was saved, including once
   consent was recorded — so pressing it rang the senior to ask a settled

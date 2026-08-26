@@ -72,15 +72,24 @@
       sits under the button where a pattern of re-asking is visible.
     %>
     <% if permission == "manage" %>
-      <%= form_with url: senior_phone_path(senior_id: senior.id), method: :patch, class: "flex items-end gap-3" do |f| %>
-        <div class="flex-1">
-          <label for="user_phone" class="block text-sm font-medium text-gray-700">Their phone number</label>
+      <%#
+        The field is sized to its content, not to the page. An E.164 number is
+        fifteen digits at most, and a full-width box invites the caregiver to
+        wonder what else belongs in it. Sizing it also fixes what the stretched
+        version did to the button: with the label and the hint inside the flex
+        child, items-end aligned Save number to the bottom of all three, so it
+        sat below the field it belongs to rather than beside it. The row now
+        holds only the input and the button, and the hint sits under both.
+      %>
+      <%= form_with url: senior_phone_path(senior_id: senior.id), method: :patch do |f| %>
+        <label for="user_phone" class="block text-sm font-medium text-gray-700">Their phone number</label>
+        <div class="mt-1 flex items-center gap-3">
           <%= f.telephone_field :phone, value: senior.phone, name: "user[phone]", id: "user_phone",
                 placeholder: "+15551234567",
-                class: "mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
-          <p class="mt-1 text-xs text-gray-500">Include the country code. Changing it means asking again.</p>
+                class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+          <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
         </div>
-        <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+        <p class="mt-1 text-xs text-gray-500">Include the country code. Changing it means asking again.</p>
       <% end %>
 
       <%#
