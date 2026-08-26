@@ -156,6 +156,46 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     end
   end
 
+  # Once they have agreed there is nothing left to ask, and asking anyway is not
+  # harmless: the verification script ends "press 9 and we won't call again", so
+  # the button's best outcome is a no-op and its worst is a senior switching off
+  # reminders that were already working.
+  describe "once the senior has agreed" do
+    before do
+      senior.update!(phone: "+15551234567")
+      senior.update!(phone_verified_at: Time.current, call_consent_at: Time.current,
+                     call_reminders_enabled: true)
+    end
+
+    it "stops offering to ask them again" do
+      get senior_dashboard_path(senior)
+
+      expect(senior.reload.callable_by_phone?).to be true
+      expect(response.body).not_to include("Call and ask Mom")
+    end
+
+    it "stops showing a count of attempts left, which invites using them" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).not_to include("attempts left")
+    end
+
+    # Changing the number is still allowed, and still clears consent — that is
+    # the callback's job, and the copy beside the field says so.
+    it "still lets the caregiver change the number" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("Save number")
+    end
+
+    it "still says what will happen, and how they can stop it" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("agreed to phone reminders")
+      expect(response.body).to include("pressing 9")
+    end
+  end
+
   # The controller allows a verification call after an opt-out, because its
   # keypress is the only thing that can lift one. The screen has to offer it, or
   # that permission exists only for someone willing to craft a POST by hand --

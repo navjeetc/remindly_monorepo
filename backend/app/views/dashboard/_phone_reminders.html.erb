@@ -83,7 +83,22 @@
         <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
       <% end %>
 
-      <% if senior.phone.present? %>
+      <%#
+        Only while there is something to ask. Once they have agreed, this button
+        would ring them to ask again — and the script it plays ends "press 9 and
+        we won't call again", so its best outcome is a no-op and its worst is a
+        senior switching off reminders that were working. A control whose only
+        possible effect on a settled question is to unsettle it should not be on
+        the screen.
+
+        Still offered after an opt-out, deliberately: callable_by_phone? is false
+        there, and that keypress is the only thing that can lift one.
+
+        What belongs here instead, for a senior who has already agreed, is a test
+        call — letting the caregiver hear what their mother will hear. That is
+        written down in the design as step 5 and has never been built.
+      %>
+      <% if senior.phone.present? && !senior.callable_by_phone? %>
         <div class="pt-2 border-t border-gray-100">
           <%#
             The caregiver's own clock is not the one that governs this, and it
