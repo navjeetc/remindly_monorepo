@@ -215,6 +215,24 @@ class DashboardController < WebController
                          alert: "There's no phone number saved for #{senior.display_name} yet. Add one first, then ask them."
     end
 
+    # Nothing left to ask, so nothing to place. The panel stops offering this
+    # once they have agreed, but a screen is not a guard: a tab opened before
+    # another caregiver finished the verification still holds a live button, and
+    # the endpoint is reachable without any screen at all.
+    #
+    # Worth refusing rather than allowing a harmless-looking repeat, because it
+    # is not harmless. The script ends "press 9 and we won't call again", so a
+    # stale POST rings somebody to re-ask a settled question and hands them a way
+    # to switch off reminders that were working.
+    #
+    # Opting out is deliberately not caught here: callable_by_phone? is false for
+    # a senior who has said stop, and that keypress is the only thing that can
+    # lift it.
+    if senior.callable_by_phone?
+      return redirect_to senior_dashboard_path(senior),
+                         notice: "#{senior.display_name} has already agreed to phone reminders, so there's nothing to ask."
+    end
+
     # One clock for the whole decision. This used to reserve first and ask about
     # calling hours afterwards, on a second Time.current -- so a request landing
     # on the boundary could pass reserve_verification's own hours guard at
