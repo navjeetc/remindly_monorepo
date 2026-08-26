@@ -214,4 +214,83 @@ RSpec.describe Recurrence do
       expect { described_class.expand(reminder.reload) }.not_to raise_error
     end
   end
+
+  # A reminder set up months ago used to be replayed in full on every expansion,
+  # to keep the two slots the method actually acts on. Harmless when this ran on
+  # a page visit; multiplied by twenty-four once an hourly sweep calls it, and
+  # growing by one occurrence a day for as long as the reminder exists.
+  describe "a reminder that has been running for months" do
+    let(:long_running) do
+      senior.reminders.create!(title: "Morning pills", category: :medication, rrule: "FREQ=DAILY",
+                               start_time: ActiveSupport::TimeZone[tz].local(2025, 11, 26, 8, 0))
+    end
+
+    it "asks IceCube only for the window it can act on" do
+      asked = nil
+      allow_any_instance_of(IceCube::Schedule).to receive(:occurrences_between).and_wrap_original do |original, from, to, *rest|
+        asked = from
+        original.call(from, to, *rest)
+      end
+
+      described_class.expand(long_running)
+
+      expect(asked.to_date).to eq(Time.current.in_time_zone(tz).to_date)
+    end
+
+    # The point of the bound is that it changes nothing about the result.
+    it "creates exactly the occurrences it did before, at the same times" do
+      described_class.expand(long_running)
+
+      times = long_running.occurrences.reload.map { |o| o.scheduled_at.in_time_zone(tz).strftime("%-l:%M%P") }.uniq
+      expect(times).to eq([ "8:00am" ])
+    end
+
+    # A reminder whose start_time is still ahead of today must not be enumerated
+    # from today either — the later of the two bounds is the one to use.
+    it "does not enumerate a reminder that has not started yet" do
+      future = senior.reminders.create!(title: "Later", category: :routine, rrule: "FREQ=DAILY",
+                                        start_time: ActiveSupport::TimeZone[tz].local(2026, 12, 1, 9, 0))
+      asked = nil
+      allow_any_instance_of(IceCube::Schedule).to receive(:occurrences_between).and_wrap_original do |original, from, to, *rest|
+        asked = from
+        original.call(from, to, *rest)
+      end
+
+      described_class.expand(future)
+
+      expect(asked.to_date).to eq(Date.new(2026, 12, 1))
+    end
+  end
+
+  # expand_task had the identical waste, five lines from the reminder path: it
+  # enumerated from the task's original start_time and then created nothing
+  # before now, so the whole history was computed to be skipped.
+  describe ".expand_task on a task that has been recurring for months" do
+    let(:long_running_task) do
+      Task.create!(senior: senior, created_by: senior, title: "Physio",
+                   task_type: :other, rrule: "FREQ=DAILY", tz: tz,
+                   scheduled_at: ActiveSupport::TimeZone[tz].local(2025, 11, 26, 10, 0),
+                   start_time: ActiveSupport::TimeZone[tz].local(2025, 11, 26, 10, 0))
+    end
+
+    it "asks only for the window it creates from" do
+      asked = nil
+      allow_any_instance_of(IceCube::Schedule).to receive(:occurrences_between).and_wrap_original do |original, from, to, *rest|
+        asked = from
+        original.call(from, to, *rest)
+      end
+
+      described_class.expand_task(long_running_task)
+
+      expect(asked).to be >= Time.current.in_time_zone(tz) - 1.minute
+    end
+
+    it "still creates the same upcoming children" do
+      described_class.expand_task(long_running_task)
+
+      times = long_running_task.child_tasks.reload.map { |t| t.scheduled_at.in_time_zone(tz).strftime("%-l:%M%P") }.uniq
+      expect(times).to eq([ "10:00am" ])
+      expect(long_running_task.child_tasks.where("scheduled_at < ?", Time.current)).to be_empty
+    end
+  end
 end

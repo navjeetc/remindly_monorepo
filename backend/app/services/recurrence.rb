@@ -45,11 +45,23 @@ class Recurrence
     schedule = IceCube::Schedule.new(start_time)
     schedule.add_recurrence_rule(rule)
 
-    # Find occurrences from start_time onwards
-    all_occurrences = schedule.occurrences_between(start_time, stop)
-    Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
-
     today_start = now.beginning_of_day
+
+    # Only the window this method can act on, not the reminder's whole history.
+    #
+    # The schedule is still anchored at start_time — that is what decides which
+    # minute past the hour a slot falls on — but enumerating from there replays
+    # every occurrence since the reminder was created, and everything before
+    # today is thrown away a few lines below. A daily reminder eight months old
+    # yielded 245 timestamps to keep two of them, growing by one a day; an hourly
+    # one yields about 8,760 a year. Harmless when this ran on a page visit,
+    # multiplied by twenty-four once an hourly sweep calls it.
+    #
+    # The later of the two starts, so a reminder that has not begun yet is not
+    # enumerated from today either.
+    window_start = [ start_time, today_start ].max
+    all_occurrences = schedule.occurrences_between(window_start, stop)
+    Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
 
     # Decide which occurrences to materialize.
     #
@@ -110,7 +122,12 @@ class Recurrence
     schedule = IceCube::Schedule.new(start_time)
     schedule.add_recurrence_rule(rule)
 
-    all_occurrences = schedule.occurrences_between(start_time, stop)
+    # Same bound as expand, and simpler here: this method creates nothing before
+    # now, so everything earlier was enumerated only to be skipped. A task
+    # recurring since last year replayed its whole history on every call to
+    # produce the thirty days ahead that it actually acts on.
+    window_start = [ start_time, now ].max
+    all_occurrences = schedule.occurrences_between(window_start, stop)
     Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
 
     all_occurrences.each_with_index do |scheduled_at, idx|
