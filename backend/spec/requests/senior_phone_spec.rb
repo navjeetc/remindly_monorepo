@@ -217,7 +217,7 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(flash[:notice]).to include("agreed while this was being arranged")
     end
 
-    it "lets go of the attempt it claimed in that race, rather than stranding it" do
+    it "undoes the attempt it claimed in that race, rather than banking it" do
       senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
       answers = [ false, true ]
       allow_any_instance_of(User).to receive(:callable_by_phone?) do
@@ -226,8 +226,11 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
 
       post "/dashboard/senior/#{senior.id}/verify_phone"
 
-      claimed = TelnyxCall.verifications.where(user_id: senior.id).last
-      expect(claimed.completed_at).to be_present
+      # Destroyed, not completed: a completed row still counts against the day's
+      # five, so a senior who opts out that evening would find the allowance
+      # partly spent on calls nobody received.
+      expect(TelnyxCall.verifications.where(user_id: senior.id)).to be_empty
+      expect(TelnyxCall.verifications_in_window(senior.phone).count).to eq(0)
       expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be false
     end
 

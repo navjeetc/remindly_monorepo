@@ -300,7 +300,16 @@ class DashboardController < WebController
     # false for a senior who has said stop, and re-consent is the one thing this
     # action exists to make possible.
     if senior.reload.callable_by_phone?
-      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      # Destroyed, not completed — the same rule as the calling-hours refusal a
+      # few lines below, and for the same reason: nothing was sent. The row was
+      # made moments ago in this request and we have not reached
+      # TelnyxVoiceService, so no provider knows it exists.
+      #
+      # Completing it instead leaves it in verifications_in_window, whose bound
+      # counts every row created in the last day regardless of whether it rang.
+      # A senior who opts out that evening and wants to agree again would find
+      # the day's allowance partly spent on calls nobody received.
+      attempt.destroy!
 
       return redirect_to senior_dashboard_path(senior),
                          notice: "#{senior.display_name} agreed while this was being arranged, so there was nothing to ask."

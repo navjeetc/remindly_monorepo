@@ -14,16 +14,10 @@ RSpec.describe KeepRemindersInTheSeniorsClock do
   let(:eastern) { ActiveSupport::TimeZone["America/New_York"] }
   let(:senior) { create(:user, :senior, name: "Mum", tz: "America/New_York") }
 
-  # Restored to whatever it was, not to true. Assuming the prior value makes the
-  # suite order-dependent: whichever spec runs after this one inherits our guess
-  # rather than its own setting.
-  around do |example|
-    was = ActiveRecord::Migration.verbose
-    ActiveRecord::Migration.verbose = false
-    example.run
-  ensure
-    ActiveRecord::Migration.verbose = was
-  end
+  # Object#with, per backend/AGENTS.md, which names the manual capture-and-restore
+  # this replaces as the pattern to avoid. It restores whatever was there rather
+  # than a guess, and does so even if the example raises.
+  around { |example| ActiveRecord::Migration.with(verbose: false) { example.run } }
 
   describe "a zone that differs only in spelling" do
     it "is normalised, so the two columns can be compared at all" do
