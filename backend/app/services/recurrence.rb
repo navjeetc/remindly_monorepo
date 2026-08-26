@@ -122,9 +122,12 @@ class Recurrence
     schedule = IceCube::Schedule.new(start_time)
     schedule.add_recurrence_rule(rule)
 
-    today_start = now.beginning_of_day
-
-    all_occurrences = schedule.occurrences_between(start_time, stop)
+    # Same bound as expand, and simpler here: this method creates nothing before
+    # now, so everything earlier was enumerated only to be skipped. A task
+    # recurring since last year replayed its whole history on every call to
+    # produce the thirty days ahead that it actually acts on.
+    window_start = [ start_time, now ].max
+    all_occurrences = schedule.occurrences_between(window_start, stop)
     Rails.logger.info "📋 IceCube found #{all_occurrences.count} occurrences"
 
     all_occurrences.each_with_index do |scheduled_at, idx|

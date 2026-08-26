@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   growing by one a day, and roughly 8,760 a year for an hourly one. Harmless
   while this ran on a page visit, multiplied by twenty-four by the hourly sweep.
   It now asks only for the window it can act on, which produces the same
-  occurrences.
+  occurrences. Recurring tasks had the identical waste and are bounded the same
+  way.
 - **A second verification call could still reach a senior who had just agreed.**
   `verify_phone` checked consent before reserving, so a request that began while
   the first call was still ringing read "not yet consented", and if that call

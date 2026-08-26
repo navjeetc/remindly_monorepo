@@ -261,4 +261,36 @@ RSpec.describe Recurrence do
       expect(asked.to_date).to eq(Date.new(2026, 12, 1))
     end
   end
+
+  # expand_task had the identical waste, five lines from the reminder path: it
+  # enumerated from the task's original start_time and then created nothing
+  # before now, so the whole history was computed to be skipped.
+  describe ".expand_task on a task that has been recurring for months" do
+    let(:long_running_task) do
+      Task.create!(senior: senior, created_by: senior, title: "Physio",
+                   task_type: :other, rrule: "FREQ=DAILY", tz: tz,
+                   scheduled_at: ActiveSupport::TimeZone[tz].local(2025, 11, 26, 10, 0),
+                   start_time: ActiveSupport::TimeZone[tz].local(2025, 11, 26, 10, 0))
+    end
+
+    it "asks only for the window it creates from" do
+      asked = nil
+      allow_any_instance_of(IceCube::Schedule).to receive(:occurrences_between).and_wrap_original do |original, from, to, *rest|
+        asked = from
+        original.call(from, to, *rest)
+      end
+
+      described_class.expand_task(long_running_task)
+
+      expect(asked).to be >= Time.current.in_time_zone(tz) - 1.minute
+    end
+
+    it "still creates the same upcoming children" do
+      described_class.expand_task(long_running_task)
+
+      times = long_running_task.child_tasks.reload.map { |t| t.scheduled_at.in_time_zone(tz).strftime("%-l:%M%P") }.uniq
+      expect(times).to eq([ "10:00am" ])
+      expect(long_running_task.child_tasks.where("scheduled_at < ?", Time.current)).to be_empty
+    end
+  end
 end
