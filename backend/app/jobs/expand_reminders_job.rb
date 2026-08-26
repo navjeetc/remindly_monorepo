@@ -24,13 +24,22 @@ class ExpandRemindersJob < ApplicationJob
 
   def perform
     Reminder.includes(:user).find_each do |reminder|
-      Recurrence.expand(reminder)
+      # Recurrence.expand narrates itself at info: seventeen fixed lines plus one
+      # per candidate occurrence and one per row created. That is useful when a
+      # caregiver is watching a reminder save and is noise twenty-four times a
+      # day for every reminder in the database, which buries anything worth
+      # reading. Warnings and errors still come through.
+      Rails.logger.silence(Logger::WARN) { Recurrence.expand(reminder) }
     rescue StandardError => e
       # One reminder with an unparseable rule must not stop the rest of the
       # night's being created. Recurrence.expand parses the RRULE, and a corrupt
       # one raises — which, without this, would take every reminder after it in
       # the batch down too, silently and until somebody read the logs.
-      Rails.logger.error "ExpandRemindersJob: reminder #{reminder.id} could not be expanded (#{e.class}: #{e.message})"
+      #
+      # full_message rather than message: the backtrace is the half that says
+      # *where*, and a bare "IceCube::Rule error" on a nightly job is not
+      # something anybody can act on a week later.
+      Rails.logger.error "ExpandRemindersJob: reminder #{reminder.id} could not be expanded\n#{e.full_message}"
     end
   end
 end

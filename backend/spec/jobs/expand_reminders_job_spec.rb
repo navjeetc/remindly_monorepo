@@ -66,6 +66,34 @@ RSpec.describe ExpandRemindersJob do
     expect { described_class.new.perform }.not_to change(Occurrence, :count)
   end
 
+  # Recurrence.expand narrates itself at info — seventeen fixed lines plus one per
+  # candidate occurrence and one per row created. Useful while a caregiver saves
+  # a reminder; twenty-four times a day for every reminder in the database it
+  # buries whatever was worth reading.
+  #
+  # Asserted on the logger's level during the call rather than by intercepting
+  # Rails.logger.info, because stubbing that method catches the call before the
+  # level is ever consulted — so the obvious version of this spec passes whether
+  # anything is silenced or not.
+  it "raises the log level while expanding, so the narration is dropped" do
+    reminder_at(8, 15)
+    levels = []
+    allow(Recurrence).to receive(:expand) { levels << Rails.logger.level }
+
+    described_class.new.perform
+
+    expect(levels).to all(eq(Logger::WARN))
+  end
+
+  it "puts the level back afterwards" do
+    reminder_at(8, 15)
+    before = Rails.logger.level
+
+    described_class.new.perform
+
+    expect(Rails.logger.level).to eq(before)
+  end
+
   # One corrupt rule must not take the rest of the night's reminders with it.
   it "carries on past a reminder it cannot expand" do
     broken = reminder_at(7, 0, title: "Broken")
@@ -74,5 +102,19 @@ RSpec.describe ExpandRemindersJob do
 
     expect { described_class.new.perform }.not_to raise_error
     expect(healthy.occurrences.reload).not_to be_empty
+  end
+
+  # A bare message on a job that runs unattended is not something anybody can act
+  # on a week later; the backtrace is the half that says where.
+  it "keeps the backtrace when a reminder cannot be expanded" do
+    broken = reminder_at(7, 0, title: "Broken")
+    broken.update_column(:rrule, "this is not an rrule")
+    logged = []
+    allow(Rails.logger).to receive(:error) { |msg| logged << msg.to_s }
+
+    described_class.new.perform
+
+    expect(logged.join).to match(/could not be expanded/)
+    expect(logged.join.lines.count).to be > 2
   end
 end
