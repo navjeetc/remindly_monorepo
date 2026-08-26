@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Reminders were only created when somebody opened a page.**
+  `Recurrence.expand` was called from five places, all controllers — and the only
+  one that ran repeatedly was the senior's own dashboard index. A caregiver
+  viewing their senior's page did not expand; the voice page did not; nothing on
+  a schedule did. That was coherent while Remindly was something you looked at,
+  because the visit that created an occurrence was the visit that displayed it.
+  Reminder calls invert it: delivery happens with nobody looking, for a senior
+  who may not use a screen and, by design, may have no login at all. Their
+  reminders quietly stopped materialising a day after setup. `ExpandRemindersJob`
+  now runs hourly — ahead of the times it creates, since a row written after its
+  own hour is correctly refused a call.
 - **A second verification call could still reach a senior who had just agreed.**
   `verify_phone` checked consent before reserving, so a request that began while
   the first call was still ringing read "not yet consented", and if that call

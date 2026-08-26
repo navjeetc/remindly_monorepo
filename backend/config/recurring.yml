@@ -36,6 +36,23 @@ production:
     queue: default
     schedule: "0 12 * * *"
 
+  # Hourly, and it has to be *ahead* of the times it is creating.
+  #
+  # Recurrence.expand back-fills the most recent past slot of the day, and both
+  # the call scheduler and the delivery job refuse to telephone about a row
+  # written after the time it names -- correctly, since nothing came due. So a
+  # sweep that ran after a reminder's hour would materialise a row that can never
+  # ring. An hourly run against expand's 24-hour horizon materialises everything
+  # at least an hour early, with twenty-three hours of slack.
+  #
+  # Hourly rather than daily so a single failed run does not take a whole day's
+  # reminders with it. Repeated runs cost a query and change nothing:
+  # find_or_create_by finds the row it would have made.
+  expand_reminders:
+    class: ExpandRemindersJob
+    queue: default
+    schedule: every hour
+
   mark_missed_occurrences:
     class: MarkMissedOccurrencesJob
     queue: default
