@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and nothing was reported missed either. `ExpandRemindersJob`
   now runs hourly — ahead of the times it creates, since a row written after its
   own hour is correctly refused a call.
+- **Expanding a reminder no longer replays its whole history.** `Recurrence`
+  enumerated every occurrence from the reminder's original `start_time`, to keep
+  the two it acts on: 245 timestamps for an eight-month-old daily reminder,
+  growing by one a day, and roughly 8,760 a year for an hourly one. Harmless
+  while this ran on a page visit, multiplied by twenty-four by the hourly sweep.
+  It now asks only for the window it can act on, which produces the same
+  occurrences.
 - **A second verification call could still reach a senior who had just agreed.**
   `verify_phone` checked consent before reserving, so a request that began while
   the first call was still ringing read "not yet consented", and if that call
