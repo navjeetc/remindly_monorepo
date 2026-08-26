@@ -55,8 +55,12 @@ class KeepRemindersInTheSeniorsClock < ActiveRecord::Migration[8.1]
 
     say "#{stranded.size} reminder(s) are stamped with a clock that is not their senior's."
     say "They are left untouched: repairing one safely needs its occurrences reconciled too."
+    # Identifiers only. A reminder title is often a medication name, and
+    # migration output lands in deploy and CI logs that outlive the deploy and
+    # are read by people with no business knowing what anybody takes. The id is
+    # enough to find the row.
     stranded.each do |reminder|
-      say "  reminder #{reminder.id} (#{reminder.title.inspect}) for user #{reminder.user_id}: " \
+      say "  reminder #{reminder.id} for user #{reminder.user_id}: " \
           "#{reminder.tz.inspect} vs #{reminder.user.tz.inspect}"
     end
   end

@@ -282,6 +282,28 @@ class DashboardController < WebController
                          alert: "There's already a call in progress to #{senior.phone}. Try again in a moment."
     end
 
+    # Consent re-read after the claim, on the same pattern VoiceReminderJob uses
+    # and for the same reason: the check at the top of this action happens before
+    # reserving, and the gap between them is long enough to matter.
+    #
+    # Two caregivers, one already on a verification call. This request reads
+    # callable_by_phone? as false — true at that instant — and then, while it is
+    # still working, the first senior presses 1: the webhook records consent and
+    # completes the call, which frees the in-flight claim that would otherwise
+    # have stopped the reservation. So a second verification gets reserved and
+    # dialled to somebody who agreed a moment ago, and its script offers them a 9
+    # to switch off the reminders they just turned on.
+    #
+    # An opt-out is deliberately not caught here either: callable_by_phone? is
+    # false for a senior who has said stop, and re-consent is the one thing this
+    # action exists to make possible.
+    if senior.reload.callable_by_phone?
+      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+
+      return redirect_to senior_dashboard_path(senior),
+                         notice: "#{senior.display_name} agreed while this was being arranged, so there was nothing to ask."
+    end
+
     # verify returns nil when the provider refused it, having marked the attempt
     # failed. Reporting success regardless would leave a caregiver waiting for a
     # call that was never placed, and waiting is exactly what they cannot debug.

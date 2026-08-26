@@ -198,6 +198,39 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(flash[:notice]).to include("already agreed")
     end
 
+    # The race Codex found on #93: the check at the top of the action reads false,
+    # and consent lands while this request is still working — the first senior's
+    # keypress records it and completes their call, which frees the in-flight
+    # claim that would otherwise have blocked the reservation.
+    it "refuses even when consent lands while the request is being handled" do
+      senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
+      # Two calls only: the guard at the top of the action, then the re-read after
+      # the claim. reserve_verification does not consult it.
+      answers = [ false, true ]
+      allow_any_instance_of(User).to receive(:callable_by_phone?) do
+        answers.empty? ? true : answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+      expect(flash[:notice]).to include("agreed while this was being arranged")
+    end
+
+    it "lets go of the attempt it claimed in that race, rather than stranding it" do
+      senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
+      answers = [ false, true ]
+      allow_any_instance_of(User).to receive(:callable_by_phone?) do
+        answers.empty? ? true : answers.shift
+      end
+
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      claimed = TelnyxCall.verifications.where(user_id: senior.id).last
+      expect(claimed.completed_at).to be_present
+      expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be false
+    end
+
     it "spends none of the day's allowance on a request it refuses" do
       expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
         .not_to change(TelnyxCall, :count)
