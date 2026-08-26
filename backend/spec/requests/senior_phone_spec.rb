@@ -204,11 +204,18 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
     # claim that would otherwise have blocked the reservation.
     it "refuses even when consent lands while the request is being handled" do
       senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
-      # Two calls only: the guard at the top of the action, then the re-read after
-      # the claim. reserve_verification does not consult it.
+      # Exactly two reads: the guard at the top of the action, then the re-read
+      # after the claim. reserve_verification does not consult it.
+      #
+      # Raises rather than defaulting once exhausted, because the count is the
+      # thing under test. A stub that keeps answering would let the action grow a
+      # third read — changing when consent is judged, in an action whose whole
+      # difficulty is when consent is judged — without any spec noticing.
       answers = [ false, true ]
       allow_any_instance_of(User).to receive(:callable_by_phone?) do
-        answers.empty? ? true : answers.shift
+        raise "callable_by_phone? was read more than the two times this race describes" if answers.empty?
+
+        answers.shift
       end
 
       post "/dashboard/senior/#{senior.id}/verify_phone"
@@ -221,7 +228,9 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       senior.update!(phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false)
       answers = [ false, true ]
       allow_any_instance_of(User).to receive(:callable_by_phone?) do
-        answers.empty? ? true : answers.shift
+        raise "callable_by_phone? was read more than the two times this race describes" if answers.empty?
+
+        answers.shift
       end
 
       post "/dashboard/senior/#{senior.id}/verify_phone"
