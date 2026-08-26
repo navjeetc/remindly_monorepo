@@ -188,6 +188,26 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(response.body).to include("Save number")
     end
 
+    # The screen not offering it must never be the only thing stopping it. A tab
+    # opened before another caregiver finished verifying still holds a live
+    # button, and the endpoint is reachable without any screen at all.
+    it "refuses the call even when the endpoint is reached directly" do
+      post "/dashboard/senior/#{senior.id}/verify_phone"
+
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+      expect(flash[:notice]).to include("already agreed")
+    end
+
+    it "spends none of the day's allowance on a request it refuses" do
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change(TelnyxCall, :count)
+    end
+
+    it "leaves their consent exactly as it was" do
+      expect { post "/dashboard/senior/#{senior.id}/verify_phone" }
+        .not_to change { senior.reload.call_consent_at }
+    end
+
     it "still says what will happen, and how they can stop it" do
       get senior_dashboard_path(senior)
 

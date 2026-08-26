@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   consent was recorded — so pressing it rang the senior to ask a settled
   question, and the script it plays ends "press 9 and we won't call again". Its
   best outcome was a no-op and its worst was a senior switching off reminders
-  that were working. It now appears only while there is something to ask, which
-  still includes after an opt-out, since that keypress is the only thing that can
-  lift one.
+  that were working. It now appears only while there is something to ask, and
+  `verify_phone` refuses such a request outright — a screen is not a guard, and a
+  tab opened before another caregiver finished verifying still holds a live
+  button. Both still allow it after an opt-out, since that keypress is the only
+  thing that can lift one.
 - **Reminders drifted by an hour whenever the clocks changed.**
   `RemindersController` permits `tz` in its params, so the JSON API stamped a
   reminder with whatever zone the calling device sent — a caregiver whose own
