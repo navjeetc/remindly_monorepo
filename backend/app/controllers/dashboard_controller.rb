@@ -286,13 +286,15 @@ class DashboardController < WebController
     # and for the same reason: the check at the top of this action happens before
     # reserving, and the gap between them is long enough to matter.
     #
-    # Two caregivers, one already on a verification call. This request reads
-    # callable_by_phone? as false — true at that instant — and then, while it is
-    # still working, the first senior presses 1: the webhook records consent and
-    # completes the call, which frees the in-flight claim that would otherwise
-    # have stopped the reservation. So a second verification gets reserved and
-    # dialled to somebody who agreed a moment ago, and its script offers them a 9
-    # to switch off the reminders they just turned on.
+    # The sequence, in order. A verification call is already ringing when this
+    # request arrives. The guard at the top asks callable_by_phone? and gets
+    # false, which is the right answer at that moment — nobody has agreed yet.
+    # Then, while this request is still working, the senior presses 1. The
+    # webhook records their consent and marks that call completed, and completing
+    # it releases the in-flight claim that would otherwise have made
+    # reserve_verification refuse. So the reservation succeeds, and a second
+    # verification is dialled to somebody who agreed seconds ago — offering them
+    # a 9 to switch off the reminders they have just turned on.
     #
     # An opt-out is deliberately not caught here either: callable_by_phone? is
     # false for a senior who has said stop, and re-consent is the one thing this
