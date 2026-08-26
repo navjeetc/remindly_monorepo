@@ -19,12 +19,24 @@ RSpec.describe "config/recurring.yml" do
     YAML.safe_load_file(Rails.root.join("config/recurring.yml")).fetch("production")
   end
 
+  # Every job whose absence would be silent. Removing one of these — or
+  # commenting it out during an incident and forgetting to put it back — is the
+  # exact shape of failure this file exists to catch, and none of it raises
+  # anywhere a person would see.
   it "defines the jobs the app depends on" do
     expect(tasks.keys).to include(
       "check_coverage_gaps",
       "mark_missed_occurrences",
       "prune_analytics",
-      "clear_solid_queue_finished_jobs"
+      "clear_solid_queue_finished_jobs",
+      # The delivery chain for phone reminders, both halves of it. expand_reminders
+      # materialises the occurrences and voice_reminder_scheduler telephones about
+      # them; without the first there is nothing to call about, and without the
+      # second nothing calls. Neither was listed here, and the first is the very
+      # gap this PR was opened to close — a senior's reminders stopping quietly
+      # because nothing created them.
+      "expand_reminders",
+      "voice_reminder_scheduler"
     )
   end
 
