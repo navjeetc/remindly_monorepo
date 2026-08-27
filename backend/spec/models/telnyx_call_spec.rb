@@ -89,20 +89,24 @@ RSpec.describe TelnyxCall do
       # this one is for is the cap, and it fails at ten.
       #
       # Anchored mid-morning so advancing through the rounds cannot cross
-      # midnight and hand back a fresh day's slots.
-      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 9, 0))
-
-      occurrences = 6.times.map { |i| occurrence_at(Time.current + i.hours) }
+      # midnight and hand back a fresh day's slots. Block form, so the clock is
+      # visibly restored here rather than by TimeHelpers#after_teardown — the
+      # relative travel() calls nest inside it fine, unlike a second travel_to
+      # block, which ActiveSupport refuses outright.
       granted = []
 
-      described_class::MAX_ATTEMPTS.times do
-        occurrences.each do |occurrence|
-          call = described_class.reserve(occurrence, senior)
-          granted << call if call
-          call&.update!(completed_at: Time.current) # the call ends before the next begins
-        end
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 9, 0)) do
+        occurrences = 6.times.map { |i| occurrence_at(Time.current + i.hours) }
 
-        travel(described_class::RETRY_AFTER + 1.minute)
+        described_class::MAX_ATTEMPTS.times do
+          occurrences.each do |occurrence|
+            call = described_class.reserve(occurrence, senior)
+            granted << call if call
+            call&.update!(completed_at: Time.current) # the call ends before the next begins
+          end
+
+          travel(described_class::RETRY_AFTER + 1.minute)
+        end
       end
 
       expect(granted.size).to eq(6 * described_class::MAX_ATTEMPTS)
