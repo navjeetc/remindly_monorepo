@@ -77,14 +77,37 @@ RSpec.describe TelnyxCall do
     # cap binds it is the last reminder of the day that loses — and bedtime
     # medication is often the one most worth a second try.
     it "lets an ordinary day of reminders exhaust their retries without rationing" do
-      six_reminders_worth = 6 * described_class::MAX_ATTEMPTS
+      # Six occurrences called three times each, not eighteen called once: the
+      # claim is about *retries*, so the spec goes round the retry path rather
+      # than past it — attempt_number incrementing per occurrence, with
+      # RETRY_AFTER elapsing between rounds.
+      #
+      # It does not pin RETRY_AFTER itself; waiting the full interval means the
+      # gate could be removed without this noticing. That is
+      # voice_reminder_job_spec's "waits out the retry window before trying
+      # again", which calls twice inside the window and expects one dial. What
+      # this one is for is the cap, and it fails at ten.
+      #
+      # Anchored mid-morning so advancing through the rounds cannot cross
+      # midnight and hand back a fresh day's slots.
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 9, 0))
 
-      granted = six_reminders_worth.times.map do |i|
-        described_class.reserve(occurrence_at(Time.current + i.minutes * 7), senior)
-          &.tap { |c| c.update!(completed_at: Time.current) }
-      end.compact
+      occurrences = 6.times.map { |i| occurrence_at(Time.current + i.hours) }
+      granted = []
 
-      expect(granted.size).to eq(six_reminders_worth)
+      described_class::MAX_ATTEMPTS.times do
+        occurrences.each do |occurrence|
+          call = described_class.reserve(occurrence, senior)
+          granted << call if call
+          call&.update!(completed_at: Time.current) # the call ends before the next begins
+        end
+
+        travel(described_class::RETRY_AFTER + 1.minute)
+      end
+
+      expect(granted.size).to eq(6 * described_class::MAX_ATTEMPTS)
+      expect(granted.map(&:attempt_number).tally)
+        .to eq((1..described_class::MAX_ATTEMPTS).index_with { 6 })
     end
 
     it "reuses a slot released by an attempt that never rang" do
