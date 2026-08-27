@@ -70,6 +70,21 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(mail_for(:missed).subject).not_to match(/as done\z/)
     end
 
+    # Nothing validates a title against newlines, so one can be saved and reach
+    # the mailer. Mail encodes it as =0A inside a single Subject header rather
+    # than starting a new one — so not an injection, but an unreadable subject at
+    # the moment a caregiver most needs to read it.
+    it "keeps the subject to one line, whatever was typed into the title" do
+      TelnyxCall.create!(call_control_id: "call-newline", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+      reminder.update!(title: "Pills\nBcc: someone@example.com")
+
+      subject = mail_for(:missed).subject
+
+      expect(subject).not_to include("\n")
+      expect(subject).to eq("No confirmation from Mom: Pills Bcc: someone@example.com")
+    end
+
     # The title comes last and is whatever the caregiver typed, so a subject can
     # still end on "done" through no fault of the wording. What holds is the
     # opening: the sentence denies confirmation before the title is reached, so a

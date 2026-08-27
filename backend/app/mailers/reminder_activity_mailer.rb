@@ -53,7 +53,16 @@ class ReminderActivityMailer < ApplicationMailer
       "No confirmation from #{@senior.display_name}: #{@reminder.title}"
     end
 
-    mail(to: @caregiver.email, subject: subject)
+    # Collapsed to one line before it becomes a header. Both interpolated values
+    # are typed by a person — a reminder title and a display name — and nothing
+    # validates either against newlines, so one can be saved and reach this.
+    #
+    # Not an injection: Mail encodes a newline as =0A inside a single Subject
+    # header rather than starting a new one, which was checked rather than
+    # assumed. What it does produce is a subject reading
+    # "No confirmation from Mom: Pills=0ABcc: ..." in the caregiver's inbox,
+    # which is unreadable at exactly the moment they need to read it.
+    mail(to: @caregiver.email, subject: subject.squish)
   end
 
   private
