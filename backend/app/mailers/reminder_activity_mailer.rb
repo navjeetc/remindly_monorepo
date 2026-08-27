@@ -31,13 +31,23 @@ class ReminderActivityMailer < ApplicationMailer
   def missed
     setup
 
+    # The signal first, and never ending on the word "done".
+    #
+    # This was "Mom hasn't marked Metformin as done": correct, and it reads badly
+    # where a subject is actually met. In a notification list the eye takes the
+    # tail, and the tail was "Metformin as done" — the negation four words back,
+    # in a sentence nobody finishes. A caregiver glancing at a phone should not
+    # have to parse a clause to learn whether something went wrong.
+    #
+    # The other two already lead with what happened, which is why they read
+    # correctly and this one did not.
     subject = case @phone_failure
     when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
     when :could_not_place
       "Remindly tried to call #{@senior.display_name} about #{@reminder.title} and couldn't get through"
     else
-      "#{@senior.display_name} hasn't marked #{@reminder.title} as done"
+      "No confirmation from #{@senior.display_name}: #{@reminder.title}"
     end
 
     mail(to: @caregiver.email, subject: subject)
