@@ -60,11 +60,30 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(mail_for(:missed).subject).to eq("No confirmation from Mom: Metformin")
     end
 
-    # Subjects are glanced at, not read. Ending on "done" put the reassuring word
-    # last and the negation four words back, so a notification preview said
-    # "Metformin as done" for a dose nobody confirmed.
-    it "never ends on the word a glance would take for good news" do
-      expect(mail_for(:missed).subject).not_to match(/done\z/)
+    # Subjects are glanced at, not read. The old construction put the reassuring
+    # word last and the negation four words back, so a preview read "Metformin as
+    # done" for a dose nobody confirmed.
+    it "does not put the reassuring word last by its own construction" do
+      TelnyxCall.create!(call_control_id: "call-scan", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+
+      expect(mail_for(:missed).subject).not_to match(/as done\z/)
+    end
+
+    # The title comes last and is whatever the caregiver typed, so a subject can
+    # still end on "done" through no fault of the wording. What holds is the
+    # opening: the sentence denies confirmation before the title is reached, so a
+    # glance cannot take it for good news. Appending a marker to every subject to
+    # defend against an unusual title would make every ordinary one read worse.
+    it "opens by denying confirmation, even when the title itself ends in done" do
+      TelnyxCall.create!(call_control_id: "call-laundry", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+      reminder.update!(title: "Check the laundry is done")
+
+      subject = mail_for(:missed).subject
+
+      expect(subject).to start_with("No confirmation from Mom:")
+      expect(subject).to eq("No confirmation from Mom: Check the laundry is done")
     end
 
     # Recorded evidence outranks a setting that has since changed. Turning voice
@@ -154,7 +173,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(body).not_to include("pressed Done on their device")
     end
 
-    it "never leaves the subject blaming the senior while the body exonerates her" do
+    it "does not use the ordinary wording when the body says Remindly never called" do
       mail = mail_for(:missed)
 
       expect(mail.subject).not_to include("No confirmation")

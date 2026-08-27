@@ -31,16 +31,19 @@ class ReminderActivityMailer < ApplicationMailer
   def missed
     setup
 
-    # The signal first, and never ending on the word "done".
+    # The signal first.
     #
     # This was "Mom hasn't marked Metformin as done": correct, and it reads badly
-    # where a subject is actually met. In a notification list the eye takes the
-    # tail, and the tail was "Metformin as done" — the negation four words back,
-    # in a sentence nobody finishes. A caregiver glancing at a phone should not
-    # have to parse a clause to learn whether something went wrong.
+    # where a subject is actually met. The negation sat four words back in a
+    # sentence nobody finishes, so the reassuring word landed last on the worst
+    # available news. The other two subjects already led with what happened,
+    # which is why they read correctly and this one did not.
     #
-    # The other two already lead with what happened, which is why they read
-    # correctly and this one did not.
+    # What is guaranteed is the opening, not the ending: the title comes last and
+    # is whatever the caregiver typed, so "Check the laundry is done" still ends
+    # on that word. Appending a marker to every subject to defend against an
+    # unusual title would make every ordinary one read worse, and the sentence no
+    # longer asserts doneness anywhere — it opens by denying it.
     subject = case @phone_failure
     when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
