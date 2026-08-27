@@ -31,16 +31,38 @@ class ReminderActivityMailer < ApplicationMailer
   def missed
     setup
 
+    # The signal first.
+    #
+    # This was "Mom hasn't marked Metformin as done": correct, and it reads badly
+    # where a subject is actually met. The negation sat four words back in a
+    # sentence nobody finishes, so the reassuring word landed last on the worst
+    # available news. The other two subjects already led with what happened,
+    # which is why they read correctly and this one did not.
+    #
+    # What is guaranteed is the opening, not the ending: the title comes last and
+    # is whatever the caregiver typed, so "Check the laundry is done" still ends
+    # on that word. Appending a marker to every subject to defend against an
+    # unusual title would make every ordinary one read worse, and the sentence no
+    # longer asserts doneness anywhere — it opens by denying it.
     subject = case @phone_failure
     when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
     when :could_not_place
       "Remindly tried to call #{@senior.display_name} about #{@reminder.title} and couldn't get through"
     else
-      "#{@senior.display_name} hasn't marked #{@reminder.title} as done"
+      "No confirmation from #{@senior.display_name}: #{@reminder.title}"
     end
 
-    mail(to: @caregiver.email, subject: subject)
+    # Collapsed to one line before it becomes a header. Both interpolated values
+    # are typed by a person — a reminder title and a display name — and nothing
+    # validates either against newlines, so one can be saved and reach this.
+    #
+    # Not an injection: Mail encodes a newline as =0A inside a single Subject
+    # header rather than starting a new one, which was checked rather than
+    # assumed. What it does produce is a subject reading
+    # "No confirmation from Mom: Pills=0ABcc: ..." in the caregiver's inbox,
+    # which is unreadable at exactly the moment they need to read it.
+    mail(to: @caregiver.email, subject: subject.squish)
   end
 
   private

@@ -57,7 +57,48 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       TelnyxCall.create!(call_control_id: "call-xyz", occurrence: occurrence, user: senior,
                          status: "hangup", outcome: "no_response")
 
-      expect(mail_for(:missed).subject).to eq("Mom hasn't marked Metformin as done")
+      expect(mail_for(:missed).subject).to eq("No confirmation from Mom: Metformin")
+    end
+
+    # Subjects are glanced at, not read. The old construction put the reassuring
+    # word last and the negation four words back, so a preview read "Metformin as
+    # done" for a dose nobody confirmed.
+    it "does not put the reassuring word last by its own construction" do
+      TelnyxCall.create!(call_control_id: "call-scan", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+
+      expect(mail_for(:missed).subject).not_to match(/as done\z/)
+    end
+
+    # Nothing validates a title against newlines, so one can be saved and reach
+    # the mailer. Mail encodes it as =0A inside a single Subject header rather
+    # than starting a new one — so not an injection, but an unreadable subject at
+    # the moment a caregiver most needs to read it.
+    it "keeps the subject to one line, whatever was typed into the title" do
+      TelnyxCall.create!(call_control_id: "call-newline", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+      reminder.update!(title: "Pills\nBcc: someone@example.com")
+
+      subject = mail_for(:missed).subject
+
+      expect(subject).not_to include("\n")
+      expect(subject).to eq("No confirmation from Mom: Pills Bcc: someone@example.com")
+    end
+
+    # The title comes last and is whatever the caregiver typed, so a subject can
+    # still end on "done" through no fault of the wording. What holds is the
+    # opening: the sentence denies confirmation before the title is reached, so a
+    # glance cannot take it for good news. Appending a marker to every subject to
+    # defend against an unusual title would make every ordinary one read worse.
+    it "opens by denying confirmation, even when the title itself ends in done" do
+      TelnyxCall.create!(call_control_id: "call-laundry", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response")
+      reminder.update!(title: "Check the laundry is done")
+
+      subject = mail_for(:missed).subject
+
+      expect(subject).to start_with("No confirmation from Mom:")
+      expect(subject).to eq("No confirmation from Mom: Check the laundry is done")
     end
 
     # Recorded evidence outranks a setting that has since changed. Turning voice
@@ -86,7 +127,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
         .with(caregiver: caregiver, senior: plain, reminder: plain_reminder, occurrence: plain_occurrence)
         .missed
 
-      expect(mail.subject).to eq("Dad hasn't marked Walk as done")
+      expect(mail.subject).to eq("No confirmation from Dad: Walk")
     end
 
     it "keeps the ordinary wording for a dose nothing refused to call" do
@@ -96,7 +137,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
         .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: inside)
         .missed
 
-      expect(mail.subject).to eq("Mom hasn't marked Metformin as done")
+      expect(mail.subject).to eq("No confirmation from Mom: Metformin")
     end
   end
 
@@ -147,10 +188,10 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(body).not_to include("pressed Done on their device")
     end
 
-    it "never leaves the subject blaming the senior while the body exonerates her" do
+    it "does not use the ordinary wording when the body says Remindly never called" do
       mail = mail_for(:missed)
 
-      expect(mail.subject).not_to include("hasn't marked")
+      expect(mail.subject).not_to include("No confirmation")
       expect(readable(mail)).to include("did not call")
     end
   end
@@ -198,7 +239,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     it "reverts to the ordinary wording once one attempt actually reached the provider" do
       occurrence.telnyx_calls.first.update!(call_control_id: "v3:real-call", status: "hangup", outcome: "no_response")
 
-      expect(mail_for(:missed).subject).to eq("Mom hasn't marked Metformin as done")
+      expect(mail_for(:missed).subject).to eq("No confirmation from Mom: Metformin")
     end
   end
 
@@ -260,7 +301,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     let(:mail) { mail_for(:missed) }
 
     it "names the senior and the reminder in the subject" do
-      expect(mail.subject).to eq("Mom hasn't marked Metformin as done")
+      expect(mail.subject).to eq("No confirmation from Mom: Metformin")
     end
 
     it "says the reminder was not marked done" do

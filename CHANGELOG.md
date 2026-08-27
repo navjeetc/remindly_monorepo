@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The missed-reminder subject ended on the word "done".** *"Mom hasn't marked
+  Metformin as done"* is correct and reads badly where a subject is actually
+  met: in a notification list the eye takes the tail, and the tail was
+  "Metformin as done", with the negation four words back in a sentence nobody
+  finishes. It now leads with the signal — *"No confirmation from Mom:
+  Metformin"* — so the sentence denies confirmation before the title is reached.
+  The title still comes last and is whatever the caregiver typed, so "Check the
+  laundry is done" ends on that word regardless; what the specs pin is the
+  opening, and that the old "… as done" construction cannot come back.
 - **Occurrences were only materialised when somebody opened a page.**
   `Recurrence.expand` was called from five places, all controllers — and the only
   one that ran repeatedly was the senior's own dashboard index. A caregiver
