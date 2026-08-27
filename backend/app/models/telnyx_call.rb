@@ -90,10 +90,28 @@ class TelnyxCall < ApplicationRecord
   # requires this and requires that a caregiver cannot configure it away, which
   # is why it is a constant here rather than a column on anything they can edit.
   #
-  # Ten allows roughly three reminders a day to exhaust their retries. The right
-  # number is an open question in the document, alongside how many retries and
-  # how far apart; it is named so changing it is one edit.
-  MAX_CALLS_PER_DAY = 10
+  # A backstop, not an operating limit. Ten was the latter, and the difference
+  # showed on the first day of live calls: three morning reminders went
+  # unanswered and took their three attempts each, so by the evening nine of the
+  # ten were spent and "take sleep medicine" — the dose of the four most worth
+  # a second try — got one ring instead of three.
+  #
+  # The budget is spent in clock order, so whenever this binds it is the last
+  # reminder of the day that loses. Twenty covers six reminders exhausting their
+  # retries, which is a heavy but ordinary schedule for somebody on several
+  # medications, so it should stop binding in normal use rather than quietly
+  # deciding which reminder matters least.
+  #
+  # It stays a constant because invariant 7 requires a per-senior daily ceiling
+  # that a caregiver cannot configure away. Raising it does not weaken that; the
+  # ceiling still exists and still cannot be edited. What it stops doing is
+  # rationing.
+  #
+  # Raising it does not fix the ordering. If twenty ever binds, the last reminder
+  # of the day is still the one that loses, and nothing tells the caregiver why.
+  # The fix for that is to give every due occurrence its first call before any
+  # occurrence gets a retry, which needs lookahead this path does not have.
+  MAX_CALLS_PER_DAY = 20
 
   # Claims the next attempt for an occurrence BEFORE anything is dialled.
   #

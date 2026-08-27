@@ -70,6 +70,23 @@ RSpec.describe TelnyxCall do
       expect(described_class.free_slot(senior, day)).to be_nil
     end
 
+    # Why the number is what it is. Ten made this the rationing mechanism rather
+    # than a backstop: on the first day of live calls, three morning reminders
+    # went unanswered and took three attempts each, so the evening dose got one
+    # ring instead of three. The budget is spent in clock order, so whenever the
+    # cap binds it is the last reminder of the day that loses — and bedtime
+    # medication is often the one most worth a second try.
+    it "lets an ordinary day of reminders exhaust their retries without rationing" do
+      six_reminders_worth = 6 * described_class::MAX_ATTEMPTS
+
+      granted = six_reminders_worth.times.map do |i|
+        described_class.reserve(occurrence_at(Time.current + i.minutes * 7), senior)
+          &.tap { |c| c.update!(completed_at: Time.current) }
+      end.compact
+
+      expect(granted.size).to eq(six_reminders_worth)
+    end
+
     it "reuses a slot released by an attempt that never rang" do
       day = described_class.local_day(senior, Time.current)
       described_class::MAX_CALLS_PER_DAY.times do |i|
