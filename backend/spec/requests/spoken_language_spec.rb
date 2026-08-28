@@ -41,6 +41,11 @@ RSpec.describe "The language calls are spoken in", type: :request do
       expect(senior.spoken_locale).to eq(:es)
     end
 
+    # Cantonese is the real case: it was asked for and is absent from Telnyx's
+    # speak enum entirely. Asserting the status as well as the stored value,
+    # because "the database did not change" is also true of a 500 — and a spec
+    # that passes when the endpoint explodes is worse than no spec, since it
+    # reads like a guarantee.
     it "refuses a language Telnyx cannot speak" do
       sign_in(caregiver)
 
@@ -48,6 +53,8 @@ RSpec.describe "The language calls are spoken in", type: :request do
         patch "/dashboard/senior/#{senior.id}/spoken_language",
           params: { user: { spoken_language: "yue-HK" } }
       }.not_to change { senior.reload.spoken_language }
+
+      expect(response).to have_http_status(:forbidden)
     end
 
     it "is not settable by a caregiver with only view permission" do
