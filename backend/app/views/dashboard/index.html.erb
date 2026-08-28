@@ -2,8 +2,12 @@
     whenever it is on screen — two identical blue buttons, one explained and one
     not. Computed once here rather than twice, because the duplication only
     became visible when both happened to say the same words. %>
+<%# exists? rather than includes(...).empty?, which was carried over from the
+    inline condition this replaced. Both emit the same SELECT 1 ... LIMIT 1 — the
+    includes is dropped, not honoured — so it read as though the association
+    were being loaded while doing nothing at all. %>
 <% no_caregivers_yet = current_user.role_senior? &&
-     current_user.senior_links.includes(:caregiver).where.not(caregiver_id: nil).empty? %>
+     !current_user.senior_links.where.not(caregiver_id: nil).exists? %>
 <% showing_empty_state = @linked_seniors.empty? && (current_user.role_caregiver? || no_caregivers_yet) %>
 
 <div class="space-y-6">
