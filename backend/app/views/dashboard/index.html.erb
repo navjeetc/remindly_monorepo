@@ -197,7 +197,11 @@
   
   <!-- Show linked caregivers for care receivers only -->
   <% if current_user.role_senior? %>
-    <% linked_caregivers = current_user.senior_links.includes(:caregiver).where.not(caregiver_id: nil) %>
+    <%# Loaded up front rather than left as a relation: any? on an unloaded
+        relation issues its own EXISTS and the each below then loads the rows
+        anyway, so the page paid for three queries where two will do. Measured,
+        because the same argument did not hold for the exists? check above. %>
+    <% linked_caregivers = current_user.senior_links.includes(:caregiver).where.not(caregiver_id: nil).to_a %>
     <% if linked_caregivers.any? %>
     <div class="bg-white shadow overflow-hidden sm:rounded-md">
       <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
