@@ -18,6 +18,13 @@ RSpec.describe "The clock a task is set against", type: :request do
     post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
   end
 
+  # Read the rendered form through the DOM rather than by regex. The first
+  # version of these specs matched raw HTML and broke on attribute order —
+  # Rails renders `value` before `id` on a hidden field and after it on a
+  # datetime-local one, which says everything about relying on that.
+  def doc = Nokogiri::HTML(response.body)
+  def field_value(id) = doc.at_css("##{id}")&.[](:value)
+
   before { sign_in(caregiver) }
 
   def create_task(scheduled_at)
@@ -56,7 +63,7 @@ RSpec.describe "The clock a task is set against", type: :request do
     it "offers 9am in the senior's clock, not 9am UTC" do
       get "/seniors/#{senior.id}/tasks/new"
 
-      expect(response.body).to match(/value="\d{4}-\d{2}-\d{2}T09:00"/)
+      expect(field_value("task_scheduled_at_input")).to match(/\A\d{4}-\d{2}-\d{2}T09:00\z/)
     end
 
     it "offers 9am in the senior's clock when they are not in the caregiver's" do
@@ -65,7 +72,7 @@ RSpec.describe "The clock a task is set against", type: :request do
 
       get "/seniors/#{pacific.id}/tasks/new"
 
-      expect(response.body).to match(/value="\d{4}-\d{2}-\d{2}T09:00"/)
+      expect(field_value("task_scheduled_at_input")).to match(/\A\d{4}-\d{2}-\d{2}T09:00\z/)
     end
   end
 
@@ -95,7 +102,7 @@ RSpec.describe "The clock a task is set against", type: :request do
     # title, save, and the appointment must not walk four hours.
     it "survives being opened and saved again unchanged" do
       get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
-      expect(response.body).to include('value="2026-08-28T15:00"')
+      expect(field_value("task_scheduled_at_input")).to eq("2026-08-28T15:00")
 
       patch "/seniors/#{senior.id}/tasks/#{task.id}", params: {
         task: { title: "Cardiologist follow-up", scheduled_at: "2026-08-28T15:00" }
@@ -156,13 +163,13 @@ RSpec.describe "The clock a task is set against", type: :request do
     it "submits the clock it pre-filled in, not the senior's new one" do
       get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
 
-      expect(response.body).to match(%r{<input value="America/New_York" id="tz_field"})
+      expect(field_value("tz_field")).to eq("America/New_York")
     end
 
     it "does not move the appointment when it is saved untouched" do
       get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
-      shown = response.body[/id="task_scheduled_at_input"[^>]*value="([^"]+)"/, 1]
-      submitted_tz = response.body[/value="([^"]+)" id="tz_field"/, 1]
+      shown = field_value("task_scheduled_at_input")
+      submitted_tz = field_value("tz_field")
 
       patch "/seniors/#{senior.id}/tasks/#{task.id}", params: {
         task: { title: "Cardiologist", tz: submitted_tz, scheduled_at: shown }
