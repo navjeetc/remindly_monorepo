@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that, it stops the ceiling deciding which reminder matters least.
 
 ### Fixed
+- **Opening a moved senior's task and saving it untouched shifted the
+  appointment.** The task form pre-filled from `Task#zone`, which prefers the
+  task's own `tz`, while its hidden field submitted `@senior.tz`. Those agree
+  until a senior changes timezone, and then the same unedited text was parsed
+  back in a different zone — a cardiologist appointment jumping two hours for
+  someone who had moved from New York to Denver, from a save that changed
+  nothing. The form now names one clock in all three places: the pre-fill, the
+  label beneath it, and the `tz` it submits. Whether a task's `tz` should follow
+  a senior at all is a separate question, left open as #105; this only
+  guarantees a single form agrees with itself.
+
 - **A task typed as 3pm was stored as 3pm UTC, so the senior saw 11am.** The
   task form submits wall-clock text with no zone in it, and `Time.zone` is UTC
   app-wide, so Rails cast a caregiver's "3:00 PM" to `15:00 UTC` — four hours

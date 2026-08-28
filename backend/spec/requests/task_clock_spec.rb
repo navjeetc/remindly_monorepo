@@ -18,6 +18,13 @@ RSpec.describe "The clock a task is set against", type: :request do
     post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
   end
 
+  # Read the rendered form through the DOM rather than by regex. The first
+  # version of these specs matched raw HTML and broke on attribute order —
+  # Rails renders `value` before `id` on a hidden field and after it on a
+  # datetime-local one, which says everything about relying on that.
+  def doc = Nokogiri::HTML(response.body)
+  def field_value(id) = doc.at_css("##{id}")&.[](:value)
+
   before { sign_in(caregiver) }
 
   def create_task(scheduled_at)
@@ -56,7 +63,7 @@ RSpec.describe "The clock a task is set against", type: :request do
     it "offers 9am in the senior's clock, not 9am UTC" do
       get "/seniors/#{senior.id}/tasks/new"
 
-      expect(response.body).to match(/value="\d{4}-\d{2}-\d{2}T09:00"/)
+      expect(field_value("task_scheduled_at_input")).to match(/\A\d{4}-\d{2}-\d{2}T09:00\z/)
     end
 
     it "offers 9am in the senior's clock when they are not in the caregiver's" do
@@ -65,7 +72,7 @@ RSpec.describe "The clock a task is set against", type: :request do
 
       get "/seniors/#{pacific.id}/tasks/new"
 
-      expect(response.body).to match(/value="\d{4}-\d{2}-\d{2}T09:00"/)
+      expect(field_value("task_scheduled_at_input")).to match(/\A\d{4}-\d{2}-\d{2}T09:00\z/)
     end
   end
 
@@ -95,7 +102,7 @@ RSpec.describe "The clock a task is set against", type: :request do
     # title, save, and the appointment must not walk four hours.
     it "survives being opened and saved again unchanged" do
       get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
-      expect(response.body).to include('value="2026-08-28T15:00"')
+      expect(field_value("task_scheduled_at_input")).to eq("2026-08-28T15:00")
 
       patch "/seniors/#{senior.id}/tasks/#{task.id}", params: {
         task: { title: "Cardiologist follow-up", scheduled_at: "2026-08-28T15:00" }
@@ -130,6 +137,52 @@ RSpec.describe "The clock a task is set against", type: :request do
       child = Task.where.not(parent_task_id: nil).first
       expect(child).to be_present
       expect(child.scheduled_at_local.strftime("%H:%M")).to eq("09:00")
+    end
+  end
+
+  # Copilot caught this on #102 after the rest had merged, and it was real: the
+  # form pre-filled from Task#zone (which prefers the task's own tz) while its
+  # hidden field submitted @senior.tz. Those agree until a senior moves, and
+  # then opening a task and saving it untouched re-parsed the same text in the
+  # new zone. Reproduced as a two-hour jump before the fix.
+  #
+  # The form now names one clock in all three places — pre-fill, label, and the
+  # tz it submits. Whether a task's tz should follow a senior at all is #105;
+  # this only guarantees a single form agrees with itself.
+  describe "a task belonging to a senior who has moved" do
+    let!(:task) do
+      senior.tasks_as_senior.create!(
+        title: "Cardiologist", task_type: "appointment", created_by: caregiver,
+        tz: "America/New_York",
+        scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 8, 28, 15, 0)
+      )
+    end
+
+    before { senior.update!(tz: "America/Denver") }
+
+    it "submits the clock it pre-filled in, not the senior's new one" do
+      get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
+
+      expect(field_value("tz_field")).to eq("America/New_York")
+    end
+
+    it "does not move the appointment when it is saved untouched" do
+      get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
+      shown = field_value("task_scheduled_at_input")
+      submitted_tz = field_value("tz_field")
+
+      patch "/seniors/#{senior.id}/tasks/#{task.id}", params: {
+        task: { title: "Cardiologist", tz: submitted_tz, scheduled_at: shown }
+      }
+
+      expect(task.reload.scheduled_at.utc.hour).to eq(19)
+    end
+
+    it "labels the field with the clock it is actually using" do
+      get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
+
+      expect(response.body).to include("America/New York")
+      expect(response.body).not_to include("America/Denver")
     end
   end
 
