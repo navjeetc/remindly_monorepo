@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Caregivers are asked to keep health details out of reminder and task
-  titles.** The privacy policy has always covered this, but nobody reads a
-  policy while filling in a form, and a caregiver reviewing Remindly asked for
-  the prompt to be where the typing happens. An amber notice now sits under the
+- **Caregivers are asked to keep health details out of titles and notes.**
+  The privacy policy has always covered this, but nobody reads a policy while
+  filling in a form, and a caregiver reviewing Remindly asked for the prompt to
+  be where the typing happens. An amber notice now sits under the
   title field on the new reminder, edit reminder, and task forms. It gives
   reasons somebody can act on rather than citing regulation: the reminder title
   is spoken aloud by the call, in whatever room the phone is in, and every
