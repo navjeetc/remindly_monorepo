@@ -133,6 +133,52 @@ RSpec.describe "The clock a task is set against", type: :request do
     end
   end
 
+  # Copilot caught this on #102 after the rest had merged, and it was real: the
+  # form pre-filled from Task#zone (which prefers the task's own tz) while its
+  # hidden field submitted @senior.tz. Those agree until a senior moves, and
+  # then opening a task and saving it untouched re-parsed the same text in the
+  # new zone. Reproduced as a two-hour jump before the fix.
+  #
+  # The form now names one clock in all three places — pre-fill, label, and the
+  # tz it submits. Whether a task's tz should follow a senior at all is #105;
+  # this only guarantees a single form agrees with itself.
+  describe "a task belonging to a senior who has moved" do
+    let!(:task) do
+      senior.tasks_as_senior.create!(
+        title: "Cardiologist", task_type: "appointment", created_by: caregiver,
+        tz: "America/New_York",
+        scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 8, 28, 15, 0)
+      )
+    end
+
+    before { senior.update!(tz: "America/Denver") }
+
+    it "submits the clock it pre-filled in, not the senior's new one" do
+      get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
+
+      expect(response.body).to match(%r{<input value="America/New_York" id="tz_field"})
+    end
+
+    it "does not move the appointment when it is saved untouched" do
+      get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
+      shown = response.body[/id="task_scheduled_at_input"[^>]*value="([^"]+)"/, 1]
+      submitted_tz = response.body[/value="([^"]+)" id="tz_field"/, 1]
+
+      patch "/seniors/#{senior.id}/tasks/#{task.id}", params: {
+        task: { title: "Cardiologist", tz: submitted_tz, scheduled_at: shown }
+      }
+
+      expect(task.reload.scheduled_at.utc.hour).to eq(19)
+    end
+
+    it "labels the field with the clock it is actually using" do
+      get "/seniors/#{senior.id}/tasks/#{task.id}/edit"
+
+      expect(response.body).to include("America/New York")
+      expect(response.body).not_to include("America/Denver")
+    end
+  end
+
   describe "a senior in a different zone from their caregiver" do
     let(:senior) { create(:user, :senior, name: "Dad", tz: "America/Los_Angeles") }
 
