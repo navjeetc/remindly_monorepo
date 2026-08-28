@@ -34,10 +34,28 @@ class CaregiverLink < ApplicationRecord
     )
   end
 
-  # Complete pairing with a caregiver
+  # Complete pairing with a caregiver.
+  #
+  # Grants manage, which nothing else in the application ever did — the column
+  # defaults to view and no screen could change it, so every caregiver who
+  # paired normally was permanently unable to reach the phone panel: no number,
+  # no verification call, no call language. That is the headline feature, and it
+  # was unreachable by anyone who joined the documented way.
+  #
+  # Invitations grant manage too, so the two paths agree: the product's position
+  # is that a caregiver is a caregiver, and somebody trusted enough to be linked
+  # is trusted to set the reminders up. Worth knowing what that widens, since
+  # this path and that one are not equally consented — a care receiver hands
+  # over a pairing token themselves, while an invitation is sent by another
+  # caregiver and never asks them anything.
+  #
+  # It grants the ability to *ask*, not to enable. callable_by_phone? still
+  # needs a number, a recorded consent and no opt-out, and only a keypress on a
+  # call the care receiver answers can write that consent.
   def pair_with(caregiver:)
     update!(
       caregiver: caregiver,
+      permission: :manage,
       pairing_token: nil # Clear token after pairing
     )
   end

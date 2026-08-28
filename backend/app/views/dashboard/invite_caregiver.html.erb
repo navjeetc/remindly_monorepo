@@ -10,7 +10,8 @@
       </h3>
       
       <p class="text-sm text-gray-600 mb-6">
-        Invite another caregiver to help with <%= @senior.display_name %>. They will be able to view tasks, reminders, and activity.
+        Invite another caregiver to help with <%= @senior.display_name %>. They will be able to
+        set up and change tasks, reminders and activity — the same as you.
       </p>
 
       <%= form_with url: invite_caregiver_dashboard_path(@senior), method: :post, class: "space-y-6" do |f| %>
@@ -25,16 +26,32 @@
           </p>
         </div>
 
-        <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+        <%# This said the invitee would get view access and that permissions
+            could be changed later. Neither was true: invitations now grant the
+            same access the inviter has, and no screen has ever existed for
+            changing a permission afterwards. Amber rather than blue, because
+            handing somebody the ability to arrange telephone calls to another
+            person is a thing to read before pressing send, not after. %>
+        <div class="bg-amber-50 border-l-4 border-amber-400 p-4">
           <div class="flex">
             <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+              <svg class="h-5 w-5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
               </svg>
             </div>
             <div class="ml-3">
-              <p class="text-sm text-blue-700">
-                The invited caregiver will have <strong>view</strong> access by default. You can change their permissions later if needed.
+              <p class="text-sm text-amber-800">
+                They will be able to do everything you can for <%= @senior.display_name %> —
+                including setting up reminders and, for phone reminders, changing the
+                number <%= @senior.display_name %> is called on.
+                <strong>There is no way to reduce that afterwards</strong>, and only
+                <%= @senior.display_name %> can remove them, so invite people you would
+                trust with the telephone.
+              </p>
+              <p class="mt-2 text-sm text-amber-800">
+                What they cannot do is agree to the calls on
+                <%= @senior.display_name %>'s behalf — that still takes
+                <%= @senior.display_name %> answering a call and pressing a key.
               </p>
             </div>
           </div>

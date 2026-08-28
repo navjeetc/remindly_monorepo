@@ -665,11 +665,22 @@ class DashboardController < WebController
       return
     end
 
-    # Create the link with view permission by default
+    # Manage, matching pairing. The product's position is that a caregiver is a
+    # caregiver: somebody trusted enough to be linked at all is trusted to set
+    # up the reminders, including the telephone ones, and a permission the
+    # application never granted was not protecting anybody — it was just
+    # switching the feature off.
+    #
+    # Worth knowing what this widens: any linked caregiver may invite another,
+    # so a caregiver can now hand a second one the ability to arrange calls
+    # without the care receiver being asked. What it cannot do is start the
+    # calls. callable_by_phone? still needs a number, a recorded consent and no
+    # opt-out, and only a keypress on a call the care receiver answers writes
+    # that consent.
     CaregiverLink.create!(
       senior_id: @senior.id,
       caregiver_id: caregiver.id,
-      permission: :view
+      permission: :manage
     )
 
     # Send invitation email to the caregiver
