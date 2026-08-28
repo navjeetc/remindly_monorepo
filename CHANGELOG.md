@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them to broaden appeal would have narrowed discovery instead. Meet people
   where they search, then do not exclude them once they arrive.
 
+### Fixed
+- **A care receiver with nobody linked was told to pair with a care receiver.**
+  The empty dashboard served both roles but only ever offered the caregiver's
+  action, so somebody waiting to be looked after was sent to a form asking for a
+  pairing token that only a caregiver would have been handed — while the thing
+  they actually needed, generating a token of their own to share, sat behind a
+  button the empty state did not mention. It read "Pair with Senior" before the
+  terminology change, wrong in the same way and easier to miss. Each role is now
+  asked for its own half of pairing.
+
 ### Added
 - **Reminder calls can be spoken in Spanish.** A caregiver reviewing Remindly
   asked for calls in a language other than English, and the people the calls

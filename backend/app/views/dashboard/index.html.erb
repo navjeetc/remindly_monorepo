@@ -223,11 +223,24 @@
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
       </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">Nobody linked yet</h3>
-      <p class="mt-1 text-sm text-gray-500">Get started by pairing with someone using their pairing token.</p>
-      <div class="mt-6">
-        <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
-      </div>
+      <%# Both roles land here, and they need opposite things. A caregiver enters
+          somebody's token; a care receiver generates one and shares it. This
+          block used to offer the caregiver's action to both, so a care receiver
+          with nobody linked was told to pair with a care receiver and sent to a
+          form asking for a token only a caregiver would have been given. %>
+      <% if current_user.role_senior? %>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No caregivers yet</h3>
+        <p class="mt-1 text-sm text-gray-500">Generate a pairing token and share it with whoever helps look after you.</p>
+        <div class="mt-6">
+          <%= link_to "Generate Pairing Token", generate_token_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        </div>
+      <% else %>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Nobody linked yet</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by pairing with someone using their pairing token.</p>
+        <div class="mt-6">
+          <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        </div>
+      <% end %>
     </div>
   <% end %>
 </div>

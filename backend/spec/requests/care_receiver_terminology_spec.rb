@@ -77,6 +77,34 @@ RSpec.describe "Care receiver terminology", type: :request do
   # the word, because that is what people type into a search box. Nobody
   # searches for a "care receiver app". Meet them where they search, then do not
   # exclude them once they arrive.
+  # Found by looking at the screen rather than the diff: the empty state served
+  # both roles but only ever offered the caregiver's action, so a care receiver
+  # with nobody linked was told to "pair with a care receiver" and sent to a form
+  # asking for a token only a caregiver would hold. It said "Pair with Senior"
+  # before the rename, which was wrong in the same way and easier to miss.
+  describe "the empty dashboard" do
+    it "asks a care receiver to generate a token, which is their half of pairing" do
+      # Unlinked on purpose — the block only renders for somebody with nobody
+      # linked, which is exactly the person who needs telling what to do.
+      alone = create(:user, :senior, name: "Nora")
+      sign_in(alone)
+      get "/dashboard"
+
+      expect(page_text).to include("No caregivers yet")
+      expect(page_text).to include("Generate Pairing Token")
+      expect(page_text).not_to include("Pair with a care receiver")
+    end
+
+    it "asks a caregiver to enter one, which is theirs" do
+      unlinked = create(:user, :caregiver, name: "Sam")
+      sign_in(unlinked)
+      get "/dashboard"
+
+      expect(page_text).to include("Pair with a care receiver")
+      expect(page_text).not_to include("Generate Pairing Token")
+    end
+  end
+
   describe "the public pages" do
     it "no longer says senior in the How To prose" do
       get "/how_to"
