@@ -51,6 +51,35 @@ RSpec.describe "What pairing grants", type: :request do
     end
   end
 
+  # The invite screen promised view access and said permissions could be changed
+  # later. The first became false with this change; the second was never true,
+  # since no screen for changing a permission has ever existed. An inviter was
+  # therefore handing over the telephone without being told.
+  describe "what the invite screen promises" do
+    it "does not promise view access it no longer grants" do
+      CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage)
+      sign_in(caregiver)
+
+      get "/dashboard/senior/#{senior.id}/invite_caregiver"
+      text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
+
+      expect(text).not_to include("view</strong> access")
+      expect(text).not_to include("change their permissions later")
+    end
+
+    it "says what the invitee will actually be able to do" do
+      CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage)
+      sign_in(caregiver)
+
+      get "/dashboard/senior/#{senior.id}/invite_caregiver"
+      text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
+
+      expect(text).to include("everything you can for #{senior.display_name}")
+      expect(text).to include("no way to reduce that afterwards")
+      expect(text).to include("cannot do is agree to the calls")
+    end
+  end
+
   describe "an invitation from another caregiver" do
     # Same grant as pairing: a caregiver is a caregiver. This does widen who can
     # arrange calls — any linked caregiver may invite another, and the care
