@@ -30,6 +30,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that, it stops the ceiling deciding which reminder matters least.
 
 ### Fixed
+- **The task backfill skipped two of the five rows it existed to fix.** Its
+  scope excluded recurring templates with `rrule: nil`, which is `IS NULL` in
+  SQL — but the task form submits an *empty string* for a one-off task rather
+  than leaving the column NULL. So two ordinary appointments read as outside
+  the scope and kept the wrong time, including the cardiologist appointment
+  that prompted the original fix. `Task#recurring_template?` has always used
+  `present?`, so the application had this right and only the migration did not:
+  blank and NULL are the same answer to "is this recurring". A second migration
+  shifts exactly the rows the first missed, and cannot touch the ones it already
+  corrected. It is also bounded to rows untouched since the parser fix went
+  live: that fix shipped in the same deploy as the first migration, so anything
+  created or resaved afterwards already stores a correct instant and carries a
+  blank rrule too — production grew exactly such a row within minutes. Caught by
+  checking production after deploying rather than assuming the count meant the
+  right rows moved.
+
 - **Opening a moved senior's task and saving it untouched shifted the
   appointment.** The task form pre-filled from `Task#zone`, which prefers the
   task's own `tz`, while its hidden field submitted `@senior.tz`. Those agree

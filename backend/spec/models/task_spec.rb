@@ -1,6 +1,26 @@
 require 'rails_helper'
 
 RSpec.describe Task, type: :model do
+  # The task form submits an empty string for a one-off task rather than
+  # leaving the column NULL, and `recurring_template?` has always used
+  # `present?`, so both shapes mean "not recurring". A backfill migration once
+  # scoped on `rrule: nil` instead and silently skipped every blank-rrule
+  # task — including the appointment that prompted it. Blank and NULL are the
+  # same answer to this question.
+  describe "#recurring_template?" do
+    it "is false for a NULL rrule" do
+      expect(build(:task, rrule: nil)).not_to be_recurring_template
+    end
+
+    it "is false for a blank rrule, which is what the form submits" do
+      expect(build(:task, rrule: "")).not_to be_recurring_template
+    end
+
+    it "is true only when there is an actual rule" do
+      expect(build(:task, rrule: "FREQ=DAILY")).to be_recurring_template
+    end
+  end
+
   describe 'associations' do
     it { should belong_to(:senior).class_name('User') }
     it { should belong_to(:assigned_to).class_name('User').optional }
