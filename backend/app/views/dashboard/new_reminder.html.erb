@@ -24,6 +24,7 @@
           <%= f.label :title, "Reminder Title", class: "block text-sm font-medium text-gray-700" %>
           <%= f.text_field :title, required: true, placeholder: "e.g., Take morning medication", class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           <%= render "shared/sensitive_info_hint", spoken: true, subject: "reminder" %>
+          <%= render "shared/spoken_title_note", senior: @senior %>
         </div>
 
         <div>

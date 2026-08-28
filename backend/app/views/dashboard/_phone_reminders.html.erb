@@ -114,6 +114,18 @@
         <p class="mt-1 text-xs text-gray-500">
           What <%= senior.display_name %> hears on the phone. Remindly's screens stay in English.
         </p>
+        <%# Remindly translates its own words, not the caregiver's. The reminder
+            title is free text and goes to the voice exactly as typed, so a
+            senior set to Spanish hears "Take meds" in the middle of a Spanish
+            sentence unless somebody says this. Translating it for them would
+            mean sending reminder titles to a third party — the same titles the
+            forms ask people to keep clinical detail out of. %>
+        <% unless senior.spoken_language == "en-US" %>
+          <p class="mt-1 text-xs text-amber-700">
+            Write reminder titles in <%= senior.spoken_language_label.sub(/\s*\(.*\)/, "") %> too.
+            Remindly speaks them exactly as you type them.
+          </p>
+        <% end %>
       <% end %>
 
       <%#

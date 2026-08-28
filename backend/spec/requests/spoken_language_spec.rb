@@ -51,6 +51,42 @@ RSpec.describe "The language calls are spoken in", type: :request do
     end
   end
 
+  # Remindly translates its own words, not the caregiver's. The title reaches
+  # the voice exactly as typed, so without saying so a senior set to Spanish
+  # hears "Take meds" in the middle of a Spanish sentence — and the caregiver
+  # who set the language has no way to know that from the screen.
+  describe "warning that titles are spoken verbatim" do
+    def page_text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
+
+    it "says nothing when the calls are in English" do
+      sign_in(caregiver)
+      get "/dashboard/senior/#{senior.id}/reminder/new"
+
+      expect(page_text).not_to include("read out exactly as you type it")
+    end
+
+    it "warns on the reminder form once the calls are not in English" do
+      senior.update!(spoken_language: "es-US")
+      sign_in(caregiver)
+      get "/dashboard/senior/#{senior.id}/reminder/new"
+
+      expect(page_text).to include("Mom's calls are spoken in Español")
+      expect(page_text).to include("read out exactly as you type it")
+    end
+
+    it "warns beside the language control itself, where the choice is made" do
+      # The panel is hidden with the feature, so the flag has to be on for the
+      # control — and the note under it — to exist at all.
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+      senior.update!(spoken_language: "es-US", phone: "+15551234567")
+      sign_in(caregiver)
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(page_text).to include("Write reminder titles in Español too")
+    end
+  end
+
   describe "the script" do
     # The trap this guards: i18n.fallbacks is on in production, so a missing
     # Spanish key falls back to English *text* while the payload still says

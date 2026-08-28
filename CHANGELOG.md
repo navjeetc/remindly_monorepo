@@ -28,6 +28,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the arranger named early, no suggestion that the called party asked for
   anything, and the keypad digits left alone.
 
+  Remindly translates its own words, not the caregiver's. A reminder title is
+  free text and reaches the voice exactly as typed, so a senior set to Spanish
+  would otherwise hear "Take meds" dropped into the middle of a Spanish
+  sentence — and the caregiver who chose the language had no way to know that
+  from the screen. Both the language control and the reminder form now say so,
+  naming the language that is actually set. Translating titles automatically
+  was considered and rejected: it would send every title to a third-party
+  translator — the same titles the forms ask people to keep clinical detail out
+  of — from inside the webhook that has to answer before the call can speak,
+  and a wrong translation of "take 2 of the white ones, not the blue" would be
+  read aloud with total confidence to somebody who cannot check it.
+
   Cantonese was asked for and is not possible — it is absent from Telnyx's
   speak enum at any price. Every other language on that list is now a YAML file
   and one entry in `User::SPOKEN_LANGUAGES`, with no new code.
