@@ -32,6 +32,47 @@ class User < ApplicationRecord
 
   def text_scale = TEXT_SCALES.fetch(text_size, 100)
 
+  # The language Remindly speaks to this person in on the telephone. It is the
+  # senior's setting, because the senior is the one who hears it — a caregiver
+  # sets it on their behalf from the senior's page, since many of them never
+  # sign in.
+  #
+  # Two identifiers here, and they are not the same thing. The key is Telnyx's
+  # language code, which selects the accent the voice reads with; :locale is
+  # the Rails locale holding the words. They differ because es-ES, es-MX and
+  # es-US are three accents reading one Spanish translation, and collapsing
+  # them would mean a translation file per accent.
+  #
+  # Only codes in Telnyx's speak enum belong here. Cantonese (yue-HK) is not in
+  # it at any price, which is why this list starts where it does.
+  SPOKEN_LANGUAGES = {
+    "en-US" => { label: "English", locale: :en },
+    "es-US" => { label: "Español (Spanish)", locale: :es }
+  }.freeze
+
+  validates :spoken_language, inclusion: { in: SPOKEN_LANGUAGES.keys }
+
+  # What the form may offer today. English is always available; the rest wait on
+  # a native speaker having read the script, which is what the flag records.
+  # Note this gates the *choice*, not playback: a senior already set to Spanish
+  # keeps hearing Spanish if the flag is turned back off, because taking away a
+  # language somebody is relying on is worse than the risk it was hiding.
+  def self.selectable_spoken_languages
+    return SPOKEN_LANGUAGES if FeatureFlag.enabled?(:translated_calls)
+
+    SPOKEN_LANGUAGES.slice("en-US")
+  end
+
+  # The locale the call script is read from. Falls back rather than raising:
+  # a row holding something unknown should still get a call it can act on.
+  def spoken_locale
+    SPOKEN_LANGUAGES.dig(spoken_language, :locale) || :en
+  end
+
+  def spoken_language_label
+    SPOKEN_LANGUAGES.dig(spoken_language, :label) || spoken_language
+  end
+
   # Roles a user may choose for themselves — at onboarding, or later from their
   # profile. Admin is deliberately excluded: it is never self-granted, and this
   # path also refuses to touch an existing admin's role.

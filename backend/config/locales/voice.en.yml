@@ -1,0 +1,44 @@
+# The two things Remindly says out loud. Everything else in the app is English
+# only; these are translated because the person hearing them may not be.
+#
+# TRANSLATOR NOTES — these are constraints, not style preferences. Each one is
+# here because the English was changed to fix a real problem:
+#
+#   * Name Remindly in the first breath, before any instruction. An automated
+#     voice telling an older person to do something and press a key is the
+#     shape of the scams this demographic is warned about, and the opening
+#     seconds are the only mitigation that works — caller ID does not survive
+#     most mobile carriers.
+#   * In `announcement`, the reminder title is a sentence of its own. Titles are
+#     free text and usually imperative ("Take meds", "Drink water"), so they
+#     cannot sit inside a clause. An earlier version read "this is your %{task}
+#     reminder", which a listener hears as a different sentence than the one
+#     that was sent.
+#   * "done it", not "taken it". A reminder is not always a dose — you do not
+#     take a glass of water or a walk.
+#   * In `consent.asked_by`, naming the arranger is the anti-scam move: it is
+#     the one thing a stranger ringing out of the blue could not know. Keep the
+#     name early and keep it prominent.
+#   * `consent.asked_generic` is the fallback with nobody to name. It must not
+#     claim the called party asked for anything — "You asked us" told people
+#     they had requested a call they had not, which is both false and precisely
+#     how a scam call opens.
+#   * Digits are never translated. 1, 2 and 9 are what the keypad sends.
+en:
+  voice:
+    announcement: >-
+      Hello %{name}. This is Remindly, with your reminder.
+      %{task}.
+      Press 1 if you have done it.
+      Press 2 to be reminded again in %{minutes} minutes.
+      Press 9 to stop these calls.
+    consent:
+      asked_by: "%{arranger} asked us"
+      asked_generic: "We have been asked"
+      request: >-
+        Hello. This is Remindly, calling for %{name}.
+        %{asked} to phone you with reminders —
+        for example, when it is time to take your tablets.
+        We will never ask you for personal details. All you ever need to do is press a button.
+        If you would like these reminders, press 1 now.
+        If you would rather not, press 9 and we will not call again.
