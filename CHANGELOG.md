@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Caregivers are asked to keep health details out of reminder and task
+  titles.** The privacy policy has always covered this, but nobody reads a
+  policy while filling in a form, and a caregiver reviewing Remindly asked for
+  the prompt to be where the typing happens. An amber notice now sits under the
+  title field on the new reminder, edit reminder, and task forms. It gives
+  reasons somebody can act on rather than citing regulation: the reminder title
+  is spoken aloud by the call, in whatever room the phone is in, and every
+  linked caregiver reads it on their dashboard. The task form says only the
+  second, because task titles never enter the call flow and claiming otherwise
+  would teach people something false about their own data. Deliberately not a
+  validation — no rule catches "Take lorazepam" without also catching "Take
+  pills with breakfast", and a form that argues with people gets abandoned
+  rather than obeyed.
+
 - **Text size is a setting now, because the app was too small for the people it
   is for.** A caregiver reviewing Remindly said the type was too small for the
   seniors she works with, which is a hard thing to answer with a browser zoom
@@ -21,6 +35,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   untouched.
 
 ### Changed
+- **The privacy policy no longer contradicts the app.** It described reminder
+  titles and notes as things that "may name a medication or an appointment",
+  which was accurate until the forms started asking people not to do that. It
+  now carries a section on health information saying what we ask for and why.
+  It stops short of claiming Remindly holds no health data: titles are free
+  text, whatever is typed is stored, and nothing is scanned or blocked. A
+  policy promising otherwise would be the more expensive kind of wrong — the
+  live exposure for a health app outside HIPAA is the FTC Health Breach
+  Notification Rule and state laws like Washington's My Health My Data Act,
+  and both turn on whether the policy is accurate rather than on whether
+  health data is held.
+
 - **Scheduling integrations are hidden, because they were never finished.** The
   `external_scheduling` flag was declared alongside the feature and then never
   checked anywhere, so the screens have been reachable since the day they were

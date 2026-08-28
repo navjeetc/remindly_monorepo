@@ -1,9 +1,13 @@
 <%# Shown wherever somebody types a title that other people will read or hear.
 
-    The point is not the privacy policy — it is that a reminder title travels
-    further than the person writing it expects. It is spoken aloud on the
-    reminder call, in whatever room the phone is in, and every caregiver linked
-    to this person can read it on their own dashboard.
+    The point is not the privacy policy — it is that a title travels further
+    than the person writing it expects, and the honest reach differs by form.
+    A reminder title is spoken aloud by the call, in whatever room the phone
+    is in; a task title never enters that flow and is only ever read. Saying
+    "read aloud" on the task form would be teaching people something untrue
+    about their own data, which is a poor way to ask for their trust.
+
+    Pass spoken: true from the reminder forms only.
 
     Deliberately a notice and not a validation. There is no way to detect a
     medication name that does not also reject "Take pills with breakfast", and
@@ -12,6 +16,7 @@
 
     Sized in the same rem units as everything else, so it grows with the text
     size on the reader's profile — see User::TEXT_SCALES. %>
+<% spoken = local_assigns.fetch(:spoken, false) %>
 <div class="mt-2 rounded-r-md border-l-4 border-amber-400 bg-amber-50 p-3">
   <div class="flex gap-2">
     <svg class="h-5 w-5 flex-shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -19,10 +24,14 @@
     </svg>
     <p class="text-sm text-amber-800">
       <strong class="font-semibold">Please keep private health details out of this.</strong>
-      Everyone linked to this person can read it, and it is read aloud on reminder
-      calls — in whatever room the phone happens to be in. A general title like
-      “Morning pills” does the same job without naming the medication or the
-      condition.
+      <% if spoken %>
+        Everyone linked to this person can read it, and it is read aloud on
+        reminder calls — in whatever room the phone happens to be in.
+      <% else %>
+        Everyone linked to this person can read it on their own dashboard.
+      <% end %>
+      A general title like “Morning pills” does the same job without naming the
+      medication or the condition.
     </p>
   </div>
 </div>

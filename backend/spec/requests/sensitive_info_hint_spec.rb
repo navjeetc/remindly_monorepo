@@ -1,12 +1,17 @@
 require "rails_helper"
 
-# Remindly is built to sit below the point where it is holding medical records,
-# and the only thing keeping it there is what people type into a title. The
-# privacy policy says so, but nobody reads a policy while filling in a form.
+# The policy asks people to keep clinical detail out of Remindly, and is candid
+# that nothing stops them: titles are free text and whatever is typed is stored.
+# That makes the notice on the form the only thing doing real work, because
+# nobody reads a policy while filling in a form.
 #
-# So the hint has to be on every surface that takes a title. A prompt on the
-# reminder form alone would leave the task form — the one caregivers use most —
-# quietly collecting the thing the policy promises is not collected.
+# So it has to be on every surface that takes a title — a prompt on the reminder
+# form alone would leave the task form, the one caregivers use most, collecting
+# exactly what the policy asks them not to write.
+#
+# And it has to be true on each of them. A reminder title is spoken aloud by the
+# call; a task title is only ever read. Telling somebody their task is announced
+# down a phone line would be teaching them something false about their own data.
 RSpec.describe "The sensitive information hint", type: :request do
   let(:caregiver) { create(:user, :caregiver, name: "Jane") }
   let(:senior) { create(:user, :senior, name: "Mom") }
@@ -48,6 +53,16 @@ RSpec.describe "The sensitive information hint", type: :request do
     get "/seniors/#{senior.id}/tasks/new"
 
     expect(hint).to be_present
+  end
+
+  # Tasks never reach TelnyxWebhooksController#announcement_for — it speaks
+  # reminder.title and nothing else — so claiming otherwise here would be a
+  # false statement about where their words end up.
+  it "does not tell the task form its titles are spoken aloud" do
+    get "/seniors/#{senior.id}/tasks/new"
+
+    expect(page_text).to include("can read it on their own dashboard")
+    expect(page_text).not_to include("read aloud")
   end
 
   it "says what happens to the title, not merely that it is sensitive" do
