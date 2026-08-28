@@ -42,12 +42,12 @@ class CaregiverLink < ApplicationRecord
   # no verification call, no call language. That is the headline feature, and it
   # was unreachable by anyone who joined the documented way.
   #
-  # Manage is right *here* specifically because the care receiver started it.
-  # They generated a token and handed it over, which is the closest thing in the
-  # product to saying "help me with this". Invitations are deliberately not the
-  # same: any linked caregiver may invite another, so granting manage there
-  # would let one caregiver hand a second one telephone rights with the care
-  # receiver never involved.
+  # Invitations grant manage too, so the two paths agree: the product's position
+  # is that a caregiver is a caregiver, and somebody trusted enough to be linked
+  # is trusted to set the reminders up. Worth knowing what that widens, since
+  # this path and that one are not equally consented — a care receiver hands
+  # over a pairing token themselves, while an invitation is sent by another
+  # caregiver and never asks them anything.
   #
   # It grants the ability to *ask*, not to enable. callable_by_phone? still
   # needs a number, a recorded consent and no opt-out, and only a keypress on a

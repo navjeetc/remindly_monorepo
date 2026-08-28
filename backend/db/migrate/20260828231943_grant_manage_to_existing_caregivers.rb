@@ -1,8 +1,11 @@
-# Every caregiver linked before this point holds view, because nothing in the
-# application ever granted anything else: the column defaults to view, pair_with
-# never touched it, and no screen could change it. So they are all locked out of
-# the phone panel — no number, no verification call, no call language — which is
-# the feature the product leads with.
+# A caregiver linked before this point almost certainly holds view, because
+# nothing in the application ever granted anything else: the column defaults to
+# view, pair_with never touched it, and no screen could change it. Any manage
+# link that does exist was written by hand or by seed data — production has
+# exactly one — and is left alone.
+#
+# The rest are locked out of the phone panel: no number, no verification call,
+# no call language, which is the feature the product leads with.
 #
 # Fixing the two creation paths only helps people who pair from now on. This
 # catches the ones already here.
