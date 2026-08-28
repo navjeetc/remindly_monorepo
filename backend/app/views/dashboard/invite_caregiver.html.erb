@@ -10,7 +10,8 @@
       </h3>
       
       <p class="text-sm text-gray-600 mb-6">
-        Invite another caregiver to help with <%= @senior.display_name %>. They will be able to view tasks, reminders, and activity.
+        Invite another caregiver to help with <%= @senior.display_name %>. They will be able to
+        set up and change tasks, reminders and activity — the same as you.
       </p>
 
       <%= form_with url: invite_caregiver_dashboard_path(@senior), method: :post, class: "space-y-6" do |f| %>

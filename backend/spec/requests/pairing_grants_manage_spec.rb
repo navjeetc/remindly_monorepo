@@ -63,8 +63,12 @@ RSpec.describe "What pairing grants", type: :request do
       get "/dashboard/senior/#{senior.id}/invite_caregiver"
       text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
 
-      expect(text).not_to include("view</strong> access")
+      # Asserted on rendered text, not markup: an earlier version of this spec
+      # looked for "view</strong> access" *after* stripping tags, so it could
+      # never fail — which is worse than no assertion, because it reads as one.
+      expect(text).not_to include("view access by default")
       expect(text).not_to include("change their permissions later")
+      expect(text).not_to match(/\bview\b.{0,20}access/i)
     end
 
     it "says what the invitee will actually be able to do" do
