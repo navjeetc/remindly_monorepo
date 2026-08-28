@@ -52,9 +52,12 @@ class TasksController < WebController
 
   # GET /dashboard/senior/:senior_id/tasks/new
   def new
+    # Tomorrow at 9am where the senior is. `1.day.from_now.change(hour: 9)`
+    # gave 9am UTC, which the form now correctly renders as 5am in New York —
+    # a default nobody meant, one Save away from being real.
     @task = @senior.tasks_as_senior.build(
       created_by: current_user,
-      scheduled_at: 1.day.from_now.change(hour: 9, min: 0)
+      scheduled_at: seniors_clock.now.tomorrow.change(hour: 9, min: 0)
     )
     @caregivers = @senior.caregivers
   end
@@ -229,10 +232,18 @@ class TasksController < WebController
   def in_the_seniors_clock(value)
     return value unless value.is_a?(String) && value.present?
 
-    zone = ActiveSupport::TimeZone[@senior&.tz.to_s] || Time.zone
-    zone.parse(value) || value
+    seniors_clock.parse(value) || value
   rescue ArgumentError
     value # let the model's validation report it rather than 500ing here
+  end
+
+  # Must agree with Task#zone, which prefers the task's own tz — a recurring
+  # template carries one, and the form submits it. Parsing in one clock and
+  # rendering in another would reintroduce the bug in a subtler place.
+  def seniors_clock
+    ActiveSupport::TimeZone[params.dig(:task, :tz).to_s] ||
+      ActiveSupport::TimeZone[@senior&.tz.to_s] ||
+      Time.zone
   end
 
   def task_params

@@ -34,10 +34,30 @@ class ShiftTaskTimesIntoTheSeniorsClock < ActiveRecord::Migration[8.0]
     zones = MigrationUser.pluck(:id, :tz).to_h
     shifted = skipped = 0
 
-    MigrationTask.where(external_source: nil).find_each do |task|
-      # An external calendar hands us a real instant, not typed text, so those
-      # rows were never wrong — the scope above leaves them out.
-      zone = ActiveSupport::TimeZone[zones[task.senior_id].to_s]
+    # Only rows the web form could have produced. Everything excluded here was
+    # already storing a correct absolute instant, and shifting it would break
+    # data that was never wrong:
+    #
+    #   external_source  a synced calendar hands us a real instant
+    #   parent_task_id   Recurrence.expand_task generates children from IceCube
+    #                    in the senior's zone — already absolute, and it does
+    #                    not set external_source, so nothing else excludes them
+    #   rrule            a template's children are already correct; shifting the
+    #                    template's start_time would desynchronise it from them
+    #
+    # One gap is honest to state: Api::TasksController#create accepts ISO-8601
+    # instants and sets none of these columns, so an API-created one-off is
+    # indistinguishable here. Production was checked before this shipped and
+    # contains none — all five affected rows are one-off form tasks. Any
+    # environment where that is not true should check before migrating, which
+    # is why every shifted row is logged below rather than counted silently.
+    scope = MigrationTask.where(external_source: nil, parent_task_id: nil, rrule: nil)
+
+    scope.find_each do |task|
+      # Prefer the task's own clock, matching Task#zone, and fall back to the
+      # person it is for.
+      zone = ActiveSupport::TimeZone[task[:tz].to_s] ||
+             ActiveSupport::TimeZone[zones[task.senior_id].to_s]
       if zone.nil?
         skipped += 1
         next
@@ -52,6 +72,7 @@ class ShiftTaskTimesIntoTheSeniorsClock < ActiveRecord::Migration[8.0]
       end
 
       if updates.any?
+        say "  task #{task.id}: #{task[:scheduled_at]} -> #{updates[:scheduled_at]}" if updates[:scheduled_at]
         task.update_columns(updates)
         shifted += 1
       else

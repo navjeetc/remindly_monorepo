@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that, it stops the ceiling deciding which reminder matters least.
 
 ### Fixed
+- **A task typed as 3pm was stored as 3pm UTC, so the senior saw 11am.** The
+  task form submits wall-clock text with no zone in it, and `Time.zone` is UTC
+  app-wide, so Rails cast a caregiver's "3:00 PM" to `15:00 UTC` — four hours
+  off for a senior in New York. The caregiver's own task list still read 3:00 PM
+  because it rendered the raw instant back without converting, so one bug
+  cancelled the other and nothing looked broken until the two screens were put
+  side by side. Found on a real cardiologist appointment while preparing a demo.
+  Times are now read in the clock of the person the task is for, `Task#zone` and
+  `#scheduled_at_local` are the single place that knows which clock that is, and
+  the edit form pre-fills in it — previously opening a task and saving it walked
+  the appointment another four hours, silently, every time. Existing rows are
+  repaired by a migration that only shifts and is reversible, scoped to rows the
+  web form could have produced: synced appointments, recurring children and
+  templates all store correct absolute instants already, and shifting them would
+  break data that was never wrong.
+
 - **The missed-reminder subject ended on the word "done".** *"Mom hasn't marked
   Metformin as done"* is correct and reads badly where a subject is actually
   met: in a notification list the eye takes the tail, and the tail was

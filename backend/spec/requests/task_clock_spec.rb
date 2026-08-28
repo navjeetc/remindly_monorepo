@@ -48,6 +48,27 @@ RSpec.describe "The clock a task is set against", type: :request do
     end
   end
 
+  # Copilot and Codex both caught this on #102 and they were right: localizing
+  # the form's pre-fill exposed that `new` was building its default in UTC, so
+  # a New York senior opened the form on 5:00 AM and was one Save from meaning
+  # it. The fix to the display half created the bug in the default.
+  describe "the default on a new task" do
+    it "offers 9am in the senior's clock, not 9am UTC" do
+      get "/seniors/#{senior.id}/tasks/new"
+
+      expect(response.body).to match(/value="\d{4}-\d{2}-\d{2}T09:00"/)
+    end
+
+    it "offers 9am in the senior's clock when they are not in the caregiver's" do
+      pacific = create(:user, :senior, name: "Dad", tz: "America/Los_Angeles")
+      CaregiverLink.create!(senior: pacific, caregiver: caregiver, permission: :manage)
+
+      get "/seniors/#{pacific.id}/tasks/new"
+
+      expect(response.body).to match(/value="\d{4}-\d{2}-\d{2}T09:00"/)
+    end
+  end
+
   describe "showing it back" do
     let!(:task) do
       senior.tasks_as_senior.create!(
