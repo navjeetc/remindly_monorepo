@@ -1,6 +1,13 @@
 # Spanish call script. See config/locales/voice.en.yml for the constraints each
 # line is written against — they are requirements, not preferences.
 #
+# NOT YET REVIEWED BY A NATIVE SPEAKER, and it has already been wrong once: the
+# consent line read "llamamos de parte de %{name}", which says Remindly is
+# calling *on behalf of* the person it is in fact calling — so a senior named
+# Mom was told the call was being made on Mom's behalf. That is the exact
+# register failure this warning is about, found by a reviewer rather than by
+# anyone who speaks the language. Assume there are others.
+#
 # NOT YET REVIEWED BY A NATIVE SPEAKER. This is a first pass and must be read by
 # one before it reaches production. A machine translation of an anti-scam script
 # is exactly how you produce something that sounds like a scam: the register has
@@ -18,7 +25,7 @@ es:
       asked_by: "%{arranger} nos ha pedido"
       asked_generic: "Se nos ha pedido"
       request: >-
-        Hola. Le habla Remindly, llamamos de parte de %{name}.
+        Hola. Le habla Remindly, llamamos para hablar con %{name}.
         %{asked} que le telefoneemos con recordatorios —
         por ejemplo, cuando sea la hora de tomar sus pastillas.
         Nunca le pediremos datos personales. Lo único que tendrá que hacer es pulsar una tecla.

@@ -182,6 +182,12 @@ class DashboardController < WebController
   # the same reason the calls exist. It is still the senior's setting: it is
   # stored on them and it is their ear it serves.
   def update_spoken_language
+    # Gated like update_phone, and for the same reason: the panel is hidden with
+    # the feature, so the only way here is a hand-made request, and a setting
+    # that changes what a telephone says should not be writable through a screen
+    # nobody can see.
+    return head :forbidden unless FeatureFlag.enabled?(:phone_call_reminders)
+
     link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
     return head :forbidden unless link.permission == "manage"
 

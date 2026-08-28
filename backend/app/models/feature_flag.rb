@@ -41,6 +41,23 @@ class FeatureFlag
       description: "Deliver reminders as an outbound phone call, acknowledged by keypad",
       default: false,
       env_var: "ENABLE_PHONE_CALL_REMINDERS"
+    },
+    # Languages other than English, held behind their own switch because a call
+    # script is not finished when the code works. Production runs with phone
+    # calls on, so without this the Spanish became selectable for real calls the
+    # day it merged — while the file itself still said it had not been read by
+    # anyone who speaks the language, and while it still contained a line
+    # telling a senior the call was being made on her own behalf.
+    #
+    # Separate from phone_call_reminders deliberately: that flag answers whether
+    # Remindly may telephone at all, and this one answers whether a particular
+    # script is fit to be spoken. Turning this on is the reviewer's signature,
+    # and it is a change to the deploy configuration rather than a console edit.
+    translated_calls: {
+      name: "Translated Calls",
+      description: "Offer call languages other than English (each needs a native speaker's review first)",
+      default: false,
+      env_var: "ENABLE_TRANSLATED_CALLS"
     }
   }.freeze
 

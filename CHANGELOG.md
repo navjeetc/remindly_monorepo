@@ -21,9 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   speaker ever hears from Remindly is English asking them to press a key — the
   call whose entire job is to not sound like a scam.
 
-  The Spanish is machine-written and marked as such in `voice.es.yml`; it must
-  be read by a native speaker before it reaches production. The constraints the
-  English is written against are recorded there as translator notes, because
+  The Spanish is machine-written and marked as such in
+  `backend/config/locales/voice.es.yml`; it must be read by a native speaker
+  before it reaches production, and is held behind its own `translated_calls`
+  flag until then — production runs with phone calls on, so an unreviewed
+  script would otherwise be selectable for real calls the day this merged. The
+  constraints the English is written against are recorded in
+  `backend/config/locales/voice.en.yml` as translator notes, because
   they are requirements rather than style: Remindly named in the first breath,
   the arranger named early, no suggestion that the called party asked for
   anything, and the keypad digits left alone.

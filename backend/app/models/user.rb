@@ -52,6 +52,17 @@ class User < ApplicationRecord
 
   validates :spoken_language, inclusion: { in: SPOKEN_LANGUAGES.keys }
 
+  # What the form may offer today. English is always available; the rest wait on
+  # a native speaker having read the script, which is what the flag records.
+  # Note this gates the *choice*, not playback: a senior already set to Spanish
+  # keeps hearing Spanish if the flag is turned back off, because taking away a
+  # language somebody is relying on is worse than the risk it was hiding.
+  def self.selectable_spoken_languages
+    return SPOKEN_LANGUAGES if FeatureFlag.enabled?(:translated_calls)
+
+    SPOKEN_LANGUAGES.slice("en-US")
+  end
+
   # The locale the call script is read from. Falls back rather than raising:
   # a row holding something unknown should still get a call it can act on.
   def spoken_locale

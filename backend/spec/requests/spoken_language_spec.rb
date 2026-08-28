@@ -13,6 +13,18 @@ RSpec.describe "The language calls are spoken in", type: :request do
     post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
   end
 
+  # Both flags default off. These specs are about what happens once a reviewer
+  # has signed off a script and calls are switched on; the specs that it stays
+  # shut until then are in "before a script has been reviewed" below.
+  #
+  # and_call_original first, or the stub swallows every other flag lookup and
+  # the senior page dies on external_scheduling.
+  before do
+    allow(FeatureFlag).to receive(:enabled?).and_call_original
+    allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+    allow(FeatureFlag).to receive(:enabled?).with(:translated_calls).and_return(true)
+  end
+
   describe "the setting" do
     it "starts in English, so nobody's calls change under them" do
       expect(senior.spoken_language).to eq("en-US")
@@ -75,15 +87,58 @@ RSpec.describe "The language calls are spoken in", type: :request do
     end
 
     it "warns beside the language control itself, where the choice is made" do
-      # The panel is hidden with the feature, so the flag has to be on for the
-      # control — and the note under it — to exist at all.
-      allow(FeatureFlag).to receive(:enabled?).and_call_original
-      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
       senior.update!(spoken_language: "es-US", phone: "+15551234567")
       sign_in(caregiver)
       get "/dashboard/senior/#{senior.id}"
 
       expect(page_text).to include("Write reminder titles in Español too")
+    end
+  end
+
+  # Production runs with phone calls on, so a language whose script nobody has
+  # read would otherwise be selectable for real calls the day it merged. The
+  # first Spanish draft told a senior named Mom that the call was being made on
+  # Mom's own behalf, which is what that costs.
+  describe "before a script has been reviewed" do
+    before do
+      allow(FeatureFlag).to receive(:enabled?).with(:translated_calls).and_return(false)
+    end
+
+    it "offers English only" do
+      expect(User.selectable_spoken_languages.keys).to eq([ "en-US" ])
+    end
+
+    it "hides the control rather than showing a list of one" do
+      senior.update!(phone: "+15551234567")
+      sign_in(caregiver)
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).not_to include("user_spoken_language")
+    end
+
+    # Gating the choice, not playback. Taking a language away from somebody
+    # already relying on it is worse than the risk the flag was covering.
+    it "keeps speaking a language already chosen" do
+      senior.update!(spoken_language: "es-US")
+
+      expect(senior.reload.spoken_locale).to eq(:es)
+    end
+  end
+
+  describe "when phone calls are switched off entirely" do
+    before do
+      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(false)
+    end
+
+    # The panel is hidden, so the only way to this route is a hand-made request.
+    it "refuses to change what a telephone says" do
+      sign_in(caregiver)
+
+      patch "/dashboard/senior/#{senior.id}/spoken_language",
+        params: { user: { spoken_language: "es-US" } }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(senior.reload.spoken_language).to eq("en-US")
     end
   end
 
