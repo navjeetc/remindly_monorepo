@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **"View" now means view.** A caregiver holding the view permission could
+  create, edit and delete tasks, reminders and unavailability exactly like
+  anybody else: three checks guarded the phone panel and nothing guarded the
+  rest, so a permission whose name promised a restriction applied none. Writes
+  are now checked through `User#manages?`, and the forms are refused rather than
+  merely hidden — a gated button with an open endpoint behind it is the shape
+  every permission bug in this codebase has taken so far.
+
+  Nobody holds view today; every caregiver link is manage since pairing was
+  fixed. So this guards a role that does not exist yet, which is the point. The
+  alternative is leaving a name to be trusted by whoever adds one.
+
+  A care receiver is unaffected: they hold no permission at all, because the
+  column describes what a *caregiver* may do and the data is theirs.
+
+### Fixed
 - **No caregiver could reach the phone panel, because nothing ever granted
   `manage`.** The permission column defaults to view, `pair_with` never touched
   it, and no screen — not even the admin panel — could change it. So every

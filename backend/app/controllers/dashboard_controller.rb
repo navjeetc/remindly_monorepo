@@ -3,6 +3,13 @@ class DashboardController < WebController
   before_action :check_role!, except: [ :profile, :update_profile, :select_role, :how_to, :contact, :submit_contact, :voice_reminders ]
   layout "dashboard"
 
+  # A caregiver's reminder writes live here rather than in RemindersController,
+  # which only ever touches current_user.reminders — somebody's own. Listed by
+  # name because these five actions each resolve their own senior, so there is
+  # no shared before_action to hang this on.
+  before_action :require_manage_for_reminder!,
+    only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder]
+
   # Landing page - show pairing or dashboard
   def index
     Rails.logger.info "🔍 Dashboard index: user_id=#{current_user.id}, role=#{current_user.role}, role_senior?=#{current_user.role_senior?}"
@@ -766,6 +773,18 @@ class DashboardController < WebController
 
   def reminder_params
     params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
+  end
+
+  # Reading a care receiver's reminders is open to anybody linked to them;
+  # writing is not. Resolved from params rather than @senior, because this runs
+  # before the actions that set it.
+  def require_manage_for_reminder!
+    link = current_user.caregiver_links.find_by(senior_id: params[:senior_id])
+    return if link.nil? # the action's own find_by! reports this properly
+    return if current_user.manages?(link.senior)
+
+    redirect_to senior_dashboard_path(link.senior),
+      alert: "You can see #{link.senior.display_name}'s reminders, but not change them."
   end
 
   def profile_params

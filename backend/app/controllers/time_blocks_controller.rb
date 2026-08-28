@@ -3,6 +3,7 @@ class TimeBlocksController < WebController
   before_action :set_senior
   before_action :authorize_senior_access!
   before_action :set_time_block, only: [ :edit, :update, :destroy ]
+  before_action :require_manage!, only: [ :new, :create, :edit, :update, :destroy ]
   layout "dashboard"
 
   # GET /dashboard/senior/:senior_id/time_blocks
@@ -58,6 +59,13 @@ class TimeBlocksController < WebController
     # User must be the senior or a caregiver for the senior
     unless current_user == @senior || current_user.seniors.include?(@senior)
       redirect_to dashboard_path, alert: "You don't have access to this care receiver's time blocks"
+    end
+  end
+
+  def require_manage!
+    unless current_user.manages?(@senior)
+      redirect_to senior_time_blocks_path(@senior),
+        alert: "You can see #{@senior.display_name}'s unavailability, but not change it."
     end
   end
 
