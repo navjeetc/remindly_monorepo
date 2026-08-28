@@ -57,7 +57,7 @@ class SeniorCoverageController < WebController
     # Verify current user is linked to this senior
     link = current_user.caregiver_links.find_by(senior_id: @senior.id)
     unless link&.active?
-      redirect_to dashboard_path, alert: "You don't have access to this senior's information"
+      redirect_to dashboard_path, alert: "You don't have access to this care receiver's information"
     end
   end
 

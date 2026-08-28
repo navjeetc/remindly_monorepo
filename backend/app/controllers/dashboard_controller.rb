@@ -637,7 +637,7 @@ class DashboardController < WebController
       return
     elsif !caregiver.role_caregiver?
       # Only caregivers can be invited
-      flash[:alert] = "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role}."
+      flash[:alert] = "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role_label.downcase}."
       render :invite_caregiver
       return
     end
@@ -645,7 +645,7 @@ class DashboardController < WebController
     # Check if already linked
     existing_link = CaregiverLink.find_by(senior_id: @senior.id, caregiver_id: caregiver.id)
     if existing_link
-      flash[:alert] = "#{caregiver_email} is already linked to this senior"
+      flash[:alert] = "#{caregiver_email} is already linked to this care receiver"
       redirect_to senior_dashboard_path(@senior)
       return
     end
@@ -671,7 +671,7 @@ class DashboardController < WebController
   def voice_reminders
     # Only seniors can access voice reminders
     unless current_user.role_senior?
-      redirect_to dashboard_path, alert: "Voice reminders are only available for seniors"
+      redirect_to dashboard_path, alert: "Voice reminders are only available for care receivers"
       nil
     end
 
