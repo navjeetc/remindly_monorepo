@@ -39,8 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `present?`, so the application had this right and only the migration did not:
   blank and NULL are the same answer to "is this recurring". A second migration
   shifts exactly the rows the first missed, and cannot touch the ones it already
-  corrected. Caught by checking production after deploying rather than
-  assuming the count meant the right rows moved.
+  corrected. It is also bounded to rows untouched since the parser fix went
+  live: that fix shipped in the same deploy as the first migration, so anything
+  created or resaved afterwards already stores a correct instant and carries a
+  blank rrule too — production grew exactly such a row within minutes. Caught by
+  checking production after deploying rather than assuming the count meant the
+  right rows moved.
 
 - **Opening a moved senior's task and saving it untouched shifted the
   appointment.** The task form pre-filled from `Task#zone`, which prefers the

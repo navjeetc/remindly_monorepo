@@ -12,6 +12,21 @@
 # exclusions otherwise. Rows the first migration already corrected have a NULL
 # rrule and cannot be caught twice by this scope.
 class ShiftTheTasksTheFirstBackfillMissed < ActiveRecord::Migration[8.1]
+  # The corrected parser shipped in the *same* deploy as the first migration, so
+  # anything created or resaved since then already stores a correct absolute
+  # instant — and, being a one-off, also carries a blank rrule. Without this
+  # bound the scope below would read those correct rows as wall clock and move
+  # them by the senior's offset, which is the failure this whole sequence
+  # exists to stop.
+  #
+  # Production had one such row within minutes of the deploy: a dentist
+  # appointment stored correctly at 13:00 UTC for 9am Eastern. It must not move.
+  #
+  # `update_columns` does not touch `updated_at`, so rows the first migration
+  # corrected keep their original timestamp and are not hidden by this bound —
+  # they are excluded by their NULL rrule instead.
+  CORRECTED_AT = Time.utc(2026, 8, 28, 3, 0, 0)
+
   class MigrationTask < ActiveRecord::Base
     self.table_name = "tasks"
   end
@@ -34,7 +49,11 @@ class ShiftTheTasksTheFirstBackfillMissed < ActiveRecord::Migration[8.1]
     zones = MigrationUser.pluck(:id, :tz).to_h
     shifted = skipped = 0
 
-    MigrationTask.where(external_source: nil, parent_task_id: nil, rrule: "").find_each do |task|
+    scope = MigrationTask.where(external_source: nil, parent_task_id: nil, rrule: "")
+    too_new = scope.where(updated_at: CORRECTED_AT..).count
+    say "skipping #{too_new} blank-rrule task(s) touched since the parser fix" if too_new.positive?
+
+    scope.where(updated_at: ...CORRECTED_AT).find_each do |task|
       zone = ActiveSupport::TimeZone[task[:tz].to_s] ||
              ActiveSupport::TimeZone[zones[task.senior_id].to_s]
       if zone.nil?
