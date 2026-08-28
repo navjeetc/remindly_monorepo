@@ -95,12 +95,31 @@ RSpec.describe "Care receiver terminology", type: :request do
       expect(page_text).not_to include("Pair with a care receiver")
     end
 
+    # The empty state explains the action; the header only names it. Showing
+    # both puts two identical blue buttons on an otherwise empty page, and the
+    # one without the explanation is the louder of the two.
+    it "offers the action once, not twice" do
+      alone = create(:user, :senior, name: "Nora")
+      sign_in(alone)
+      get "/dashboard"
+
+      expect(page_text.scan("Generate Pairing Token").length).to eq(1)
+    end
+
+    it "still offers it in the header once somebody is linked" do
+      sign_in(senior)
+      get "/dashboard"
+
+      expect(page_text).to include("Generate Pairing Token")
+      expect(page_text).not_to include("No caregivers yet")
+    end
+
     it "asks a caregiver to enter one, which is theirs" do
       unlinked = create(:user, :caregiver, name: "Sam")
       sign_in(unlinked)
       get "/dashboard"
 
-      expect(page_text).to include("Pair with a care receiver")
+      expect(page_text.scan("Pair with a care receiver").length).to eq(1)
       expect(page_text).not_to include("Generate Pairing Token")
     end
   end

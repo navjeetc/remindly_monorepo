@@ -1,14 +1,24 @@
+<%# The empty state carries its own call to action, so the header repeats it
+    whenever it is on screen — two identical blue buttons, one explained and one
+    not. Computed once here rather than twice, because the duplication only
+    became visible when both happened to say the same words. %>
+<% no_caregivers_yet = current_user.role_senior? &&
+     current_user.senior_links.includes(:caregiver).where.not(caregiver_id: nil).empty? %>
+<% showing_empty_state = @linked_seniors.empty? && (current_user.role_caregiver? || no_caregivers_yet) %>
+
 <div class="space-y-6">
   <div class="flex justify-between items-center">
     <h2 class="text-3xl font-bold text-gray-900">
       <%= current_user.role_senior? ? "My Dashboard" : "Caregiver Dashboard" %>
     </h2>
     <div class="space-x-4">
-      <% if current_user.role_senior? %>
+      <% if current_user.role_senior? && !showing_empty_state %>
         <%= link_to "Generate Pairing Token", generate_token_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
       <% end %>
       <% if current_user.role_caregiver? %>
-        <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        <% unless showing_empty_state %>
+          <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        <% end %>
         <% if FeatureFlag.enabled?(:native_scheduling) %>
           <%= link_to "My Availability", caregiver_availabilities_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
         <% end %>
@@ -218,7 +228,7 @@
     <% end %>
   <% end %>
   
-  <% if @linked_seniors.empty? && (current_user.role_caregiver? || (current_user.role_senior? && current_user.senior_links.includes(:caregiver).where.not(caregiver_id: nil).empty?)) %>
+  <% if showing_empty_state %>
     <div class="text-center py-12">
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>

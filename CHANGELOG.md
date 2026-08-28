@@ -36,7 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   they actually needed, generating a token of their own to share, sat behind a
   button the empty state did not mention. It read "Pair with Senior" before the
   terminology change, wrong in the same way and easier to miss. Each role is now
-  asked for its own half of pairing.
+  asked for its own half of pairing, and asked once: the header repeated the
+  empty state's button, which had gone unnoticed only because the two said
+  different words.
 
 ### Added
 - **Reminder calls can be spoken in Spanish.** A caregiver reviewing Remindly
