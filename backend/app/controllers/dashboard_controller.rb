@@ -707,7 +707,8 @@ class DashboardController < WebController
   end
 
   def profile_params
-    params.require(:user).permit(:name, :nickname, :tz, :notify_on_task_assigned_to_others,
+    params.require(:user).permit(:name, :nickname, :tz, :text_size,
+                                 :notify_on_task_assigned_to_others,
                                  :notify_on_coverage_gaps, notify_reminder_categories: [])
   end
 

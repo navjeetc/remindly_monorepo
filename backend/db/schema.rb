@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_28_040000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_28_183847) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -287,6 +287,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_28_040000) do
     t.string "phone"
     t.datetime "phone_verified_at"
     t.integer "role"
+    t.integer "text_size", default: 0, null: false
     t.string "tz", default: "America/New_York"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true

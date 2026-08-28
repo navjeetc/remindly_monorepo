@@ -1,6 +1,20 @@
 class User < ApplicationRecord
   enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
 
+  # How large this person needs the interface. Stored per user rather than in
+  # the browser because the people who need it most are the least likely to set
+  # it twice — a senior who fixes the text on the tablet should not find it
+  # small again on the phone their daughter hands them.
+  enum :text_size, { normal: 0, large: 1, larger: 2, largest: 3 }, prefix: true
+
+  # Percentages for the root font size. Tailwind sizes text *and* spacing in
+  # rem, so moving the root moves padding and tap targets with the type, which
+  # is the point: bigger words in the same cramped buttons would help nobody.
+  # Breakpoints are px and stay put, so the responsive layout is unaffected.
+  TEXT_SCALES = { "normal" => 100, "large" => 115, "larger" => 130, "largest" => 150 }.freeze
+
+  def text_scale = TEXT_SCALES.fetch(text_size, 100)
+
   # Roles a user may choose for themselves — at onboarding, or later from their
   # profile. Admin is deliberately excluded: it is never self-granted, and this
   # path also refuses to touch an existing admin's role.
