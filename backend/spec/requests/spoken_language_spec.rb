@@ -108,6 +108,30 @@ RSpec.describe "The language calls are spoken in", type: :request do
       expect(User.selectable_spoken_languages.keys).to eq([ "en-US" ])
     end
 
+    # The guarantee that matters. Hiding the control only removes the easy path;
+    # the flag is not a gate until the endpoint enforces it, and this is exactly
+    # the mistake the phone_call_reminders guard existed to prevent, repeated one
+    # layer down.
+    it "refuses a crafted PATCH setting a language nobody has reviewed" do
+      sign_in(caregiver)
+
+      patch "/dashboard/senior/#{senior.id}/spoken_language",
+        params: { user: { spoken_language: "es-US" } }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(senior.reload.spoken_language).to eq("en-US")
+    end
+
+    it "still accepts English, which needs no review" do
+      senior.update!(spoken_language: "es-US")
+      sign_in(caregiver)
+
+      patch "/dashboard/senior/#{senior.id}/spoken_language",
+        params: { user: { spoken_language: "en-US" } }
+
+      expect(senior.reload.spoken_language).to eq("en-US")
+    end
+
     it "hides the control rather than showing a list of one" do
       senior.update!(phone: "+15551234567")
       sign_in(caregiver)

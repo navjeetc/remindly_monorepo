@@ -192,8 +192,20 @@ class DashboardController < WebController
     return head :forbidden unless link.permission == "manage"
 
     senior = link.senior
+    requested = params.require(:user).permit(:spoken_language)[:spoken_language]
 
-    if senior.update(params.require(:user).permit(:spoken_language))
+    # Checked here rather than left to the model. selectable_spoken_languages
+    # decides what the form offers, and a form that offers less is not a rule --
+    # without this, a hand-made PATCH set a senior to a language whose script
+    # nobody has read, which is the one thing the translated_calls flag exists
+    # to prevent. Hiding the control is not the gate; this is.
+    #
+    # Deliberately not a model validation: the flag gates the choice, not
+    # playback, so a senior already set to Spanish must still save cleanly when
+    # it goes back off.
+    return head :forbidden unless User.selectable_spoken_languages.key?(requested)
+
+    if senior.update(spoken_language: requested)
       redirect_to senior_dashboard_path(senior),
         notice: "Calls to #{senior.display_name} will be spoken in #{senior.spoken_language_label}."
     else
