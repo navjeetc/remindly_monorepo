@@ -164,6 +164,19 @@ RSpec.describe "Care receiver terminology", type: :request do
     end
   end
 
+  # The admin filter submits the stored role, so anything that titleizes it
+  # prints "Senior" no matter how the option beside it is labelled. The badge in
+  # the same list was converted; this header was not, and sat two lines away.
+  describe "the admin user list" do
+    it "heads a filtered list with the label, not the stored value" do
+      sign_in(create(:user, :admin, name: "Root"))
+      get "/admin/users", params: { role_filter: "senior" }
+
+      expect(page_text).to include("Care receiver Users")
+      expect(page_text).not_to match(/\bSenior\b/)
+    end
+  end
+
   describe "the public pages" do
     it "no longer says senior in the How To prose" do
       get "/how_to"

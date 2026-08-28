@@ -42,7 +42,9 @@
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
       <h3 class="text-sm font-medium text-gray-900">
         <% if @role_filter.present? %>
-          <%= @role_filter == 'none' ? 'Users with No Role' : "#{@role_filter.titleize} Users" %> (<%= @users.count %>)
+          <%# The filter's value is the stored role, so titleize would print
+              "Senior Users" for the option labelled Care receiver. %>
+          <%= @role_filter == 'none' ? 'Users with No Role' : "#{User::ROLE_LABELS.fetch(@role_filter, @role_filter.titleize)} Users" %> (<%= @users.count %>)
         <% else %>
           All Users (<%= @users.count %>)
         <% end %>
