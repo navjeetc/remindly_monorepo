@@ -107,6 +107,24 @@ class Task < ApplicationRecord
     parent_task_id.present?
   end
 
+  # The clock this task was set against.
+  #
+  # Time.zone is UTC app-wide, so rendering scheduled_at without converting
+  # prints UTC and quietly disagrees with every screen that does convert — a
+  # 3pm appointment reading as 11am on the senior's dashboard. `tz` is only
+  # populated for recurring templates, so fall back to the person the task is
+  # for: they are whose clock the time was typed against either way.
+  def zone
+    ActiveSupport::TimeZone[tz.to_s] ||
+      ActiveSupport::TimeZone[senior&.tz.to_s] ||
+      Time.zone
+  end
+
+  # Always render this rather than scheduled_at. See #zone.
+  def scheduled_at_local
+    scheduled_at&.in_time_zone(zone)
+  end
+
   # Open-ended task check
   def open_ended?
     scheduled_at.nil?

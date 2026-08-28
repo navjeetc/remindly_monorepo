@@ -81,7 +81,13 @@
     <!-- Scheduled Date/Time -->
     <div class="sm:col-span-2" id="scheduled_at_field">
       <%= f.label :scheduled_at, "Scheduled Date/Time", class: "block text-sm font-medium text-gray-700" %>
-      <%= f.datetime_local_field :scheduled_at, id: "task_scheduled_at_input", class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      <%# Pre-fill in the senior's clock, because that is the clock the value is
+          read back in when it is saved. Rendering the raw UTC instant here
+          would shift the time every time someone opened the form and saved. %>
+      <%= f.datetime_local_field :scheduled_at, id: "task_scheduled_at_input", value: @task.scheduled_at_local&.strftime("%Y-%m-%dT%H:%M"), class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      <p class="mt-1 text-xs text-gray-500">
+        In <%= @senior.display_name %>'s time (<%= @senior.tz.to_s.tr("_", " ") %>)<% if (local = Time.current.in_time_zone(@task.zone)) %> — it is <%= local.strftime("%-l:%M %p") %> there now<% end %>.
+      </p>
     </div>
 
     <script>
