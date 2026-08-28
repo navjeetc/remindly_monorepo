@@ -23,9 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   The Spanish is machine-written and marked as such in
   `backend/config/locales/voice.es.yml`; it must be read by a native speaker
-  before it reaches production, and is held behind its own `translated_calls`
-  flag until then — production runs with phone calls on, so an unreviewed
-  script would otherwise be selectable for real calls the day this merged. The
+  before it is relied on, and sits behind its own `translated_calls` flag so
+  that is a decision somebody makes rather than a side effect of merging. The
+  flag is on in production, because the only way to validate a call script is
+  to hear one — a native speaker is taking a real call, and reading the file
+  would not catch register or pace, which is where the risk actually lives. The
   constraints the English is written against are recorded in
   `backend/config/locales/voice.en.yml` as translator notes, because
   they are requirements rather than style: Remindly named in the first breath,
