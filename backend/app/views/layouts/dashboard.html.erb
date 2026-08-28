@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html>
+<%# Everything below sizes in rem, so this one number scales the whole
+    interface. See User::TEXT_SCALES. %>
+<html style="font-size: <%= current_user&.text_scale || 100 %>%">
   <head>
     <title>Remindly - Caregiver Dashboard</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">

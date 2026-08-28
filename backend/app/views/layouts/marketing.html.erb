@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<%# Signed-in visitors reach How To and Contact through the dashboard nav,
+    and those render here. Without this, the one page a struggling reader
+    is most likely to open is the one that ignores their text size.
+    Nil for logged-out visitors, who get the ordinary 100%. %>
+<html lang="en" style="font-size: <%= current_user&.text_scale || 100 %>%">
   <head>
     <title><%= yield(:title).presence || "Remindly — spoken reminders for seniors, set up by the people who care for them" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">

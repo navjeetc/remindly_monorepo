@@ -1,6 +1,37 @@
 class User < ApplicationRecord
   enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
 
+  # How large this person needs the interface. Stored per user rather than in
+  # the browser because the people who need it most are the least likely to set
+  # it twice — a senior who fixes the text on the tablet should not find it
+  # small again on the phone their daughter hands them.
+  #
+  # validate: true because without it an unknown value raises ArgumentError on
+  # assignment, which a form post turns into a 500 rather than the "please pick
+  # one" the rest of this form gives you.
+  enum :text_size, { normal: 0, large: 1, larger: 2, largest: 3 }, prefix: true, validate: true
+
+  # Percentages for the root font size. Tailwind sizes text *and* spacing in
+  # rem, so moving the root moves padding and tap targets with the type, which
+  # is the point: bigger words in the same cramped buttons would help nobody.
+  # Breakpoints are px and stay put, so the responsive layout is unaffected.
+  #
+  # The single list of sizes: the layout reads the percentage, the form draws
+  # its choices from the keys, and neither can drift from the other.
+  TEXT_SCALES = { "normal" => 100, "large" => 115, "larger" => 130, "largest" => 150 }.freeze
+
+  # What the profile form offers: the stored value, its label, and the pixel
+  # size to draw the label at. The preview is derived from the scale rather
+  # than listed separately, so a size cannot ship previewing as something it
+  # is not.
+  BASE_TEXT_PX = 16
+
+  def self.text_size_choices
+    TEXT_SCALES.map { |size, scale| [ size, size.titleize, (BASE_TEXT_PX * scale / 100.0).round ] }
+  end
+
+  def text_scale = TEXT_SCALES.fetch(text_size, 100)
+
   # Roles a user may choose for themselves — at onboarding, or later from their
   # profile. Admin is deliberately excluded: it is never self-granted, and this
   # path also refuses to touch an existing admin's role.

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Text size is a setting now, because the app was too small for the people it
+  is for.** A caregiver reviewing Remindly said the type was too small for the
+  seniors she works with, which is a hard thing to answer with a browser zoom
+  the person has to rediscover on every device. Profile now offers Normal,
+  Large, Larger and Largest, stored on the user so it follows them from the
+  tablet to whichever phone they are handed. It moves the root font size rather
+  than a list of text classes: Tailwind sizes padding and tap targets in rem
+  alongside type, so one number grows the buttons with the words, and bigger
+  labels wedged into the same cramped controls would have helped nobody.
+  Breakpoints are in px and stay where they are, so the responsive layout is
+  untouched.
+
 ### Changed
 - **Scheduling integrations are hidden, because they were never finished.** The
   `external_scheduling` flag was declared alongside the feature and then never
