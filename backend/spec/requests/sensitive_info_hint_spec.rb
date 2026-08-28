@@ -31,7 +31,13 @@ RSpec.describe "The sensitive information hint", type: :request do
   # Matched on the sentence rather than a CSS hook, because what matters is
   # that a person reads it — a partial that renders into an invisible corner
   # would still satisfy a selector.
-  def hint = page_text[/Please keep private health details out of this\./]
+  def hint = page_text[/Please keep private health details out of this (reminder|task)/]
+
+  # The notes and description boxes get the quiet version. They cannot go
+  # uncovered — a field labelled "Additional details" is where a dosage ends up,
+  # and the privacy policy asks for titles *and* notes — but a second amber
+  # panel would turn the task form into a wall of warnings.
+  def asides = page_text.scan("Same here — keep clinical detail out.").length
 
   before { sign_in(caregiver) }
 
@@ -63,6 +69,25 @@ RSpec.describe "The sensitive information hint", type: :request do
 
     expect(page_text).to include("can read it on their own dashboard")
     expect(page_text).not_to include("read aloud")
+  end
+
+  it "covers the reminder notes box, not only the title" do
+    get "/dashboard/senior/#{senior.id}/reminder/new"
+
+    expect(asides).to eq(1)
+  end
+
+  it "covers both free-text boxes on the task form" do
+    get "/seniors/#{senior.id}/tasks/new"
+
+    # description and notes
+    expect(asides).to eq(2)
+  end
+
+  it "asks for the whole record, since the notes box is where detail lands" do
+    get "/dashboard/senior/#{senior.id}/reminder/new"
+
+    expect(page_text).to include("out of this reminder, here and in the notes below")
   end
 
   it "says what happens to the title, not merely that it is sensitive" do

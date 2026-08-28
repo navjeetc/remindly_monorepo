@@ -17,8 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is spoken aloud by the call, in whatever room the phone is in, and every
   linked caregiver reads it on their dashboard. The task form says only the
   second, because task titles never enter the call flow and claiming otherwise
-  would teach people something false about their own data. Deliberately not a
-  validation — no rule catches "Take lorazepam" without also catching "Take
+  would teach people something false about their own data. The notes and
+  description boxes carry a quieter one-line version rather than a second amber
+  panel: they cannot go uncovered, since a field labelled "Additional details"
+  is where a dosage actually ends up and the policy asks for titles *and*
+  notes, but two panels on one form would be read as decoration. Deliberately
+  not a validation — no rule catches "Take lorazepam" without also catching "Take
   pills with breakfast", and a form that argues with people gets abandoned
   rather than obeyed.
 

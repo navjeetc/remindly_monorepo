@@ -1,13 +1,17 @@
-<%# Shown wherever somebody types a title that other people will read or hear.
+<%# The notice beside the title field. See shared/_sensitive_info_aside for the
+    quieter version that sits by the notes and description boxes.
 
-    The point is not the privacy policy — it is that a title travels further
-    than the person writing it expects, and the honest reach differs by form.
-    A reminder title is spoken aloud by the call, in whatever room the phone
-    is in; a task title never enters that flow and is only ever read. Saying
-    "read aloud" on the task form would be teaching people something untrue
-    about their own data, which is a poor way to ask for their trust.
+    The point is not the privacy policy — it is that what gets typed here
+    travels further than the person writing it expects, and the honest reach
+    differs by form. A reminder title is spoken aloud by the call, in whatever
+    room the phone is in; a task title never enters that flow and is only ever
+    read. Saying "read aloud" on the task form would be teaching people
+    something untrue about their own data, which is a poor way to ask for their
+    trust. Pass spoken: true from the reminder forms only.
 
-    Pass spoken: true from the reminder forms only.
+    It asks for the whole record rather than this one field, because the notes
+    box below is where clinical detail actually lands — a title is short and
+    imperative, while "Additional details" invites a dosage.
 
     Deliberately a notice and not a validation. There is no way to detect a
     medication name that does not also reject "Take pills with breakfast", and
@@ -17,16 +21,17 @@
     Sized in the same rem units as everything else, so it grows with the text
     size on the reader's profile — see User::TEXT_SCALES. %>
 <% spoken = local_assigns.fetch(:spoken, false) %>
+<% subject = local_assigns.fetch(:subject, "task") %>
 <div class="mt-2 rounded-r-md border-l-4 border-amber-400 bg-amber-50 p-3">
   <div class="flex gap-2">
     <svg class="h-5 w-5 flex-shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
       <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
     </svg>
     <p class="text-sm text-amber-800">
-      <strong class="font-semibold">Please keep private health details out of this.</strong>
+      <strong class="font-semibold">Please keep private health details out of this <%= subject %>, here and in the notes below.</strong>
       <% if spoken %>
-        Everyone linked to this person can read it, and it is read aloud on
-        reminder calls — in whatever room the phone happens to be in.
+        Everyone linked to this person can read it, and the title is read aloud
+        on reminder calls — in whatever room the phone happens to be in.
       <% else %>
         Everyone linked to this person can read it on their own dashboard.
       <% end %>
