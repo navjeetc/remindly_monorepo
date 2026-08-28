@@ -73,6 +73,20 @@ class User < ApplicationRecord
     SPOKEN_LANGUAGES.dig(spoken_language, :label) || spoken_language
   end
 
+  # What each role is called on screen. The stored value stays `senior` — it is
+  # in the enum, in four foreign keys and in every spec — while the interface
+  # says "care receiver", which a caregiver reviewing Remindly asked for: not
+  # everyone being cared for is old, and the word narrows the product to a
+  # subset of the people it serves.
+  #
+  # A label rather than a rename on purpose. Renaming the enum means migrating
+  # data to change a word nobody stores for its own sake.
+  ROLE_LABELS = { "senior" => "Care receiver", "caregiver" => "Caregiver", "admin" => "Admin" }.freeze
+
+  def role_label
+    ROLE_LABELS.fetch(role.to_s, role.to_s.titleize)
+  end
+
   # Roles a user may choose for themselves — at onboarding, or later from their
   # profile. Admin is deliberately excluded: it is never self-granted, and this
   # path also refuses to touch an existing admin's role.

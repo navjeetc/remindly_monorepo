@@ -214,7 +214,7 @@ class TasksController < WebController
   def authorize_senior_access!
     # User must be the senior or a caregiver for the senior
     unless current_user == @senior || current_user.seniors.include?(@senior)
-      redirect_to dashboard_path, alert: "You don't have access to this senior's tasks"
+      redirect_to dashboard_path, alert: "You don't have access to this care receiver's tasks"
     end
   end
 

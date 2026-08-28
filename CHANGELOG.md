@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Remindly says "care receiver" where it used to say "senior".** A caregiver
+  reviewing Remindly asked for a word that does not assume age: not everyone
+  being cared for is old, and the old one quietly narrowed the product to a
+  subset of the people it serves. Every screen behind sign-in now uses it —
+  dashboards, task and pairing forms, role labels, admin, and the role-change
+  email — along with the prose on the public pages, the terms and the privacy
+  policy.
+
+  The stored value is untouched. `senior` remains the role enum value, four
+  foreign keys and most of this suite; the change is a `User#role_label` and the
+  copy around it. Renaming the column would migrate data to change a word
+  nobody stores for its own sake, touch every file shipped this week, and show a
+  user nothing.
+
+  Page titles, meta descriptions and og tags keep "seniors", as does the
+  reminder-app-for-elderly-parents landing page. Those are search terms — people
+  type "reminders for elderly parents", not "care receiver app" — and renaming
+  them to broaden appeal would have narrowed discovery instead. Meet people
+  where they search, then do not exclude them once they arrive.
+
+### Fixed
+- **A care receiver with nobody linked was told to pair with a care receiver.**
+  The empty dashboard served both roles but only ever offered the caregiver's
+  action, so somebody waiting to be looked after was sent to a form asking for a
+  pairing token that only a caregiver would have been handed — while the thing
+  they actually needed, generating a token of their own to share, sat behind a
+  button the empty state did not mention. It read "Pair with Senior" before the
+  terminology change, wrong in the same way and easier to miss. Each role is now
+  asked for its own half of pairing, and asked once: the header repeated the
+  empty state's button, which had gone unnoticed only because the two said
+  different words.
+
 ### Added
 - **Reminder calls can be spoken in Spanish.** A caregiver reviewing Remindly
   asked for calls in a language other than English, and the people the calls

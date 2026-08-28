@@ -311,7 +311,7 @@
       <%= render "shared/sensitive_info_aside" %>
     </div>
 
-    <!-- Visible to Senior -->
+    <!-- Visible to care receiver -->
     <div class="sm:col-span-2">
       <div class="flex items-start">
         <div class="flex items-center h-5">
@@ -319,9 +319,9 @@
         </div>
         <div class="ml-3 text-sm">
           <%= f.label :visible_to_senior, class: "font-medium text-gray-700" do %>
-            Show this task to senior on their dashboard
+            Show this task to the care receiver on their dashboard
           <% end %>
-          <p class="text-gray-500">Uncheck to hide this task from the senior (useful to avoid overwhelming them with too many tasks)</p>
+          <p class="text-gray-500">Uncheck to hide this task from the care receiver (useful to avoid overwhelming them with too many tasks)</p>
         </div>
       </div>
     </div>

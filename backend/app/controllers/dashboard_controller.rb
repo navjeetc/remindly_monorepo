@@ -15,10 +15,18 @@ class DashboardController < WebController
 
     # Only show relevant data based on role
     if current_user.role_caregiver?
-      # Caregivers only see seniors they're caring for
+      # Caregivers only see the people they're caring for.
+      #
+      # Loaded here rather than handed to the view as a relation. The template
+      # asks empty?, then any?, then iterates — three questions with one answer,
+      # where the first two each issue an EXISTS the load then makes redundant.
+      # The query cache spares the second the round trip; it does not make the
+      # statement worth sending. The other two branches of this action already
+      # assign an array, so this also stops the view having to care which.
       @linked_seniors = current_user.caregiver_links
         .includes(:senior)
         .where.not(senior_id: nil)
+        .to_a
       @pending_links = []
     elsif current_user.role_senior?
       # Seniors see their own tasks, reminders, and caregivers
@@ -632,12 +640,19 @@ class DashboardController < WebController
       )
     elsif caregiver.id == @senior.id
       # Can't invite the senior to be their own caregiver
-      flash[:alert] = "You cannot invite the senior to be their own caregiver"
+      flash[:alert] = "You cannot invite the care receiver to be their own caregiver"
       render :invite_caregiver
       return
     elsif !caregiver.role_caregiver?
       # Only caregivers can be invited
-      flash[:alert] = "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role}."
+      # A user can exist with no role at all — they are created on first sign-in
+      # and choose afterwards — so this sentence has to survive a blank one
+      # rather than reading "They are currently a ."
+      flash[:alert] = if caregiver.role.blank?
+        "#{caregiver_email} has not chosen a role yet, so they cannot be invited as a caregiver."
+      else
+        "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role_label.downcase}."
+      end
       render :invite_caregiver
       return
     end
@@ -645,7 +660,7 @@ class DashboardController < WebController
     # Check if already linked
     existing_link = CaregiverLink.find_by(senior_id: @senior.id, caregiver_id: caregiver.id)
     if existing_link
-      flash[:alert] = "#{caregiver_email} is already linked to this senior"
+      flash[:alert] = "#{caregiver_email} is already linked to this care receiver"
       redirect_to senior_dashboard_path(@senior)
       return
     end
@@ -664,14 +679,14 @@ class DashboardController < WebController
       inviter: current_user
     ).deliver_later
 
-    redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
+    redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.display_name}"
   end
 
   # Voice reminders interface - session-based authentication
   def voice_reminders
     # Only seniors can access voice reminders
     unless current_user.role_senior?
-      redirect_to dashboard_path, alert: "Voice reminders are only available for seniors"
+      redirect_to dashboard_path, alert: "Voice reminders are only available for care receivers"
       nil
     end
 

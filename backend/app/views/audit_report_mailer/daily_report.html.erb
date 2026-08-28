@@ -165,7 +165,7 @@
           <div class="user-email">
             <%= user ? user.email : "Unknown User" %>
             <% if user&.role %>
-              <span class="badge badge-success"><%= user.role.titleize %></span>
+              <span class="badge badge-success"><%= user.role_label %></span>
             <% end %>
           </div>
           <table>
