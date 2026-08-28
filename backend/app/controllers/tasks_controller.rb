@@ -7,7 +7,7 @@ class TasksController < WebController
 
   # GET /dashboard/senior/:senior_id/tasks
   def index
-    @tasks = @senior.tasks_as_senior.includes(:assigned_to, :created_by)
+    @tasks = @senior.tasks_as_senior.includes(:senior, :assigned_to, :created_by)
 
     # Apply filters
     @tasks = @tasks.by_status(params[:status]) if params[:status].present?
@@ -52,9 +52,12 @@ class TasksController < WebController
 
   # GET /dashboard/senior/:senior_id/tasks/new
   def new
+    # Tomorrow at 9am where the senior is. `1.day.from_now.change(hour: 9)`
+    # gave 9am UTC, which the form now correctly renders as 5am in New York —
+    # a default nobody meant, one Save away from being real.
     @task = @senior.tasks_as_senior.build(
       created_by: current_user,
-      scheduled_at: 1.day.from_now.change(hour: 9, min: 0)
+      scheduled_at: seniors_clock.now.tomorrow.change(hour: 9, min: 0)
     )
     @caregivers = @senior.caregivers
   end
@@ -128,7 +131,7 @@ class TasksController < WebController
     if @task.update(assigned_to: caregiver, status: :assigned)
       # Build notification message based on whether task is scheduled or open-ended
       task_message = if @task.scheduled_at.present?
-        "Task scheduled for #{@task.scheduled_at.strftime('%A, %B %d at %I:%M %p')}"
+        "Task scheduled for #{@task.scheduled_at_local.strftime('%A, %B %d at %I:%M %p')}"
       else
         "Open-ended task (no specific date)"
       end
@@ -219,6 +222,30 @@ class TasksController < WebController
     @task = @senior.tasks_as_senior.find(params[:id])
   end
 
+  # A datetime-local field submits wall-clock text with no zone in it —
+  # "2026-08-28T15:00". Time.zone is UTC app-wide, so letting Rails cast that
+  # stores 3pm UTC, and the senior sees their 3pm appointment at 11am. The
+  # caregiver typed it against the senior's clock, so read it in that one.
+  #
+  # Only strings are reinterpreted: an instant from a calendar sync is already
+  # unambiguous and must pass through untouched.
+  def in_the_seniors_clock(value)
+    return value unless value.is_a?(String) && value.present?
+
+    seniors_clock.parse(value) || value
+  rescue ArgumentError
+    value # let the model's validation report it rather than 500ing here
+  end
+
+  # Must agree with Task#zone, which prefers the task's own tz — a recurring
+  # template carries one, and the form submits it. Parsing in one clock and
+  # rendering in another would reintroduce the bug in a subtler place.
+  def seniors_clock
+    ActiveSupport::TimeZone[params.dig(:task, :tz).to_s] ||
+      ActiveSupport::TimeZone[@senior&.tz.to_s] ||
+      Time.zone
+  end
+
   def task_params
     params.require(:task).permit(
       :title,
@@ -235,6 +262,9 @@ class TasksController < WebController
       :rrule,
       :tz,
       :start_time
-    )
+    ).tap do |attrs|
+      attrs[:scheduled_at] = in_the_seniors_clock(attrs[:scheduled_at]) if attrs.key?(:scheduled_at)
+      attrs[:start_time]   = in_the_seniors_clock(attrs[:start_time])   if attrs.key?(:start_time)
+    end
   end
 end

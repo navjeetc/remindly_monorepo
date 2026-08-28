@@ -205,7 +205,7 @@
                       </div>
                       <p class="text-sm text-gray-500">
                         <% if task.scheduled_at.present? %>
-                          <%= task.scheduled_at.strftime("%b %d, %Y at %I:%M %p") %>
+                          <%= task.scheduled_at_local.strftime("%b %d, %Y at %I:%M %p") %>
                         <% else %>
                           <span class="text-purple-600 font-medium">Open-ended (no date)</span>
                         <% end %>

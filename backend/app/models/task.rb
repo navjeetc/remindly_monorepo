@@ -107,6 +107,32 @@ class Task < ApplicationRecord
     parent_task_id.present?
   end
 
+  # The clock this task was set against.
+  #
+  # Time.zone is UTC app-wide, so rendering scheduled_at without converting
+  # prints UTC and quietly disagrees with every screen that does convert — a
+  # 3pm appointment reading as 11am on the senior's dashboard. `tz` is
+  # written from `@senior.tz` by a hidden field on the task form, so it is set
+  # on one-off tasks too — but nothing guarantees it: the API does not send it,
+  # and older rows predate the field. Hence the fallback to the person the task
+  # is for, who is whose clock the time was typed against either way.
+  #
+  # Note `tz` is a snapshot of the senior's zone when the task was saved, and
+  # unlike Reminder there is no callback keeping it current. A senior who moves
+  # leaves their existing tasks rendering in the zone they left. Preferring
+  # `tz` here matches Recurrence.expand_task, which is why it is written this
+  # way; whether that is the right rule is #105.
+  def zone
+    ActiveSupport::TimeZone[tz.to_s] ||
+      ActiveSupport::TimeZone[senior&.tz.to_s] ||
+      Time.zone
+  end
+
+  # Always render this rather than scheduled_at. See #zone.
+  def scheduled_at_local
+    scheduled_at&.in_time_zone(zone)
+  end
+
   # Open-ended task check
   def open_ended?
     scheduled_at.nil?
