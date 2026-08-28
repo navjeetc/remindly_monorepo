@@ -95,7 +95,7 @@ RSpec.describe TelnyxCall do
       # block, which ActiveSupport refuses outright.
       granted = []
 
-      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 9, 0)) do
+      travel_to(ActiveSupport::TimeZone[senior.tz].local(2026, 6, 15, 9, 0)) do
         occurrences = 6.times.map { |i| occurrence_at(Time.current + i.hours) }
 
         described_class::MAX_ATTEMPTS.times do
