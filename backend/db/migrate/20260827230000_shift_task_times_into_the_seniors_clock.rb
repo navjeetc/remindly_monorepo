@@ -11,7 +11,7 @@
 # it in the senior's zone: 15:00 UTC becomes 15:00 New York. Nothing is deleted
 # and nothing is created — every row is shifted or skipped, and `down` shifts
 # back — because a migration that removes task history is not one worth having.
-class ShiftTaskTimesIntoTheSeniorsClock < ActiveRecord::Migration[8.0]
+class ShiftTaskTimesIntoTheSeniorsClock < ActiveRecord::Migration[8.1]
   class MigrationTask < ActiveRecord::Base
     self.table_name = "tasks"
   end

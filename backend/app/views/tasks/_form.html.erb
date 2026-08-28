@@ -97,20 +97,19 @@
         const scheduledAtInput = document.getElementById('task_scheduled_at_input');
         const scheduledAtHidden = document.getElementById('task_scheduled_at_hidden');
 
+        // The senior's own dates, rendered server-side. Everything the form
+        // submits is read back in the senior's clock, so anything anchored to
+        // `new Date()` — the caregiver's browser — lands on the wrong day
+        // whenever the two are in different zones or it is near midnight for
+        // either of them. There is no browser clock in this file for that
+        // reason.
+        const SENIOR_TODAY = '<%= Time.current.in_time_zone(@task.zone).strftime("%Y-%m-%d") %>';
+        const SENIOR_TOMORROW = '<%= Time.current.in_time_zone(@task.zone).tomorrow.strftime("%Y-%m-%d") %>';
+
         function getDefaultDateTime() {
-          // Set to tomorrow at 9:00 AM
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(9, 0, 0, 0);
-          
-          // Format for datetime-local input: YYYY-MM-DDTHH:MM
-          const year = tomorrow.getFullYear();
-          const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-          const day = String(tomorrow.getDate()).padStart(2, '0');
-          const hours = String(tomorrow.getHours()).padStart(2, '0');
-          const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
-          
-          return `${year}-${month}-${day}T${hours}:${minutes}`;
+          // Tomorrow at 9:00 AM where the senior is, matching the server-side
+          // default in TasksController#new.
+          return `${SENIOR_TOMORROW}T09:00`;
         }
 
         function updateScheduledAtField() {
@@ -225,12 +224,11 @@
           rruleField.value = rrule;
           previewText.textContent = preview;
 
-          // Set start_time to today at the selected time
-          const now = new Date();
-          const year = now.getFullYear();
-          const month = String(now.getMonth() + 1).padStart(2, '0');
-          const day = String(now.getDate()).padStart(2, '0');
-          startTimeField.value = `${year}-${month}-${day}T${hours}:${minutes}:00`;
+          // Anchor the recurrence to today *where the senior is*. See
+          // SENIOR_TODAY above: the server reads this back in their clock, so
+          // the browser's idea of the date would shift the whole schedule by a
+          // day across zones or near midnight.
+          startTimeField.value = `${SENIOR_TODAY}T${hours}:${minutes}:00`;
         }
 
         // Event listeners

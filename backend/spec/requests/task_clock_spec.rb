@@ -105,6 +105,34 @@ RSpec.describe "The clock a task is set against", type: :request do
     end
   end
 
+  # task_params reinterprets start_time as well as scheduled_at, and until
+  # Copilot pointed it out on #102 nothing exercised that. A recurring template
+  # anchored an hour-offset out drags every occurrence it generates with it.
+  describe "a recurring template" do
+    it "anchors start_time in the senior's clock" do
+      post "/seniors/#{senior.id}/tasks", params: {
+        task: { title: "Morning walk", task_type: "activity", status: "pending",
+                priority: "medium", rrule: "FREQ=DAILY", tz: senior.tz,
+                start_time: "2026-08-28T09:00" }
+      }
+
+      template = Task.where.not(rrule: nil).last
+      expect(template.start_time.utc.strftime("%H:%M")).to eq("13:00") # 9am EDT
+    end
+
+    it "generates occurrences on the senior's 9am, not UTC's" do
+      post "/seniors/#{senior.id}/tasks", params: {
+        task: { title: "Morning walk", task_type: "activity", status: "pending",
+                priority: "medium", rrule: "FREQ=DAILY", tz: senior.tz,
+                start_time: "2026-08-28T09:00" }
+      }
+
+      child = Task.where.not(parent_task_id: nil).first
+      expect(child).to be_present
+      expect(child.scheduled_at_local.strftime("%H:%M")).to eq("09:00")
+    end
+  end
+
   describe "a senior in a different zone from their caregiver" do
     let(:senior) { create(:user, :senior, name: "Dad", tz: "America/Los_Angeles") }
 
