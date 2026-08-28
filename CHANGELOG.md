@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **No caregiver could reach the phone panel, because nothing ever granted
+  `manage`.** The permission column defaults to view, `pair_with` never touched
+  it, and no screen — not even the admin panel — could change it. So every
+  caregiver who paired the documented way was permanently unable to save a phone
+  number, place the verification call, or choose the language calls are spoken
+  in. That is the feature the product leads with, enabled in production, behind
+  a permission the application never issued. It went unnoticed because every
+  link in development had been set to manage by hand; walking a brand-new
+  caregiver and care receiver through pairing from scratch is what surfaced it.
+
+  Both paths that create a link now grant manage, and a migration gives it to
+  the caregivers already linked. Unclaimed pairing tokens are left alone — a row
+  with no caregiver is a token waiting to be claimed, not somebody holding the
+  wrong permission.
+
+  Worth being precise about what this grants: the ability to *ask*, not to
+  enable. `callable_by_phone?` still requires a number, a recorded consent and
+  no opt-out, and only a keypress on a call the care receiver answers writes
+  that consent. A caregiver can now arrange calls; they still cannot agree to
+  them on somebody else's behalf.
+
+- **A care receiver with nobody linked was told to pair with a care receiver.**
+  The empty dashboard served both roles but only ever offered the caregiver's
+  action, so somebody waiting to be looked after was sent to a form asking for a
+  pairing token that only a caregiver would have been handed — while the thing
+  they actually needed, generating a token of their own to share, sat behind a
+  button the empty state did not mention. It read "Pair with Senior" before the
+  terminology change, wrong in the same way and easier to miss. Each role is now
+  asked for its own half of pairing, and asked once: the header repeated the
+  empty state's button, which had gone unnoticed only because the two said
+  different words.
+
 ### Changed
 - **Remindly says "care receiver" where it used to say "senior".** A caregiver
   reviewing Remindly asked for a word that does not assume age: not everyone
@@ -27,18 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   type "reminders for elderly parents", not "care receiver app" — and renaming
   them to broaden appeal would have narrowed discovery instead. Meet people
   where they search, then do not exclude them once they arrive.
-
-### Fixed
-- **A care receiver with nobody linked was told to pair with a care receiver.**
-  The empty dashboard served both roles but only ever offered the caregiver's
-  action, so somebody waiting to be looked after was sent to a form asking for a
-  pairing token that only a caregiver would have been handed — while the thing
-  they actually needed, generating a token of their own to share, sat behind a
-  button the empty state did not mention. It read "Pair with Senior" before the
-  terminology change, wrong in the same way and easier to miss. Each role is now
-  asked for its own half of pairing, and asked once: the header repeated the
-  empty state's button, which had gone unnoticed only because the two said
-  different words.
 
 ### Added
 - **Reminder calls can be spoken in Spanish.** A caregiver reviewing Remindly
