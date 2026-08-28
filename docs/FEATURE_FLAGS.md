@@ -21,8 +21,15 @@ Built-in appointment scheduling system. When enabled:
 
 ### External Scheduling Integrations
 **Key:** `:external_scheduling`  
-**Default:** `true` (enabled)  
+**Default:** `false` (disabled)  
 **Environment Variable:** `ENABLE_EXTERNAL_SCHEDULING`
+
+> Off since the screens turned out to be unfinished. The flag was declared
+> alongside the feature and then never checked anywhere, so those screens were
+> reachable from the day they were written. Nothing syncs on a schedule — there
+> is no job in `recurring.yml` — so an integration only pulls appointments when
+> somebody presses Sync by hand. Turning it on gives you working Acuity
+> credentials and manual syncing, not a calendar that keeps itself current.
 
 Integration with external scheduling services (Acuity, Calendly). When enabled:
 - Connect Acuity Scheduling accounts
@@ -92,8 +99,12 @@ Set environment variables in your deployment:
 env:
   clear:
     ENABLE_NATIVE_SCHEDULING: "true"
-    ENABLE_EXTERNAL_SCHEDULING: "true"
 ```
+
+Only flags that differ from their default need listing. `config/deploy.yml`
+does not set `ENABLE_EXTERNAL_SCHEDULING`, which is how that feature stays off
+in production — adding it as `"true"` would switch on the unfinished screens
+described above.
 
 **Heroku:** 
 ```bash
@@ -174,7 +185,7 @@ When a feature is stable and ready for all users:
 | Feature | Default | Status |
 |---------|---------|--------|
 | Native Scheduling | Disabled | 🚧 In Development |
-| External Scheduling | Enabled | ✅ Production Ready |
+| External Scheduling | Disabled | 🚧 Needs a periodic sync |
 
 ---
 
