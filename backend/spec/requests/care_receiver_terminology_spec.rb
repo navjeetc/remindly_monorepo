@@ -137,6 +137,33 @@ RSpec.describe "Care receiver terminology", type: :request do
     end
   end
 
+  describe "inviting somebody who cannot be a caregiver" do
+    # A user exists from their first sign-in and chooses a role afterwards, so a
+    # blank role is an ordinary state, not a corrupt one. role_label falls back
+    # to titleize, which turns nil into "" — and the sentence read "They are
+    # currently a ."
+    it "says so plainly when they have not chosen a role yet" do
+      roleless = User.create!(email: "nobody@example.com", name: "Sam")
+      sign_in(caregiver)
+
+      post "/dashboard/senior/#{senior.id}/invite_caregiver",
+        params: { caregiver_email: roleless.email }
+
+      expect(flash[:alert]).to include("has not chosen a role yet")
+      expect(flash[:alert]).not_to match(/currently a \./)
+    end
+
+    it "names the role when they have one" do
+      other = create(:user, :senior, name: "Pat", email: "pat@example.com")
+      sign_in(caregiver)
+
+      post "/dashboard/senior/#{senior.id}/invite_caregiver",
+        params: { caregiver_email: other.email }
+
+      expect(flash[:alert]).to include("currently a care receiver")
+    end
+  end
+
   describe "the public pages" do
     it "no longer says senior in the How To prose" do
       get "/how_to"

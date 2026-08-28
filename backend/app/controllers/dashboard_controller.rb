@@ -637,7 +637,14 @@ class DashboardController < WebController
       return
     elsif !caregiver.role_caregiver?
       # Only caregivers can be invited
-      flash[:alert] = "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role_label.downcase}."
+      # A user can exist with no role at all — they are created on first sign-in
+      # and choose afterwards — so this sentence has to survive a blank one
+      # rather than reading "They are currently a ."
+      flash[:alert] = if caregiver.role.blank?
+        "#{caregiver_email} has not chosen a role yet, so they cannot be invited as a caregiver."
+      else
+        "#{caregiver_email} must be a caregiver to be invited. They are currently a #{caregiver.role_label.downcase}."
+      end
       render :invite_caregiver
       return
     end
@@ -664,7 +671,7 @@ class DashboardController < WebController
       inviter: current_user
     ).deliver_later
 
-    redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.email}"
+    redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.display_name}"
   end
 
   # Voice reminders interface - session-based authentication

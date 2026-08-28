@@ -51,7 +51,6 @@
   <% end %>
 
   <!-- Care receiver's upcoming tasks -->
-  <!-- Debug: role=<%= current_user.role %>, tasks_defined=<%= defined?(@upcoming_tasks).present? %>, tasks_count=<%= @upcoming_tasks&.count || 0 %> -->
   <% if current_user.role_senior? && defined?(@upcoming_tasks) && @upcoming_tasks.present? %>
     <div class="bg-white shadow sm:rounded-lg">
       <div class="px-4 py-5 sm:p-6">

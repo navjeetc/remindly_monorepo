@@ -75,7 +75,7 @@
                   <% elsif user.role_caregiver? %>
                     <% senior_links = user.caregiver_links.select { |link| link.senior_id.present? } %>
                     <span class="ml-4">
-                      <%= senior_links.count %> care receiver(s)
+                      <%= pluralize(senior_links.count, "care receiver") %>
                     </span>
                   <% end %>
                 </div>
