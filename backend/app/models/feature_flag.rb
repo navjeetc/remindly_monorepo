@@ -8,10 +8,21 @@ class FeatureFlag
       default: false,
       env_var: "ENABLE_NATIVE_SCHEDULING"
     },
+    # Off, and off is the honest default: the flag was declared with the
+    # feature and then never checked anywhere, so the screens have been
+    # reachable since they were written without ever being finished. Nothing
+    # syncs on a schedule -- there is no job in recurring.yml -- so an
+    # integration only pulls appointments when somebody presses Sync by hand,
+    # which is not what "connect your calendar" promises. Production has never
+    # held an integration or a synced task.
+    #
+    # Kept as a flag rather than deleted because the model, controller and
+    # Acuity client all work as far as they go; what is missing is the periodic
+    # sync that would make them mean anything.
     external_scheduling: {
       name: "External Scheduling Integrations",
       description: "Connect to external scheduling services (Acuity, Calendly)",
-      default: true,
+      default: false,
       env_var: "ENABLE_EXTERNAL_SCHEDULING"
     },
     # The outer of two locks on reminder phone calls. This one says the code may
