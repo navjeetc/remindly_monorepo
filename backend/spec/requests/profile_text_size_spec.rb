@@ -55,6 +55,23 @@ RSpec.describe "Profile text size", type: :request do
     expect(doc.at_css("html")[:style]).to eq("font-size: 150%")
   end
 
+  # How To sits in the signed-in nav but renders through the marketing layout,
+  # so it was the one page that ignored the setting — and it is the page
+  # somebody who cannot read the screen is likeliest to open.
+  it "scales the help page too, which the dashboard nav links to" do
+    user.update!(text_size: "largest")
+    sign_in(user)
+    get "/how_to"
+
+    expect(doc.at_css("html")[:style]).to eq("font-size: 150%")
+  end
+
+  it "leaves the public pages alone for visitors who are not signed in" do
+    get "/how_to"
+
+    expect(doc.at_css("html")[:style]).to eq("font-size: 100%")
+  end
+
   it "preselects the stored size, so the form does not read as Normal" do
     user.update!(text_size: "larger")
     sign_in(user)
