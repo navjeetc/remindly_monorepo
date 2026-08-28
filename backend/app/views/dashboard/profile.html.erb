@@ -74,7 +74,7 @@
             <%# Each choice is drawn at the size it sets, in fixed pixels, so the
                 preview says the same thing whatever the current setting is. %>
             <div class="mt-3 space-y-2">
-              <% { "normal" => [ "Normal", 16 ], "large" => [ "Large", 18 ], "larger" => [ "Larger", 21 ], "largest" => [ "Largest", 24 ] }.each do |value, (label, px)| %>
+              <% User.text_size_choices.each do |value, label, px| %>
                 <label class="flex items-center gap-3 rounded-md border border-gray-300 px-3 py-3 cursor-pointer hover:bg-gray-50">
                   <%= f.radio_button :text_size, value, class: "h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" %>
                   <span class="text-gray-900" style="font-size: <%= px %>px">
