@@ -70,6 +70,50 @@ RSpec.describe TelnyxCall do
       expect(described_class.free_slot(senior, day)).to be_nil
     end
 
+    # Why the number is what it is. Ten made this the rationing mechanism rather
+    # than a backstop: on the first day of live calls, three morning reminders
+    # went unanswered and took three attempts each, so the evening dose got one
+    # ring instead of three. The budget is spent in clock order, so whenever the
+    # cap binds it is the last reminder of the day that loses — and bedtime
+    # medication is often the one most worth a second try.
+    it "lets an ordinary day of reminders exhaust their retries without rationing" do
+      # Six occurrences called three times each, not eighteen called once: the
+      # claim is about *retries*, so the spec goes round the retry path rather
+      # than past it — attempt_number incrementing per occurrence, with
+      # RETRY_AFTER elapsing between rounds.
+      #
+      # It does not pin RETRY_AFTER itself; waiting the full interval means the
+      # gate could be removed without this noticing. That is
+      # voice_reminder_job_spec's "waits out the retry window before trying
+      # again", which calls twice inside the window and expects one dial. What
+      # this one is for is the cap, and it fails at ten.
+      #
+      # Anchored mid-morning so advancing through the rounds cannot cross
+      # midnight and hand back a fresh day's slots. Block form, so the clock is
+      # visibly restored here rather than by TimeHelpers#after_teardown — the
+      # relative travel() calls nest inside it fine, unlike a second travel_to
+      # block, which ActiveSupport refuses outright.
+      granted = []
+
+      travel_to(ActiveSupport::TimeZone[senior.tz].local(2026, 6, 15, 9, 0)) do
+        occurrences = 6.times.map { |i| occurrence_at(Time.current + i.hours) }
+
+        described_class::MAX_ATTEMPTS.times do
+          occurrences.each do |occurrence|
+            call = described_class.reserve(occurrence, senior)
+            granted << call if call
+            call&.update!(completed_at: Time.current) # the call ends before the next begins
+          end
+
+          travel(described_class::RETRY_AFTER + 1.minute)
+        end
+      end
+
+      expect(granted.size).to eq(6 * described_class::MAX_ATTEMPTS)
+      expect(granted.map(&:attempt_number).tally)
+        .to eq((1..described_class::MAX_ATTEMPTS).index_with { 6 })
+    end
+
     it "reuses a slot released by an attempt that never rang" do
       day = described_class.local_day(senior, Time.current)
       described_class::MAX_CALLS_PER_DAY.times do |i|

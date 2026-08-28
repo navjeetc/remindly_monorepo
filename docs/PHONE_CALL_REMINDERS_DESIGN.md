@@ -223,6 +223,21 @@ Things that must be impossible, not merely discouraged.
    re-checked at dial time, as `ReminderNotificationJob` already re-checks before
    notifying.
 7. **A per-senior daily cap exists and cannot be configured away** by a caregiver.
+   Twenty, since 2026-08-27. It began at ten, which made it the rationing
+   mechanism rather than a backstop: on the first day of live calls three morning
+   reminders went unanswered and took three attempts each, so nine of the ten
+   were spent by evening and "take sleep medicine" got one ring instead of three
+   — the dose of the four most worth a second try.
+
+   The cap is spent in clock order, so whenever it binds it is the last reminder
+   of the day that loses, and nothing tells the caregiver that is why. Twenty
+   covers six reminders exhausting their retries, which is a heavy but ordinary
+   schedule for somebody on several medications, so it should stop binding rather
+   than quietly deciding which reminder matters least. It is still a constant,
+   and this invariant is why.
+
+   Raising it does not fix the ordering, only postpone it. The fix is to give
+   every due occurrence its first call before any occurrence gets a retry.
 8. **The senior can stop the calls without signing in, without a caregiver, and
    without a screen** — the keypress out is always available.
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The daily call cap is a backstop again, not a rationing mechanism.** Ten
+  calls per senior per day meant three unanswered reminders exhausted it, and on
+  the first day of live calls the evening dose got one ring instead of three
+  because the morning had spent the budget. It is twenty now, which covers six
+  reminders exhausting their retries. Still a constant a caregiver cannot edit,
+  because a per-senior daily ceiling is invariant 7 — raising it does not weaken
+  that, it stops the ceiling deciding which reminder matters least.
+
 ### Fixed
 - **The missed-reminder subject ended on the word "done".** *"Mom hasn't marked
   Metformin as done"* is correct and reads badly where a subject is actually
