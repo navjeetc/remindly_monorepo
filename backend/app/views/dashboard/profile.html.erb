@@ -151,7 +151,7 @@
             <%= f.label :role, class: "block text-sm font-medium text-gray-700" %>
             <div class="mt-1">
               <span class="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium <%= current_user.role_senior? ? 'bg-blue-100 text-blue-800' : current_user.role_caregiver? ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800' %>">
-                <%= current_user.role.titleize %>
+                <%= current_user.role_label %>
               </span>
             </div>
           </div>
@@ -171,7 +171,7 @@
           <% if current_user.role.present? %>
             <% other = current_user.role_senior? ? "caregiver" : "senior" %>
             <p class="text-sm text-gray-500 mb-3">
-              You're set up as a <strong><%= current_user.role.titleize %></strong>.
+              You're set up as a <strong><%= current_user.role_label.downcase %></strong>.
               If that's not right, you can switch to <%= other %>.
             </p>
             <%= button_to "Switch to #{other.titleize}", select_role_path, method: :patch, params: { role: other },

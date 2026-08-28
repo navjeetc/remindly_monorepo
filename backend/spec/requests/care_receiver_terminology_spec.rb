@@ -1,0 +1,105 @@
+require "rails_helper"
+
+# "Senior" narrows the product to a subset of the people it serves — a caregiver
+# reviewing Remindly asked for a word that does not assume age, since not
+# everyone being cared for is old.
+#
+# The stored value is untouched. `senior` is in the role enum, in four foreign
+# keys and in most of this suite, and renaming it would migrate data to change a
+# word nobody stores for its own sake. So the split these specs hold is: the
+# database says senior, the screen says care receiver.
+RSpec.describe "Care receiver terminology", type: :request do
+  let(:caregiver) { create(:user, :caregiver, name: "Jane") }
+  let(:senior) { create(:user, :senior, name: "Mom") }
+  let!(:link) { CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage) }
+
+  def sign_in(user)
+    post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+  end
+
+  # Script and style contents are stripped before matching. Nokogiri's #text
+  # includes them, so JavaScript comments explaining @senior's timezone counted
+  # as words on the page — they are code, and the code keeps its names.
+  def page_text
+    doc = Nokogiri::HTML(response.body)
+    doc.css("script, style").each(&:remove)
+    doc.text.gsub(/\s+/, " ")
+  end
+
+  describe "the role label" do
+    it "reads as care receiver while the stored value stays senior" do
+      expect(senior.role).to eq("senior")
+      expect(senior.role_label).to eq("Care receiver")
+    end
+
+    it "leaves the other roles alone" do
+      expect(caregiver.role_label).to eq("Caregiver")
+      expect(create(:user, :admin, name: "Root").role_label).to eq("Admin")
+    end
+
+    # Renaming the enum would have meant a migration. This is the check that the
+    # cheaper route actually reaches the screen.
+    it "shows on the profile instead of the raw role" do
+      sign_in(senior)
+      get "/profile"
+
+      expect(page_text).to include("Care receiver")
+      expect(page_text).not_to match(/\bSenior\b/)
+    end
+  end
+
+  describe "the signed-in app" do
+    it "does not call anyone a senior on the caregiver's dashboard" do
+      sign_in(caregiver)
+      get "/dashboard"
+
+      expect(page_text).not_to match(/\bseniors?\b/i)
+    end
+
+    it "does not call anyone a senior on the task form" do
+      sign_in(caregiver)
+      get "/seniors/#{senior.id}/tasks/new"
+
+      expect(page_text).not_to match(/\bseniors?\b/i)
+    end
+
+    it "does not call anyone a senior when pairing" do
+      sign_in(caregiver)
+      get "/dashboard/pair"
+
+      expect(page_text).not_to match(/\bseniors?\b/i)
+    end
+  end
+
+  # The public pages are split on purpose. Body copy is broadened so a
+  # forty-five-year-old caring for a disabled spouse does not bounce off a page
+  # that only talks about seniors — but the title, description and og tags keep
+  # the word, because that is what people type into a search box. Nobody
+  # searches for a "care receiver app". Meet them where they search, then do not
+  # exclude them once they arrive.
+  describe "the public pages" do
+    it "no longer says senior in the How To prose" do
+      get "/how_to"
+
+      body = Nokogiri::HTML(response.body)
+      body.css("script, style, title, head").each(&:remove)
+
+      expect(body.text.gsub(/\s+/, " ")).not_to match(/\bseniors?\b/i)
+    end
+
+    it "keeps the search terms in the metadata, which is where they earn their keep" do
+      get "/how_to"
+
+      expect(Nokogiri::HTML(response.body).at_css("title").text).to match(/seniors/i)
+    end
+
+    it "does not call anyone a senior in the terms" do
+      get "/terms"
+
+      body = Nokogiri::HTML(response.body)
+      body.css("script, style, title, head").each(&:remove)
+
+      expect(body.text.gsub(/\s+/, " ")).not_to match(/\bseniors?\b/i)
+    end
+  end
+end

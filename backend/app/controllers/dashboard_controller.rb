@@ -632,7 +632,7 @@ class DashboardController < WebController
       )
     elsif caregiver.id == @senior.id
       # Can't invite the senior to be their own caregiver
-      flash[:alert] = "You cannot invite the senior to be their own caregiver"
+      flash[:alert] = "You cannot invite the care receiver to be their own caregiver"
       render :invite_caregiver
       return
     elsif !caregiver.role_caregiver?

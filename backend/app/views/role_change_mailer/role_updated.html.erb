@@ -27,14 +27,14 @@
       <p>An administrator has updated your role on Remindly.</p>
       
       <div class="role-change">
-        <p><strong>Previous Role:</strong> <span class="role"><%= @old_role.titleize %></span></p>
-        <p><strong>New Role:</strong> <span class="role"><%= @new_role.titleize %></span></p>
+        <p><strong>Previous Role:</strong> <span class="role"><%= User::ROLE_LABELS.fetch(@old_role.to_s, @old_role.to_s.titleize) %></span></p>
+        <p><strong>New Role:</strong> <span class="role"><%= User::ROLE_LABELS.fetch(@new_role.to_s, @new_role.to_s.titleize) %></span></p>
         <p><strong>Changed By:</strong> <%= @changed_by.email %></p>
         <p><strong>Date:</strong> <%= Time.current.strftime("%B %d, %Y at %I:%M %p") %></p>
       </div>
       
       <% if @new_role == "senior" %>
-        <p>As a <strong>Senior</strong>, you can:</p>
+        <p>As a <strong>care receiver</strong>, you can:</p>
         <ul>
           <li>Receive and manage medication reminders</li>
           <li>Generate pairing tokens to connect with caregivers</li>
@@ -42,9 +42,9 @@
         </ul>
       <% elsif @new_role == "caregiver" %>
         <p>As a <strong>Caregiver</strong>, you can:</p>
-        <li>Pair with seniors using their pairing tokens</li>
-          <li>Create and manage reminders for your seniors</li>
-          <li>Monitor senior activity and medication adherence</li>
+        <li>Pair with care receivers using their pairing tokens</li>
+          <li>Create and manage reminders for the people you care for</li>
+          <li>Monitor their activity and medication adherence</li>
           <li>Manage availability and coverage schedules</li>
         </ul>
       <% elsif @new_role == "admin" %>

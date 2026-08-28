@@ -17,7 +17,7 @@ ACTIVITY BY USER
 <%= @active_users.count %> unique user(s) had authentication activity
 
 <% @events_by_user.each do |user, user_events| %>
-<%= user ? user.email : "Unknown User" %><% if user&.role %> (<%= user.role.titleize %>)<% end %>
+<%= user ? user.email : "Unknown User" %><% if user&.role %> (<%= user.role_label %>)<% end %>
 <%= "-" * 60 %>
 <% user_events.each do |event| %>
   <%= event.time.strftime('%I:%M %p') %> | <%= event.name.ljust(15) %> | <%= (event.properties['method'] || 'N/A').ljust(20) %> | <%= event.properties['ip'] || 'N/A' %>
