@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Scheduling integrations are hidden, because they were never finished.** The
+  `external_scheduling` flag was declared alongside the feature and then never
+  checked anywhere, so the screens have been reachable since the day they were
+  written. Nothing syncs on a schedule — there is no job in `recurring.yml` —
+  so an integration only pulls appointments when somebody presses Sync by hand,
+  which is not what "connect your calendar" offers. Production has never held
+  an integration or a synced task. The flag now defaults off and is checked in
+  the controller as well as on the nav button, because a hidden link is not a
+  closed door and those routes stay live for anyone holding a URL. Kept as a
+  flag rather than deleted: the model, controller and Acuity client work as far
+  as they go, and what is missing is the periodic sync that would make them
+  mean anything.
+
 - **The daily call cap is a backstop again, not a rationing mechanism.** Ten
   calls per senior per day meant three unanswered reminders exhausted it, and on
   the first day of live calls the evening dose got one ring instead of three

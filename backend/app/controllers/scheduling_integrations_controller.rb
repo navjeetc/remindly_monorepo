@@ -1,5 +1,6 @@
 class SchedulingIntegrationsController < WebController
   before_action :authenticate!
+  before_action :check_feature_enabled!
   before_action :set_senior, only: [ :index, :new, :create ]
   before_action :authorize_senior_access!, only: [ :index, :new, :create ]
   before_action :set_integration, only: [ :show, :edit, :update, :destroy, :sync ]
@@ -92,6 +93,16 @@ class SchedulingIntegrationsController < WebController
   end
 
   private
+
+  # The nav link is hidden when this is off, but a hidden link is not a closed
+  # door -- these paths stay routable and anyone holding a URL would still
+  # reach them. Same reason the phone kill switch is checked at the dial and
+  # not only at the gate.
+  def check_feature_enabled!
+    unless FeatureFlag.enabled?(:external_scheduling)
+      redirect_to dashboard_path, alert: "Scheduling integrations are not enabled"
+    end
+  end
 
   def set_senior
     @senior = User.find_by(id: params[:senior_id])
