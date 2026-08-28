@@ -158,13 +158,19 @@ class TelnyxVoiceService
   end
 
   # Play the reminder message using TTS.
-  def self.speak(call_control_id:, message:, command_id: nil, call: nil)
+  # language is Telnyx's code for the accent the voice reads with, and it has to
+  # arrive with text already written in that language — the two travel together
+  # or a Spanish voice reads English words at somebody who may not speak either.
+  # See User::SPOKEN_LANGUAGES. "female" is the basic service level, which is
+  # the one mode where Telnyx honours `language` at all; it is ignored for a
+  # Polly.* voice.
+  def self.speak(call_control_id:, message:, language: "en-US", command_id: nil, call: nil)
     post(
       "/calls/#{call_control_id}/actions/speak",
       {
         payload: message,
         voice: "female",
-        language: "en-US",
+        language: language,
         service: "tts"
       },
       command_id: command_id
@@ -178,7 +184,8 @@ class TelnyxVoiceService
   # Raises rather than swallowing, because the caller records the call as
   # handled once this returns. A silent failure here is the worst outcome the
   # feature has: the senior answers, hears nothing, and no retry ever comes.
-  def self.gather_digit(call_control_id:, prompt:, command_id: nil)
+  # See .speak for why language and prompt must be chosen together.
+  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil)
     response = post(
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
@@ -199,7 +206,7 @@ class TelnyxVoiceService
         terminating_digit: "#",
         payload: prompt,
         voice: "female",
-        language: "en-US",
+        language: language,
         service: "tts"
       },
       command_id: command_id

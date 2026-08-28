@@ -177,6 +177,24 @@ class DashboardController < WebController
     end
   end
 
+  # The language the calls are spoken in. Set by the caregiver rather than the
+  # senior, because the senior is often the one who never signs in — which is
+  # the same reason the calls exist. It is still the senior's setting: it is
+  # stored on them and it is their ear it serves.
+  def update_spoken_language
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+
+    if senior.update(params.require(:user).permit(:spoken_language))
+      redirect_to senior_dashboard_path(senior),
+        notice: "Calls to #{senior.display_name} will be spoken in #{senior.spoken_language_label}."
+    else
+      redirect_to senior_dashboard_path(senior), alert: senior.errors.full_messages.to_sentence
+    end
+  end
+
   # Asks the number whether it agrees. This is the only thing a caregiver can do
   # towards enabling calls, and it can only ask.
   def verify_phone

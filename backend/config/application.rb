@@ -36,6 +36,13 @@ module Backend
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
+    # Spanish exists here only so the telephone can speak it — the dashboard is
+    # English throughout. Declared because enforce_available_locales rejects any
+    # locale not on this list, and the call script is looked up with an explicit
+    # locale: rather than by switching I18n.locale globally.
+    config.i18n.available_locales = [ :en, :es ]
+    config.i18n.default_locale = :en
+
     # Don't generate system test files.
     config.generators.system_tests = nil
 

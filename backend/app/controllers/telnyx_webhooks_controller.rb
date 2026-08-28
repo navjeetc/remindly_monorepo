@@ -79,6 +79,7 @@ class TelnyxWebhooksController < ApplicationController
     TelnyxVoiceService.gather_digit(
       call_control_id: call.call_control_id,
       prompt: announcement_for(senior, reminder),
+      language: senior.spoken_language,
       command_id: event_id
     )
 
@@ -102,11 +103,11 @@ class TelnyxWebhooksController < ApplicationController
   def announcement_for(senior, reminder)
     task = reminder.title.to_s.strip.sub(/[.!?,;:]+\z/, "")
 
-    "Hello #{senior.display_name}. This is Remindly, with your reminder. " \
-    "#{task}. " \
-    "Press 1 if you have done it. " \
-    "Press 2 to be reminded again in #{Occurrence::SNOOZE_DEFAULT_MINUTES} minutes. " \
-    "Press 9 to stop these calls."
+    I18n.t("voice.announcement",
+      name: senior.display_name,
+      task: task,
+      minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
+      locale: senior.spoken_locale)
   end
 
   def handle_gather_ended(call, payload, event_id)
@@ -200,6 +201,7 @@ class TelnyxWebhooksController < ApplicationController
     TelnyxVoiceService.gather_digit(
       call_control_id: call.call_control_id,
       prompt: consent_request_for(call),
+      language: call.user.spoken_language,
       command_id: event_id
     )
 
@@ -226,14 +228,18 @@ class TelnyxWebhooksController < ApplicationController
     # has to stay neutral: "You asked us" told the called party they had asked for
     # a call they did not ask for, which is both false and precisely how a scam
     # call opens.
-    asked = arranger ? "#{arranger.friendly_name} asked us" : "We have been asked"
+    locale = senior.spoken_locale
 
-    "Hello. This is Remindly, calling for #{senior.display_name}. " \
-    "#{asked} to phone you with reminders — " \
-    "for example, when it is time to take your tablets. " \
-    "We will never ask you for personal details. All you ever need to do is press a button. " \
-    "If you would like these reminders, press 1 now. " \
-    "If you would rather not, press 9 and we will not call again."
+    asked = if arranger
+      I18n.t("voice.consent.asked_by", arranger: arranger.friendly_name, locale: locale)
+    else
+      I18n.t("voice.consent.asked_generic", locale: locale)
+    end
+
+    I18n.t("voice.consent.request",
+      name: senior.display_name,
+      asked: asked,
+      locale: locale)
   end
 
   def handle_verification_gather_ended(call, payload, event_id)

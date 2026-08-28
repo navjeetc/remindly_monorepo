@@ -93,6 +93,30 @@
       <% end %>
 
       <%#
+        Which language the calls are spoken in. It sits with the number rather
+        than on the senior's profile because the senior is often the one who
+        never signs in — the same fact that makes the calls worth having.
+
+        Only the telephone changes. The dashboard stays in English, which is
+        what the hint says, because a caregiver reading "Language" on a settings
+        panel will otherwise reasonably expect the screen to change too.
+      %>
+      <%= form_with url: senior_spoken_language_path(senior_id: senior.id), method: :patch do |f| %>
+        <label for="user_spoken_language" class="block text-sm font-medium text-gray-700">Language for calls</label>
+        <div class="mt-1 flex items-center gap-3">
+          <%= f.select :spoken_language,
+                options_for_select(User::SPOKEN_LANGUAGES.map { |code, meta| [ meta[:label], code ] }, senior.spoken_language),
+                {},
+                name: "user[spoken_language]", id: "user_spoken_language",
+                class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+          <%= f.submit "Save language", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">
+          What <%= senior.display_name %> hears on the phone. Remindly's screens stay in English.
+        </p>
+      <% end %>
+
+      <%#
         Only while there is something to ask. Once they have agreed, this button
         would ring them to ask again — and the script it plays ends "press 9 and
         we won't call again", so its best outcome is a no-op and its worst is a

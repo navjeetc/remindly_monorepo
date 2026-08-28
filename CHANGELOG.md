@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Reminder calls can be spoken in Spanish.** A caregiver reviewing Remindly
+  asked for calls in a language other than English, and the people the calls
+  exist for — those who do not use a screen — are the least likely to be served
+  by an English-only line. The senior's page now carries a language for their
+  calls, set by the caregiver because the senior is often the one who never
+  signs in, which is the same fact that makes the calls worth having. Only the
+  telephone changes; the dashboard stays English throughout.
+
+  Both spoken prompts are translated, not just one. Translating the reminder
+  and leaving the consent call in English would mean the first thing a Spanish
+  speaker ever hears from Remindly is English asking them to press a key — the
+  call whose entire job is to not sound like a scam.
+
+  The Spanish is machine-written and marked as such in `voice.es.yml`; it must
+  be read by a native speaker before it reaches production. The constraints the
+  English is written against are recorded there as translator notes, because
+  they are requirements rather than style: Remindly named in the first breath,
+  the arranger named early, no suggestion that the called party asked for
+  anything, and the keypad digits left alone.
+
+  Cantonese was asked for and is not possible — it is absent from Telnyx's
+  speak enum at any price. Every other language on that list is now a YAML file
+  and one entry in `User::SPOKEN_LANGUAGES`, with no new code.
+
 - **Caregivers are asked to keep health details out of titles and notes.**
   The privacy policy has always covered this, but nobody reads a policy while
   filling in a form, and a caregiver reviewing Remindly asked for the prompt to

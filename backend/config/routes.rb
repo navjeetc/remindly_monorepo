@@ -79,6 +79,7 @@ Rails.application.routes.draw do
   # number commits nobody to anything, and only the second one makes a phone
   # ring. Nothing here can grant consent — that is the verification call's alone.
   patch "dashboard/senior/:senior_id/phone", to: "dashboard#update_phone", as: :senior_phone
+  patch "dashboard/senior/:senior_id/spoken_language", to: "dashboard#update_spoken_language", as: :senior_spoken_language
   post  "dashboard/senior/:senior_id/verify_phone", to: "dashboard#verify_phone", as: :verify_senior_phone
   get  "dashboard/senior/:senior_id/reminder/new", to: "dashboard#new_reminder", as: :new_reminder_dashboard
   post "dashboard/senior/:senior_id/reminder", to: "dashboard#create_reminder", as: :create_reminder_dashboard
