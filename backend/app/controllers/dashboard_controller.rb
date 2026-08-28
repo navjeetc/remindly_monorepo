@@ -15,10 +15,18 @@ class DashboardController < WebController
 
     # Only show relevant data based on role
     if current_user.role_caregiver?
-      # Caregivers only see seniors they're caring for
+      # Caregivers only see the people they're caring for.
+      #
+      # Loaded here rather than handed to the view as a relation. The template
+      # asks empty?, then any?, then iterates — three questions with one answer,
+      # where the first two each issue an EXISTS the load then makes redundant.
+      # The query cache spares the second the round trip; it does not make the
+      # statement worth sending. The other two branches of this action already
+      # assign an array, so this also stops the view having to care which.
       @linked_seniors = current_user.caregiver_links
         .includes(:senior)
         .where.not(senior_id: nil)
+        .to_a
       @pending_links = []
     elsif current_user.role_senior?
       # Seniors see their own tasks, reminders, and caregivers
