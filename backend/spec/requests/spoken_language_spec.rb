@@ -171,13 +171,22 @@ RSpec.describe "The language calls are spoken in", type: :request do
     # Spanish key falls back to English *text* while the payload still says
     # es-US — a Spanish voice reading English words to somebody who may not
     # speak it. The words and the accent have to be chosen together.
+    # Read out of the backend rather than through I18n.t. Production enables
+    # i18n.fallbacks, and a lookup for a missing Spanish key returns the English
+    # string rather than nothing — so a parity check built on I18n.t would pass
+    # while the exact hole it exists to find was open. It passes today only
+    # because the test environment happens not to enable fallbacks, which is not
+    # a fact this spec should depend on.
+    def script_keys(locale)
+      I18n.backend.send(:init_translations) unless I18n.backend.initialized?
+      flatten_keys(I18n.backend.send(:translations).fetch(locale).fetch(:voice))
+    end
+
     it "has every English key translated, in every language offered" do
-      english = I18n.t("voice", locale: :en)
+      english = script_keys(:en)
 
       User::SPOKEN_LANGUAGES.each_value do |meta|
-        translated = I18n.t("voice", locale: meta[:locale])
-
-        expect(flatten_keys(translated)).to match_array(flatten_keys(english)),
+        expect(script_keys(meta[:locale])).to match_array(english),
           "#{meta[:label]} is missing keys the English script has"
       end
     end
