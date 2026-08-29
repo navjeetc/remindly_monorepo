@@ -86,7 +86,7 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
       task = Task.create!(senior: senior, created_by: manager, title: "Pills", status: :pending)
       sign_in(viewer)
 
-      post "/seniors/#{senior.id}/tasks/#{task.id}/assign", params: { assigned_to_id: manager.id }
+      post "/seniors/#{senior.id}/tasks/#{task.id}/assign", params: { caregiver_id: manager.id }
 
       expect(response).to redirect_to(senior_tasks_path(senior))
       expect(task.reload.assigned_to).to be_nil
@@ -145,7 +145,7 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
 
       expect {
         post "/seniors/#{senior.id}/time_blocks",
-          params: { time_block: { title: "Away", starts_at: 1.day.from_now, ends_at: 2.days.from_now } }
+          params: { time_block: { reason: "Away", start_time: 1.day.from_now, end_time: 2.days.from_now } }
       }.not_to change { TimeBlock.count }
 
       expect(response).to redirect_to(senior_time_blocks_path(senior))
