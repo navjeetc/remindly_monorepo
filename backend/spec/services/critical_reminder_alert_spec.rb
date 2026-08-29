@@ -1,0 +1,130 @@
+require "rails_helper"
+
+# A caregiver reviewing Remindly described Parkinson's medication: the window is
+# narrow enough that the gap between "did not answer" and "somebody was told" is
+# the thing that matters.
+#
+# That gap was fifty minutes. The calls give up after three attempts five
+# minutes apart; MarkMissedOccurrencesJob waits GRACE = 60 minutes before
+# telling anybody. Nothing filled the middle.
+RSpec.describe "Alerting on a critical reminder nobody answered" do
+  let(:senior) { create(:user, :senior, name: "Nora", tz: "America/New_York") }
+  let(:caregiver) { create(:user, :caregiver, name: "Sam", email: "sam@example.com") }
+  let(:hydration_only) do
+    create(:user, :caregiver, name: "Pat", email: "pat@example.com",
+                              notify_reminder_categories: [ "hydration" ])
+  end
+
+  let!(:link) { CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage) }
+
+  def occurrence_for(critical:, category: :medication)
+    reminder = Reminder.create!(user: senior, title: "Levodopa", rrule: "FREQ=DAILY",
+                                tz: senior.tz, category: category, critical: critical)
+    Occurrence.create!(reminder: reminder, scheduled_at: 5.minutes.ago, status: :pending)
+  end
+
+  describe "a critical reminder" do
+    it "notifies the caregiver straight away" do
+      occurrence = occurrence_for(critical: true)
+
+      expect {
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+      }.to change { Notification.where(notification_type: "reminder_unanswered").count }.by(1)
+    end
+
+    # The category preference exists so nobody is woken by hydration reminders.
+    # A dose somebody marked time-critical is the case it was never meant to
+    # filter out, so every linked caregiver hears.
+    it "reaches a caregiver who did not opt into this category" do
+      CaregiverLink.create!(senior: senior, caregiver: hydration_only, permission: :manage)
+      occurrence = occurrence_for(critical: true)
+
+      ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+
+      expect(Notification.where(user: hydration_only, notification_type: "reminder_unanswered")).to exist
+    end
+
+    # Says "hasn't answered", not "missed": two more calls are coming, and a
+    # dashboard saying missed while the phone is about to ring again would be
+    # wrong for the ten minutes it matters most.
+    it "does not claim the dose was missed" do
+      occurrence = occurrence_for(critical: true)
+
+      ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+
+      expect(Notification.last.title).to include("hasn't answered")
+      expect(Notification.last.title).not_to include("missed")
+    end
+
+    # The second and third calls fire the same path. The unique index is what
+    # stops a caregiver being mailed three times about one dose.
+    it "tells each caregiver once, however many attempts go unanswered" do
+      occurrence = occurrence_for(critical: true)
+
+      3.times do |i|
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2 - i)
+      end
+
+      expect(Notification.where(user: caregiver, notification_type: "reminder_unanswered").count).to eq(1)
+    end
+
+    # Distinct from reminder_missed on purpose: if the dose really is missed an
+    # hour later, that alert still needs to arrive. Sharing a type would let the
+    # unique index swallow it.
+    it "leaves the later missed alert free to send" do
+      occurrence = occurrence_for(critical: true)
+      ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 0)
+
+      expect {
+        ReminderNotificationService.notify_missed(occurrence)
+      }.to change { Notification.where(notification_type: "reminder_missed").count }.by(1)
+    end
+  end
+
+  # The service enqueues with deliver_later, so nothing above renders the
+  # templates. Checked here because the first manual render read as empty — the
+  # body of a multipart mail is the container, not the parts, and a spec written
+  # the same way would have passed against templates that did not render at all.
+  describe "the email itself" do
+    let(:occurrence) { occurrence_for(critical: true) }
+
+    def mail
+      ReminderActivityMailer
+        .with(caregiver: caregiver, senior: senior, reminder: occurrence.reminder,
+              occurrence: occurrence, attempts_remaining: 2)
+        .unanswered
+    end
+
+    it "names the reminder in the subject, for somebody reading it at 3am" do
+      expect(mail.subject).to eq("No answer yet from Nora: Levodopa")
+    end
+
+    it "says why they are hearing early, in both parts" do
+      mail.parts.each do |part|
+        expect(part.body.to_s).to include("time-critical"), "missing from #{part.content_type}"
+      end
+    end
+
+    it "says how many calls are still coming" do
+      mail.parts.each do |part|
+        expect(part.body.to_s).to include("2 more"), "missing from #{part.content_type}"
+      end
+    end
+
+    it "does not say the dose was missed" do
+      mail.parts.each do |part|
+        expect(part.body.to_s.downcase).not_to include("missed"), "present in #{part.content_type}"
+      end
+    end
+  end
+
+  describe "an ordinary reminder" do
+    it "is left entirely alone" do
+      occurrence = occurrence_for(critical: false)
+
+      expect {
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+      }.not_to change { Notification.count }
+    end
+  end
+end

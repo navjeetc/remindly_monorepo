@@ -1,0 +1,11 @@
+<%= @senior.display_name %> didn't answer when Remindly called about <%= @reminder.title %><% if @scheduled_at %>, due at <%= @scheduled_at.strftime("%-l:%M %p") %><% end %>.
+
+This one is marked as time-critical, which is why you're hearing now rather than after the last attempt.
+
+<% if @attempts_remaining.to_i.positive? %>
+We'll call <%= @attempts_remaining %> more <%= @attempts_remaining.to_i == 1 ? "time" : "times" %>, five minutes apart. If <%= @senior.display_name %> answers and presses 1, you won't hear from us again about this one.
+<% else %>
+That was the last call we'll make about this one.
+<% end %>
+
+<%= @dashboard_url %>

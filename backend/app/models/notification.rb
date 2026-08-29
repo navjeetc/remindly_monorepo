@@ -9,7 +9,13 @@ class Notification < ApplicationRecord
     task_available: "task_available",
     task_assigned: "task_assigned",
     reminder_acknowledged: "reminder_acknowledged",
-    reminder_missed: "reminder_missed"
+    reminder_missed: "reminder_missed",
+    # A critical reminder's first call went unanswered. Distinct from
+    # reminder_missed on purpose: two more calls are still coming, so this says
+    # "she has not picked up yet", not "the dose was missed". Sharing the type
+    # would also let the unique index swallow the later missed alert, which is
+    # the one that means the dose really did not happen.
+    reminder_unanswered: "reminder_unanswered"
   }.freeze
 
   validates :notification_type, presence: true, inclusion: { in: TYPES.values }

@@ -829,7 +829,7 @@ class DashboardController < WebController
   end
 
   def reminder_params
-    params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
+    params.require(:reminder).permit(:title, :notes, :category, :critical, :time, :frequency)
   end
 
   # See the before_action above: an invitation grants manage, so letting a

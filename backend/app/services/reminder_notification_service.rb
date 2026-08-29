@@ -26,6 +26,33 @@ class ReminderNotificationService
     notify(occurrence, kind: :missed)
   end
 
+  # A critical reminder's first call went unanswered.
+  #
+  # Every linked caregiver hears, not only those who opted into the reminder's
+  # category. The category preference exists so a caregiver is not woken by
+  # hydration reminders; a dose somebody marked time-critical is the case it was
+  # never meant to filter out.
+  #
+  # Quiet hours are deliberately ignored — there are none for caregiver email,
+  # and a critical dose at 3am is exactly when somebody should be woken.
+  def self.notify_unanswered(occurrence, attempts_remaining:)
+    reminder = occurrence.reminder
+    senior = reminder&.user
+    return unless senior && reminder.critical?
+
+    senior.caregivers.each do |caregiver|
+      # The unique index decides, as everywhere else here: a redelivered webhook
+      # cannot mail the same caregiver twice about the same occurrence.
+      next unless create_notification(caregiver, senior, reminder, occurrence, :unanswered)
+
+      ReminderActivityMailer
+        .with(caregiver: caregiver, senior: senior, reminder: reminder,
+              occurrence: occurrence, attempts_remaining: attempts_remaining)
+        .unanswered
+        .deliver_later
+    end
+  end
+
   # The caregivers who should hear about this reminder — the senior's caregivers
   # who chose this reminder's category. Public so the missed sweep can skip
   # enqueuing work nobody opted in to. Returns [] for an owner-less reminder.
@@ -102,14 +129,21 @@ class ReminderNotificationService
   end
 
   def self.notification_type(kind)
-    kind == :acknowledged ? Notification::TYPES[:reminder_acknowledged] : Notification::TYPES[:reminder_missed]
+    case kind
+    when :acknowledged then Notification::TYPES[:reminder_acknowledged]
+    when :unanswered   then Notification::TYPES[:reminder_unanswered]
+    else                    Notification::TYPES[:reminder_missed]
+    end
   end
 
   def self.title(senior, reminder, kind)
-    if kind == :acknowledged
-      "#{senior.display_name} completed: #{reminder.title}"
-    else
-      "#{senior.display_name} missed: #{reminder.title}"
+    case kind
+    when :acknowledged then "#{senior.display_name} completed: #{reminder.title}"
+    # Not "missed" — two more calls are still coming, and a dashboard alert
+    # saying missed while the phone is about to ring again would be wrong for
+    # the ten minutes it matters most.
+    when :unanswered   then "#{senior.display_name} hasn't answered: #{reminder.title}"
+    else                    "#{senior.display_name} missed: #{reminder.title}"
     end
   end
 

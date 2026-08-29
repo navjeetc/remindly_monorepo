@@ -136,6 +136,21 @@ class TelnyxWebhooksController < ApplicationController
         # record that here rather than leaving it to the hangup event — which
         # used to skip it, because by then the outcome was no longer pending.
         call.update!(outcome: "no_response", completed_at: Time.current)
+
+        # Tell the caregivers now, if the reminder is time-critical.
+        #
+        # The alternative is MarkMissedOccurrencesJob, which waits a full hour
+        # after the due time. The calls themselves give up long before that —
+        # three attempts, five minutes apart — so for a dose where the window is
+        # narrow, nobody hears for the fifty minutes in between. That gap is the
+        # whole reason this flag exists.
+        #
+        # Fired on every unanswered attempt, not only the first: the service
+        # writes through a unique index on (user, type, occurrence), so the
+        # second and third calls cannot mail anybody twice. Doing it here rather
+        # than only on attempt 1 means a redelivered webhook or a lost first
+        # event still reaches somebody.
+        notify_unanswered_if_critical(call)
       end
     end
 
@@ -332,6 +347,22 @@ class TelnyxWebhooksController < ApplicationController
   # should be gated on the profile being complete.
   def record_on(senior, attributes)
     senior.update_columns(attributes.merge(updated_at: Time.current))
+  end
+
+  # Only for reminder calls: a verification call has no occurrence, and nobody
+  # has agreed to anything yet for it to be critical about.
+  def notify_unanswered_if_critical(call)
+    occurrence = call.occurrence
+    return unless occurrence&.reminder&.critical?
+
+    remaining = [ TelnyxCall::MAX_ATTEMPTS - call.attempt_number.to_i, 0 ].max
+
+    ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: remaining)
+  rescue => e
+    # Never let an alert failure take down the webhook. Telnyx retries a failed
+    # delivery, and a retry here would re-run the acknowledgement handling above
+    # for a call that has already been recorded.
+    Rails.logger.error "Critical unanswered alert failed for call #{call.id}: #{e.message}"
   end
 
   def hang_up_unless_already_gone(call, payload, event_id)
