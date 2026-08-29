@@ -598,6 +598,7 @@ class DashboardController < WebController
       title: permitted[:title],
       notes: permitted[:notes],
       category: permitted[:category] || :routine,
+      critical: permitted[:critical] == "1",
       rrule: rrule,
       tz: @senior.tz,
       start_time: start_time
@@ -645,6 +646,10 @@ class DashboardController < WebController
       title: permitted[:title],
       notes: permitted[:notes],
       category: permitted[:category] || :routine,
+      # Unticking a checkbox submits "0" through the hidden field Rails pairs
+      # with it, so this has to read the value rather than test for presence —
+      # otherwise a critical reminder could be marked and never unmarked.
+      critical: permitted[:critical] == "1",
       rrule: rrule,
       start_time: start_time
     )
