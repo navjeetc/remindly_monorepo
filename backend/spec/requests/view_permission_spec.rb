@@ -28,6 +28,9 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    # Asserting the refusal as well as the unchanged count. "Nothing was
+    # created" is also true of a 500, so a count-only assertion would keep
+    # passing while the endpoint started crashing instead of refusing.
     it "may not be created" do
       sign_in(viewer)
 
@@ -35,6 +38,9 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
         post "/seniors/#{senior.id}/tasks",
           params: { task: { title: "Cardiologist", task_type: "appointment", status: "pending", priority: "medium" } }
       }.not_to change { Task.count }
+
+      expect(response).to redirect_to(senior_tasks_path(senior))
+      expect(flash[:alert]).to include("not change them")
     end
 
     it "may not be deleted" do
@@ -42,6 +48,8 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
       sign_in(viewer)
 
       expect { delete "/seniors/#{senior.id}/tasks/#{task.id}" }.not_to change { Task.count }
+
+      expect(response).to redirect_to(senior_tasks_path(senior))
     end
 
     # The form is refused, not merely hidden. A gated button and an open
@@ -71,6 +79,9 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
         post "/dashboard/senior/#{senior.id}/reminder",
           params: { reminder: { title: "Morning pills", rrule: "FREQ=DAILY", category: "medication" } }
       }.not_to change { Reminder.count }
+
+      expect(response).to redirect_to(senior_dashboard_path(senior))
+      expect(flash[:alert]).to include("not change them")
     end
 
     it "is unaffected for a caregiver who manages" do
@@ -80,6 +91,68 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
         post "/dashboard/senior/#{senior.id}/reminder",
           params: { reminder: { title: "Morning pills", rrule: "FREQ=DAILY", category: "medication" } }
       }.to change { Reminder.count }.by(1)
+    end
+  end
+
+  describe "unavailability" do
+    it "may be read" do
+      sign_in(viewer)
+      get "/seniors/#{senior.id}/time_blocks"
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "may not be created" do
+      sign_in(viewer)
+
+      expect {
+        post "/seniors/#{senior.id}/time_blocks",
+          params: { time_block: { title: "Away", starts_at: 1.day.from_now, ends_at: 2.days.from_now } }
+      }.not_to change { TimeBlock.count }
+
+      expect(response).to redirect_to(senior_time_blocks_path(senior))
+    end
+
+    it "may not even open the form" do
+      sign_in(viewer)
+      get "/seniors/#{senior.id}/time_blocks/new"
+
+      expect(response).to redirect_to(senior_time_blocks_path(senior))
+    end
+  end
+
+  # The sharpest hole, and the reason the rest of this file matters: an
+  # invitation creates a *manage* link. Without a guard a view-only caregiver
+  # could invite an address they control, sign in as it, and hold everything
+  # this release took away — bypassing every other check through the one
+  # endpoint that hands out the permission being enforced.
+  describe "inviting another caregiver" do
+    it "may not be done at all" do
+      invitee = create(:user, :caregiver, name: "Mallory", email: "mallory@example.com")
+      sign_in(viewer)
+
+      expect {
+        post "/dashboard/senior/#{senior.id}/invite_caregiver", params: { caregiver_email: invitee.email }
+      }.not_to change { CaregiverLink.count }
+
+      expect(response).to redirect_to(senior_dashboard_path(senior))
+      expect(flash[:alert]).to include("not invite other caregivers")
+    end
+
+    it "may not even open the form" do
+      sign_in(viewer)
+      get "/dashboard/senior/#{senior.id}/invite_caregiver"
+
+      expect(response).to redirect_to(senior_dashboard_path(senior))
+    end
+
+    it "is unaffected for a caregiver who manages" do
+      invitee = create(:user, :caregiver, name: "Alex", email: "alex@example.com")
+      sign_in(manager)
+
+      expect {
+        post "/dashboard/senior/#{senior.id}/invite_caregiver", params: { caregiver_email: invitee.email }
+      }.to change { CaregiverLink.count }.by(1)
     end
   end
 

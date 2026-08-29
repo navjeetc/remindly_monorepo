@@ -20,11 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed. So this guards a role that does not exist yet, which is the point. The
   alternative is leaving a name to be trusted by whoever adds one.
 
+  Inviting counts as a write, and is the sharpest of them: an invitation creates
+  a *manage* link, so a view-only caregiver could otherwise invite an address
+  they control, sign in as it, and hold everything the restriction had just
+  removed — bypassing every other check through the endpoint that hands out the
+  permission being enforced. Connected-calendar sync is guarded too, since it
+  writes tasks; that feature is switched off, but a flag decides whether a door
+  exists rather than who may walk through it.
+
   A care receiver is unaffected: they hold no permission at all, because the
   column describes what a *caregiver* may do and the data is theirs.
 
-### Fixed
-- **No caregiver could reach the phone panel, because nothing ever granted
   `manage`.** The permission column defaults to view, `pair_with` never touched
   it, and no screen — not even the admin panel — could change it. So every
   caregiver who paired the documented way was permanently unable to save a phone

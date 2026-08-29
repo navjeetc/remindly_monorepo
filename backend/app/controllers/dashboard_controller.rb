@@ -10,6 +10,13 @@ class DashboardController < WebController
   before_action :require_manage_for_reminder!,
     only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder]
 
+  # Inviting is a write too, and the sharpest one: an invitation creates a
+  # manage link. Without this a view-only caregiver could invite an address they
+  # control, sign in as it, and hold every permission this release just took
+  # away — a complete bypass, reached through the one endpoint that hands out
+  # the permission being enforced.
+  before_action :require_manage_for_invite!, only: %i[invite_caregiver process_invite_caregiver]
+
   # Landing page - show pairing or dashboard
   def index
     Rails.logger.info "🔍 Dashboard index: user_id=#{current_user.id}, role=#{current_user.role}, role_senior?=#{current_user.role_senior?}"
@@ -773,6 +780,18 @@ class DashboardController < WebController
 
   def reminder_params
     params.require(:reminder).permit(:title, :notes, :category, :time, :frequency)
+  end
+
+  # See the before_action above: an invitation grants manage, so letting a
+  # view-only caregiver send one would let them mint themselves a second account
+  # that outranks the first.
+  def require_manage_for_invite!
+    link = current_user.caregiver_links.find_by(senior_id: params[:senior_id])
+    return if link.nil? # the action's own find_by! reports this properly
+    return if current_user.manages?(link.senior)
+
+    redirect_to senior_dashboard_path(link.senior),
+      alert: "You can see #{link.senior.display_name}'s care, but not invite other caregivers."
   end
 
   # Reading a care receiver's reminders is open to anybody linked to them;

@@ -4,6 +4,13 @@ class SchedulingIntegrationsController < WebController
   before_action :set_senior, only: [ :index, :new, :create ]
   before_action :authorize_senior_access!, only: [ :index, :new, :create ]
   before_action :set_integration, only: [ :show, :edit, :update, :destroy, :sync ]
+
+  # Sync writes the care receiver's tasks through Scheduling::SyncService, so a
+  # connected calendar is another way to change their care. Guarded here rather
+  # than left to the feature flag: the flag decides whether the door exists, not
+  # who may walk through it, and a feature switched on later should not quietly
+  # restore write access this release removed.
+  before_action :require_manage!, only: [ :new, :create, :edit, :update, :destroy, :sync ]
   layout "dashboard"
 
   # GET /dashboard/senior/:senior_id/scheduling_integrations
@@ -106,6 +113,14 @@ class SchedulingIntegrationsController < WebController
 
   def set_senior
     @senior = User.find_by(id: params[:senior_id])
+  end
+
+  def require_manage!
+    senior = @senior || @integration&.senior
+    return if senior.nil? || current_user.manages?(senior)
+
+    redirect_to dashboard_path,
+      alert: "You can see #{senior.display_name}'s care, but not change how it is scheduled."
   end
 
   def authorize_senior_access!
