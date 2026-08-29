@@ -19,6 +19,28 @@ module ApplicationHelper
     "#{nav_section_active?(path) ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE} #{NAV_LINK_BASE}"
   end
 
+  # Whether to offer a control that writes for this care receiver.
+  #
+  # The controllers refuse these actions regardless — that is the boundary, and
+  # a hidden button has never been one. This is the other half: not offering
+  # something the app is about to refuse, so a view-only caregiver reads a page
+  # they can use rather than one that argues with them.
+  #
+  # Memoized per care receiver. Rails' query cache already collapses the repeats
+  # within a request — five calls measured as one query and four cache hits — so
+  # this is not the N+1 it resembles. Kept because the senior dashboard asks
+  # once per reminder row, and a cache lookup per row to answer a question whose
+  # answer cannot change mid-page is work for nothing.
+  #
+  # @param senior [User] the care receiver the control would act on
+  # @return [Boolean] whether the current user may change things for them
+  def may_change?(senior)
+    return false if senior.blank? || current_user.nil?
+
+    @may_change ||= {}
+    @may_change.fetch(senior.id) { @may_change[senior.id] = current_user.manages?(senior) }
+  end
+
   # A nav link stands for a section, not a single URL. Comparing paths exactly
   # left Dashboard unhighlighted on /dashboard/senior/5 and Audit Logs
   # unhighlighted on /admin/audit_logs/5 — the pages someone is most likely to be

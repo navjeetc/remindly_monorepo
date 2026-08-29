@@ -87,6 +87,22 @@ class User < ApplicationRecord
     ROLE_LABELS.fetch(role.to_s, role.to_s.titleize)
   end
 
+  # Whether this user may change things for another — set up reminders, tasks
+  # and unavailability, rather than only watch them.
+  #
+  # Everybody manages themselves: a care receiver is not a caregiver on their own
+  # link and has no permission recorded anywhere, because the data is theirs.
+  #
+  # Every caregiver holds manage today, so this is a guard for a role that does
+  # not exist yet rather than one anybody currently trips. It is written now
+  # because the alternative is a permission whose name promises a restriction
+  # the code does not apply — which reads like a safety mechanism and is not one.
+  def manages?(other)
+    return true if self == other
+
+    caregiver_links.where(senior_id: other.id, permission: :manage).exists?
+  end
+
   # Roles a user may choose for themselves — at onboarding, or later from their
   # profile. Admin is deliberately excluded: it is never self-granted, and this
   # path also refuses to touch an existing admin's role.

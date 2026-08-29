@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **"View" now means view.** A caregiver holding the view permission could
+  create, edit and delete tasks, reminders and unavailability exactly like
+  anybody else: three checks guarded the phone panel and nothing guarded the
+  rest, so a permission whose name promised a restriction applied none. Writes
+  are now checked through `User#manages?`, and the forms are refused rather than
+  merely hidden — a gated button with an open endpoint behind it is the shape
+  every permission bug in this codebase has taken so far.
+
+  Nobody holds view today; every caregiver link is manage since pairing was
+  fixed. So this guards a role that does not exist yet, which is the point. The
+  alternative is leaving a name to be trusted by whoever adds one.
+
+  Inviting counts as a write, and is the sharpest of them: an invitation creates
+  a *manage* link, so a view-only caregiver could otherwise invite an address
+  they control, sign in as it, and hold everything the restriction had just
+  removed — bypassing every other check through the endpoint that hands out the
+  permission being enforced. Connected-calendar sync is guarded too, since it
+  writes tasks; that feature is switched off, but a flag decides whether a door
+  exists rather than who may walk through it.
+
+  Checked in two places, doing two jobs. The controllers refuse regardless —
+  that is the boundary, and a hidden button has never been one. The pages also
+  stop offering New Task, Create Reminder, Invite Caregiver, New Time Block and
+  the per-row edit and delete controls to somebody who cannot use them, so a
+  view-only caregiver reads a page they can act on rather than one that argues
+  with them.
+
+  A care receiver is unaffected: they hold no permission at all, because the
+  column describes what a *caregiver* may do and the data is theirs.
+
 - **No caregiver could reach the phone panel, because nothing ever granted
   `manage`.** The permission column defaults to view, `pair_with` never touched
   it, and no screen — not even the admin panel — could change it. So every

@@ -3,6 +3,12 @@ class TasksController < WebController
   before_action :set_senior
   before_action :authorize_senior_access!
   before_action :set_task, only: [ :show, :edit, :update, :destroy, :complete, :assign, :unassign ]
+
+  # Reading is open to anybody linked; changing is not. The forms are gated too,
+  # but a hidden form is not a closed door — new and edit are listed so a
+  # view-only caregiver is turned away before being shown a form that would be
+  # refused on submit.
+  before_action :require_manage!, only: [ :new, :create, :edit, :update, :destroy, :complete, :assign, :unassign ]
   layout "dashboard"
 
   # GET /dashboard/senior/:senior_id/tasks
@@ -215,6 +221,13 @@ class TasksController < WebController
     # User must be the senior or a caregiver for the senior
     unless current_user == @senior || current_user.seniors.include?(@senior)
       redirect_to dashboard_path, alert: "You don't have access to this care receiver's tasks"
+    end
+  end
+
+  def require_manage!
+    unless current_user.manages?(@senior)
+      redirect_to senior_tasks_path(@senior),
+        alert: "You can see #{@senior.display_name}'s tasks, but not change them."
     end
   end
 

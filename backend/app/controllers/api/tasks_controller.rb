@@ -4,6 +4,24 @@ module Api
     before_action :set_task, only: [ :show, :update, :destroy, :assign, :claim ]
     before_action :authorize_task_access, only: [ :show, :update, :destroy ]
 
+    # The JSON API writes the same tasks the web forms do, so it needs the same
+    # rule — guarding the HTML and leaving this open would make the restriction
+    # decoration, which is the shape of every permission bug on this branch.
+    #
+    # create is the reason this is a before_action rather than a line inside
+    # each method: it has no authorization whatsoever and permits senior_id, so
+    # a signed-in user could write a task for somebody they have never been
+    # linked to. Wider than the view/manage question, closed by the same check.
+    #
+    # None of which is currently reachable: the before_action above names
+    # `authenticate_user!`, which does not exist anywhere — ApplicationController
+    # defines `authenticate!` — so every action here raises NoMethodError before
+    # running. This controller has been dead since it was written in 393f199
+    # (2025-10-20). The guard is here so that reviving it does not also revive
+    # the hole; specs for it wait on the revival, which is not this branch's
+    # business. See the issue linked from that commit's follow-up.
+    before_action :require_manage!, only: [ :create, :update, :destroy, :assign, :claim ]
+
     # GET /api/tasks
     def index
       @tasks = Task.all
@@ -133,6 +151,22 @@ module Api
 
     def set_task
       @task = Task.find(params[:id])
+    end
+
+    # Resolved from the task where there is one, and from the submitted
+    # senior_id on create, which is the only action that names its own.
+    def require_manage!
+      senior = @task&.senior || User.find_by(id: params.dig(:task, :senior_id))
+
+      if senior.nil?
+        render json: { error: "Care receiver not found" }, status: :not_found
+        return
+      end
+
+      return if current_user.manages?(senior)
+
+      render json: { error: "You do not have permission to change this care receiver's tasks" },
+             status: :forbidden
     end
 
     def authorize_task_access

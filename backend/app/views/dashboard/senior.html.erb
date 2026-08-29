@@ -17,12 +17,16 @@
       <p class="mt-1 text-sm text-gray-500">Timezone: <%= @senior.tz %> | Permission: <%= @permission.titleize %></p>
     </div>
     <div class="flex space-x-4">
+      <% if may_change?(@senior) %>
       <%= link_to "Invite Caregiver", invite_caregiver_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <% end %>
       <%= link_to "View Tasks", senior_tasks_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
       <% if FeatureFlag.enabled?(:external_scheduling) %>
         <%= link_to "Scheduling Integrations", senior_scheduling_integrations_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
       <% end %>
+      <% if may_change?(@senior) %>
       <%= link_to "Create Reminder", new_reminder_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+      <% end %>
       <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
     </div>
   </div>
@@ -117,7 +121,9 @@
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     <%= occ.reminder.category.titleize %>
                   </span>
+                  <% if may_change?(@senior) %>
                   <%= link_to "Edit", edit_reminder_dashboard_path(@senior, occ.reminder), class: "text-xs text-blue-600 hover:text-blue-800" %>
+                  <% end %>
                 </div>
               </div>
             </div>
