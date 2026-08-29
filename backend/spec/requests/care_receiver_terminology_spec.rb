@@ -48,10 +48,11 @@ RSpec.describe "Care receiver terminology", type: :request do
     end
 
     # This used to check that the switch destination was labelled rather than
-    # printed raw — a caregiver was offered a "switch to senior". The switch
-    # itself has since been removed, so what is left to hold is that the page
-    # states the role without the stored word appearing anywhere.
-    it "states a caregiver's role without saying senior" do
+    # printed raw: a caregiver was offered a switch to the stored value instead
+    # of to "care receiver". The switch itself has since been removed, so what
+    # is left to hold is that the page states the role without the stored word
+    # reaching the screen.
+    it "states a caregiver's role without leaking the stored value" do
       sign_in(caregiver)
       get "/profile"
 

@@ -80,7 +80,7 @@ RSpec.describe User do
       expect(user.reload.role).to eq("caregiver")
     end
 
-    it "lets a brand-new user pick senior" do
+    it "lets a brand-new user pick the care receiver role" do
       user = User.create!(email: "new2@example.com", tz: "America/New_York")
 
       expect(user.choose_role_once("senior")).to be_truthy
