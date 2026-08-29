@@ -272,23 +272,45 @@ class User < ApplicationRecord
     notify_reminder_categories.include?(category.to_s)
   end
 
-  # Let a user set their own role during onboarding or when switching later. Only
-  # the non-privileged roles are allowed, and an existing admin is never changed
-  # through here.
+  # Let a user set their own role at onboarding — once. Only the non-privileged
+  # roles are allowed, an existing admin is never changed through here, and a
+  # role already chosen is not changed at all.
+  #
+  # Named for the restriction rather than the action. The old name,
+  # assign_self_role, read as a general setter, and a profile button duly called
+  # it to switch somebody back and forth: a caregiver sees the people they care
+  # for, a care receiver sees their own reminders, so pressing it swapped the
+  # whole screen and the only way back was pressing it again. Nothing recorded
+  # that it had happened, so there is no evidence it was ever used, and none
+  # that it was not.
+  #
+  # The refusal lives here rather than only in the view, because a removed
+  # button with a live endpoint behind it is not a removal. Somebody who
+  # genuinely picked wrong asks an admin, who has a screen for it that emails
+  # them about the change — more of a record than this path ever left.
   #
   # The admin guard and the write are one atomic statement — a compare-and-swap
   # that excludes admins in its WHERE — so a concurrent promotion can't slip in
   # between a stale in-memory read and the write and get clobbered. update_all
   # also skips the name-presence-on-update validation a brand-new user can't yet
   # satisfy.
-  def assign_self_role(new_role)
+  #
+  # The problem underneath is untouched: roles are exclusive, so a daughter
+  # managing her mother's reminders cannot also have her own (#122). Switching
+  # was never a fix for that, only a way to trade one for the other.
+  def choose_role_once(new_role)
     new_role = new_role.to_s
     return false unless SELF_ASSIGNABLE_ROLES.include?(new_role)
 
-    # "role IS NULL OR role <> admin" — brand-new users have a NULL role, and a
-    # bare `role <> admin` would exclude them (NULL comparisons are never true).
-    changed = self.class.where(id: id)
-      .where("role IS NULL OR role <> ?", self.class.roles[:admin])
+    # `role: nil` is the whole guard, and it is in the WHERE rather than in Ruby
+    # on purpose. A `return false if role.present?` above would read the same
+    # and race: two requests for one role-less user both pass the check, and the
+    # second overwrites the first — as would a stale instance loaded before an
+    # admin assigned a role.
+    #
+    # It also subsumes the admin exclusion this clause used to spell out. An
+    # admin has a role, so a NULL-only match cannot touch them.
+    changed = self.class.where(id: id, role: nil)
       .update_all(role: self.class.roles.fetch(new_role))
     return false if changed.zero?
 

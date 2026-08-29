@@ -47,16 +47,16 @@ RSpec.describe "Care receiver terminology", type: :request do
       expect(page_text).not_to match(/\bSenior\b/)
     end
 
-    # A caregiver is the one offered a switch *to* the other role, so this is the
-    # only page where the stored value gets printed as a destination. Opening the
-    # profile as a care receiver — which the first version of this spec did —
-    # never exercises it, because their "other" is "caregiver" and reads fine
-    # either way.
-    it "does not offer a caregiver a switch to senior" do
+    # This used to check that the switch destination was labelled rather than
+    # printed raw: a caregiver was offered a switch to the stored value instead
+    # of to "care receiver". The switch itself has since been removed, so what
+    # is left to hold is that the page states the role without the stored word
+    # reaching the screen.
+    it "states a caregiver's role without leaking the stored value" do
       sign_in(caregiver)
       get "/profile"
 
-      expect(page_text).to include("switch to care receiver")
+      expect(page_text).to include("You're set up as a caregiver")
       expect(page_text).not_to match(/\bsenior\b/i)
     end
   end

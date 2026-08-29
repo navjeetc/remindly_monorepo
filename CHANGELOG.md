@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Removed
+- **Switching your own role from the profile.** It offered a one-click move to
+  whichever role you were not, and the two dashboards are not variations of each
+  other: a caregiver sees the people they care for, a care receiver sees their
+  own reminders. Pressing it swapped the whole screen, and the only way back was
+  to press it again. Nothing recorded that it had happened — no audit entry, no
+  email, no analytics — so there is no evidence anyone ever used it, in either
+  direction.
+
+  Choosing a role still works, which is the part that matters: a new user
+  arrives without one and picks at sign-up, rather than waiting on an admin.
+  What is gone is changing a role already chosen. `User#choose_role_once`
+  refuses it rather than the button merely being hidden, because a removed
+  control with a live endpoint behind it is not a removal.
+
+  Anyone who genuinely picked wrong now asks an admin, who has a screen for it
+  that emails the user about the change — more of a record than the self-serve
+  path ever left. The profile states the role and says where to write.
+
+  The problem underneath is untouched and worth naming: roles are exclusive, so
+  a daughter managing her mother's reminders cannot also have her own. Switching
+  was never a fix for that, only a way to trade one for the other.
+
 - **The `/api` namespace, which had never run.** All three controllers under it
   opened with `before_action :authenticate_user!` — a method defined nowhere,
   since `ApplicationController` defines `authenticate!` — so every action raised

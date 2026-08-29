@@ -69,30 +69,57 @@ RSpec.describe User do
     end
   end
 
-  describe "#assign_self_role" do
-    it "lets a brand-new (role-less, name-less) user pick senior or caregiver" do
+  describe "#choose_role_once" do
+    # One user per choice now. The old version picked twice on the same record
+    # as shorthand for "either value is allowed", which stopped being true when
+    # this became a choice rather than a switch.
+    it "lets a brand-new (role-less, name-less) user pick caregiver" do
       user = User.create!(email: "new@example.com", tz: "America/New_York") # role nil, no name
 
-      expect(user.assign_self_role("caregiver")).to be_truthy
+      expect(user.choose_role_once("caregiver")).to be_truthy
       expect(user.reload.role).to eq("caregiver")
+    end
 
-      expect(user.assign_self_role("senior")).to be_truthy
+    it "lets a brand-new user pick the care receiver role" do
+      user = User.create!(email: "new2@example.com", tz: "America/New_York")
+
+      expect(user.choose_role_once("senior")).to be_truthy
+      expect(user.reload.role).to eq("senior")
+    end
+
+    # The guard is in the WHERE, so a stale in-memory instance cannot talk its
+    # way past it. This is the case a Ruby-side check would have missed: the
+    # object still believes it has no role, and the row disagrees.
+    it "refuses even when the instance is stale and thinks it has no role" do
+      user = User.create!(email: "stale@example.com", tz: "America/New_York")
+      stale = User.find(user.id) # loaded while role is still nil
+      user.choose_role_once("senior")
+
+      expect(stale.choose_role_once("caregiver")).to be false
+      expect(user.reload.role).to eq("senior")
+    end
+
+    it "refuses to change a role that is already set" do
+      user = User.create!(email: "settled@example.com", tz: "America/New_York")
+      user.choose_role_once("senior")
+
+      expect(user.choose_role_once("caregiver")).to be false
       expect(user.reload.role).to eq("senior")
     end
 
     it "refuses to self-grant admin or any non-role value" do
       user = User.create!(email: "new@example.com", tz: "America/New_York")
 
-      expect(user.assign_self_role("admin")).to be(false)
-      expect(user.assign_self_role("bogus")).to be(false)
-      expect(user.assign_self_role(nil)).to be(false)
+      expect(user.choose_role_once("admin")).to be(false)
+      expect(user.choose_role_once("bogus")).to be(false)
+      expect(user.choose_role_once(nil)).to be(false)
       expect(user.reload.role).to be_nil
     end
 
     it "will not change an existing admin's role" do
       admin = create(:user, :admin, name: "Boss")
 
-      expect(admin.assign_self_role("caregiver")).to be(false)
+      expect(admin.choose_role_once("caregiver")).to be(false)
       expect(admin.reload.role).to eq("admin")
     end
 
@@ -103,7 +130,7 @@ RSpec.describe User do
       stale = User.find(admin.id)
       stale.role = "caregiver" # pretend this instance predates the promotion
 
-      expect(stale.assign_self_role("senior")).to be(false)
+      expect(stale.choose_role_once("senior")).to be(false)
       expect(admin.reload.role).to eq("admin")
     end
   end
