@@ -145,7 +145,7 @@ class DashboardController < WebController
   # reminders or set them up for someone, instead of waiting on an admin. Also
   # reached from the profile to switch later. The model refuses admin here.
   def select_role
-    if current_user.assign_self_role(params[:role])
+    if current_user.choose_role_once(params[:role])
       redirect_to dashboard_path, notice: "You're all set as a #{current_user.role}."
     else
       redirect_to dashboard_path, alert: "Please choose whether you receive reminders or set them up for someone."

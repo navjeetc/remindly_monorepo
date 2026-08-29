@@ -69,45 +69,45 @@ RSpec.describe User do
     end
   end
 
-  describe "#assign_self_role" do
+  describe "#choose_role_once" do
     # One user per choice now. The old version picked twice on the same record
     # as shorthand for "either value is allowed", which stopped being true when
     # this became a choice rather than a switch.
     it "lets a brand-new (role-less, name-less) user pick caregiver" do
       user = User.create!(email: "new@example.com", tz: "America/New_York") # role nil, no name
 
-      expect(user.assign_self_role("caregiver")).to be_truthy
+      expect(user.choose_role_once("caregiver")).to be_truthy
       expect(user.reload.role).to eq("caregiver")
     end
 
     it "lets a brand-new user pick senior" do
       user = User.create!(email: "new2@example.com", tz: "America/New_York")
 
-      expect(user.assign_self_role("senior")).to be_truthy
+      expect(user.choose_role_once("senior")).to be_truthy
       expect(user.reload.role).to eq("senior")
     end
 
     it "refuses to change a role that is already set" do
       user = User.create!(email: "settled@example.com", tz: "America/New_York")
-      user.assign_self_role("senior")
+      user.choose_role_once("senior")
 
-      expect(user.assign_self_role("caregiver")).to be false
+      expect(user.choose_role_once("caregiver")).to be false
       expect(user.reload.role).to eq("senior")
     end
 
     it "refuses to self-grant admin or any non-role value" do
       user = User.create!(email: "new@example.com", tz: "America/New_York")
 
-      expect(user.assign_self_role("admin")).to be(false)
-      expect(user.assign_self_role("bogus")).to be(false)
-      expect(user.assign_self_role(nil)).to be(false)
+      expect(user.choose_role_once("admin")).to be(false)
+      expect(user.choose_role_once("bogus")).to be(false)
+      expect(user.choose_role_once(nil)).to be(false)
       expect(user.reload.role).to be_nil
     end
 
     it "will not change an existing admin's role" do
       admin = create(:user, :admin, name: "Boss")
 
-      expect(admin.assign_self_role("caregiver")).to be(false)
+      expect(admin.choose_role_once("caregiver")).to be(false)
       expect(admin.reload.role).to eq("admin")
     end
 
@@ -118,7 +118,7 @@ RSpec.describe User do
       stale = User.find(admin.id)
       stale.role = "caregiver" # pretend this instance predates the promotion
 
-      expect(stale.assign_self_role("senior")).to be(false)
+      expect(stale.choose_role_once("senior")).to be(false)
       expect(admin.reload.role).to eq("admin")
     end
   end

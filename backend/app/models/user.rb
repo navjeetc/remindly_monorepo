@@ -272,33 +272,33 @@ class User < ApplicationRecord
     notify_reminder_categories.include?(category.to_s)
   end
 
-  # Let a user set their own role during onboarding or when switching later. Only
-  # the non-privileged roles are allowed, and an existing admin is never changed
-  # through here.
+  # Let a user set their own role at onboarding — once. Only the non-privileged
+  # roles are allowed, an existing admin is never changed through here, and a
+  # role already chosen is not changed at all.
+  #
+  # Named for the restriction rather than the action. The old name,
+  # assign_self_role, read as a general setter, and a profile button duly called
+  # it to switch somebody back and forth: a caregiver sees the people they care
+  # for, a care receiver sees their own reminders, so pressing it swapped the
+  # whole screen and the only way back was pressing it again. Nothing recorded
+  # that it had happened, so there is no evidence it was ever used, and none
+  # that it was not.
+  #
+  # The refusal lives here rather than only in the view, because a removed
+  # button with a live endpoint behind it is not a removal. Somebody who
+  # genuinely picked wrong asks an admin, who has a screen for it that emails
+  # them about the change — more of a record than this path ever left.
   #
   # The admin guard and the write are one atomic statement — a compare-and-swap
   # that excludes admins in its WHERE — so a concurrent promotion can't slip in
   # between a stale in-memory read and the write and get clobbered. update_all
   # also skips the name-presence-on-update validation a brand-new user can't yet
   # satisfy.
-  # Choosing a role, not changing one.
   #
-  # The profile used to offer a switch to whichever role you were not. It went
-  # unused as far as anybody can tell — nothing records a self-serve role change,
-  # so there is no evidence either way — and it was one click from a dashboard
-  # you could only return to by pressing it again: a caregiver sees the people
-  # they care for, a care receiver sees their own reminders, and switching
-  # swaps the whole screen rather than adding to it.
-  #
-  # Refused here rather than only hidden in the view, because a removed button
-  # with a live endpoint behind it is not a removal. Somebody who genuinely
-  # picked wrong now asks an admin, who has a screen for it that emails them
-  # about the change — which is more of a record than this ever left.
-  #
-  # The real problem underneath is that roles are exclusive: a daughter managing
-  # her mother's reminders cannot also have her own. Switching was never a fix
-  # for that, only a way to trade one for the other.
-  def assign_self_role(new_role)
+  # The problem underneath is untouched: roles are exclusive, so a daughter
+  # managing her mother's reminders cannot also have her own (#122). Switching
+  # was never a fix for that, only a way to trade one for the other.
+  def choose_role_once(new_role)
     new_role = new_role.to_s
     return false unless SELF_ASSIGNABLE_ROLES.include?(new_role)
     return false if role.present?
