@@ -70,13 +70,28 @@ RSpec.describe User do
   end
 
   describe "#assign_self_role" do
-    it "lets a brand-new (role-less, name-less) user pick senior or caregiver" do
+    # One user per choice now. The old version picked twice on the same record
+    # as shorthand for "either value is allowed", which stopped being true when
+    # this became a choice rather than a switch.
+    it "lets a brand-new (role-less, name-less) user pick caregiver" do
       user = User.create!(email: "new@example.com", tz: "America/New_York") # role nil, no name
 
       expect(user.assign_self_role("caregiver")).to be_truthy
       expect(user.reload.role).to eq("caregiver")
+    end
+
+    it "lets a brand-new user pick senior" do
+      user = User.create!(email: "new2@example.com", tz: "America/New_York")
 
       expect(user.assign_self_role("senior")).to be_truthy
+      expect(user.reload.role).to eq("senior")
+    end
+
+    it "refuses to change a role that is already set" do
+      user = User.create!(email: "settled@example.com", tz: "America/New_York")
+      user.assign_self_role("senior")
+
+      expect(user.assign_self_role("caregiver")).to be false
       expect(user.reload.role).to eq("senior")
     end
 

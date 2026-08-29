@@ -30,13 +30,29 @@ RSpec.describe "Self-serve role onboarding", type: :request do
     expect(response).to redirect_to(dashboard_path)
   end
 
-  it "lets a user switch their role later" do
+  # Switching used to be offered on the profile and was removed: it was one
+  # click from a dashboard you could only return to by pressing it again, and
+  # nothing recorded that it had happened. Refused in the model rather than only
+  # hidden in the view, because a removed button with a live endpoint behind it
+  # is not a removal.
+  it "does not let a user change a role they have already chosen" do
     sign_in(new_user)
     new_user.update_column(:role, User.roles.fetch(:senior)) # integer-backed enum
 
     expect {
       patch "/select_role", params: { role: "caregiver" }
-    }.to change { new_user.reload.role }.from("senior").to("caregiver")
+    }.not_to change { new_user.reload.role }
+  end
+
+  it "does not offer the switch on the profile either" do
+    sign_in(new_user)
+    new_user.update_column(:role, User.roles.fetch(:senior))
+
+    get "/profile"
+    text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
+
+    expect(text).to include("You're set up as a care receiver")
+    expect(text).not_to include("Switch to")
   end
 
   it "does not let a user self-grant admin" do

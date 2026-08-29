@@ -169,19 +169,15 @@
         <div class="mt-8 border-t border-gray-200 pt-6">
           <h4 class="text-base font-medium text-gray-900 mb-2">Your role</h4>
           <% if current_user.role.present? %>
-            <%# `other` is the stored value and has to stay one — it is what the
-                form submits. Everything the reader sees goes through the label,
-                or a caregiver opening this page is offered a switch to
-                "senior". %>
-            <% other = current_user.role_senior? ? "caregiver" : "senior" %>
-            <% other_label = User::ROLE_LABELS.fetch(other, other.titleize) %>
-            <p class="text-sm text-gray-500 mb-3">
+            <%# Stated, not offered. Switching used to be a button here, one
+                click from a dashboard you could only get back to by pressing it
+                again — see User#assign_self_role for why it went. %>
+            <p class="text-sm text-gray-500">
               You're set up as a <strong><%= current_user.role_label.downcase %></strong>.
-              If that's not right, you can switch to <%= other_label.downcase %>.
+              If that's not right, email
+              <%= link_to "hello@remindly.care", "mailto:hello@remindly.care", class: "text-blue-600 hover:text-blue-800" %>
+              and we'll change it.
             </p>
-            <%= button_to "Switch to #{other_label.downcase}", select_role_path, method: :patch, params: { role: other },
-              form: { data: { turbo_confirm: "Switch your role to #{other_label.downcase}? Your reminders and links stay as they are." } },
-              class: "inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
           <% else %>
             <p class="text-sm text-gray-500 mb-3">Choose whether you receive reminders or set them up for someone.</p>
             <div class="flex flex-wrap gap-3">

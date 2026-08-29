@@ -281,9 +281,27 @@ class User < ApplicationRecord
   # between a stale in-memory read and the write and get clobbered. update_all
   # also skips the name-presence-on-update validation a brand-new user can't yet
   # satisfy.
+  # Choosing a role, not changing one.
+  #
+  # The profile used to offer a switch to whichever role you were not. It went
+  # unused as far as anybody can tell — nothing records a self-serve role change,
+  # so there is no evidence either way — and it was one click from a dashboard
+  # you could only return to by pressing it again: a caregiver sees the people
+  # they care for, a care receiver sees their own reminders, and switching
+  # swaps the whole screen rather than adding to it.
+  #
+  # Refused here rather than only hidden in the view, because a removed button
+  # with a live endpoint behind it is not a removal. Somebody who genuinely
+  # picked wrong now asks an admin, who has a screen for it that emails them
+  # about the change — which is more of a record than this ever left.
+  #
+  # The real problem underneath is that roles are exclusive: a daughter managing
+  # her mother's reminders cannot also have her own. Switching was never a fix
+  # for that, only a way to trade one for the other.
   def assign_self_role(new_role)
     new_role = new_role.to_s
     return false unless SELF_ASSIGNABLE_ROLES.include?(new_role)
+    return false if role.present?
 
     # "role IS NULL OR role <> admin" — brand-new users have a NULL role, and a
     # bare `role <> admin` would exclude them (NULL comparisons are never true).
