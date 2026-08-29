@@ -12,7 +12,12 @@
     translation of "take 2 of the white ones, not the blue" would then be read
     aloud with total confidence to somebody who cannot check it. %>
 <% return if senior.blank? || senior.spoken_language == "en-US" %>
-<p class="mt-1 text-xs text-amber-700">
+<%# Grey, not amber. The health warning directly above it is the only caution
+    on this form; a second amber block beneath it meant nine lines of amber
+    between the title field and the notes, at which point neither reads as
+    urgent. Same hierarchy as the aside under the notes box: amber warns, grey
+    informs. %>
+<p class="mt-1 text-xs text-gray-500">
   <%= senior.display_name %>'s calls are spoken in
   <%= senior.spoken_language_label.sub(/\s*\(.*\)/, "") %>, and the title is read
   out exactly as you type it — so write it in that language too.

@@ -1,5 +1,5 @@
 <div class="space-y-6">
-  <div class="flex justify-between items-center">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <h2 class="text-3xl font-bold text-gray-900">Notifications</h2>
     <% if @unread_count > 0 %>
       <%= button_to "Mark All Read", mark_all_read_notifications_path, method: :post,

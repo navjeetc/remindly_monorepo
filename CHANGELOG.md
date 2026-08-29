@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The largest text size broke the layout it was built for.** On a phone at
+  150%, the caregiver dashboard put its buttons on top of the heading, the
+  action button on each care receiver's row rendered as "Vie…", and the care
+  receiver page's subtitle wrapped into the buttons beside it. Every one of
+  those rows was a flex that could not wrap, which is invisible at desktop
+  width and unmissable on a phone — where the people who need the largest text
+  actually are.
+
+  Seventeen page headers stack now instead of competing for one line, button
+  groups wrap, and the caregiver row can shrink. The fix is `flex-col` on narrow
+  screens with `sm:flex-row` above, and `min-w-0` where a flex child was
+  refusing to shrink below its content and pushing its sibling off the edge.
+
+- **Two amber blocks stacked on the reminder form.** For a care receiver whose
+  calls are not in English, the health warning and the language note sat one
+  above the other — nine lines of amber between the title field and the notes,
+  at which point neither reads as a warning. The language note is information
+  rather than a caution, so it is grey now, matching the note under the notes
+  box: amber warns, grey informs.
+
+- **Two screens printed the raw permission value.** The care receiver's own
+  dashboard has said "You can make changes" since the permission control
+  shipped, while the caregiver's dashboard showed a "Manage" badge and the care
+  receiver's page read "Permission: Manage" for the same fact.
+
 ### Added
 - **A reminder can be marked time-critical, and caregivers hear on the first
   unanswered call rather than an hour later.** Asked for by the caregiver who
