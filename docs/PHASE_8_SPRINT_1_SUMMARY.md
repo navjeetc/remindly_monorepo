@@ -1,5 +1,14 @@
 # Phase 8 Sprint 1: Core Task Management - COMPLETE ✅
 
+> **Historical — the `/api` namespace described below no longer exists.**
+> It was removed in #120: all three `Api::` controllers opened with a
+> `before_action` naming a method that was never defined, so every endpoint
+> raised before running and none was ever called by a client, a test, or
+> production. The task and availability features live in the Rails UI —
+> `TasksController`, `TimeBlocksController` and `CaregiverAvailabilitiesController`
+> under `app/controllers/` — and the request shapes here do not describe anything
+> that still answers. Kept as a record of what was built, not as a guide.
+
 ## Overview
 Sprint 1 of Phase 8 (Task Scheduling) has been successfully completed. This sprint focused on building the core database schema, models, API endpoints, and tests for the task management system.
 

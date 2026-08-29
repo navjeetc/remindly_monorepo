@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **The `/api` namespace, which had never run.** All three controllers under it
+  opened with `before_action :authenticate_user!` — a method defined nowhere,
+  since `ApplicationController` defines `authenticate!` — so every action raised
+  `NoMethodError` before reaching any code. `/api/tasks`,
+  `/api/tasks/:task_id/comments` and `/api/availability` would have answered any
+  request with a 500 from the day they were added in October 2025 — though none
+  ever arrived, which is the next paragraph and the reason nobody noticed.
+
+  Nothing called them: no JavaScript, no Swift, no fixture, and production
+  logged no request to any of them. Nothing tested them either, which is how a
+  typo fatal to every request in a namespace went ten months unnoticed.
+
+  They date from the client-server era, before the standalone voice client was
+  retired in favour of `/voice_reminders` inside the Rails UI. That retirement
+  gave the reason to delete rather than repair: it recorded a day of voice fixes
+  landing in the copy nobody used and needing to be ported afterwards. A dead
+  endpoint that looks live is where somebody reasonably adds their next task
+  endpoint, and finds it does nothing.
+
 ### Added
 - **A care receiver decides whether a caregiver may change things, or only
   look.** Removing somebody entirely was already offered on their own dashboard;
