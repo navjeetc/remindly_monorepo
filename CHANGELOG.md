@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A care receiver decides whether a caregiver may change things, or only
+  look.** Removing somebody entirely was already offered on their own dashboard;
+  limiting what one can do — the smaller version of the same decision — was not,
+  so the only way to hold a view caregiver was a console. The choice now sits
+  beside Remove Access, where the larger one always has.
+
+  With the care receiver rather than an admin, for the same reason as everything
+  else here: only they can agree to phone calls, only they can generate a
+  pairing token, and a family sorting out who does what should not have to email
+  the developer. A caregiver cannot promote themselves or demote a colleague —
+  the action is scoped to the links where the current user is the person being
+  cared for.
+
+  Dropping somebody to view leaves phone reminders already agreed alone. The
+  calls were consented to by the care receiver, and ending them because their
+  helper's permission changed would punish the wrong person.
+
 ### Fixed
 - **"View" now means view.** A caregiver holding the view permission could
   create, edit and delete tasks, reminders and unavailability exactly like

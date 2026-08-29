@@ -481,6 +481,47 @@ class DashboardController < WebController
   # link only if you are party to it. The senior dashboard's "Remove Access" button
   # pointed here already, but the action only checked caregiver_links, so a senior
   # clicking it got a 404 and the caregiver kept access.
+  # Whether a caregiver may change things, or only watch.
+  #
+  # The care receiver's decision, taken on their own dashboard beside Remove
+  # Access — which is the larger version of the same choice, and has always been
+  # theirs. It follows the rest of the product: only they can agree to phone
+  # calls, only they can generate a pairing token, and only they decide who does
+  # what with their care.
+  #
+  # Scoped to senior_links, so this can only ever reach a link where the current
+  # user is the person being cared for. A caregiver cannot promote themselves,
+  # and cannot demote a colleague.
+  def update_caregiver_permission
+    link = current_user.senior_links.find_by(id: params[:id])
+
+    unless link&.caregiver
+      redirect_to dashboard_path, alert: "That caregiver could not be found."
+      return
+    end
+
+    requested = params[:permission].to_s
+    unless CaregiverLink.permissions.key?(requested)
+      redirect_to dashboard_path, alert: "That is not a permission we recognise."
+      return
+    end
+
+    link.update!(permission: requested)
+
+    # Deliberately silent about phone reminders. Dropping somebody to view does
+    # not revoke consent or wipe the number: the calls were agreed to by the
+    # person reading this, and stopping them because their helper's permission
+    # changed would punish the wrong person. Pressing 9 on a call is still how
+    # they end.
+    notice = if link.permission_manage?
+      "#{link.caregiver.friendly_name} can now make changes for you."
+    else
+      "#{link.caregiver.friendly_name} can see your reminders and tasks, but not change them."
+    end
+
+    redirect_to dashboard_path, notice: notice
+  end
+
   def unlink
     link = current_user.caregiver_links.find_by(id: params[:id]) ||
            current_user.senior_links.find_by(id: params[:id])
