@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   That gap was fifty minutes. Calls give up after three attempts five minutes
   apart, and the missed sweep waits a full hour after the due time before
   telling anybody; nothing filled the middle. A critical reminder now alerts
-  every linked caregiver about a minute after the first ring.
+  every linked caregiver about a minute after a call goes unanswered — normally
+  the first, though the alert fires on any of the three so a lost webhook does
+  not mean silence.
 
   It says nobody has answered *yet*, not that the dose was missed — two more
   calls are still coming, and a caregiver acting on it may still catch the dose

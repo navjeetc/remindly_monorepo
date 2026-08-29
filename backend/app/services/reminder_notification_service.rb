@@ -171,9 +171,10 @@ class ReminderNotificationService
   def self.title(senior, reminder, kind)
     case kind
     when :acknowledged then "#{senior.display_name} completed: #{reminder.title}"
-    # Not "missed" — two more calls are still coming, and a dashboard alert
-    # saying missed while the phone is about to ring again would be wrong for
-    # the ten minutes it matters most.
+    # Not "missed" — more calls usually follow, and a dashboard alert saying
+    # missed while the phone is about to ring again would be wrong for the ten
+    # minutes it matters most. The message beneath says how many are left, and
+    # handles none.
     when :unanswered   then "#{senior.display_name} hasn't answered: #{reminder.title}"
     else                    "#{senior.display_name} missed: #{reminder.title}"
     end
