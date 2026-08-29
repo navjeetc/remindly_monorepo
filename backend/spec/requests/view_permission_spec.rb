@@ -69,6 +69,28 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
           params: { task: { title: "Cardiologist", task_type: "appointment", status: "pending", priority: "medium" } }
       }.to change { Task.count }.by(1)
     end
+
+    # complete, assign and unassign are writes that do not look like writes —
+    # no REST verb names them — which is exactly why they are worth pinning.
+    it "may not be marked complete" do
+      task = Task.create!(senior: senior, created_by: manager, title: "Pills", status: :pending)
+      sign_in(viewer)
+
+      post "/seniors/#{senior.id}/tasks/#{task.id}/complete"
+
+      expect(response).to redirect_to(senior_tasks_path(senior))
+      expect(task.reload.status).to eq("pending")
+    end
+
+    it "may not be assigned to somebody" do
+      task = Task.create!(senior: senior, created_by: manager, title: "Pills", status: :pending)
+      sign_in(viewer)
+
+      post "/seniors/#{senior.id}/tasks/#{task.id}/assign", params: { assigned_to_id: manager.id }
+
+      expect(response).to redirect_to(senior_tasks_path(senior))
+      expect(task.reload.assigned_to).to be_nil
+    end
   end
 
   describe "reminders" do
@@ -91,6 +113,22 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
         post "/dashboard/senior/#{senior.id}/reminder",
           params: { reminder: { title: "Morning pills", rrule: "FREQ=DAILY", category: "medication" } }
       }.to change { Reminder.count }.by(1)
+    end
+
+    it "refuses the new form, not merely the submit" do
+      sign_in(viewer)
+      get "/dashboard/senior/#{senior.id}/reminder/new"
+
+      expect(response).to redirect_to(senior_dashboard_path(senior))
+    end
+
+    it "refuses the edit form too" do
+      reminder = Reminder.create!(user: senior, title: "Pills", rrule: "FREQ=DAILY", tz: senior.tz)
+      sign_in(viewer)
+
+      get "/dashboard/senior/#{senior.id}/reminder/#{reminder.id}/edit"
+
+      expect(response).to redirect_to(senior_dashboard_path(senior))
     end
   end
 
