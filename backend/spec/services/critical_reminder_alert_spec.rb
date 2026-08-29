@@ -85,6 +85,61 @@ RSpec.describe "Alerting on a critical reminder nobody answered" do
   # templates. Checked here because the first manual render read as empty — the
   # body of a multipart mail is the container, not the parts, and a spec written
   # the same way would have passed against templates that did not render at all.
+  # The bug this file did not catch on the first pass. The alert lived only in
+  # handle_gather_ended, which runs after somebody answered and a gather
+  # started, so it covered "answered and pressed nothing" and missed "the phone
+  # rang out" — the more common case, and the one the flag exists for.
+  describe "a call nobody picked up" do
+    it "alerts from the hangup path, not only after an answered call" do
+      occurrence = occurrence_for(critical: true)
+      call = TelnyxCall.create!(occurrence: occurrence, user: senior, purpose: "reminder",
+                                to_number: "+15551234567", status: "initiated",
+                                outcome: "pending", attempt_number: 1,
+                                call_day: Date.current, call_tz: senior.tz)
+
+      expect {
+        described_class = TelnyxWebhooksController.new
+        described_class.send(:handle_hangup, call)
+      }.to change { Notification.where(notification_type: "reminder_unanswered").count }.by(1)
+
+      expect(call.reload.outcome).to eq("no_response")
+    end
+
+    it "does not alert when the call was answered and acknowledged" do
+      occurrence = occurrence_for(critical: true)
+      call = TelnyxCall.create!(occurrence: occurrence, user: senior, purpose: "reminder",
+                                to_number: "+15551234567", status: "gathering",
+                                outcome: "taken", attempt_number: 1,
+                                call_day: Date.current, call_tz: senior.tz)
+
+      expect {
+        TelnyxWebhooksController.new.send(:handle_hangup, call)
+      }.not_to change { Notification.count }
+    end
+  end
+
+  # Mirrors the acknowledged and missed paths: a hard-bounced address gets the
+  # in-app alert and no mail job.
+  describe "a caregiver whose email has bounced" do
+    it "still gets the in-app notification" do
+      caregiver.update!(email_undeliverable_at: Time.current)
+      occurrence = occurrence_for(critical: true)
+
+      expect {
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+      }.to change { Notification.where(user: caregiver).count }.by(1)
+    end
+
+    it "is not sent mail" do
+      caregiver.update!(email_undeliverable_at: Time.current)
+      occurrence = occurrence_for(critical: true)
+
+      expect {
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+      }.not_to have_enqueued_mail(ReminderActivityMailer, :unanswered)
+    end
+  end
+
   describe "the email itself" do
     let(:occurrence) { occurrence_for(critical: true) }
 

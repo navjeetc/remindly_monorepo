@@ -26,7 +26,11 @@ class ReminderNotificationService
     notify(occurrence, kind: :missed)
   end
 
-  # A critical reminder's first call went unanswered.
+  # A call for a critical reminder went unanswered.
+  #
+  # Fired on each unanswered attempt rather than only the first, and deduped
+  # by the unique index. Doing it once would mean a lost or redelivered
+  # webhook resulting in silence for the one reminder that cannot afford it.
   #
   # Every linked caregiver hears, not only those who opted into the reminder's
   # category. The category preference exists so a caregiver is not woken by
@@ -45,11 +49,31 @@ class ReminderNotificationService
       # cannot mail the same caregiver twice about the same occurrence.
       next unless create_notification(caregiver, senior, reminder, occurrence, :unanswered)
 
-      ReminderActivityMailer
-        .with(caregiver: caregiver, senior: senior, reminder: reminder,
-              occurrence: occurrence, attempts_remaining: attempts_remaining)
-        .unanswered
-        .deliver_later
+      # Same rule as the acknowledged and missed paths: an address Postmark has
+      # already refused gets the in-app alert and no job. Three attempts per
+      # occurrence times every critical dose would otherwise be a lot of
+      # discarded jobs for a mailbox that is not coming back.
+      next unless caregiver.email_deliverable?
+
+      begin
+        ReminderActivityMailer
+          .with(caregiver: caregiver, senior: senior, reminder: reminder,
+                occurrence: occurrence, attempts_remaining: attempts_remaining)
+          .unanswered
+          .deliver_later
+      rescue StandardError => e
+        # The notification row is the dedup marker, and it is already written.
+        # If enqueueing fails the second and third attempts would find that row
+        # and skip silently, so the caregiver would never be mailed even once
+        # the queue recovers. Dropping the marker lets the next attempt — five
+        # minutes away — try again.
+        Rails.logger.error(
+          "Critical alert enqueue failed for caregiver #{caregiver.id}, occurrence #{occurrence.id}: " \
+          "#{e.class}: #{e.message}"
+        )
+        Notification.where(user: caregiver, occurrence_id: occurrence.id,
+                           notification_type: Notification::TYPES[:reminder_unanswered]).delete_all
+      end
     end
   end
 
@@ -152,8 +176,14 @@ class ReminderNotificationService
     # Formatting the raw timestamp would report a 9:00 AM dose as 1:00 PM for an
     # Eastern user, since the app leaves Time.zone at UTC.
     when_due = occurrence.scheduled_at&.in_time_zone(reminder.tz)&.strftime("%A, %B %d at %I:%M %p")
-    if kind == :acknowledged
+    case kind
+    when :acknowledged
       "#{reminder.title} was marked done#{when_due ? " (due #{when_due})" : ''}."
+    when :unanswered
+      # Not "was not completed": the title says nobody has answered yet, and a
+      # body underneath it announcing the dose was not completed would say the
+      # opposite of the alert it belongs to, while two calls are still coming.
+      "#{reminder.title}: no answer yet#{when_due ? " (due #{when_due})" : ''}. More calls are on the way."
     else
       "#{reminder.title} was not completed#{when_due ? " (due #{when_due})" : ''}."
     end

@@ -10,7 +10,7 @@ class Notification < ApplicationRecord
     task_assigned: "task_assigned",
     reminder_acknowledged: "reminder_acknowledged",
     reminder_missed: "reminder_missed",
-    # A critical reminder's first call went unanswered. Distinct from
+    # A call for a critical reminder went unanswered. Distinct from
     # reminder_missed on purpose: two more calls are still coming, so this says
     # "she has not picked up yet", not "the dose was missed". Sharing the type
     # would also let the unique index swallow the later missed alert, which is

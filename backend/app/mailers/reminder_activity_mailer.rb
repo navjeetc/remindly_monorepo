@@ -65,7 +65,7 @@ class ReminderActivityMailer < ApplicationMailer
     mail(to: @caregiver.email, subject: subject.squish)
   end
 
-  # A critical reminder's first call went unanswered.
+  # A call for a critical reminder went unanswered.
   #
   # Sent while two more calls are still to come, so it says nobody has picked up
   # yet — not that the dose was missed. The distinction is the whole point: this

@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The calls themselves are unchanged — still three, still five minutes apart.
   What changed is when the people who can do something about it find out.
 
+  A caregiver whose address has already hard-bounced gets the in-app alert and
+  no mail job, matching the completed and missed paths.
+
 ### Removed
 - **Switching your own role from the profile.** It offered a one-click move to
   whichever role you were not, and the two dashboards are not variations of each

@@ -180,9 +180,18 @@ class TelnyxWebhooksController < ApplicationController
   # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
     attributes = { completed_at: call.completed_at || Time.current }
-    attributes[:outcome] = "no_response" if call.outcome == "pending"
+    unanswered = call.outcome == "pending"
+    attributes[:outcome] = "no_response" if unanswered
 
     call.update!(attributes)
+
+    # This is where a call nobody picked up ends, and it is the case the
+    # critical flag exists for. The alert originally lived only in
+    # handle_gather_ended, which runs *after* somebody answered and a gather
+    # started — so it covered "answered and pressed nothing" and missed "the
+    # phone rang out", which is the more common of the two and the more
+    # worrying.
+    notify_unanswered_if_critical(call) if unanswered
   end
 
   # Deliberately no rescue: a failure here must propagate so `receive` answers
@@ -362,7 +371,13 @@ class TelnyxWebhooksController < ApplicationController
     # Never let an alert failure take down the webhook. Telnyx retries a failed
     # delivery, and a retry here would re-run the acknowledgement handling above
     # for a call that has already been recorded.
-    Rails.logger.error "Critical unanswered alert failed for call #{call.id}: #{e.message}"
+    # Class and backtrace, not just the message: this path deliberately swallows
+    # the error so a failed alert cannot make the webhook non-2xx, and a bare
+    # message leaves nothing to diagnose it with.
+    Rails.logger.error(
+      "Critical unanswered alert failed for call #{call.id}: #{e.class}: #{e.message}\n" \
+      "#{Array(e.backtrace).first(5).join("\n")}"
+    )
   end
 
   def hang_up_unless_already_gone(call, payload, event_id)
