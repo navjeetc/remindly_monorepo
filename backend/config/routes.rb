@@ -196,7 +196,10 @@ Rails.application.routes.draw do
     post "/dev/trigger_coverage_check", to: "dev#trigger_coverage_check", as: :trigger_coverage_check_dev
   end
 
-  # API routes
+  # There is no /api namespace. One existed from the client-server era and was
+  # removed in #120 — every controller in it raised before running, and nothing
+  # ever called it. The macOS client talks to the routes below and to
+  # /reminders and /acknowledgements, not to a versioned API.
 
   # Version endpoint
   get "version", to: "application#version"

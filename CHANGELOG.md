@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The `/api` namespace, which had never run.** All three controllers under it
   opened with `before_action :authenticate_user!` — a method defined nowhere,
   since `ApplicationController` defines `authenticate!` — so every action raised
-  `NoMethodError` before reaching any code. `/api/tasks`, `/api/tasks/:id/
-  comments` and `/api/availability` had returned 500 for every request since
-  they were added in October 2025.
+  `NoMethodError` before reaching any code. `/api/tasks`,
+  `/api/tasks/:task_id/comments` and `/api/availability` had returned 500 for
+  every request since they were added in October 2025.
 
   Nothing called them: no JavaScript, no Swift, no fixture, and production
   logged no request to any of them. Nothing tested them either, which is how a
