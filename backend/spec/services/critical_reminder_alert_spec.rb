@@ -97,9 +97,10 @@ RSpec.describe "Alerting on a critical reminder nobody answered" do
                                 outcome: "pending", attempt_number: 1,
                                 call_day: Date.current, call_tz: senior.tz)
 
+      controller = TelnyxWebhooksController.new
+
       expect {
-        described_class = TelnyxWebhooksController.new
-        described_class.send(:handle_hangup, call)
+        controller.send(:handle_hangup, call)
       }.to change { Notification.where(notification_type: "reminder_unanswered").count }.by(1)
 
       expect(call.reload.outcome).to eq("no_response")
@@ -115,6 +116,30 @@ RSpec.describe "Alerting on a critical reminder nobody answered" do
       expect {
         TelnyxWebhooksController.new.send(:handle_hangup, call)
       }.not_to change { Notification.count }
+    end
+  end
+
+  # The guarantee the notification row exists for: it is written first precisely
+  # so the alert does not depend on mail working. An earlier version of the
+  # rescue deleted it to allow a re-enqueue, which meant a queue still down on
+  # the last attempt left the caregiver with nothing at all.
+  describe "when the mail queue is broken" do
+    it "keeps the in-app alert" do
+      allow(ReminderActivityMailer).to receive(:with).and_raise(StandardError, "queue down")
+      occurrence = occurrence_for(critical: true)
+
+      expect {
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+      }.to change { Notification.where(user: caregiver, notification_type: "reminder_unanswered").count }.by(1)
+    end
+
+    it "does not take the webhook down with it" do
+      allow(ReminderActivityMailer).to receive(:with).and_raise(StandardError, "queue down")
+      occurrence = occurrence_for(critical: true)
+
+      expect {
+        ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+      }.not_to raise_error
     end
   end
 

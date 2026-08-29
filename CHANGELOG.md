@@ -34,7 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   What changed is when the people who can do something about it find out.
 
   A caregiver whose address has already hard-bounced gets the in-app alert and
-  no mail job, matching the completed and missed paths.
+  no mail job, matching the completed and missed paths. The in-app alert is
+  unconditional in the same way: it is written before the mail is enqueued, so
+  a broken queue costs the email and not the alert.
 
 ### Removed
 - **Switching your own role from the profile.** It offered a one-click move to

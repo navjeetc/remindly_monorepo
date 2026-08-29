@@ -62,17 +62,19 @@ class ReminderNotificationService
           .unanswered
           .deliver_later
       rescue StandardError => e
-        # The notification row is the dedup marker, and it is already written.
-        # If enqueueing fails the second and third attempts would find that row
-        # and skip silently, so the caregiver would never be mailed even once
-        # the queue recovers. Dropping the marker lets the next attempt — five
-        # minutes away — try again.
+        # The row stays. An earlier version deleted it so a later attempt could
+        # re-enqueue, which is worse: if the queue is still down on the third
+        # attempt — or the third is the one that fails — the caregiver ends up
+        # with no email *and* no in-app alert, when the whole point of writing
+        # the notification first is that it does not depend on mail working.
+        #
+        # So the in-app alert survives a broken queue, and the email is what is
+        # lost. Retrying the mail would need a marker of its own rather than
+        # borrowing the one that guarantees the alert.
         Rails.logger.error(
-          "Critical alert enqueue failed for caregiver #{caregiver.id}, occurrence #{occurrence.id}: " \
-          "#{e.class}: #{e.message}"
+          "Critical alert email enqueue failed for caregiver #{caregiver.id}, " \
+          "occurrence #{occurrence.id} (in-app alert kept): #{e.class}: #{e.message}"
         )
-        Notification.where(user: caregiver, occurrence_id: occurrence.id,
-                           notification_type: Notification::TYPES[:reminder_unanswered]).delete_all
       end
     end
   end
