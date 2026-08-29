@@ -15,6 +15,16 @@ module ApplicationHelper
   #
   # @param path [String] the link target, compared against the current request
   # @return [String] class attribute for a top navigation link
+  # Whether to offer a control that writes for this care receiver.
+  #
+  # The controllers refuse these actions regardless — that is the boundary, and
+  # a hidden button has never been one. This is the other half: not offering
+  # something the app is about to refuse, so a view-only caregiver reads a page
+  # they can use rather than one that argues with them.
+  def may_change?(senior)
+    senior.present? && current_user&.manages?(senior)
+  end
+
   def nav_link_class(path)
     "#{nav_section_active?(path) ? NAV_LINK_ACTIVE : NAV_LINK_INACTIVE} #{NAV_LINK_BASE}"
   end

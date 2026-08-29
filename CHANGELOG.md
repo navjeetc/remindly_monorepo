@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writes tasks; that feature is switched off, but a flag decides whether a door
   exists rather than who may walk through it.
 
+  Checked in two places, doing two jobs. The controllers refuse regardless —
+  that is the boundary, and a hidden button has never been one. The pages also
+  stop offering New Task, Create Reminder, Invite Caregiver, New Time Block and
+  the per-row edit and delete controls to somebody who cannot use them, so a
+  view-only caregiver reads a page they can act on rather than one that argues
+  with them.
+
   A care receiver is unaffected: they hold no permission at all, because the
   column describes what a *caregiver* may do and the data is theirs.
 

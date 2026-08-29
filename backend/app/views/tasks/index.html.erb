@@ -7,7 +7,9 @@
     </div>
     <div class="flex space-x-4">
       <%= link_to "🚫 Blocked Times", senior_time_blocks_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <% if may_change?(@senior) %>
       <%= link_to "New Task", new_senior_task_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+      <% end %>
       <%= link_to "← Back to Dashboard", senior_dashboard_path(@senior), class: "text-blue-600 hover:text-blue-800" %>
     </div>
   </div>
@@ -268,7 +270,9 @@
       <h3 class="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
       <p class="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
       <div class="mt-6">
+        <% if may_change?(@senior) %>
         <%= link_to "New Task", new_senior_task_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        <% end %>
       </div>
     </div>
   <% end %>

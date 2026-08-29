@@ -187,6 +187,47 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
     end
   end
 
+  # Two layers, doing different jobs. The controller is the boundary and refuses
+  # regardless — a hidden button has never been one, which is what every
+  # permission bug in this codebase has demonstrated. The UI's job is not to
+  # offer something the app is about to refuse.
+  describe "what the pages offer" do
+    def page_text
+      doc = Nokogiri::HTML(response.body)
+      doc.css("script, style").each(&:remove)
+      doc.text.gsub(/\s+/, " ")
+    end
+
+    it "does not offer a view-only caregiver a New Task button" do
+      sign_in(viewer)
+      get "/seniors/#{senior.id}/tasks"
+
+      expect(page_text).not_to include("New Task")
+    end
+
+    it "still offers it to a caregiver who manages" do
+      sign_in(manager)
+      get "/seniors/#{senior.id}/tasks"
+
+      expect(page_text).to include("New Task")
+    end
+
+    it "does not offer Create Reminder or Invite Caregiver" do
+      sign_in(viewer)
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(page_text).not_to include("Create Reminder")
+      expect(page_text).not_to include("Invite Caregiver")
+    end
+
+    it "does not offer a New Time Block button" do
+      sign_in(viewer)
+      get "/seniors/#{senior.id}/time_blocks"
+
+      expect(page_text).not_to include("New Time Block")
+    end
+  end
+
   describe "the care receiver themselves" do
     # They hold no permission at all — the column describes what a caregiver may
     # do, and the data is theirs.
