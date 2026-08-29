@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A care receiver is unaffected: they hold no permission at all, because the
   column describes what a *caregiver* may do and the data is theirs.
 
+- **No caregiver could reach the phone panel, because nothing ever granted
   `manage`.** The permission column defaults to view, `pair_with` never touched
   it, and no screen — not even the admin panel — could change it. So every
   caregiver who paired the documented way was permanently unable to save a phone

@@ -115,9 +115,22 @@ class SchedulingIntegrationsController < WebController
     @senior = User.find_by(id: params[:senior_id])
   end
 
+  # Fails closed. An unresolvable senior_id is not permission to continue — and
+  # create builds an integration from @senior, so waving a nil through would
+  # have written one with no care receiver attached rather than refusing.
+  #
+  # authorize_senior_access! above returns early on the same nil, which is where
+  # this guard first copied the shape from. Its remaining reach is the index
+  # action, which only reads.
   def require_manage!
     senior = @senior || @integration&.senior
-    return if senior.nil? || current_user.manages?(senior)
+
+    if senior.nil?
+      redirect_to dashboard_path, alert: "We could not find that care receiver."
+      return
+    end
+
+    return if current_user.manages?(senior)
 
     redirect_to dashboard_path,
       alert: "You can see #{senior.display_name}'s care, but not change how it is scheduled."

@@ -156,6 +156,37 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
     end
   end
 
+  # The scheduling feature is switched off, so these run with it forced on: the
+  # flag decides whether the door exists, not who may walk through it, and a
+  # feature enabled months from now should not restore write access.
+  describe "connected calendars" do
+    before do
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:external_scheduling).and_return(true)
+    end
+
+    it "may not be connected by a view-only caregiver" do
+      sign_in(viewer)
+      get "/seniors/#{senior.id}/scheduling_integrations/new"
+
+      expect(response).to redirect_to(dashboard_path)
+    end
+
+    # An unresolvable senior is not permission to continue: create builds the
+    # integration from @senior, so failing open would have written one with no
+    # care receiver rather than refusing.
+    it "refuses when the care receiver cannot be found, rather than continuing" do
+      sign_in(manager)
+
+      expect {
+        post "/seniors/999999/scheduling_integrations",
+          params: { scheduling_integration: { provider: "acuity" } }
+      }.not_to change { SchedulingIntegration.count }
+
+      expect(response).to redirect_to(dashboard_path)
+    end
+  end
+
   describe "the care receiver themselves" do
     # They hold no permission at all — the column describes what a caregiver may
     # do, and the data is theirs.
