@@ -226,6 +226,24 @@ RSpec.describe "What a view-only caregiver may do", type: :request do
 
       expect(page_text).not_to include("New Time Block")
     end
+
+    # Hiding the button while the copy beside it still says "get started" leaves
+    # the same fault one layer down: a page telling somebody to do a thing it
+    # will not let them do.
+    it "does not tell a view-only caregiver to get started" do
+      sign_in(viewer)
+      get "/seniors/#{senior.id}/tasks"
+
+      expect(page_text).not_to include("Get started by creating")
+      expect(page_text).to include("Nothing has been set up yet")
+    end
+
+    it "still says it to a caregiver who manages" do
+      sign_in(manager)
+      get "/seniors/#{senior.id}/tasks"
+
+      expect(page_text).to include("Get started by creating a new task")
+    end
   end
 
   describe "the care receiver themselves" do

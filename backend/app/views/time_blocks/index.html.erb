@@ -67,7 +67,7 @@
       <span class="text-6xl">🚫</span>
       <h3 class="mt-2 text-sm font-medium text-gray-900">No blocked times</h3>
       <p class="mt-1 text-sm text-gray-500">
-        Get started by creating a new time block.
+        <%= may_change?(@senior) ? "Get started by creating a new time block." : "None have been set up yet." %>
       </p>
       <div class="mt-6">
         <% if may_change?(@senior) %>

@@ -21,8 +21,16 @@ module ApplicationHelper
   # a hidden button has never been one. This is the other half: not offering
   # something the app is about to refuse, so a view-only caregiver reads a page
   # they can use rather than one that argues with them.
+  # Memoized per care receiver. Rails' query cache already collapses the repeats
+  # within a request — five calls measured as one query and four cache hits —
+  # so this is not the N+1 it looks like. It is still worth keeping: the senior
+  # dashboard asks once per reminder row, and a cache lookup per row to answer a
+  # question whose answer cannot change mid-page is work for nothing.
   def may_change?(senior)
-    senior.present? && current_user&.manages?(senior)
+    return false if senior.blank? || current_user.nil?
+
+    @may_change ||= {}
+    @may_change.fetch(senior.id) { @may_change[senior.id] = current_user.manages?(senior) }
   end
 
   def nav_link_class(path)
