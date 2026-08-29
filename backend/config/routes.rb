@@ -197,17 +197,6 @@ Rails.application.routes.draw do
   end
 
   # API routes
-  namespace :api do
-    resources :tasks do
-      member do
-        post :assign
-        post :claim
-      end
-      resources :comments, controller: "task_comments", only: [ :index, :create, :destroy ]
-    end
-
-    resources :availability, controller: "caregiver_availabilities", only: [ :index, :create, :update, :destroy ]
-  end
 
   # Version endpoint
   get "version", to: "application#version"
