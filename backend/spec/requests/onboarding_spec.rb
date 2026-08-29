@@ -44,6 +44,28 @@ RSpec.describe "Self-serve role onboarding", type: :request do
     }.not_to change { new_user.reload.role }
   end
 
+  # The failure branch used to tell somebody who already had a role to "choose
+  # whether you receive reminders or set them up for someone", which is a prompt
+  # to do the thing the endpoint had just refused.
+  it "tells a settled user their role rather than asking them to pick again" do
+    sign_in(new_user)
+    new_user.update_column(:role, User.roles.fetch(:senior))
+
+    patch "/select_role", params: { role: "caregiver" }
+
+    expect(flash[:alert]).to include("already set up as a care receiver")
+    expect(flash[:alert]).not_to include("Please choose")
+  end
+
+  it "names the role the way the rest of the app does" do
+    sign_in(new_user)
+
+    patch "/select_role", params: { role: "senior" }
+
+    expect(flash[:notice]).to include("care receiver")
+    expect(flash[:notice]).not_to match(/\bsenior\b/i)
+  end
+
   it "does not offer the switch on the profile either" do
     sign_in(new_user)
     new_user.update_column(:role, User.roles.fetch(:senior))

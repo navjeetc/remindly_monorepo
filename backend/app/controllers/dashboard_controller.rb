@@ -142,11 +142,20 @@ class DashboardController < WebController
   end
 
   # Self-serve onboarding: a user with no role yet picks whether they receive
-  # reminders or set them up for someone, instead of waiting on an admin. Also
-  # reached from the profile to switch later. The model refuses admin here.
+  # reminders or set them up for someone, instead of waiting on an admin. The
+  # model refuses admin here, and refuses a role that is already set.
   def select_role
+    # Read before the call: a successful choice is the only thing that changes
+    # it, and the failure branch needs to know which case it is in.
+    had_role = current_user.role.present?
+
     if current_user.choose_role_once(params[:role])
-      redirect_to dashboard_path, notice: "You're all set as a #{current_user.role}."
+      redirect_to dashboard_path, notice: "You're all set as a #{current_user.role_label.downcase}."
+    elsif had_role
+      # Not a prompt to choose again — they already have one, and this endpoint
+      # will not change it. Telling them to pick would send them round a loop.
+      redirect_to dashboard_path,
+        alert: "You're already set up as a #{current_user.role_label.downcase}. Email hello@remindly.care if that needs changing."
     else
       redirect_to dashboard_path, alert: "Please choose whether you receive reminders or set them up for someone."
     end

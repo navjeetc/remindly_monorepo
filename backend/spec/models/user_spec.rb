@@ -87,6 +87,18 @@ RSpec.describe User do
       expect(user.reload.role).to eq("senior")
     end
 
+    # The guard is in the WHERE, so a stale in-memory instance cannot talk its
+    # way past it. This is the case a Ruby-side check would have missed: the
+    # object still believes it has no role, and the row disagrees.
+    it "refuses even when the instance is stale and thinks it has no role" do
+      user = User.create!(email: "stale@example.com", tz: "America/New_York")
+      stale = User.find(user.id) # loaded while role is still nil
+      user.choose_role_once("senior")
+
+      expect(stale.choose_role_once("caregiver")).to be false
+      expect(user.reload.role).to eq("senior")
+    end
+
     it "refuses to change a role that is already set" do
       user = User.create!(email: "settled@example.com", tz: "America/New_York")
       user.choose_role_once("senior")

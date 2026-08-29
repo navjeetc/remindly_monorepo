@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Choosing a role still works, which is the part that matters: a new user
   arrives without one and picks at sign-up, rather than waiting on an admin.
-  What is gone is changing a role already chosen. `User#assign_self_role`
+  What is gone is changing a role already chosen. `User#choose_role_once`
   refuses it rather than the button merely being hidden, because a removed
   control with a live endpoint behind it is not a removal.
 
@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a daughter managing her mother's reminders cannot also have her own. Switching
   was never a fix for that, only a way to trade one for the other.
 
-### Removed
 - **The `/api` namespace, which had never run.** All three controllers under it
   opened with `before_action :authenticate_user!` — a method defined nowhere,
   since `ApplicationController` defines `authenticate!` — so every action raised

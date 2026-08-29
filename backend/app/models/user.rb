@@ -301,12 +301,16 @@ class User < ApplicationRecord
   def choose_role_once(new_role)
     new_role = new_role.to_s
     return false unless SELF_ASSIGNABLE_ROLES.include?(new_role)
-    return false if role.present?
 
-    # "role IS NULL OR role <> admin" — brand-new users have a NULL role, and a
-    # bare `role <> admin` would exclude them (NULL comparisons are never true).
-    changed = self.class.where(id: id)
-      .where("role IS NULL OR role <> ?", self.class.roles[:admin])
+    # `role: nil` is the whole guard, and it is in the WHERE rather than in Ruby
+    # on purpose. A `return false if role.present?` above would read the same
+    # and race: two requests for one role-less user both pass the check, and the
+    # second overwrites the first — as would a stale instance loaded before an
+    # admin assigned a role.
+    #
+    # It also subsumes the admin exclusion this clause used to spell out. An
+    # admin has a role, so a NULL-only match cannot touch them.
+    changed = self.class.where(id: id, role: nil)
       .update_all(role: self.class.roles.fetch(new_role))
     return false if changed.zero?
 
