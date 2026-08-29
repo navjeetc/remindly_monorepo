@@ -229,18 +229,27 @@
                   Removing somebody entirely was already offered here; limiting
                   what they can do was not. %>
               <div class="ml-4 flex-shrink-0 flex items-center gap-2">
+                <%# Plain onclick, not turbo_confirm or data-confirm. This layout
+                    loads Tailwind and nothing else — no Turbo, no UJS — so both of
+                    those are inert here, which is why Remove Access has been
+                    deleting a caregiver without asking since it was written. %>
                 <% if link.permission_manage? %>
                   <%= button_to "Limit to looking", caregiver_permission_dashboard_path(link.id), method: :patch,
                         params: { permission: "view" },
-                        form: { data: { turbo_confirm: "#{link.caregiver.friendly_name} will still see your reminders and tasks, but will not be able to change them. Any phone reminders already agreed carry on." } },
+                        onclick: "return confirm('#{j "#{link.caregiver.friendly_name} will still see your reminders and tasks, but will not be able to change them. Any phone reminders already agreed carry on."}')",
                         class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
                 <% else %>
                   <%= button_to "Let them make changes", caregiver_permission_dashboard_path(link.id), method: :patch,
                         params: { permission: "manage" },
-                        form: { data: { turbo_confirm: "#{link.caregiver.friendly_name} will be able to set up and change your reminders and tasks, and to arrange phone reminders. They still cannot agree to the calls for you." } },
+                        onclick: "return confirm('#{j "#{link.caregiver.friendly_name} will be able to set up and change your reminders and tasks, and to arrange phone reminders. They still cannot agree to the calls for you."}')",
                         class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
                 <% end %>
-                <%= button_to "Remove Access", unlink_dashboard_path(link.id), method: :delete, data: { confirm: "Remove #{link.caregiver.email}'s access?" }, class: "inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50" %>
+                <%# Named rather than emailed: the row above shows friendly_name,
+                    so asking about an address the reader may not recognise made
+                    the question harder than the decision. %>
+                <%= button_to "Remove Access", unlink_dashboard_path(link.id), method: :delete,
+                      onclick: "return confirm('#{j "Remove #{link.caregiver.friendly_name}'s access? They will no longer see your reminders or tasks."}')",
+                      class: "inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50" %>
               </div>
             </div>
           </li>

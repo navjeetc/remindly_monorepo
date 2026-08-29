@@ -76,6 +76,31 @@ RSpec.describe "A care receiver setting what a caregiver may do", type: :request
     expect(senior.phone).to eq("+15551234567")
   end
 
+  # The layout loads Tailwind and nothing else, so data-turbo-confirm and
+  # data-confirm are both inert here — which is why Remove Access had been
+  # deleting a caregiver without asking. A plain onclick is what this page can
+  # actually run.
+  it "asks before changing anything, with a confirm the page can run" do
+    sign_in(senior)
+    get "/dashboard"
+
+    buttons = Nokogiri::HTML(response.body).css("input[type=submit], button")
+    confirms = buttons.filter_map { |b| b["onclick"] }.grep(/confirm\(/)
+
+    expect(confirms.length).to be >= 2
+    expect(response.body).not_to include("turbo-confirm")
+  end
+
+  it "names the caregiver rather than emailing at them" do
+    sign_in(senior)
+    get "/dashboard"
+
+    onclicks = Nokogiri::HTML(response.body).css("input[type=submit], button").filter_map { |b| b["onclick"] }.join(" ")
+
+    expect(onclicks).to include(caregiver.friendly_name)
+    expect(onclicks).not_to include(caregiver.email)
+  end
+
   it "shows the choice on the dashboard, beside removing them" do
     sign_in(senior)
     get "/dashboard"
