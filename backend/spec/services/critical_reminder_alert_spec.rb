@@ -123,6 +123,34 @@ RSpec.describe "Alerting on a critical reminder nobody answered" do
   # so the alert does not depend on mail working. An earlier version of the
   # rescue deleted it to allow a re-enqueue, which meant a queue still down on
   # the last attempt left the caregiver with nothing at all.
+  # The dashboard message says how many calls are still coming, and it is not
+  # always more than none: this path fires on every unanswered attempt so a lost
+  # webhook does not mean silence, so the notification can be written by the
+  # last attempt rather than the first.
+  describe "what the dashboard alert says about calls still to come" do
+    it "counts them when there are some" do
+      occurrence = occurrence_for(critical: true)
+      ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 2)
+
+      expect(Notification.last.message).to include("2 more calls are on the way")
+    end
+
+    it "says one, singular, when there is one" do
+      occurrence = occurrence_for(critical: true)
+      ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 1)
+
+      expect(Notification.last.message).to include("One more call is on the way")
+    end
+
+    it "does not promise a call that is not coming" do
+      occurrence = occurrence_for(critical: true)
+      ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: 0)
+
+      expect(Notification.last.message).to include("That was the last call")
+      expect(Notification.last.message).not_to include("on the way")
+    end
+  end
+
   describe "when the mail queue is broken" do
     it "keeps the in-app alert" do
       allow(ReminderActivityMailer).to receive(:with).and_raise(StandardError, "queue down")

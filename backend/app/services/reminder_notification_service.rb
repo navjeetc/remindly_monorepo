@@ -47,7 +47,8 @@ class ReminderNotificationService
     senior.caregivers.each do |caregiver|
       # The unique index decides, as everywhere else here: a redelivered webhook
       # cannot mail the same caregiver twice about the same occurrence.
-      next unless create_notification(caregiver, senior, reminder, occurrence, :unanswered)
+      next unless create_notification(caregiver, senior, reminder, occurrence, :unanswered,
+                                      attempts_remaining: attempts_remaining)
 
       # Same rule as the acknowledged and missed paths: an address Postmark has
       # already refused gets the in-app alert and no job. Three attempts per
@@ -132,13 +133,13 @@ class ReminderNotificationService
   # a uniqueness constraint — it used to live only inside the json metadata,
   # where nothing is indexable, which left the check a SELECT that a concurrent
   # worker could race. metadata keeps its copy for the readers that use it.
-  def self.create_notification(caregiver, senior, reminder, occurrence, kind)
+  def self.create_notification(caregiver, senior, reminder, occurrence, kind, attempts_remaining: nil)
     Notification.create!(
       user: caregiver,
       notification_type: notification_type(kind),
       occurrence_id: occurrence.id,
       title: title(senior, reminder, kind),
-      message: message(reminder, occurrence, kind),
+      message: message(reminder, occurrence, kind, attempts_remaining: attempts_remaining),
       metadata: {
         senior_id: senior.id,
         senior_name: senior.display_name,
@@ -178,7 +179,7 @@ class ReminderNotificationService
     end
   end
 
-  def self.message(reminder, occurrence, kind)
+  def self.message(reminder, occurrence, kind, attempts_remaining: nil)
     # Occurrences are stored in UTC but the reminder carries the senior's zone.
     # Formatting the raw timestamp would report a 9:00 AM dose as 1:00 PM for an
     # Eastern user, since the app leaves Time.zone at UTC.
@@ -189,8 +190,23 @@ class ReminderNotificationService
     when :unanswered
       # Not "was not completed": the title says nobody has answered yet, and a
       # body underneath it announcing the dose was not completed would say the
-      # opposite of the alert it belongs to, while two calls are still coming.
-      "#{reminder.title}: no answer yet#{when_due ? " (due #{when_due})" : ''}. More calls are on the way."
+      # opposite of the alert it belongs to.
+      #
+      # The tail depends on how many calls are left, because it is not always
+      # more than none. The notification is written by whichever unanswered
+      # attempt arrives first — normally the first, with two to come — but this
+      # path deliberately fires on every attempt so a lost webhook does not mean
+      # silence, and if only the last one arrives there is nothing still coming.
+      # Promising another call in that case is a plain falsehood on the
+      # dashboard.
+      tail = case attempts_remaining
+      when nil then ""
+      when 0 then " That was the last call."
+      when 1 then " One more call is on the way."
+      else " #{attempts_remaining} more calls are on the way."
+      end
+
+      "#{reminder.title}: no answer yet#{when_due ? " (due #{when_due})" : ''}.#{tail}"
     else
       "#{reminder.title} was not completed#{when_due ? " (due #{when_due})" : ''}."
     end
