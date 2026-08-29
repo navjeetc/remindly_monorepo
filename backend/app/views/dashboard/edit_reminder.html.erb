@@ -53,7 +53,10 @@
             medication is this" — a vitamin and a Parkinson's dose share a
             category and could not be less alike in how fast somebody needs to
             know. %>
-        <div class="rounded-md border border-gray-200 p-3">
+        <%# sm:col-span-2 because this sits inside the two-column grid holding
+            category and time. Without it the block takes the left column and
+            leaves the right one empty, which reads as a missing field. %>
+        <div class="rounded-md border border-gray-200 p-3 sm:col-span-2">
           <div class="flex items-start">
             <div class="flex items-center h-5">
               <%= f.check_box :critical, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
