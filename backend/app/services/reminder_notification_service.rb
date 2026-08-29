@@ -71,9 +71,14 @@ class ReminderNotificationService
         # So the in-app alert survives a broken queue, and the email is what is
         # lost. Retrying the mail would need a marker of its own rather than
         # borrowing the one that guarantees the alert.
+        # With a backtrace, matching the webhook rescue. Both swallow
+        # deliberately, and a swallowed error without one is a production-only
+        # failure you cannot diagnose — most likely from inside the ActiveJob
+        # adapter, where the message alone says nothing useful.
         Rails.logger.error(
           "Critical alert email enqueue failed for caregiver #{caregiver.id}, " \
-          "occurrence #{occurrence.id} (in-app alert kept): #{e.class}: #{e.message}"
+          "occurrence #{occurrence.id} (in-app alert kept): #{e.class}: #{e.message}\n" \
+          "#{Array(e.backtrace).first(5).join("\n")}"
         )
       end
     end
