@@ -47,6 +47,32 @@
             <%= f.label :time, "Time", class: "block text-sm font-medium text-gray-700" %>
             <%= f.time_field :time, value: Time.current.in_time_zone(@senior.tz).strftime("%H:%M"), required: true, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           </div>
+
+        <%# Under the category, because the question it answers is "which kind of
+            medication is this" — a vitamin and a Parkinson's dose share a
+            category and could not be less alike in how fast somebody needs to
+            know. %>
+        <%# sm:col-span-2 because this sits inside the two-column grid holding
+            category and time. Without it the block takes the left column and
+            leaves the right one empty, which reads as a missing field. %>
+        <div class="rounded-md border border-gray-200 p-3 sm:col-span-2">
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <%= f.check_box :critical, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+            </div>
+            <div class="ml-3 text-sm">
+              <%= f.label :critical, class: "font-medium text-gray-700" do %>
+                Being late matters for this one
+              <% end %>
+              <p class="text-gray-500">
+                Caregivers are told as soon as <%= @senior.display_name %> doesn't answer,
+                rather than an hour later. Use it for doses with a narrow window, not for everything —
+                an alert that always arrives stops being read.
+              </p>
+            </div>
+          </div>
+        </div>
+
         </div>
 
         <div>

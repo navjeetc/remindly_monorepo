@@ -136,6 +136,21 @@ class TelnyxWebhooksController < ApplicationController
         # record that here rather than leaving it to the hangup event — which
         # used to skip it, because by then the outcome was no longer pending.
         call.update!(outcome: "no_response", completed_at: Time.current)
+
+        # Tell the caregivers now, if the reminder is time-critical.
+        #
+        # The alternative is MarkMissedOccurrencesJob, which waits a full hour
+        # after the due time. The calls themselves give up long before that —
+        # three attempts, five minutes apart — so for a dose where the window is
+        # narrow, nobody hears for the fifty minutes in between. That gap is the
+        # whole reason this flag exists.
+        #
+        # Fired on every unanswered attempt, not only the first: the service
+        # writes through a unique index on (user, type, occurrence), so the
+        # second and third calls cannot mail anybody twice. Doing it here rather
+        # than only on attempt 1 means a redelivered webhook or a lost first
+        # event still reaches somebody.
+        notify_unanswered_if_critical(call)
       end
     end
 
@@ -165,9 +180,18 @@ class TelnyxWebhooksController < ApplicationController
   # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
     attributes = { completed_at: call.completed_at || Time.current }
-    attributes[:outcome] = "no_response" if call.outcome == "pending"
+    unanswered = call.outcome == "pending"
+    attributes[:outcome] = "no_response" if unanswered
 
     call.update!(attributes)
+
+    # This is where a call nobody picked up ends, and it is the case the
+    # critical flag exists for. The alert originally lived only in
+    # handle_gather_ended, which runs *after* somebody answered and a gather
+    # started — so it covered "answered and pressed nothing" and missed "the
+    # phone rang out", which is the more common of the two and the more
+    # worrying.
+    notify_unanswered_if_critical(call) if unanswered
   end
 
   # Deliberately no rescue: a failure here must propagate so `receive` answers
@@ -332,6 +356,28 @@ class TelnyxWebhooksController < ApplicationController
   # should be gated on the profile being complete.
   def record_on(senior, attributes)
     senior.update_columns(attributes.merge(updated_at: Time.current))
+  end
+
+  # Only for reminder calls: a verification call has no occurrence, and nobody
+  # has agreed to anything yet for it to be critical about.
+  def notify_unanswered_if_critical(call)
+    occurrence = call.occurrence
+    return unless occurrence&.reminder&.critical?
+
+    remaining = [ TelnyxCall::MAX_ATTEMPTS - call.attempt_number.to_i, 0 ].max
+
+    ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: remaining)
+  rescue => e
+    # Never let an alert failure take down the webhook. Telnyx retries a failed
+    # delivery, and a retry here would re-run the acknowledgement handling above
+    # for a call that has already been recorded.
+    # Class and backtrace, not just the message: this path deliberately swallows
+    # the error so a failed alert cannot make the webhook non-2xx, and a bare
+    # message leaves nothing to diagnose it with.
+    Rails.logger.error(
+      "Critical unanswered alert failed for call #{call.id}: #{e.class}: #{e.message}\n" \
+      "#{Array(e.backtrace).first(5).join("\n")}"
+    )
   end
 
   def hang_up_unless_already_gone(call, payload, event_id)

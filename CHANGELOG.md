@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A reminder can be marked time-critical, and caregivers hear on the first
+  unanswered call rather than an hour later.** Asked for by the caregiver who
+  reviewed Remindly, describing Parkinson's medication: the window is narrow
+  enough that the gap between "did not answer" and "somebody was told" is the
+  thing that matters.
+
+  That gap was fifty minutes. Calls give up after three attempts five minutes
+  apart, and the missed sweep waits a full hour after the due time before
+  telling anybody; nothing filled the middle. A critical reminder now alerts
+  every linked caregiver about a minute after a call goes unanswered — normally
+  the first, though the alert fires on any of the three so a lost webhook does
+  not mean silence.
+
+  It says nobody has answered *yet*, not that the dose was missed — two more
+  calls are still coming, and a caregiver acting on it may still catch the dose
+  in time. It is a distinct notification type for the same reason: sharing one
+  with the missed alert would let the uniqueness index swallow the message that
+  means the dose really did not happen.
+
+  Every linked caregiver hears, not only those who opted into the reminder's
+  category. That preference exists so nobody is woken by hydration reminders,
+  and a dose marked time-critical is the case it was never meant to filter out.
+  Quiet hours are ignored deliberately: 3am is when this matters most.
+
+  The calls themselves are unchanged — still three, still five minutes apart.
+  What changed is when the people who can do something about it find out.
+
+  A caregiver whose address has already hard-bounced gets the in-app alert and
+  no mail job, matching the completed and missed paths. The in-app alert is
+  unconditional in the same way: it is written before the mail is enqueued, so
+  a broken queue costs the email and not the alert.
+
 ### Removed
 - **Switching your own role from the profile.** It offered a one-click move to
   whichever role you were not, and the two dashboards are not variations of each

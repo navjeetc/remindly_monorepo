@@ -65,6 +65,30 @@ class ReminderActivityMailer < ApplicationMailer
     mail(to: @caregiver.email, subject: subject.squish)
   end
 
+  # A call for a critical reminder went unanswered.
+  #
+  # Says nobody has picked up yet, not that the dose was missed. The distinction
+  # is the whole point: this arrives about a minute after a ring, where the
+  # missed alert waits an hour, and a caregiver acting on it may still catch the
+  # dose in time.
+  #
+  # How many calls remain is passed in rather than assumed. Usually two, since
+  # the first unanswered attempt is normally the first webhook to arrive — but
+  # this fires on every attempt so a lost delivery does not mean silence, and
+  # the last one may be the only one that lands.
+  #
+  # Params: caregiver, senior, reminder, occurrence, attempts_remaining
+  def unanswered
+    setup
+    @attempts_remaining = params[:attempts_remaining]
+
+    # Names the reminder, because a caregiver receiving this at 3am needs to know
+    # which one before deciding whether to get up.
+    subject = "No answer yet from #{@senior.display_name}: #{@reminder.title}"
+
+    mail(to: @caregiver.email, subject: subject.squish)
+  end
+
   private
 
   def setup

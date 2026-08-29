@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, Helvetica, Arial, sans-serif; color: #222; line-height: 1.5;">
+    <%# Amber, not red. Nobody has missed anything yet, and a caregiver who
+        learns that red means "not yet" stops reading red as urgent on the
+        email that does mean it. %>
+    <div style="border-left: 4px solid #f59e0b; background: #fffbeb; padding: 16px; margin-bottom: 16px;">
+      <p style="margin: 0; font-size: 16px;">
+        <strong><%= @senior.display_name %> didn't answer</strong> when Remindly called about
+        <strong><%= @reminder.title %></strong><% if @scheduled_at %>, due at <%= @scheduled_at.strftime("%-l:%M %p") %><% end %>.
+      </p>
+    </div>
+
+    <p>This one is marked <strong>time-critical</strong>, which is why you're hearing now rather than after the last attempt.</p>
+
+    <% if @attempts_remaining.to_i.positive? %>
+      <p>
+        We'll call <%= @attempts_remaining %> more
+        <%= @attempts_remaining.to_i == 1 ? "time" : "times" %>, five minutes apart.
+        If <%= @senior.display_name %> answers and presses 1, you won't hear from us again about this one.
+      </p>
+    <% else %>
+      <p>That was the last call we'll make about this one.</p>
+    <% end %>
+
+    <p><a href="<%= @dashboard_url %>" style="color: #2563eb;">Open <%= @senior.display_name %>'s dashboard</a></p>
+  </body>
+</html>

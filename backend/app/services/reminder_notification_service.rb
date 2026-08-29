@@ -26,6 +26,65 @@ class ReminderNotificationService
     notify(occurrence, kind: :missed)
   end
 
+  # A call for a critical reminder went unanswered.
+  #
+  # Fired on each unanswered attempt rather than only the first, and deduped
+  # by the unique index. Doing it once would mean a lost or redelivered
+  # webhook resulting in silence for the one reminder that cannot afford it.
+  #
+  # Every linked caregiver hears, not only those who opted into the reminder's
+  # category. The category preference exists so a caregiver is not woken by
+  # hydration reminders; a dose somebody marked time-critical is the case it was
+  # never meant to filter out.
+  #
+  # Quiet hours are deliberately ignored — there are none for caregiver email,
+  # and a critical dose at 3am is exactly when somebody should be woken.
+  def self.notify_unanswered(occurrence, attempts_remaining:)
+    reminder = occurrence.reminder
+    senior = reminder&.user
+    return unless senior && reminder.critical?
+
+    senior.caregivers.each do |caregiver|
+      # The unique index decides, as everywhere else here: a redelivered webhook
+      # cannot mail the same caregiver twice about the same occurrence.
+      next unless create_notification(caregiver, senior, reminder, occurrence, :unanswered,
+                                      attempts_remaining: attempts_remaining)
+
+      # Same rule as the acknowledged and missed paths: an address Postmark has
+      # already refused gets the in-app alert and no job. Three attempts per
+      # occurrence times every critical dose would otherwise be a lot of
+      # discarded jobs for a mailbox that is not coming back.
+      next unless caregiver.email_deliverable?
+
+      begin
+        ReminderActivityMailer
+          .with(caregiver: caregiver, senior: senior, reminder: reminder,
+                occurrence: occurrence, attempts_remaining: attempts_remaining)
+          .unanswered
+          .deliver_later
+      rescue StandardError => e
+        # The row stays. An earlier version deleted it so a later attempt could
+        # re-enqueue, which is worse: if the queue is still down on the third
+        # attempt — or the third is the one that fails — the caregiver ends up
+        # with no email *and* no in-app alert, when the whole point of writing
+        # the notification first is that it does not depend on mail working.
+        #
+        # So the in-app alert survives a broken queue, and the email is what is
+        # lost. Retrying the mail would need a marker of its own rather than
+        # borrowing the one that guarantees the alert.
+        # With a backtrace, matching the webhook rescue. Both swallow
+        # deliberately, and a swallowed error without one is a production-only
+        # failure you cannot diagnose — most likely from inside the ActiveJob
+        # adapter, where the message alone says nothing useful.
+        Rails.logger.error(
+          "Critical alert email enqueue failed for caregiver #{caregiver.id}, " \
+          "occurrence #{occurrence.id} (in-app alert kept): #{e.class}: #{e.message}\n" \
+          "#{Array(e.backtrace).first(5).join("\n")}"
+        )
+      end
+    end
+  end
+
   # The caregivers who should hear about this reminder — the senior's caregivers
   # who chose this reminder's category. Public so the missed sweep can skip
   # enqueuing work nobody opted in to. Returns [] for an owner-less reminder.
@@ -74,13 +133,13 @@ class ReminderNotificationService
   # a uniqueness constraint — it used to live only inside the json metadata,
   # where nothing is indexable, which left the check a SELECT that a concurrent
   # worker could race. metadata keeps its copy for the readers that use it.
-  def self.create_notification(caregiver, senior, reminder, occurrence, kind)
+  def self.create_notification(caregiver, senior, reminder, occurrence, kind, attempts_remaining: nil)
     Notification.create!(
       user: caregiver,
       notification_type: notification_type(kind),
       occurrence_id: occurrence.id,
       title: title(senior, reminder, kind),
-      message: message(reminder, occurrence, kind),
+      message: message(reminder, occurrence, kind, attempts_remaining: attempts_remaining),
       metadata: {
         senior_id: senior.id,
         senior_name: senior.display_name,
@@ -102,24 +161,53 @@ class ReminderNotificationService
   end
 
   def self.notification_type(kind)
-    kind == :acknowledged ? Notification::TYPES[:reminder_acknowledged] : Notification::TYPES[:reminder_missed]
-  end
-
-  def self.title(senior, reminder, kind)
-    if kind == :acknowledged
-      "#{senior.display_name} completed: #{reminder.title}"
-    else
-      "#{senior.display_name} missed: #{reminder.title}"
+    case kind
+    when :acknowledged then Notification::TYPES[:reminder_acknowledged]
+    when :unanswered   then Notification::TYPES[:reminder_unanswered]
+    else                    Notification::TYPES[:reminder_missed]
     end
   end
 
-  def self.message(reminder, occurrence, kind)
+  def self.title(senior, reminder, kind)
+    case kind
+    when :acknowledged then "#{senior.display_name} completed: #{reminder.title}"
+    # Not "missed" — more calls usually follow, and a dashboard alert saying
+    # missed while the phone is about to ring again would be wrong for the ten
+    # minutes it matters most. The message beneath says how many are left, and
+    # handles none.
+    when :unanswered   then "#{senior.display_name} hasn't answered: #{reminder.title}"
+    else                    "#{senior.display_name} missed: #{reminder.title}"
+    end
+  end
+
+  def self.message(reminder, occurrence, kind, attempts_remaining: nil)
     # Occurrences are stored in UTC but the reminder carries the senior's zone.
     # Formatting the raw timestamp would report a 9:00 AM dose as 1:00 PM for an
     # Eastern user, since the app leaves Time.zone at UTC.
     when_due = occurrence.scheduled_at&.in_time_zone(reminder.tz)&.strftime("%A, %B %d at %I:%M %p")
-    if kind == :acknowledged
+    case kind
+    when :acknowledged
       "#{reminder.title} was marked done#{when_due ? " (due #{when_due})" : ''}."
+    when :unanswered
+      # Not "was not completed": the title says nobody has answered yet, and a
+      # body underneath it announcing the dose was not completed would say the
+      # opposite of the alert it belongs to.
+      #
+      # The tail depends on how many calls are left, because it is not always
+      # more than none. The notification is written by whichever unanswered
+      # attempt arrives first — normally the first, with two to come — but this
+      # path deliberately fires on every attempt so a lost webhook does not mean
+      # silence, and if only the last one arrives there is nothing still coming.
+      # Promising another call in that case is a plain falsehood on the
+      # dashboard.
+      tail = case attempts_remaining
+      when nil then ""
+      when 0 then " That was the last call."
+      when 1 then " One more call is on the way."
+      else " #{attempts_remaining} more calls are on the way."
+      end
+
+      "#{reminder.title}: no answer yet#{when_due ? " (due #{when_due})" : ''}.#{tail}"
     else
       "#{reminder.title} was not completed#{when_due ? " (due #{when_due})" : ''}."
     end

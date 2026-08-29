@@ -106,7 +106,7 @@ class RemindersController < ApplicationController
     @reminder = current_user.reminders.find(params[:id])
   end
 
-  def reminder_params = params.permit(:title, :notes, :rrule, :tz, :category, :start_time)
+  def reminder_params = params.permit(:title, :notes, :rrule, :tz, :category, :critical, :start_time)
 
   def not_found
     render json: { error: "Reminder not found" }, status: :not_found

@@ -1,4 +1,18 @@
 class Reminder < ApplicationRecord
+  # Time-critical: a dose where being late matters as much as being missed.
+  #
+  # A caregiver reviewing Remindly asked for this after describing Parkinson's
+  # medication, where the window is narrow enough that the gap between "did not
+  # answer" and "somebody was told" is the thing that matters.
+  #
+  # For an ordinary reminder that gap is fifty minutes: the calls give up after
+  # three attempts five minutes apart, and MarkMissedOccurrencesJob waits a full
+  # hour before telling anybody. Marking a reminder critical is what closes it —
+  # caregivers hear about a minute after a call goes unanswered instead.
+  #
+  # Marked on the reminder rather than derived from the category, because
+  # "medication" covers a vitamin as well as a dose that cannot slip, and only
+  # the person setting it up knows which this is.
   belongs_to :user
   has_many :occurrences, dependent: :destroy
   enum :category, { medication: 0, hydration: 1, routine: 2 }, prefix: true
