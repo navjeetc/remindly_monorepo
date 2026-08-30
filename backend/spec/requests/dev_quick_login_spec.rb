@@ -62,6 +62,20 @@ RSpec.describe "The development quick-login buttons", type: :request do
     expect(signed_in_role).to eq("caregiver")
   end
 
+  # name is validated on update, so an existing dev account with a blank one —
+  # the normal state after dev_login has redirected to /profile once — made
+  # every later press of the button raise on save!.
+  it "survives a second press when its account has no name yet" do
+    # Reached only when no caregiver exists at all and the fixture address is
+    # held by some other role: with a caregiver present the lookup returns it
+    # and never saves. name is not validated on create, so a blank one persists.
+    User.where(role: :caregiver).destroy_all
+    User.create!(email: "dev-caregiver@example.com", role: :senior, tz: "America/New_York", name: "")
+
+    expect { get "/dev_login", params: { role: "caregiver" } }.not_to raise_error
+    expect(signed_in_role).to eq("caregiver")
+  end
+
   it "offers the buttons by role, not by address" do
     get "/login"
     doc = Nokogiri::HTML(response.body)

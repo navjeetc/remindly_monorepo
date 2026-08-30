@@ -170,7 +170,11 @@ class SessionsController < ActionController::Base
     User.find_or_initialize_by(email: "dev-#{role}@example.com").tap do |user|
       user.role = role
       user.tz ||= "America/New_York"
-      user.save!
+      # Named rather than saved past the validation: name is required on update,
+      # and a dev account that has been through /profile once may still have a
+      # blank one, which made every later press of the button raise.
+      user.name = "Dev #{user.role_label}" if user.name.blank?
+      user.save! if user.changed?
     end
   end
 end
