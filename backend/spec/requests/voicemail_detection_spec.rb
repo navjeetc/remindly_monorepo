@@ -187,4 +187,24 @@ RSpec.describe "Voicemail detection on reminder calls", type: :request do
 
     expect(payload[:answering_machine_detection]).to eq("detect")
   end
+
+  # The defaults call silence a machine, because silence crosses
+  # initial_silence_millis before anything else fires. The people this product
+  # rings answer silently often enough that the defaults are the wrong shape:
+  # analysis has to run out before initial silence can trip, so a silent pickup
+  # comes back not_sure and is spoken to.
+  it "sends thresholds that stop silence being read as a machine" do
+    payload = nil
+    allow(TelnyxVoiceService).to receive(:post) { |_path, body, **| payload = body; { "data" => { "call_control_id" => "x" } } }
+    allow(TelnyxVoiceService).to receive(:credentials).and_return(from_number: "+15550000000", connection_id: "conn-1")
+
+    TelnyxVoiceService.dial(occurrence, attempt: telnyx_call)
+    config = payload[:answering_machine_detection_config]
+
+    expect(config[:initial_silence_millis]).to be > config[:total_analysis_time_millis]
+
+    # and a mailbox still has to be caught inside the window, or a real
+    # voicemail comes back not_sure and gets spoken to as well
+    expect(config[:greeting_duration_millis]).to be < config[:total_analysis_time_millis]
+  end
 end
