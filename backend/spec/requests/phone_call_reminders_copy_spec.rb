@@ -14,8 +14,13 @@ require "rails_helper"
 # rewritten, but it should not quietly disappear, and it should not start
 # promising more than the feature does.
 RSpec.describe "What the public pages say about reminder phone calls", type: :request do
-  def text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
-  def description = Nokogiri::HTML(response.body).at_css("meta[name='description']")&.[]("content").to_s
+  # Parsed once per example rather than once per call: several examples read
+  # `text` two or three times, and each read was reparsing the whole document.
+  # Safe because every group here issues its single request in a before hook and
+  # no example makes a second one — if one ever does, it has to reset these.
+  def doc = @doc ||= Nokogiri::HTML(response.body)
+  def text = @text ||= doc.text.gsub(/\s+/, " ")
+  def description = doc.at_css("meta[name='description']")&.[]("content").to_s
 
   shared_examples "a page that mentions reminder calls" do
     it "says Remindly can telephone the care receiver" do
@@ -110,7 +115,7 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
     before { get "/" }
 
     it "does not tell a reader with no tablet that they need a device" do
-      heading = Nokogiri::HTML(response.body).at_css("section.setup h2")
+      heading = doc.at_css("section.setup h2")
 
       expect(heading).to be_present
       expect(heading.text).to match(/telephone/i)
@@ -132,7 +137,7 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
     # Four sentences and a link. The argument for the calls lives on the pages
     # written to make it; this one only has to stop disqualifying people.
     it "points at the page that explains the calls" do
-      expect(Nokogiri::HTML(response.body).css("section.setup a").map { |a| a["href"] }).to include("/how_to")
+      expect(doc.css("section.setup a").map { |a| a["href"] }).to include("/how_to")
     end
   end
 
