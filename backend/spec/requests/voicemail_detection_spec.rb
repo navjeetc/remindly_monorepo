@@ -45,19 +45,23 @@ RSpec.describe "Voicemail detection on reminder calls", type: :request do
   end
 
   describe "when a machine picks up" do
-    it "says nothing at all" do
+    # The title is the whole reason this feature exists. Everything else about a
+    # machine verdict is recoverable; a medication name on a mailbox is not.
+    it "never says the reminder title" do
       telnyx_post("call.answered")
       telnyx_post("call.machine.detection.ended", result: "machine")
 
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
       expect(TelnyxVoiceService).not_to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin")))
     end
 
-    it "hangs up rather than sitting on the mailbox" do
+    it "offers a way through, rather than hanging up" do
       telnyx_post("call.answered")
       telnyx_post("call.machine.detection.ended", result: "machine")
 
-      expect(TelnyxVoiceService).to have_received(:hangup)
-        .with(hash_including(call_control_id: "call-123"))
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+      expect(TelnyxVoiceService).not_to have_received(:hangup)
     end
 
     # "The mailbox took it" and "the phone rang out" are different things to tell
@@ -120,6 +124,48 @@ RSpec.describe "Voicemail detection on reminder calls", type: :request do
       telnyx_post("call.machine.detection.ended", result: "human")
 
       expect(TelnyxVoiceService).to have_received(:gather_digit).once
+    end
+  end
+
+  # Call 39 in production, 22:02:00-22:02:08: Telnyx returned "machine" for a
+  # person who had answered and said hello, and the first version of this fix
+  # hung up on them. The reminder was simply dropped. Detection will always get
+  # this wrong sometimes, so being wrong has to cost a keypress rather than a
+  # dose.
+  describe "when detection is wrong and a person is there" do
+    it "gives them the reminder once they press a key" do
+      telnyx_post("call.answered")
+      telnyx_post("call.machine.detection.ended", result: "machine")
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(TelnyxVoiceService).to have_received(:gather_digit).twice
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin")))
+    end
+
+    it "is an ordinary call again afterwards, not a voicemail" do
+      telnyx_post("call.answered")
+      telnyx_post("call.machine.detection.ended", result: "machine")
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(telnyx_call.reload.outcome).to eq("pending")
+      expect(telnyx_call.answered_at).to be_present
+    end
+
+    it "then takes the keypress that acknowledges it" do
+      telnyx_post("call.answered")
+      telnyx_post("call.machine.detection.ended", result: "machine")
+      telnyx_post("call.gather.ended", digits: "1")
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(occurrence.reload.status).to eq("acknowledged")
+    end
+
+    it "never hangs up on them" do
+      telnyx_post("call.answered")
+      telnyx_post("call.machine.detection.ended", result: "machine")
+
+      expect(TelnyxVoiceService).not_to have_received(:hangup)
     end
   end
 

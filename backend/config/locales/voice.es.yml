@@ -21,6 +21,10 @@ es:
       Pulse 1 si ya lo ha hecho.
       Pulse 2 para que le recordemos de nuevo en %{minutes} minutos.
       Pulse 9 para dejar de recibir estas llamadas.
+    # See voice.en.yml for why this line carries no task and no name.
+    screening: >-
+      Le habla Remindly, con un recordatorio.
+      Pulse 1 para escucharlo.
     consent:
       asked_by: "%{arranger} nos ha pedido"
       asked_generic: "Se nos ha pedido"

@@ -32,6 +32,15 @@ en:
       Press 1 if you have done it.
       Press 2 to be reminded again in %{minutes} minutes.
       Press 9 to stop these calls.
+    # Played when detection thinks a machine picked up. Deliberately carries no
+    # task and no name: if this does reach a mailbox, the recording holds nothing
+    # but Remindly's own name and an instruction, which is the whole point of
+    # saying it instead of the announcement. A person wrongly taken for a machine
+    # presses 1 and hears their reminder as usual, so being wrong costs one
+    # keypress rather than a dropped reminder.
+    screening: >-
+      This is Remindly, with a reminder.
+      Press 1 to hear it.
     consent:
       asked_by: "%{arranger} asked us"
       asked_generic: "We have been asked"

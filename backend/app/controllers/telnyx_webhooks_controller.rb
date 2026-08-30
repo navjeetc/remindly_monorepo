@@ -87,10 +87,37 @@ class TelnyxWebhooksController < ApplicationController
   def handle_machine_detection(call, payload, event_id)
     return start_prompt(call, event_id) unless payload["result"].to_s == "machine"
 
-    # Recorded before the hangup so the outcome survives: handle_hangup only
-    # overwrites an outcome still sitting at "pending".
+    screen_for_person(call, event_id)
+  end
+
+  # Detection said machine. The first version of this hung up, and on its first
+  # live call it hung up on a person -- Telnyx returned "machine" for somebody
+  # who had answered and said hello, and the reminder was simply dropped.
+  #
+  # So the verdict no longer decides whether to speak, only *what* to say. This
+  # line carries no reminder title and no name, so a mailbox records nothing
+  # worth protecting, while a person wrongly taken for a machine presses 1 and
+  # hears their reminder as normal. Being wrong now costs one keypress instead
+  # of a missed dose, which makes the feature correct regardless of how good
+  # detection ever gets -- and it will never be perfect.
+  #
+  # answered_at stays nil deliberately: it means "the reminder itself has been
+  # spoken", and it is what handle_gather_ended reads to tell a reply to this
+  # prompt from a reply to the real one.
+  def screen_for_person(call, event_id)
+    return if call.outcome == "voicemail"
+
+    # Set before the gather, not after: if nobody presses, hangup finds it and
+    # leaves it alone, and the caregiver is told a mailbox took the call rather
+    # than that the phone rang out.
     call.update!(outcome: "voicemail")
-    TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+
+    TelnyxVoiceService.gather_digit(
+      call_control_id: call.call_control_id,
+      prompt: I18n.t("voice.screening", locale: call.user.spoken_locale),
+      language: call.user.spoken_language,
+      command_id: event_id
+    )
   end
 
   # answered_at doubles as the guard against speaking twice. Telnyx redelivers
@@ -140,6 +167,15 @@ class TelnyxWebhooksController < ApplicationController
 
   def handle_gather_ended(call, payload, event_id)
     return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
+
+    # A digit while the reminder has not been spoken yet is somebody answering
+    # the screening prompt, which means detection was wrong and there is a
+    # person on the line. Give them the reminder they were called about; the
+    # outcome goes back to pending because from here it is an ordinary call.
+    if call.answered_at.nil? && call.outcome == "voicemail"
+      call.update!(outcome: "pending")
+      return start_prompt(call, event_id)
+    end
 
     digits = payload["digits"]
 
