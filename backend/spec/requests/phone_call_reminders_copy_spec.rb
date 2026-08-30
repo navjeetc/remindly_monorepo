@@ -22,12 +22,18 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
       expect(text).to match(/telephone/i)
     end
 
+    # Both of these matched their own button list before review pointed it out.
+    # "press 1" appears in the instructions for a normal reminder call, so the
+    # entire consent explanation could have been deleted with the spec still
+    # green; "press 9" likewise. What each claim needs pinned is the sentence
+    # that makes the promise, not the digit.
     it "says the calls are agreed to first" do
-      expect(text).to match(/press 1|never ask for personal details/i)
+      expect(text).to match(/never ask (you )?for personal details/i)
+      expect(text).to match(/only if (the person|they) press(es)? 1|starts the reminders only if/i)
     end
 
-    it "says how to stop them" do
-      expect(text).to match(/press 9|9.{0,40}stop/i)
+    it "says that 9 is what stops them" do
+      expect(text).to match(/9[^.]{0,20}stop the reminder calls/i)
     end
 
     # The Spanish script is live but has not been read by a native speaker, so
