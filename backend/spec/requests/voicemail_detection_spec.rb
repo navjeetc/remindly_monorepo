@@ -60,13 +60,31 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
         .with(hash_including(prompt: a_string_including("Remindly")))
     end
 
-    it "stays silent after the opening line when nobody presses anything" do
+    # The sequence a real mailbox produces, and the one the first version of this
+    # spec skipped: Telnyx sends call.gather.ended when the gather times out,
+    # carrying no digits key at all. Posting hangup directly hid that, and the
+    # code read the bare event as a keypress and spoke the title onto a
+    # voicemail on the first live test.
+    it "stays silent when the gather times out with nobody pressing anything" do
       telnyx_post("call.answered")
+      telnyx_post("call.gather.ended")
       telnyx_post("call.hangup")
 
       expect(TelnyxVoiceService).to have_received(:gather_digit).once
+      expect(TelnyxVoiceService).not_to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin")))
       expect(telnyx_call.reload.answered_at).to be_nil
       expect(telnyx_call.outcome).to eq("no_response")
+    end
+
+    # Belt and braces: an empty string is not somebody pressing a key either.
+    it "stays silent when the gather reports empty digits" do
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended", digits: "")
+
+      expect(TelnyxVoiceService).not_to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin")))
+      expect(telnyx_call.reload.answered_at).to be_nil
     end
   end
 

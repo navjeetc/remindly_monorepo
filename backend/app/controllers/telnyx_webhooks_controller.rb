@@ -154,7 +154,18 @@ class TelnyxWebhooksController < ApplicationController
     # A digit arriving before the reminder has been spoken is somebody answering
     # the opening line, which is the only proof available that a person is on
     # this call rather than a mailbox. Give them what they were rung about.
-    return start_prompt(call, event_id) if call.answered_at.nil?
+    #
+    # The digits check is the whole guarantee, not a detail. Telnyx sends
+    # call.gather.ended when the gather merely times out, with no digits key at
+    # all -- so a mailbox that sits there silently produces this event exactly
+    # as a keypress does. Reading the event alone as proof of a person put
+    # "Green banana" onto a voicemail on the first live test of this design.
+    if call.answered_at.nil?
+      return start_prompt(call, event_id) if payload["digits"].present?
+
+      # Nobody there. Say nothing further; hangup records it as no response.
+      return
+    end
 
     digits = payload["digits"]
 
