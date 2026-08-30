@@ -154,12 +154,23 @@ class SessionsController < ActionController::Base
   end
 
   # The account to sign in as when a role is asked for, or nil when none was.
-  # Falls back to creating one so a fresh database still has both buttons work.
+  # Falls back to a per-role fixture account so a fresh database still has both
+  # buttons work.
+  #
+  # Looked up by email and then forced to the role, rather than created outright:
+  # dev-caregiver@example.com may already exist holding some other role, and
+  # create! would then raise on the unique email index and break dev login
+  # entirely. That address exists to be this button's account, so owning its role
+  # is the point.
   def dev_user_for(role)
     role = role.to_s
     return nil unless User.roles.key?(role)
+    return User.where(role: role).order(:id).first if User.exists?(role: role)
 
-    User.where(role: role).order(:id).first ||
-      User.create!(email: "dev-#{role}@example.com", role: role, tz: "America/New_York")
+    User.find_or_initialize_by(email: "dev-#{role}@example.com").tap do |user|
+      user.role = role
+      user.tz ||= "America/New_York"
+      user.save!
+    end
   end
 end

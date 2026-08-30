@@ -160,7 +160,12 @@
       <ul class="divide-y divide-gray-200">
         <% @linked_seniors.each do |link| %>
           <li>
-            <%= link_to senior_dashboard_path(link.senior.id), class: "block hover:bg-gray-50" do %>
+            <%# The row used to be wrapped in a link_to ... do, which put an <a>
+                around the "View", "Coverage" and "Unlink" controls inside it.
+                Nested interactive elements are invalid HTML, and a keyboard or
+                screen-reader user tabbing the row got the outer link as well as
+                each control. The name carries the link now instead. %>
+            <div class="hover:bg-gray-50">
               <div class="px-4 py-4 sm:px-6">
                 <%# Wraps, because at the largest text size the action button was
                     being squeezed past the right edge and rendering as "Vie…".
@@ -169,8 +174,9 @@
                     its sibling out instead. %>
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div class="flex-1 min-w-0">
-                    <p class="text-lg font-medium text-blue-600 truncate">
-                      <%= link.senior.display_name %>
+                    <p class="text-lg font-medium truncate">
+                      <%= link_to link.senior.display_name, senior_dashboard_path(link.senior.id),
+                            class: "text-blue-600 hover:underline" %>
                     </p>
                     <% if link.senior.display_name != link.senior.email %>
                       <p class="text-sm text-gray-500"><%= link.senior.email %></p>
@@ -188,7 +194,9 @@
                       </span>
                     </div>
                   </div>
-                  <div class="ml-4 flex-shrink-0 flex space-x-2">
+                  <%# Wraps too: three controls at the largest text size do not fit
+                      one line beside the name. The parent's gap replaces ml-4. %>
+                  <div class="flex flex-wrap gap-2">
                     <%= link_to "View", senior_dashboard_path(link.senior.id), class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
                     <% if FeatureFlag.enabled?(:native_scheduling) %>
                       <%= link_to "Coverage", senior_coverage_path(link.senior), class: "inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50" %>
@@ -197,7 +205,7 @@
                   </div>
                 </div>
               </div>
-            <% end %>
+            </div>
           </li>
         <% end %>
       </ul>

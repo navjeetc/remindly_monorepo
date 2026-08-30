@@ -51,6 +51,17 @@ RSpec.describe "The development quick-login buttons", type: :request do
     expect(User.where(role: nil).count).to eq(0)
   end
 
+  # The fallback used to be a bare create!, so a database that already had
+  # dev-caregiver@example.com under some other role hit the unique email index
+  # and the button raised instead of signing anybody in.
+  it "still works when its own fixture address is held by the wrong role" do
+    User.where(role: :caregiver).destroy_all
+    create(:user, :senior, name: "Squatter", email: "dev-caregiver@example.com")
+
+    expect { get "/dev_login", params: { role: "caregiver" } }.not_to raise_error
+    expect(signed_in_role).to eq("caregiver")
+  end
+
   it "offers the buttons by role, not by address" do
     get "/login"
     doc = Nokogiri::HTML(response.body)
