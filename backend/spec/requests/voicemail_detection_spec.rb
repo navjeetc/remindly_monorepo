@@ -77,6 +77,18 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
       expect(telnyx_call.outcome).to eq("no_response")
     end
 
+    # Saying nothing is not the same as going away. The first version returned
+    # without hanging up, and since the gather was already finished nothing else
+    # ended the call -- it sat there recording silence onto the voicemail for as
+    # long as the carrier allowed.
+    it "hangs up instead of holding the line open recording silence" do
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended")
+
+      expect(TelnyxVoiceService).to have_received(:hangup)
+        .with(hash_including(call_control_id: "call-123"))
+    end
+
     # Belt and braces: an empty string is not somebody pressing a key either.
     it "stays silent when the gather reports empty digits" do
       telnyx_post("call.answered")

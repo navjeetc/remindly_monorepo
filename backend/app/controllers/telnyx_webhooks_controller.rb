@@ -163,7 +163,11 @@ class TelnyxWebhooksController < ApplicationController
     if call.answered_at.nil?
       return start_prompt(call, event_id) if payload["digits"].present?
 
-      # Nobody there. Say nothing further; hangup records it as no response.
+      # Nobody there. Hang up rather than returning: the gather is finished, so
+      # nothing else will end the call, and simply stopping here left the line
+      # open recording silence onto a voicemail for as long as the carrier
+      # allowed. Saying nothing is not the same as going away.
+      TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
       return
     end
 
