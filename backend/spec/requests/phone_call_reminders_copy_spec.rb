@@ -23,8 +23,13 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
   def description = doc.at_css("meta[name='description']")&.[]("content").to_s
 
   shared_examples "a page that mentions reminder calls" do
+    # Not a bare /telephone/: the landing page has said "talking someone through
+    # a settings screen over the telephone" since long before any of this, so
+    # the bare match was satisfied by copy arguing the opposite point, and every
+    # sentence about Remindly placing calls could have gone with the spec still
+    # green. The subject has to be in the match.
     it "says Remindly can telephone the care receiver" do
-      expect(text).to match(/telephone/i)
+      expect(text).to match(/Remindly can telephone/i)
     end
 
     # Both of these matched their own button list before review pointed it out.
