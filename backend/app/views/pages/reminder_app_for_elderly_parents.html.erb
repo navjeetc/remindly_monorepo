@@ -9,8 +9,14 @@
   Remindly knows a reminder was *marked done* on the device. It cannot know
   whether a tablet was swallowed, and medication is the wrong subject to be
   loose about in the sentence a search engine prints.
+
+  The telephone belongs in this sentence rather than further down the page. The
+  search this page answers is asked by people whose parent will not use an app,
+  and for some of them there is no tablet in the house at all — the old wording,
+  "nothing to install, no phone to check", told exactly those readers they were
+  in the wrong place.
 %>
-<% content_for :description, "A free reminder app for elderly parents that speaks each reminder out loud, on a tablet or computer they already own — nothing to install, no phone to check. You set the reminders from wherever you are, and for medication you are emailed when one is marked done, or when the time passes and nobody marks it." %>
+<% content_for :description, "A free reminder app for elderly parents that speaks each reminder out loud — on a tablet or computer they already own, or as a telephone call if there is no screen in the house. You set the reminders from wherever you are, and for medication you are emailed when one is marked done, or when the time passes and nobody marks it." %>
 
 <%#
   Three questions, and none of them the questions /faq answers.
@@ -50,7 +56,8 @@
   that eleven o'clock arrives while they are doing something else, and there is
   nobody in the room to say so. Remindly says it out loud — on a tablet or
   computer they already own, at the time it is due, without their having to
-  check a phone or open an app.
+  check a phone or open an app. If there is no tablet in the house, and no
+  appetite for one, it telephones them and says the same thing.
 </p>
 
 <%#
@@ -71,7 +78,7 @@
 
 <p class="free-note">
   <strong>Free — no card, no ads, no sales calls.</strong> No trial that quietly
-  ends, and no limit on how many reminders you set.
+  ends.
 </p>
 
 <%#
@@ -96,7 +103,8 @@
   <li>
     <strong>Does the reminder reach them without their doing anything?</strong>
     A notification on a phone in another room is not a reminder. Spoken out
-    loud, in the room they are in, is.
+    loud, in the room they are in, is — from a tablet if there is one, and
+    down the telephone if there is not.
   </li>
   <li>
     <strong>Can you change it from where you are?</strong> A dose time moves
@@ -125,17 +133,71 @@
     </li>
     <li>
       <strong>They hear it spoken aloud</strong> at the right time, at home,
-      without reading a screen or opening anything.
+      without reading a screen or opening anything — from the tablet, or as a
+      telephone call that never asks for more than a single keypress.
     </li>
     <li>
+      <%# "another phone call" until the calls arrived: it meant the caregiver's
+          call, but on a page that now says Remindly telephones the care
+          receiver, the same words read as a contradiction. %>
       <strong>You see what was marked done</strong>, and what wasn't — so
-      checking in does not have to mean another phone call.
+      checking in does not have to mean ringing to ask.
     </li>
   </ol>
 
   <p class="setup-foot">
     Their end needs no password: signing in is a link sent by email, and in
     practice whoever sets it up does that once and leaves the page open.
+  </p>
+</section>
+
+<%#
+  Placed after the setup section rather than inside it, because it answers a
+  reader who has already decided the setup above will not work in their house.
+  The scam objection is met head on: an automated call to an older person looks
+  exactly like the calls they have been told to hang up on, and a page that does
+  not say so is not being honest with the person it is asking to arrange this.
+%>
+<section class="setup">
+  <h2>If there is no tablet in the house</h2>
+
+  <p>
+    Some families never get past the first requirement, because the person being
+    cared for does not own a tablet and is not going to start now. Remindly can
+    telephone them instead. An ordinary landline is enough — nothing to install,
+    no account, no screen — and the reminder is spoken down the line when it is
+    due, between 8am and 9pm at their end.
+  </p>
+
+  <p>
+    The objection worth taking seriously is that an automated call to an elderly
+    person looks exactly like the calls they have rightly been taught to put the
+    phone down on. So the first call is not a reminder at all. It gives the name
+    of the person who arranged the calls, and it says plainly that Remindly will
+    never ask for personal details — no bank, no address, no date of birth,
+    nothing to read out. A reminder call follows only if they press 1. Press 9
+    and there is no second call.
+  </p>
+
+  <p>
+    After that, a call is only ever one keypress: <strong>1</strong> for done,
+    <strong>2</strong> to be rung again shortly, <strong>9</strong> to stop the
+    reminder calls. Nine works on every call, not only the first. You can ask
+    them to reconsider later, and that request is itself a call — but asking is
+    the whole of what you can do. Only they can start the reminders again, from
+    their own keypad.
+  </p>
+
+  <p>
+    If nobody picks up, Remindly rings again — up to three times, fewer if 9pm
+    arrives first. Whether that reaches you depends on the reminder: mark one as
+    a reminder where <strong>being late matters</strong> and an unanswered call
+    is reported to you straight away. Otherwise you get the ordinary missed
+    notice an hour later, and only for the categories you have switched on.
+  </p>
+
+  <p class="setup-foot">
+    A number has to be entered and confirmed before the first one is made.
   </p>
 </section>
 

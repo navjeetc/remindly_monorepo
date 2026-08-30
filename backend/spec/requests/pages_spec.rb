@@ -71,7 +71,10 @@ RSpec.describe "Pages", type: :request do
 
         panel = doc.at_css("section.setup")
         expect(panel).to be_present, "the setup panel is gone"
-        expect(panel.at_css("h2").text).to match(/already use/i)
+        # Was /already use/, which named the tablet and the computer. The
+        # heading now covers the telephone as well, so it matches on the part
+        # that carries the meaning: they need nothing new.
+        expect(panel.at_css("h2").text).to match(/already have|already use/i)
         expect(panel.css("ol li").length).to eq(3)
         expect(panel.text).to match(/nothing to install/i)
 
