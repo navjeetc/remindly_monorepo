@@ -70,6 +70,21 @@
                 rather than an hour later. Use it for doses with a narrow window, not for everything —
                 an alert that always arrives stops being read.
               </p>
+              <%# The alert only ever fires from a call webhook, so for somebody
+                  without phone reminders this checkbox changes nothing. Saying
+                  so beats letting a caregiver tick it for a dose that matters
+                  and believe they have bought fifty minutes they have not.
+
+                  Also covers the feature being switched off entirely, which is
+                  how development usually runs. %>
+              <% unless FeatureFlag.enabled?(:phone_call_reminders) && @senior.callable_by_phone? %>
+                <p class="mt-2 text-sm text-amber-800">
+                  <strong>This won't do anything yet.</strong>
+                  <%= @senior.display_name %> doesn't have phone reminders set up, and the
+                  early alert comes from an unanswered call. You'll still hear when a
+                  reminder is missed, an hour after it was due.
+                </p>
+              <% end %>
             </div>
           </div>
         </div>

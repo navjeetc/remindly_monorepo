@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The time-critical checkbox said nothing about being inert.** The early alert
+  fires only from an unanswered call, so for a care receiver without phone
+  reminders — or anywhere the feature is switched off, which is how development
+  usually runs — ticking the box changes nothing. The form now says so, and says
+  what still happens instead: the missed alert, an hour after the dose was due.
+  Letting somebody tick it for a dose that matters and believe they had bought
+  fifty minutes is the worst version of this.
+
 - **The largest text size broke the layout it was built for.** On a phone at
   150%, the caregiver dashboard put its buttons on top of the heading, the
   action button on each care receiver's row rendered as "Vie…", and the care
