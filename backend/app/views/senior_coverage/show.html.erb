@@ -4,7 +4,7 @@
       <h2 class="text-3xl font-bold text-gray-900">Coverage for <%= @senior.display_name %></h2>
       <p class="text-sm text-gray-500 mt-1">Caregiver availability coordination</p>
     </div>
-    <div class="flex space-x-2">
+    <div class="flex flex-wrap gap-2">
       <%= link_to senior_coverage_path(@senior, start_date: @start_date - 7.days), 
           class: "px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" do %>
         ← Previous Week
