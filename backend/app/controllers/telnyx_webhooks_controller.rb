@@ -34,8 +34,6 @@ class TelnyxWebhooksController < ApplicationController
     case event_type
     when "call.answered"
       handle_answered(call, event_id)
-    when "call.machine.detection.ended"
-      handle_machine_detection(call, payload, event_id)
     when "call.gather.ended"
       handle_gather_ended(call, payload, event_id)
     when "call.hangup"
@@ -69,49 +67,34 @@ class TelnyxWebhooksController < ApplicationController
   # Gathering twice is safe. command_id is Telnyx's idempotency key and this
   # passes the webhook's own event id, so a redelivered event issues the same
   # command and the provider discards the duplicate rather than speaking twice.
-  # Deliberately says nothing. Telnyx answers a voicemail exactly as it answers a
-  # person -- call.answered fires either way -- so anything spoken here is spoken
-  # into the mailbox as readily as to the care receiver, and the reminder title
-  # goes with it. A mailbox keeps that title, syncs it to devices and hands it to
-  # anyone holding the phone, which is further than the room the privacy policy
-  # warns about. The prompt waits for call.machine.detection.ended, the first
-  # event that can tell a person from a machine.
+  # A reminder call opens with a line that carries no title. The title is spoken
+  # only after somebody presses a key.
+  #
+  # This began as answering-machine detection: ask Telnyx whether a person or a
+  # mailbox picked up, and say nothing sensitive to a mailbox. Four live calls
+  # showed the verdict is not usable. A person answering silently came back
+  # "machine" twice; the actual voicemail came back not-a-machine twice, on the
+  # provider defaults and on tuned thresholds alike. Not merely inaccurate --
+  # wrong in the direction that matters, and a reminder title reached a mailbox
+  # both times a real mailbox answered.
+  #
+  # So nothing is asked of the provider and nothing is inferred. A mailbox cannot
+  # press a key, which makes it structurally impossible for a title to reach one:
+  # no thresholds, nothing to tune, and no way for this to regress quietly.
+  #
+  # The cost is one keypress for every care receiver, which is a real burden on
+  # the people this rings and was not chosen lightly. It buys the only guarantee
+  # worth having here, and it makes Remindly name itself before asking for
+  # anything -- the same reason the consent call opens as it does.
   def handle_answered(call, event_id)
-    # `receive` has already recorded the status. Nothing else is safe yet.
-  end
+    return if call.answered_at.present?
 
-  # result is "human", "machine", "not_sure", or absent when detection could not
-  # decide. Only an explicit machine verdict suppresses the prompt: hanging up on
-  # a real person who has just said hello is a worse failure than occasionally
-  # talking to a mailbox, so every other result is treated as a person.
-  def handle_machine_detection(call, payload, event_id)
-    return start_prompt(call, event_id) unless payload["result"].to_s == "machine"
+    return handle_verification_answered(call, event_id) if call.purpose == "verification"
 
-    screen_for_person(call, event_id)
-  end
-
-  # Detection said machine. The first version of this hung up, and on its first
-  # live call it hung up on a person -- Telnyx returned "machine" for somebody
-  # who had answered and said hello, and the reminder was simply dropped.
-  #
-  # So the verdict no longer decides whether to speak, only *what* to say. This
-  # line carries no reminder title and no name, so a mailbox records nothing
-  # worth protecting, while a person wrongly taken for a machine presses 1 and
-  # hears their reminder as normal. Being wrong now costs one keypress instead
-  # of a missed dose, which makes the feature correct regardless of how good
-  # detection ever gets -- and it will never be perfect.
-  #
-  # answered_at stays nil deliberately: it means "the reminder itself has been
-  # spoken", and it is what handle_gather_ended reads to tell a reply to this
-  # prompt from a reply to the real one.
-  def screen_for_person(call, event_id)
-    return if call.outcome == "voicemail"
-
-    # Set before the gather, not after: if nobody presses, hangup finds it and
-    # leaves it alone, and the caregiver is told a mailbox took the call rather
-    # than that the phone rang out.
-    call.update!(outcome: "voicemail")
-
+    # Redelivery is covered by command_id: Telnyx refuses a command it has
+    # already run, and event_id is stable across redeliveries. answered_at
+    # cannot guard this one -- it means "the reminder itself has been spoken",
+    # which is precisely what has not happened yet.
     TelnyxVoiceService.gather_digit(
       call_control_id: call.call_control_id,
       prompt: I18n.t("voice.screening", locale: call.user.spoken_locale),
@@ -168,14 +151,10 @@ class TelnyxWebhooksController < ApplicationController
   def handle_gather_ended(call, payload, event_id)
     return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
 
-    # A digit while the reminder has not been spoken yet is somebody answering
-    # the screening prompt, which means detection was wrong and there is a
-    # person on the line. Give them the reminder they were called about; the
-    # outcome goes back to pending because from here it is an ordinary call.
-    if call.answered_at.nil? && call.outcome == "voicemail"
-      call.update!(outcome: "pending")
-      return start_prompt(call, event_id)
-    end
+    # A digit arriving before the reminder has been spoken is somebody answering
+    # the opening line, which is the only proof available that a person is on
+    # this call rather than a mailbox. Give them what they were rung about.
+    return start_prompt(call, event_id) if call.answered_at.nil?
 
     digits = payload["digits"]
 
@@ -562,7 +541,6 @@ class TelnyxWebhooksController < ApplicationController
     case event_type
     when "call.initiated" then "initiated"
     when "call.answered" then "answered"
-    when "call.machine.detection.ended" then "answered"
     when "call.gather.ended" then "gathering"
     when "call.hangup" then "hangup"
     else "completed"

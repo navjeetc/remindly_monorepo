@@ -26,23 +26,6 @@ class TelnyxVoiceService
   OPEN_TIMEOUT = 2
   READ_TIMEOUT = 5
 
-  # Left at Telnyx's defaults, deliberately, after tuning them and watching it
-  # go wrong. The defaults are eager: they call silence a machine, so somebody
-  # who answers and says nothing is screened rather than spoken to.
-  #
-  # That looked worth fixing, so initial_silence was pushed beyond
-  # total_analysis_time to stop silence tripping it. It stopped almost
-  # everything tripping it: only a greeting still running at three seconds could
-  # still say machine, and a real mailbox with a shorter greeting came back
-  # not_sure -- which means spoken to. The reminder title went onto a voicemail
-  # on the first live test, which is the exact bug this whole change exists to
-  # prevent.
-  #
-  # The error was optimising away a cost that screening had already made cheap.
-  # An eager detector now costs one keypress, because a person taken for a
-  # machine presses 1 and hears their reminder; an under-eager one costs a
-  # medication name on a mailbox, which cannot be taken back. Those are not
-  # comparable, so the detector should stay eager and the config stays absent.
 
   # Initiate an outbound call for the given occurrence. Returns the call_control_id
   # from Telnyx so we can correlate webhooks.
@@ -63,12 +46,6 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: phone,
       from: from,
-      # Without this, voicemail is indistinguishable from a person: Telnyx sends
-      # call.answered either way, and the script is spoken into the mailbox. The
-      # reminder title goes with it, which is worse than the room the privacy
-      # policy already warns about -- a mailbox keeps it, syncs it, and hands it
-      # to anyone holding the phone.
-      answering_machine_detection: "detect",
 
       # attempt_id names the exact row, which is the only identifier here that
       # cannot become ambiguous: every other field is a description of the
@@ -145,12 +122,6 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: number,
       from: from,
-      # Without this, voicemail is indistinguishable from a person: Telnyx sends
-      # call.answered either way, and the script is spoken into the mailbox. The
-      # reminder title goes with it, which is worse than the room the privacy
-      # policy already warns about -- a mailbox keeps it, syncs it, and hands it
-      # to anyone holding the phone.
-      answering_machine_detection: "detect",
 
       # attempt_id, because the descriptive fields cannot separate these rows.
       # Verification attempt numbers restart per *destination*, so one senior

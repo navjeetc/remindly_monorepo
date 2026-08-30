@@ -29,12 +29,13 @@ RSpec.describe "Telnyx verification calls", type: :request do
       }
   end
 
-  # Telnyx answers a voicemail exactly as it answers a person, so the prompt now
-  # waits for the detection verdict rather than for call.answered. A real person
-  # is call.answered followed by call.machine.detection.ended saying "human".
+  # A reminder call opens with a line carrying no title, and the reminder itself
+  # is spoken only once somebody presses a key -- a mailbox cannot, which is the
+  # whole guarantee. So "a person answered" is two events: the pickup, and the
+  # keypress that gets past the opening line.
   def answer_as_human
     telnyx_post("call.answered")
-    telnyx_post("call.machine.detection.ended", result: "human")
+    telnyx_post("call.gather.ended", digits: "1")
   end
 
   before do
@@ -292,12 +293,13 @@ RSpec.describe "Telnyx verification calls", type: :request do
       # Posted directly rather than through telnyx_post: that helper references
       # the `telnyx_call` let, and instantiating it here would claim the same
       # (occurrence, attempt_number) as the reserved row and trip the unique
-      # index. The id is the one just adopted.
+      # index. The id is the one just adopted. The keypress is what gets past
+      # the opening line and makes the reminder itself be spoken.
       post "/telnyx/webhooks", params: {
         token: "test-token",
         data: {
-          event_type: "call.machine.detection.ended",
-          payload: { call_control_id: "v3:not-recorded-yet", result: "human" }
+          event_type: "call.gather.ended",
+          payload: { call_control_id: "v3:not-recorded-yet", digits: "1" }
         }
       }
 

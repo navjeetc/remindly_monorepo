@@ -26,12 +26,13 @@ RSpec.describe "Telnyx webhooks", type: :request do
       }
   end
 
-  # Telnyx answers a voicemail exactly as it answers a person, so the prompt now
-  # waits for the detection verdict rather than for call.answered. A real person
-  # is call.answered followed by call.machine.detection.ended saying "human".
+  # A reminder call opens with a line carrying no title, and the reminder itself
+  # is spoken only once somebody presses a key -- a mailbox cannot, which is the
+  # whole guarantee. So "a person answered" is two events: the pickup, and the
+  # keypress that gets past the opening line.
   def answer_as_human
     telnyx_post("call.answered")
-    telnyx_post("call.machine.detection.ended", result: "human")
+    telnyx_post("call.gather.ended", digits: "1")
   end
 
   before do
@@ -47,12 +48,15 @@ RSpec.describe "Telnyx webhooks", type: :request do
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_public_key).and_return(nil)
   end
 
-  it "gathers_using_speak the reminder when the call is answered" do
-    answer_as_human
+  # Answering gets the opening line, which carries no title. The reminder itself
+  # waits for a keypress, so answered_at -- which means "the reminder has been
+  # spoken" -- is still empty here.
+  it "gathers_using_speak the opening line when the call is answered" do
+    telnyx_post("call.answered")
 
     expect(TelnyxVoiceService).to have_received(:gather_digit).once
     expect(telnyx_call.reload.status).to eq("answered")
-    expect(telnyx_call.answered_at).to be_present
+    expect(telnyx_call.answered_at).to be_nil
   end
 
   describe "what the call says" do
@@ -107,6 +111,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
   end
 
   it "acknowledges the occurrence as taken when the senior presses 1" do
+    answer_as_human
     telnyx_post("call.gather.ended", { "digits" => "1" })
 
     expect(telnyx_call.reload.outcome).to eq("taken")
@@ -122,6 +127,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "answers with a retryable status rather than a cheerful 200" do
       allow(Acknowledgement).to receive(:create!).and_raise(ActiveRecord::StatementInvalid, "db gone")
 
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "1")
 
       expect(response).to have_http_status(:internal_server_error)
@@ -130,6 +136,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "leaves the occurrence unacknowledged so the retry can still claim it" do
       allow(Acknowledgement).to receive(:create!).and_raise(ActiveRecord::StatementInvalid, "db gone")
 
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "1")
 
       expect(occurrence.reload.status).to eq("pending")
@@ -137,6 +144,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "is safe to retry — a redelivered keypress acknowledges once, not twice" do
+      answer_as_human
       2.times { telnyx_post("call.gather.ended", digits: "1") }
 
       expect(occurrence.acknowledgements.count).to eq(1)
@@ -146,6 +154,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "is safe to retry a snooze too" do
       telnyx_call # the lets are lazy; create the original occurrence before counting
 
+      answer_as_human
       expect { 2.times { telnyx_post("call.gather.ended", digits: "2") } }
         .to change { reminder.occurrences.count }.by(1)
 
@@ -196,12 +205,13 @@ RSpec.describe "Telnyx webhooks", type: :request do
       # Posted directly rather than through telnyx_post: that helper references
       # the `telnyx_call` let, and instantiating it here would claim the same
       # (occurrence, attempt_number) as the reserved row and trip the unique
-      # index. The id is the one just adopted.
+      # index. The id is the one just adopted. The keypress is what gets past
+      # the opening line and makes the reminder itself be spoken.
       post "/telnyx/webhooks", params: {
         token: "test-token",
         data: {
-          event_type: "call.machine.detection.ended",
-          payload: { call_control_id: "v3:not-recorded-yet", result: "human" }
+          event_type: "call.gather.ended",
+          payload: { call_control_id: "v3:not-recorded-yet", digits: "1" }
         }
       }
 
@@ -260,8 +270,18 @@ RSpec.describe "Telnyx webhooks", type: :request do
 
       revived = TelnyxCall.find_by(call_control_id: "v3:accepted-but-unrecorded")
 
+      # The first digit got past the opening line; this is the one that answers
+      # the reminder itself.
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.gather.ended",
+          payload: { call_control_id: "v3:accepted-but-unrecorded", digits: "1" }
+        }
+      }
+
       expect(occurrence.reload.status).to eq("acknowledged")
-      expect(revived.outcome).to eq("taken")
+      expect(revived.reload.outcome).to eq("taken")
     end
 
     it "accepts and drops an unknown call that is not ours, rather than retrying forever" do
@@ -291,6 +311,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     # The window after the acknowledgement commits: if enqueueing failed, a
     # redelivery used to take the early return and the caregiver was never told.
     it "re-enqueues the caregiver notification on a redelivered keypress" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "1")
 
       expect { telnyx_post("call.gather.ended", digits: "1") }
@@ -298,6 +319,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "still acknowledges only once when the keypress is redelivered" do
+      answer_as_human
       2.times { telnyx_post("call.gather.ended", digits: "1") }
 
       expect(occurrence.acknowledgements.count).to eq(1)
@@ -309,6 +331,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
   # blocks their next reminder for the whole in-flight window.
   describe "finishing a call" do
     it "records completion when nobody pressed anything" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "")
 
       expect(telnyx_call.reload.outcome).to eq("no_response")
@@ -316,6 +339,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "records completion on hangup even when a keypress already resolved it" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "1")
       telnyx_post("call.hangup")
 
@@ -324,6 +348,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "does not let a hangup overwrite an outcome a keypress decided" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "2")
       telnyx_post("call.hangup")
 
@@ -331,6 +356,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "records completion for a call nobody ever answered" do
+      answer_as_human
       telnyx_post("call.hangup")
 
       expect(telnyx_call.reload.outcome).to eq("no_response")
@@ -338,6 +364,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "leaves the senior free to be called again once the call has ended" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "")
 
       expect(TelnyxCall.call_in_flight?(senior, Time.current)).to be false
@@ -350,6 +377,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
   # they hear every day is the one they would actually want to stop.
   describe "pressing 9 on an ordinary reminder call" do
     it "stops future calls immediately and permanently" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "9")
 
       expect(senior.reload.call_opted_out_at).to be_present
@@ -367,6 +395,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
 
     # They said stop calling, not that the dose was taken.
     it "leaves the occurrence pending so the missed sweep still claims it" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "9")
 
       expect(occurrence.reload.status).to eq("pending")
@@ -374,6 +403,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "records the call as opted out rather than as no response" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "9")
 
       expect(telnyx_call.reload.outcome).to eq("opted_out")
@@ -382,6 +412,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
 
   describe "pressing 2" do
     it "snoozes rather than skips, matching the only two actions the senior UI offers" do
+      answer_as_human
       telnyx_post("call.gather.ended", digits: "2")
 
       expect(telnyx_call.reload.outcome).to eq("snooze")
@@ -391,6 +422,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "schedules the reminder again, so pressing 2 does not quietly cancel the dose" do
       telnyx_call # the lets are lazy; create the original occurrence before counting
 
+      answer_as_human
       expect { telnyx_post("call.gather.ended", digits: "2") }
         .to change { reminder.occurrences.count }.by(1)
 
@@ -400,6 +432,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     end
 
     it "tells no caregiver it was done" do
+      answer_as_human
       expect { telnyx_post("call.gather.ended", digits: "2") }
         .not_to have_enqueued_job(ReminderNotificationJob)
     end

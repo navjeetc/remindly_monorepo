@@ -2,20 +2,19 @@
 
 require "rails_helper"
 
-# Reported from a real call: the 16:13 reminder left its script on a voicemail,
-# in Spanish, and was recorded no_response. Nothing asked Telnyx to detect a
-# machine, and Telnyx fires call.answered for a mailbox exactly as it does for a
-# person -- so the prompt played to the mailbox and the reminder title went with
-# it.
+# A reminder call opens with a line carrying no title, and the title is spoken
+# only once somebody presses a key.
 #
-# That title is the part that matters. The privacy policy already warns it is
-# "read aloud by the automated phone call, in whatever room the phone happens to
-# be in"; a mailbox is further than a room, because it keeps the recording,
-# syncs it and hands it to whoever holds the phone. The consent script is worse
-# again: nobody can press 1 on a recording, so consent can never complete, and
-# an unsolicited anti-scam script sitting in a stranger's voicemail is precisely
-# what a scam sounds like.
-RSpec.describe "Voicemail detection on reminder calls", type: :request do
+# This began as answering-machine detection and that approach was abandoned on
+# evidence. Four live calls: a person answering silently was called a machine
+# twice, and the actual voicemail was called not-a-machine twice -- on provider
+# defaults and on tuned thresholds alike. The verdict was wrong in the direction
+# that mattered, and a reminder title reached a mailbox both times a real
+# mailbox picked up.
+#
+# A mailbox cannot press a key. That is the whole guarantee, and it does not
+# depend on anybody's classifier being right.
+RSpec.describe "Reminder calls never speak the title unprompted", type: :request do
   let(:senior) { create(:user, :senior, phone: "+15551234567", call_reminders_enabled: true) }
   let(:caregiver) { create(:user, :caregiver, name: "Janey") }
   let(:reminder) { Reminder.create!(user: senior, title: "Metformin", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz) }
@@ -36,171 +35,91 @@ RSpec.describe "Voicemail detection on reminder calls", type: :request do
     allow(TelnyxVoiceService).to receive(:gather_digit)
     allow(TelnyxVoiceService).to receive(:hangup)
 
-    # Same as telnyx_webhooks_spec: the controller authenticates the webhook
-    # against credentials, so without these every post here is rejected and the
-    # examples pass by never reaching the code under test.
+    # Without these the controller rejects every post and the examples pass by
+    # never reaching the code under test.
     allow(Rails.application.credentials).to receive(:dig).and_call_original
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_token).and_return("test-token")
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_public_key).and_return(nil)
   end
 
-  describe "when a machine picks up" do
-    # The title is the whole reason this feature exists. Everything else about a
-    # machine verdict is recoverable; a medication name on a mailbox is not.
-    it "never says the reminder title" do
+  # The one that matters. Everything a mailbox can record, it records from this
+  # first prompt, because nothing else is said until a key is pressed.
+  describe "what a mailbox can record" do
+    it "never contains the reminder title" do
       telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
 
       expect(TelnyxVoiceService).to have_received(:gather_digit)
       expect(TelnyxVoiceService).not_to have_received(:gather_digit)
         .with(hash_including(prompt: a_string_including("Metformin")))
     end
 
-    it "offers a way through, rather than hanging up" do
+    it "names Remindly, so the recording is not an anonymous robocall" do
       telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
 
       expect(TelnyxVoiceService).to have_received(:gather_digit)
-      expect(TelnyxVoiceService).not_to have_received(:hangup)
+        .with(hash_including(prompt: a_string_including("Remindly")))
     end
 
-    # "The mailbox took it" and "the phone rang out" are different things to tell
-    # a caregiver, and only one of them means the handset was near anybody.
-    it "records the outcome as voicemail, not no_response" do
+    it "stays silent after the opening line when nobody presses anything" do
       telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
       telnyx_post("call.hangup")
-
-      expect(telnyx_call.reload.outcome).to eq("voicemail")
-    end
-
-    # A machine picking up is still nobody answering, so the flag that exists for
-    # doses with a narrow window has to fire on it.
-    it "still alerts the caregivers when the reminder is time-critical" do
-      reminder.update!(critical: true)
-      CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage)
-
-      allow(ReminderNotificationService).to receive(:notify_unanswered)
-
-      telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
-      telnyx_post("call.hangup")
-
-      expect(ReminderNotificationService).to have_received(:notify_unanswered)
-    end
-  end
-
-  describe "when a person picks up" do
-    it "speaks the reminder once the verdict says human" do
-      telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "human")
-
-      expect(TelnyxVoiceService).to have_received(:gather_digit)
-      expect(TelnyxVoiceService).not_to have_received(:hangup)
-    end
-
-    # Hanging up on somebody who has just said hello is a worse failure than
-    # occasionally talking to a mailbox, so only an explicit machine verdict
-    # suppresses the prompt.
-    it "speaks when detection could not decide" do
-      telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "not_sure")
-
-      expect(TelnyxVoiceService).to have_received(:gather_digit)
-      expect(TelnyxVoiceService).not_to have_received(:hangup)
-    end
-
-    it "speaks when the verdict carries no result at all" do
-      telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended")
-
-      expect(TelnyxVoiceService).to have_received(:gather_digit)
-    end
-
-    # Telnyx redelivers, and a second prompt would talk over the first.
-    it "does not speak twice when the verdict is redelivered" do
-      telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "human")
-      telnyx_post("call.machine.detection.ended", result: "human")
 
       expect(TelnyxVoiceService).to have_received(:gather_digit).once
+      expect(telnyx_call.reload.answered_at).to be_nil
+      expect(telnyx_call.outcome).to eq("no_response")
     end
   end
 
-  # Call 39 in production, 22:02:00-22:02:08: Telnyx returned "machine" for a
-  # person who had answered and said hello, and the first version of this fix
-  # hung up on them. The reminder was simply dropped. Detection will always get
-  # this wrong sometimes, so being wrong has to cost a keypress rather than a
-  # dose.
-  describe "when detection is wrong and a person is there" do
-    it "gives them the reminder once they press a key" do
+  describe "when a person presses a key" do
+    it "then speaks the reminder they were rung about" do
       telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
       telnyx_post("call.gather.ended", digits: "1")
 
-      expect(TelnyxVoiceService).to have_received(:gather_digit).twice
       expect(TelnyxVoiceService).to have_received(:gather_digit)
         .with(hash_including(prompt: a_string_including("Metformin")))
     end
 
-    it "is an ordinary call again afterwards, not a voicemail" do
+    it "takes the keypress that acknowledges it, as an ordinary call" do
       telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
-      telnyx_post("call.gather.ended", digits: "1")
-
-      expect(telnyx_call.reload.outcome).to eq("pending")
-      expect(telnyx_call.answered_at).to be_present
-    end
-
-    it "then takes the keypress that acknowledges it" do
-      telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
       telnyx_post("call.gather.ended", digits: "1")
       telnyx_post("call.gather.ended", digits: "1")
 
       expect(occurrence.reload.status).to eq("acknowledged")
+      expect(telnyx_call.reload.outcome).to eq("taken")
     end
 
-    it "never hangs up on them" do
+    # Any key, not just 1: somebody who presses whatever their thumb finds has
+    # still proved they are a person, and refusing them would be perverse.
+    it "accepts any key as proof there is somebody there" do
       telnyx_post("call.answered")
-      telnyx_post("call.machine.detection.ended", result: "machine")
+      telnyx_post("call.gather.ended", digits: "5")
 
-      expect(TelnyxVoiceService).not_to have_received(:hangup)
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin")))
     end
   end
 
-  # The regression itself: answering must no longer be enough to make it talk.
-  it "does not speak on call.answered alone, which a mailbox also triggers" do
+  # A machine picking up is still nobody answering, and the flag exists for
+  # doses with a narrow window.
+  it "alerts the caregivers when a time-critical reminder goes unanswered" do
+    reminder.update!(critical: true)
+    CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage)
+    allow(ReminderNotificationService).to receive(:notify_unanswered)
+
     telnyx_post("call.answered")
+    telnyx_post("call.hangup")
 
-    expect(TelnyxVoiceService).not_to have_received(:gather_digit)
-    expect(telnyx_call.reload.answered_at).to be_nil
+    expect(ReminderNotificationService).to have_received(:notify_unanswered)
   end
 
-  it "asks Telnyx to detect a machine when it dials" do
-    expect(TelnyxVoiceService::API_BASE).to be_present
+  it "asks the provider for no machine detection at all" do
     payload = nil
     allow(TelnyxVoiceService).to receive(:post) { |_path, body, **| payload = body; { "data" => { "call_control_id" => "x" } } }
     allow(TelnyxVoiceService).to receive(:credentials).and_return(from_number: "+15550000000", connection_id: "conn-1")
 
     TelnyxVoiceService.dial(occurrence, attempt: telnyx_call)
 
-    expect(payload[:answering_machine_detection]).to eq("detect")
-  end
-
-  # Tuning these was tried and reverted. Pushing initial_silence beyond
-  # total_analysis_time stopped silence being read as a machine, and stopped a
-  # real mailbox being read as one too -- the title went onto a voicemail on the
-  # first live test. An eager detector costs a keypress; a lax one costs a
-  # medication name on a mailbox. This pins that no config is sent, so the eager
-  # defaults stand.
-  it "sends no detection config, because the eager defaults are the safe ones" do
-    payload = nil
-    allow(TelnyxVoiceService).to receive(:post) { |_path, body, **| payload = body; { "data" => { "call_control_id" => "x" } } }
-    allow(TelnyxVoiceService).to receive(:credentials).and_return(from_number: "+15550000000", connection_id: "conn-1")
-
-    TelnyxVoiceService.dial(occurrence, attempt: telnyx_call)
-
+    expect(payload).not_to have_key(:answering_machine_detection)
     expect(payload).not_to have_key(:answering_machine_detection_config)
   end
 end
