@@ -63,14 +63,36 @@ RSpec.describe "Layout that has to survive the largest text size", type: :reques
     expect(text).not_to match(/\bManage\b/)
   end
 
-  # Amber is the health warning. A second amber block under the same field meant
-  # neither read as urgent.
-  it "keeps the reminder form to one amber block" do
-    senior.update!(spoken_language: "es-US")
-    get "/dashboard/senior/#{senior.id}/reminder/new"
+  # Amber is for the one caution on this form. Asserted by finding each block by
+  # its own words and checking which is styled as a warning, rather than by
+  # counting nodes carrying a particular utility class — that version broke if
+  # somebody moved amber-700 to amber-800, which changes nothing about the
+  # hierarchy this is here to protect.
+  describe "the reminder form's warning hierarchy" do
+    before do
+      senior.update!(spoken_language: "es-US")
+      get "/dashboard/senior/#{senior.id}/reminder/new"
+    end
 
-    ambers = doc.css("*").count { |n| n["class"].to_s =~ /\bbg-amber-50\b|\btext-amber-700\b/ }
+    # Whitespace collapsed before matching: the ERB wraps these sentences, so
+    # the raw node text carries newlines mid-phrase and a literal include? finds
+    # nothing. Same trap as the "read aloud on reminder calls" assertion in the
+    # sensitive-info specs.
+    def block_containing(text)
+      doc.css("p, div").reverse.find { |n| n.text.gsub(/\s+/, " ").include?(text) }
+    end
 
-    expect(ambers).to eq(1)
+    it "keeps the health warning amber, because it is the caution" do
+      warning = block_containing("keep private health details out")
+
+      expect(warning["class"]).to match(/amber/)
+    end
+
+    it "does not shout the language note as well" do
+      note = block_containing("read out exactly as you type it")
+
+      expect(note["class"]).not_to match(/amber/)
+      expect(note["class"]).to match(/gray/)
+    end
   end
 end

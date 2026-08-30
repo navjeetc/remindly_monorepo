@@ -28,6 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than a caution, so it is grey now, matching the note under the notes
   box: amber warns, grey informs.
 
+- **The two development quick-login buttons signed you in as the opposite role.**
+  They named a role and passed an email address, trusting the seed data to
+  agree about what those accounts are. It does not:
+  `caregiver@example.com` holds the care receiver role and
+  `senior@example.com` holds the caregiver one, and has for a long time. So
+  "Quick Login as Caregiver" signed you in as a care receiver and the other
+  button did the reverse. They ask for a role now, which makes the label true
+  whatever the fixtures say. Development only.
+
+  The second button also still said "Senior" — on the sign-in page, which is
+  the first screen anyone sees, and which the terminology sweep missed by
+  scoping itself to signed-in screens.
+
 - **Two screens printed the raw permission value.** The care receiver's own
   dashboard has said "You can make changes" since the permission control
   shipped, while the caregiver's dashboard showed a "Manage" badge and the care
