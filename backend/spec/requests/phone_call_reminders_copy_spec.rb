@@ -42,6 +42,40 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
     it "does not claim the call proves the medication was taken" do
       expect(text).not_to match(/confirms? (that )?(they|the medication|it) (was )?(taken|swallowed)/i)
     end
+
+    # Every one of these was in the first draft of this copy and every one was
+    # false. They are pinned individually because each overstates a different
+    # thing, and the first three concern how much control the person being
+    # telephoned actually has.
+
+    # DashboardController#verify_phone: "An opt-out is deliberately not a block
+    # here." A caregiver with manage permission may place a consent call after
+    # a 9, capped per day. Pressing 9 stops the reminders; it does not end
+    # contact for good, and saying so to an elderly person would be a promise
+    # the product does not keep.
+    it "does not promise the opt-out is permanent" do
+      expect(text).not_to match(/for good|never (call|telephone|ring)|permanently/i)
+    end
+
+    # User::CALLING_HOURS = (8...21). VoiceReminderJob suppresses anything
+    # outside it, so a dose due at 6am or 10pm is never telephoned.
+    it "states the hours calls are made within" do
+      expect(text).to match(/8\s*am.{0,12}9\s*pm/i)
+    end
+
+    # TelnyxCall::MAX_ATTEMPTS is a ceiling, not a promise: the calling-hours
+    # window or MAX_CALLS_PER_DAY can end the attempts early.
+    it "describes the retries as a limit rather than a guarantee" do
+      expect(text).to match(/up to three/i)
+      expect(text).not_to match(/three times in all/i)
+    end
+
+    # notify_unanswered_if_critical returns unless the reminder is critical, and
+    # the hour-later missed notice obeys each caregiver's category preferences,
+    # which are off by default for hydration and routine.
+    it "ties the unanswered alert to the time-critical flag" do
+      expect(text).to match(/being late matters/i)
+    end
   end
 
   describe "GET /how_to" do
