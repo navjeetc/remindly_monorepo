@@ -37,6 +37,38 @@ RSpec.describe "Marking a reminder time-critical", type: :request do
     end
   end
 
+  # Review caught this: the caveat covers two conditions but the copy named only
+  # one, so a caregiver whose care receiver has a perfectly good verified number
+  # was told they "don't have reminder calls set up" and would go and check a
+  # phone setting that was never the problem.
+  describe "when the phone is set up but the feature is switched off" do
+    before do
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(false)
+      senior.update!(phone: "+15551234567", phone_verified_at: Time.current,
+                     call_consent_at: Time.current, call_reminders_enabled: true)
+    end
+
+    it "blames the feature rather than this person's setup" do
+      get "/dashboard/senior/#{senior.id}/reminder/new"
+      text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
+
+      expect(text).to include("This won't do anything yet")
+      expect(text).to include("Reminder calls are switched off here")
+      expect(text).not_to include("doesn't have reminder calls set up")
+    end
+
+    it "says the same thing on the edit form" do
+      reminder = Reminder.create!(user: senior, title: "Levodopa", rrule: "FREQ=DAILY", tz: senior.tz)
+
+      get "/dashboard/senior/#{senior.id}/reminder/#{reminder.id}/edit"
+      text = Nokogiri::HTML(response.body).text.gsub(/\s+/, " ")
+
+      expect(text).to include("Reminder calls are switched off here")
+      expect(text).not_to include("doesn't have reminder calls set up")
+    end
+  end
+
   describe "when phone reminders are working" do
     before do
       allow(FeatureFlag).to receive(:enabled?).and_call_original

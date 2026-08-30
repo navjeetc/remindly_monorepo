@@ -1,0 +1,16 @@
+<%# Shown when ticking "time-critical" would buy the caregiver nothing. The
+    early alert only ever fires from a reminder call's webhook, so saying so
+    beats letting somebody tick it for a dose that matters and believe they
+    have bought fifty minutes they have not.
+
+    Rendered from both the new and edit reminder forms, which carried
+    byte-identical copies of this until review caught the same wording problem
+    in both of them at once. %>
+<% reason = missing_call_reason_for_alert(care_receiver) %>
+<% if reason %>
+  <p class="mt-2 text-sm text-amber-800">
+    <strong>This won't do anything yet.</strong>
+    <%= reason %>, and the early alert comes from an unanswered call. You'll
+    still hear when a reminder is missed, an hour after it was due.
+  </p>
+<% end %>

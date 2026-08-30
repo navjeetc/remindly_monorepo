@@ -108,4 +108,20 @@ module ApplicationHelper
 
     in_user_timezone(time, user).strftime(format)
   end
+
+  # Why ticking "time-critical" on a reminder would change nothing for this
+  # person, or nil when it would work. The early alert is raised by an
+  # unanswered reminder call, and there are two separate ways for there to be
+  # no call to go unanswered.
+  #
+  # Named apart because the remedy differs. A caregiver told the care receiver
+  # "doesn't have reminder calls set up" will go and check a phone number that
+  # is, in the second case, already perfectly fine — the calls are off for
+  # everybody, and there is nothing they can do about it from here.
+  def missing_call_reason_for_alert(care_receiver)
+    return "Reminder calls are switched off here" unless FeatureFlag.enabled?(:phone_call_reminders)
+    return if care_receiver.callable_by_phone?
+
+    "#{care_receiver.display_name} doesn't have reminder calls set up"
+  end
 end
