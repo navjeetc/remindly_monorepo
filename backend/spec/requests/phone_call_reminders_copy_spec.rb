@@ -48,6 +48,18 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
       expect(text).not_to match(/spanish|español|mandarin|cantonese/i)
     end
 
+    # The other half of the same problem, and the direction it actually failed
+    # in. ENABLE_TRANSLATED_CALLS is true in production, so a caregiver can
+    # choose Spanish today and "calls are spoken in English" was simply untrue.
+    # These pages say nothing about language now: claiming English-only is
+    # false, and naming Spanish would recruit families to a script no native
+    # speaker has read. Silence is the only accurate option until it is
+    # reviewed, at which point this guard should be replaced by one asserting
+    # the languages are named.
+    it "does not claim the calls are English-only" do
+      expect(text).not_to match(/spoken in English|English only|only in English|in English\./i)
+    end
+
     # Pressing 1 records an acknowledgement, exactly as the Done button does. It
     # is not evidence that anybody swallowed anything, and medication is the
     # wrong subject to get loose about.
