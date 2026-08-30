@@ -26,34 +26,23 @@ class TelnyxVoiceService
   OPEN_TIMEOUT = 2
   READ_TIMEOUT = 5
 
-  # Detection decides by whichever threshold it crosses first, and on the
-  # defaults silence crosses initial_silence (3500ms) and is called a machine.
-  # That is wrong for the people this product rings: somebody hard of hearing,
-  # or holding the handset the wrong way up, answers and says nothing, and under
-  # the defaults every one of them is treated as an answering machine.
+  # Left at Telnyx's defaults, deliberately, after tuning them and watching it
+  # go wrong. The defaults are eager: they call silence a machine, so somebody
+  # who answers and says nothing is screened rather than spoken to.
   #
-  # So initial_silence is put *beyond* total_analysis_time. Silence can no
-  # longer trip it -- analysis runs out first and reports "not_sure", which is
-  # treated as a person and gets the reminder spoken.
+  # That looked worth fixing, so initial_silence was pushed beyond
+  # total_analysis_time to stop silence tripping it. It stopped almost
+  # everything tripping it: only a greeting still running at three seconds could
+  # still say machine, and a real mailbox with a shorter greeting came back
+  # not_sure -- which means spoken to. The reminder title went onto a voicemail
+  # on the first live test, which is the exact bug this whole change exists to
+  # prevent.
   #
-  # greeting_duration is pulled below total_analysis_time for the opposite
-  # reason: a mailbox announces itself, and a greeting still running at 3s is
-  # the signal that separates it from "Hello?". It has to fire inside the
-  # analysis window or a real voicemail comes back not_sure as well.
-  #
-  #   silent person   -> nothing crosses -> not_sure at 4.0s -> spoken to
-  #   "Hello?"        -> after_greeting_silence -> human at ~1.3s -> spoken to
-  #   mailbox         -> greeting_duration -> machine at ~3.0s -> screened
-  #
-  # The cost is that a silent pickup waits four seconds before hearing anything.
-  # That is worse than the instant reply they had before detection existed, and
-  # better than being handed a keypress they may not manage.
-  AMD_CONFIG = {
-    total_analysis_time_millis: 4000,
-    initial_silence_millis: 5000,
-    greeting_duration_millis: 3000,
-    after_greeting_silence_millis: 800
-  }.freeze
+  # The error was optimising away a cost that screening had already made cheap.
+  # An eager detector now costs one keypress, because a person taken for a
+  # machine presses 1 and hears their reminder; an under-eager one costs a
+  # medication name on a mailbox, which cannot be taken back. Those are not
+  # comparable, so the detector should stay eager and the config stays absent.
 
   # Initiate an outbound call for the given occurrence. Returns the call_control_id
   # from Telnyx so we can correlate webhooks.
@@ -80,7 +69,6 @@ class TelnyxVoiceService
       # policy already warns about -- a mailbox keeps it, syncs it, and hands it
       # to anyone holding the phone.
       answering_machine_detection: "detect",
-      answering_machine_detection_config: AMD_CONFIG,
 
       # attempt_id names the exact row, which is the only identifier here that
       # cannot become ambiguous: every other field is a description of the
@@ -163,7 +151,6 @@ class TelnyxVoiceService
       # policy already warns about -- a mailbox keeps it, syncs it, and hands it
       # to anyone holding the phone.
       answering_machine_detection: "detect",
-      answering_machine_detection_config: AMD_CONFIG,
 
       # attempt_id, because the descriptive fields cannot separate these rows.
       # Verification attempt numbers restart per *destination*, so one senior
