@@ -26,6 +26,14 @@ RSpec.describe "Telnyx webhooks", type: :request do
       }
   end
 
+  # Telnyx answers a voicemail exactly as it answers a person, so the prompt now
+  # waits for the detection verdict rather than for call.answered. A real person
+  # is call.answered followed by call.machine.detection.ended saying "human".
+  def answer_as_human
+    telnyx_post("call.answered")
+    telnyx_post("call.machine.detection.ended", result: "human")
+  end
+
   before do
     # These have to be stubbed in `before`, not `around`: rspec-mocks sets up its
     # per-example lifecycle after the around hook starts, so stubbing there
@@ -40,7 +48,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
   end
 
   it "gathers_using_speak the reminder when the call is answered" do
-    telnyx_post("call.answered")
+    answer_as_human
 
     expect(TelnyxVoiceService).to have_received(:gather_digit).once
     expect(telnyx_call.reload.status).to eq("answered")
@@ -51,7 +59,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     def prompt_sent
       captured = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| captured = kw[:prompt] }
-      telnyx_post("call.answered")
+      answer_as_human
       captured
     end
 
@@ -151,7 +159,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "asks for a retry when the gather fails, rather than leaving the senior in silence" do
       allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(response).to have_http_status(:internal_server_error)
     end
@@ -159,7 +167,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "leaves answered_at unset when the gather failed, so the retry speaks" do
       allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(telnyx_call.reload.answered_at).to be_nil
     end
@@ -184,7 +192,20 @@ RSpec.describe "Telnyx webhooks", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(reserved.reload.call_control_id).to eq("v3:not-recorded-yet")
-      expect(reserved.answered_at).to be_present
+
+      # Posted directly rather than through telnyx_post: that helper references
+      # the `telnyx_call` let, and instantiating it here would claim the same
+      # (occurrence, attempt_number) as the reserved row and trip the unique
+      # index. The id is the one just adopted.
+      post "/telnyx/webhooks", params: {
+        token: "test-token",
+        data: {
+          event_type: "call.machine.detection.ended",
+          payload: { call_control_id: "v3:not-recorded-yet", result: "human" }
+        }
+      }
+
+      expect(reserved.reload.answered_at).to be_present
     end
 
     # Two numbers, one senior, one call_day. Verification attempt numbers restart
@@ -339,7 +360,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).to include("Press 9 to stop these calls")
     end
@@ -390,7 +411,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("TELNYX_WEBHOOK_TOKEN").and_return(nil)
 
-    telnyx_post("call.answered")
+    answer_as_human
 
     expect(response).to have_http_status(:unauthorized)
   end

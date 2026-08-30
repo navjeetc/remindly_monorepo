@@ -34,6 +34,8 @@ class TelnyxWebhooksController < ApplicationController
     case event_type
     when "call.answered"
       handle_answered(call, event_id)
+    when "call.machine.detection.ended"
+      handle_machine_detection(call, payload, event_id)
     when "call.gather.ended"
       handle_gather_ended(call, payload, event_id)
     when "call.hangup"
@@ -67,7 +69,33 @@ class TelnyxWebhooksController < ApplicationController
   # Gathering twice is safe. command_id is Telnyx's idempotency key and this
   # passes the webhook's own event id, so a redelivered event issues the same
   # command and the provider discards the duplicate rather than speaking twice.
+  # Deliberately says nothing. Telnyx answers a voicemail exactly as it answers a
+  # person -- call.answered fires either way -- so anything spoken here is spoken
+  # into the mailbox as readily as to the care receiver, and the reminder title
+  # goes with it. A mailbox keeps that title, syncs it to devices and hands it to
+  # anyone holding the phone, which is further than the room the privacy policy
+  # warns about. The prompt waits for call.machine.detection.ended, the first
+  # event that can tell a person from a machine.
   def handle_answered(call, event_id)
+    # `receive` has already recorded the status. Nothing else is safe yet.
+  end
+
+  # result is "human", "machine", "not_sure", or absent when detection could not
+  # decide. Only an explicit machine verdict suppresses the prompt: hanging up on
+  # a real person who has just said hello is a worse failure than occasionally
+  # talking to a mailbox, so every other result is treated as a person.
+  def handle_machine_detection(call, payload, event_id)
+    return start_prompt(call, event_id) unless payload["result"].to_s == "machine"
+
+    # Recorded before the hangup so the outcome survives: handle_hangup only
+    # overwrites an outcome still sitting at "pending".
+    call.update!(outcome: "voicemail")
+    TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+  end
+
+  # answered_at doubles as the guard against speaking twice. Telnyx redelivers
+  # events, and a second prompt would talk over the first.
+  def start_prompt(call, event_id)
     return if call.answered_at.present?
 
     return handle_verification_answered(call, event_id) if call.purpose == "verification"
@@ -180,8 +208,12 @@ class TelnyxWebhooksController < ApplicationController
   # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
     attributes = { completed_at: call.completed_at || Time.current }
-    unanswered = call.outcome == "pending"
-    attributes[:outcome] = "no_response" if unanswered
+    # A machine picking up is still nobody answering, so a critical reminder has
+    # to alert on it -- but the outcome stays "voicemail", because "the mailbox
+    # took it" and "the phone rang out" are different things to tell a caregiver
+    # and only one of them means the handset was near anybody.
+    unanswered = %w[pending voicemail].include?(call.outcome)
+    attributes[:outcome] = "no_response" if call.outcome == "pending"
 
     call.update!(attributes)
 
@@ -494,6 +526,7 @@ class TelnyxWebhooksController < ApplicationController
     case event_type
     when "call.initiated" then "initiated"
     when "call.answered" then "answered"
+    when "call.machine.detection.ended" then "answered"
     when "call.gather.ended" then "gathering"
     when "call.hangup" then "hangup"
     else "completed"

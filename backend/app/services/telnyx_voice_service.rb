@@ -45,6 +45,13 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: phone,
       from: from,
+      # Without this, voicemail is indistinguishable from a person: Telnyx sends
+      # call.answered either way, and the script is spoken into the mailbox. The
+      # reminder title goes with it, which is worse than the room the privacy
+      # policy already warns about -- a mailbox keeps it, syncs it, and hands it
+      # to anyone holding the phone.
+      answering_machine_detection: "detect",
+
       # attempt_id names the exact row, which is the only identifier here that
       # cannot become ambiguous: every other field is a description of the
       # attempt, and descriptions collide. The occurrence and attempt_number are
@@ -120,6 +127,13 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: number,
       from: from,
+      # Without this, voicemail is indistinguishable from a person: Telnyx sends
+      # call.answered either way, and the script is spoken into the mailbox. The
+      # reminder title goes with it, which is worse than the room the privacy
+      # policy already warns about -- a mailbox keeps it, syncs it, and hands it
+      # to anyone holding the phone.
+      answering_machine_detection: "detect",
+
       # attempt_id, because the descriptive fields cannot separate these rows.
       # Verification attempt numbers restart per *destination*, so one senior
       # moving from number A to number B on the same call_day has an attempt 1
