@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The time-critical checkbox said nothing about being inert.** The early alert
+  fires only from an unanswered call, so for a care receiver without phone
+  reminders — or anywhere the feature is switched off, which is how development
+  usually runs — ticking the box changes nothing. The form now says so, and says
+  what still happens instead: the missed alert, an hour after the dose was due.
+  Letting somebody tick it for a dose that matters and believe they had bought
+  fifty minutes is the worst version of this.
+
+- **The largest text size broke the layout it was built for.** On a phone at
+  150%, the caregiver dashboard put its buttons on top of the heading, the
+  action button on each care receiver's row rendered as "Vie…", and the care
+  receiver page's subtitle wrapped into the buttons beside it. Every one of
+  those rows was a flex that could not wrap, which is invisible at desktop
+  width and unmissable on a phone — where the people who need the largest text
+  actually are.
+
+  Seventeen page headers stack now instead of competing for one line, button
+  groups wrap, and the caregiver row can shrink. The fix is `flex-col` on narrow
+  screens with `sm:flex-row` above, and `min-w-0` where a flex child was
+  refusing to shrink below its content and pushing its sibling off the edge.
+
+- **Two amber blocks stacked on the reminder form.** For a care receiver whose
+  calls are not in English, the health warning and the language note sat one
+  above the other — nine lines of amber between the title field and the notes,
+  at which point neither reads as a warning. The language note is information
+  rather than a caution, so it is grey now, matching the note under the notes
+  box: amber warns, grey informs.
+
+- **The two development quick-login buttons signed you in as the opposite role.**
+  They named a role and passed an email address, trusting the seed data to
+  agree about what those accounts are. It does not:
+  `caregiver@example.com` holds the care receiver role and
+  `senior@example.com` holds the caregiver one, and has for a long time. So
+  "Quick Login as Caregiver" signed you in as a care receiver and the other
+  button did the reverse. They ask for a role now, which makes the label true
+  whatever the fixtures say. Development only.
+
+  The second button also still said "Senior" — on the sign-in page, which is
+  the first screen anyone sees, and which the terminology sweep missed by
+  scoping itself to signed-in screens.
+
+- **Two screens printed the raw permission value.** The care receiver's own
+  dashboard has said "You can make changes" since the permission control
+  shipped, while the caregiver's dashboard showed a "Manage" badge and the care
+  receiver's page read "Permission: Manage" for the same fact.
+
 ### Added
 - **A reminder can be marked time-critical, and caregivers hear on the first
   unanswered call rather than an hour later.** Asked for by the caregiver who

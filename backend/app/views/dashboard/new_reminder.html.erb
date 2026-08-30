@@ -1,5 +1,5 @@
 <div class="space-y-6">
-  <div class="flex justify-between items-center">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <h2 class="text-3xl font-bold text-gray-900">Create Reminder for <%= @senior.display_name %></h2>
     <%= link_to "← Back", senior_dashboard_path(@senior), class: "text-blue-600 hover:text-blue-800" %>
   </div>
@@ -69,6 +69,7 @@
                 rather than an hour later. Use it for doses with a narrow window, not for everything —
                 an alert that always arrives stops being read.
               </p>
+              <%= render "dashboard/critical_alert_caveat", care_receiver: @senior %>
             </div>
           </div>
         </div>

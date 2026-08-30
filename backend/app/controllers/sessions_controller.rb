@@ -67,8 +67,17 @@ class SessionsController < ActionController::Base
       return
     end
 
-    email = params[:email] || "caregiver@example.com"
-    user = User.find_or_create_by!(email: email)
+    # Asked for by role, not by address. The buttons used to pass
+    # caregiver@example.com and senior@example.com and trust the seed data to
+    # agree about what those accounts are — it does not, and has not for a long
+    # time: both hold the opposite role to their address, so each button signed
+    # you in as the thing the other one promised.
+    #
+    # Looking the user up by the role being asked for makes the label true
+    # whatever the fixtures say. The email form stays for anyone with a link or
+    # a bookmark.
+    user = dev_user_for(params[:role]) ||
+           User.find_or_create_by!(email: params[:email] || "caregiver@example.com")
 
     # Authenticate user with Ahoy
     ahoy.authenticate(user)
@@ -142,5 +151,30 @@ class SessionsController < ActionController::Base
   def post_login_path
     helper = POST_LOGIN_DESTINATIONS[params[:next].to_s]
     helper ? public_send(helper) : dashboard_path
+  end
+
+  # The account to sign in as when a role is asked for, or nil when none was.
+  # Falls back to a per-role fixture account so a fresh database still has both
+  # buttons work.
+  #
+  # Looked up by email and then forced to the role, rather than created outright:
+  # dev-caregiver@example.com may already exist holding some other role, and
+  # create! would then raise on the unique email index and break dev login
+  # entirely. That address exists to be this button's account, so owning its role
+  # is the point.
+  def dev_user_for(role)
+    role = role.to_s
+    return nil unless User.roles.key?(role)
+    return User.where(role: role).order(:id).first if User.exists?(role: role)
+
+    User.find_or_initialize_by(email: "dev-#{role}@example.com").tap do |user|
+      user.role = role
+      user.tz ||= "America/New_York"
+      # Named rather than saved past the validation: name is required on update,
+      # and a dev account that has been through /profile once may still have a
+      # blank one, which made every later press of the button raise.
+      user.name = "Dev #{user.role_label}" if user.name.blank?
+      user.save! if user.changed?
+    end
   end
 end

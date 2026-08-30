@@ -1,12 +1,12 @@
 <div class="space-y-6">
-  <div class="flex justify-between items-center">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <h2 class="text-3xl font-bold text-gray-900"><%= @task.title %></h2>
       <p class="mt-1 text-sm text-gray-500">
         <%= @task.task_type.titleize %> • Created by <%= @task.created_by.email %>
       </p>
     </div>
-    <div class="flex space-x-3">
+    <div class="flex flex-wrap gap-3">
       <%= link_to "Edit", edit_senior_task_path(@senior, @task), class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
       <%= link_to "← Back to Tasks", senior_tasks_path(@senior), class: "text-blue-600 hover:text-blue-800" %>
     </div>

@@ -1,11 +1,11 @@
 <div class="space-y-6">
-  <div class="flex justify-between items-center">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <%# display_name falls back to the email, so this only ever shows more than the address did. %>
       <h2 class="text-3xl font-bold text-gray-900">Tasks for <%= @senior.display_name %></h2>
       <p class="mt-1 text-sm text-gray-500">Manage appointments, errands, and activities</p>
     </div>
-    <div class="flex space-x-4">
+    <div class="flex flex-wrap gap-3">
       <%= link_to "🚫 Blocked Times", senior_time_blocks_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
       <% if may_change?(@senior) %>
       <%= link_to "New Task", new_senior_task_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>

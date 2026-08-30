@@ -1,5 +1,5 @@
 <div class="space-y-6">
-  <div class="flex justify-between items-center">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <%# The person, not the account. The address is no longer shown as detail
           beside the timezone: disambiguation belongs where a caregiver is
@@ -14,9 +14,19 @@
           beats a blank heading. That is the only route by which one shows on
           this page now. %>
       <h2 class="text-3xl font-bold text-gray-900"><%= @senior.display_name %></h2>
-      <p class="mt-1 text-sm text-gray-500">Timezone: <%= @senior.tz %> | Permission: <%= @permission.titleize %></p>
+      <%# Says what the permission means rather than printing the stored word. The
+          care receiver's own dashboard has said "Can make changes" since #117;
+          this screen still read "Permission: Manage" for the same fact. %>
+      <p class="mt-1 text-sm text-gray-500">
+        Timezone: <%= @senior.tz %> &middot;
+        <%= @permission == "manage" ? "You can make changes" : "You can only look" %>
+      </p>
     </div>
-    <div class="flex space-x-4">
+    <%# flex-wrap with a gap, not space-x: at the largest text size these
+        buttons are half again as wide and were landing on top of the
+        heading. space-x only spaces horizontally, so it does nothing once
+        items wrap onto a second line. %>
+    <div class="flex flex-wrap gap-3">
       <% if may_change?(@senior) %>
       <%= link_to "Invite Caregiver", invite_caregiver_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
       <% end %>
