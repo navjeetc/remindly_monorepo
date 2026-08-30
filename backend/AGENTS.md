@@ -148,7 +148,12 @@ the `railties` and `action_view` examples elsewhere in this document.
 - Run RuboCop: `bundle exec rubocop` (there's a project-wide `.rubocop.yml`)
 - Prefer `assert_not` over `assert !` (`Rails/AssertNot` cop)
 - Prefer `assert_dom_equal` for HTML comparisons in view tests
-- Use `# frozen_string_literal: true` at top of all files
+- Use `# frozen_string_literal: true` at the top of new Ruby files. Most
+  existing files predate this rule and do not carry it; adding it to them
+  wholesale was tried and rejected (#127), because freezing literals changes
+  runtime behaviour and the gain does not justify the risk in working code.
+  Generated files are exempt and cannot comply anyway: Rails rewrites
+  `db/schema.rb` on every migration and regenerates `bin/*`
 
 ## Common Development Workflows
 
