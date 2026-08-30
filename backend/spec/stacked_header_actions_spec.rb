@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # A header that stacks is only half the fix. Several headers this branch changed

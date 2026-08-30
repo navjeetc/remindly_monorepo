@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The two dev shortcuts on the sign-in page named a role and passed an email,

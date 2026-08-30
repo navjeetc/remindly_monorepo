@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Found by looking at the app on a phone at the largest text size — the one
