@@ -218,8 +218,11 @@ class TelnyxVoiceService
         # time nobody picks up, which is exactly what makes an automated caller
         # feel like a robocall.
         #
-        # The real answer is answering-machine detection: knowing a machine
-        # picked up means hanging up rather than talking to it at all.
+        # Answering-machine detection was the intended answer to this and was
+        # abandoned: its verdict came back inverted on live calls, calling a
+        # silent person a machine and a real mailbox a person. Nothing sensitive
+        # is spoken before a keypress now, so a repeat would only ever repeat
+        # the opening line -- still not worth it, for the same robocall reason.
         maximum_tries: 1,
         timeout_millis: 10000,
         inter_digit_timeout_millis: 5000,
@@ -278,6 +281,23 @@ class TelnyxVoiceService
   end
 
   # Hang up a call. Used after a digit is collected or the call is done.
+  # Raises when the hangup does not land. The tolerant version below is right
+  # where a hangup is tidying up after something else has already ended the
+  # call, and wrong where it is the only thing that will end it: the screening
+  # gather times out, nothing else is going to hang up, and a swallowed failure
+  # means a 200 back to Telnyx, no redelivery, and a line left open recording
+  # silence. That is the bug this whole path exists to avoid.
+  def self.hangup!(call_control_id:, command_id: nil)
+    response = post(
+      "/calls/#{call_control_id}/actions/hangup",
+      {},
+      command_id: command_id
+    )
+    raise "Telnyx hangup failed for call #{call_control_id}" if response.nil?
+
+    response
+  end
+
   def self.hangup(call_control_id:, command_id: nil)
     post(
       "/calls/#{call_control_id}/actions/hangup",

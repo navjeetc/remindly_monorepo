@@ -34,6 +34,7 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
   before do
     allow(TelnyxVoiceService).to receive(:gather_digit)
     allow(TelnyxVoiceService).to receive(:hangup)
+    allow(TelnyxVoiceService).to receive(:hangup!)
 
     # Without these the controller rejects every post and the examples pass by
     # never reaching the code under test.
@@ -95,8 +96,21 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
       telnyx_post("call.answered")
       telnyx_post("call.gather.ended")
 
-      expect(TelnyxVoiceService).to have_received(:hangup)
+      expect(TelnyxVoiceService).to have_received(:hangup!)
         .with(hash_including(call_control_id: "call-123"))
+    end
+
+    # The tolerant hangup logs and returns nil, which would mean a 200 back to
+    # Telnyx, no redelivery, and the line left open -- the exact failure this
+    # path exists to prevent. It has to be the raising one, so the webhook stays
+    # retryable when the hangup does not land.
+    it "asks for a retry when the hangup itself fails" do
+      allow(TelnyxVoiceService).to receive(:hangup!).and_raise("Telnyx hangup failed")
+
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended")
+
+      expect(response).to have_http_status(:internal_server_error)
     end
 
     # Belt and braces: an empty string is not somebody pressing a key either.

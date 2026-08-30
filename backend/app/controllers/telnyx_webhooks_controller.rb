@@ -170,7 +170,7 @@ class TelnyxWebhooksController < ApplicationController
       # nothing else will end the call, and simply stopping here left the line
       # open recording silence onto a voicemail for as long as the carrier
       # allowed. Saying nothing is not the same as going away.
-      TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+      TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
       return
     end
 
@@ -241,12 +241,12 @@ class TelnyxWebhooksController < ApplicationController
   # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
     attributes = { completed_at: call.completed_at || Time.current }
-    # A machine picking up is still nobody answering, so a critical reminder has
-    # to alert on it -- but the outcome stays "voicemail", because "the mailbox
-    # took it" and "the phone rang out" are different things to tell a caregiver
-    # and only one of them means the handset was near anybody.
-    unanswered = %w[pending voicemail].include?(call.outcome)
-    attributes[:outcome] = "no_response" if call.outcome == "pending"
+    # Nobody pressed anything, which covers both the mailbox and the phone that
+    # rang out -- the two are no longer distinguished, because the detection that
+    # told them apart proved unreliable and was removed. "voicemail" was briefly
+    # an outcome here and is not one: TelnyxCall::OUTCOMES has never listed it.
+    unanswered = call.outcome == "pending"
+    attributes[:outcome] = "no_response" if unanswered
 
     call.update!(attributes)
 

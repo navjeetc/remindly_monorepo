@@ -355,8 +355,10 @@ RSpec.describe "Telnyx webhooks", type: :request do
       expect(telnyx_call.reload.outcome).to eq("snooze")
     end
 
+    # No answer_as_human: the point is the call nobody picked up, so posting the
+    # pickup and a keypress would test the opposite. A bulk edit added them when
+    # the flow changed and left the example passing for the wrong reason.
     it "records completion for a call nobody ever answered" do
-      answer_as_human
       telnyx_post("call.hangup")
 
       expect(telnyx_call.reload.outcome).to eq("no_response")

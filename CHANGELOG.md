@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A reminder call spoke the medication title to voicemail.** Telnyx answers a
+  mailbox exactly as it answers a person, so the announcement played into the
+  recording and the title went with it — further than the room the privacy
+  policy warns about, because a mailbox keeps it, syncs it and hands it to
+  whoever holds the phone. Every reminder call now opens with a line carrying no
+  title or name, and the reminder itself is spoken only after a keypress. A
+  mailbox cannot press a key, so a title can no longer reach one.
+
+  Answering-machine detection was built for this first and abandoned: on live
+  calls its verdict came back inverted, calling a silent person a machine and a
+  real mailbox a person. Nothing is now asked of the provider and nothing is
+  inferred. The cost is one keypress for every care receiver, which buys a
+  guarantee that does not depend on a classifier being right.
+
+  The call also pauses briefly before speaking, so it no longer talks over
+  somebody who has just said "hello".
+
 - **The time-critical checkbox said nothing about being inert.** The early alert
   fires only from an unanswered call, so for a care receiver without phone
   reminders — or anywhere the feature is switched off, which is how development
