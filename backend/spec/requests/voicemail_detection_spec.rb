@@ -53,6 +53,16 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
         .with(hash_including(prompt: a_string_including("Metformin")))
     end
 
+    # The pause is in the synthesised audio, not in our timing: we answer and
+    # start speaking within milliseconds, which talks over the "hello" somebody
+    # has just started saying. Reported from a live call.
+    it "opens with a pause, so it does not talk over the person answering" do
+      telnyx_post("call.answered")
+
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+        .with(hash_including(payload_type: "ssml", prompt: a_string_including("<break time=")))
+    end
+
     it "names Remindly, so the recording is not an anonymous robocall" do
       telnyx_post("call.answered")
 

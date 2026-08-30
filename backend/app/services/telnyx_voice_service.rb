@@ -182,13 +182,30 @@ class TelnyxVoiceService
     Rails.logger.error "Telnyx speak failed for call #{call_control_id}: #{e.message}"
   end
 
+  # A person who has just picked up is usually saying "hello". We answer and
+  # start talking over them within milliseconds, which is abrupt, and worse than
+  # abrupt: they hear their own voice through the earpiece rather than the
+  # instruction, and the window to press a key is running while they work out
+  # what is happening. Reported from a live call as "the announcement came
+  # almost instantly without me saying anything".
+  #
+  # The pause goes into the synthesised audio rather than into our own timing.
+  # Delaying the command instead would mean holding a web request or waiting on
+  # a queue, and a reminder call is a bad place to depend on how busy the
+  # workers are.
+  GREETING_PAUSE = "2s"
+
+  def self.with_opening_pause(text)
+    "<speak><break time=\"#{GREETING_PAUSE}\"/>#{CGI.escapeHTML(text)}</speak>"
+  end
+
   # Speaks a prompt and collects a single DTMF digit in one action.
   #
   # Raises rather than swallowing, because the caller records the call as
   # handled once this returns. A silent failure here is the worst outcome the
   # feature has: the senior answers, hears nothing, and no retry ever comes.
   # See .speak for why language and prompt must be chosen together.
-  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil)
+  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil, payload_type: "text")
     response = post(
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
@@ -208,6 +225,7 @@ class TelnyxVoiceService
         inter_digit_timeout_millis: 5000,
         terminating_digit: "#",
         payload: prompt,
+        payload_type: payload_type,
         voice: "female",
         language: language,
         service: "tts"

@@ -97,7 +97,10 @@ class TelnyxWebhooksController < ApplicationController
     # which is precisely what has not happened yet.
     TelnyxVoiceService.gather_digit(
       call_control_id: call.call_control_id,
-      prompt: I18n.t("voice.screening", locale: call.user.spoken_locale),
+      prompt: TelnyxVoiceService.with_opening_pause(
+        I18n.t("voice.screening", locale: call.user.spoken_locale)
+      ),
+      payload_type: "ssml",
       language: call.user.spoken_language,
       command_id: event_id
     )
