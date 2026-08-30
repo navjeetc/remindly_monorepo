@@ -29,13 +29,17 @@ RSpec.describe "Telnyx verification calls", type: :request do
       }
   end
 
-  # A reminder call opens with a line carrying no title, and the reminder itself
-  # is spoken only once somebody presses a key -- a mailbox cannot, which is the
-  # whole guarantee. So "a person answered" is two events: the pickup, and the
-  # keypress that gets past the opening line.
+  # A verification call has no opening line to get past. handle_answered hands
+  # straight to handle_verification_answered, which speaks the consent script on
+  # pickup -- the screening step belongs to reminder calls, where a title has to
+  # be kept back until somebody proves they are there. A consent call has
+  # nothing to keep back; asking is its whole purpose.
+  #
+  # So this is the pickup alone. It briefly also posted a keypress, copied from
+  # the reminder specs, which ran handle_verification_gather_ended and granted
+  # consent as a side effect of "answering".
   def answer_as_human
     telnyx_post("call.answered")
-    telnyx_post("call.gather.ended", digits: "1")
   end
 
   before do
@@ -293,16 +297,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       # Posted directly rather than through telnyx_post: that helper references
       # the `telnyx_call` let, and instantiating it here would claim the same
       # (occurrence, attempt_number) as the reserved row and trip the unique
-      # index. The id is the one just adopted. The keypress is what gets past
-      # the opening line and makes the reminder itself be spoken.
-      post "/telnyx/webhooks", params: {
-        token: "test-token",
-        data: {
-          event_type: "call.gather.ended",
-          payload: { call_control_id: "v3:not-recorded-yet", digits: "1" }
-        }
-      }
-
+      # index. The id is the one just adopted.
       expect(reserved.reload.answered_at).to be_present
     end
 
