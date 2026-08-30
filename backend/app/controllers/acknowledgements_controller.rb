@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Two different clients acknowledge reminders, and they authenticate differently:
 #
 #   /voice_reminders   Rails page, session cookie + CSRF token (what seniors use)

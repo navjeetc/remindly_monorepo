@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The URL Telnyx is told to call back on is the one setting whose failure is

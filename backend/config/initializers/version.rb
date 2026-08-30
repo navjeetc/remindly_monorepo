@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Load version from VERSION file
 # Priority order:
 # 1. Monorepo root VERSION file (../../VERSION)

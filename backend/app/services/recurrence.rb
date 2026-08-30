@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Recurrence
   def self.expand(reminder, horizon_hours: 24)
     # The reminder's stamp, then the senior's clock, then the server's.

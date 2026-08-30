@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MagicController < ApplicationController
   def request_link
     user  = User.find_or_create_by!(email: params.require(:email))

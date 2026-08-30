@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TimeBlocksController < WebController
   before_action :authenticate!
   before_action :set_senior

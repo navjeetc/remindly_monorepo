@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddStatusScheduledAtIndexToOccurrences < ActiveRecord::Migration[8.1]
   def change
     # MarkMissedOccurrencesJob runs every 15 minutes and selects pending

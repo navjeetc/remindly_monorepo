@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class MagicMailer < ApplicationMailer
   ALLOWED_ORIGIN_HOSTS = %w[remindly.anakhsoft.com remindly.care www.remindly.care localhost 127.0.0.1].freeze
 

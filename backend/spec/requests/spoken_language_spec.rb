@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Remindly telephones people who may not read a screen, and some of them do not

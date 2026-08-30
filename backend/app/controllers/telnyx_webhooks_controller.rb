@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Receives Call Control events from Telnyx as an outbound call progresses.
 #
 # The URL configured in the Telnyx portal must include the shared token:

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Ahoy::Store < Ahoy::DatabaseStore
   # Someone reading a public page has not asked for an account, and logging
   # their IP to find out that a stranger read a marketing page is not worth the

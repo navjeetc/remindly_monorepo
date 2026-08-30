@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # A blog post, read from a Markdown file rather than the database.
 #
 # Posts are written by us, deployed with the code, and reviewed in pull requests

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Repairs reminders stamped with somebody else's clock.
 #
 # RemindersController permits :tz in reminder_params, so the JSON API took

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :users do
   desc "Populate user names from email addresses (first part before @)"
   task populate_names_from_email: :environment do

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Records that a mail provider has permanently refused an address.
 #
 # CheckCoverageGapsJob mailed two demo accounts with invented addresses every

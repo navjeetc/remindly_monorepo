@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The counter added to PublicPage. The model spec covers what is stored; this

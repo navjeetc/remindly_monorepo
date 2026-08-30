@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Until this shipped, the task form's wall-clock text ("2026-08-28T15:00", no
 # zone in it) was cast in UTC, because Time.zone is UTC app-wide. So a
 # caregiver typing 3pm for a senior in New York stored 15:00 UTC — 11am where

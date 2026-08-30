@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The bug this guards against did not raise, log, or fail a request. A caregiver

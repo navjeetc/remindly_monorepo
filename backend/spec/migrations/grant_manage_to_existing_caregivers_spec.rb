@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 require "active_support/core_ext/object/with"
 require Rails.root.join("db/migrate/20260828231943_grant_manage_to_existing_caregivers.rb")

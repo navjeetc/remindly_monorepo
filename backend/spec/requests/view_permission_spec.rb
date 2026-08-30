@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # "View" promised a restriction the code never applied: a caregiver holding it

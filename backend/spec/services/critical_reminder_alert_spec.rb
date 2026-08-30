@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # A caregiver reviewing Remindly described Parkinson's medication: the window is

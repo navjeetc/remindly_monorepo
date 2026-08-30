@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Rails.application.routes.draw do
   # Root - marketing page for logged-out visitors, dashboard for signed-in users.
   # Was dashboard#index behind authenticate!, which meant / redirected to /login

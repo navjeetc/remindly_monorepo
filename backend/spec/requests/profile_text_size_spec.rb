@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The setting exists for someone who cannot read the page it lives on, so the

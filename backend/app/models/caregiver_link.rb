@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CaregiverLink < ApplicationRecord
   belongs_to :senior, class_name: "User"
   belongs_to :caregiver, class_name: "User", optional: true

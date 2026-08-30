@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class PagesController < WebController
   # Public pages — no authentication required. The marketing layout and the
   # analytics-cookie cleanup both come from here.

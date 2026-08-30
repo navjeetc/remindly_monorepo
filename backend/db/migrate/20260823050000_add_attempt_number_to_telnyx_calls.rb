@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # One row per attempt, not one per occurrence.
 #
 # The table was created with a single row per (occurrence, user), reused by

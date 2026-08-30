@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # How many times a public page was served, by day, without recording who served
 # it to. See the migration for why this exists and why it is shaped this way.
 #

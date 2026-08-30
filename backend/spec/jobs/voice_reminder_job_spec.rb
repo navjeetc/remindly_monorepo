@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The guard here is the last thing between a person and a ringing telephone, so

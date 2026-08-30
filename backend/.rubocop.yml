@@ -6,3 +6,9 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 # # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
 # Layout/SpaceInsideArrayLiteralBrackets:
 #   Enabled: false
+
+# AGENTS.md requires this at the top of all files. Nothing enforced it, so
+# 230 of 233 files had drifted without it and every new file was one more
+# thing to remember. Enabled so the convention holds itself up.
+Style/FrozenStringLiteralComment:
+  Enabled: true

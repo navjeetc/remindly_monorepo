@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 FactoryBot.define do
   factory :caregiver_availability do
     association :caregiver, factory: :user, role: :caregiver

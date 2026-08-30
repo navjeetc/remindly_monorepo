@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Admin::AuditLogsController < WebController
   before_action :authenticate!
   before_action :require_admin!

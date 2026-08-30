@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Scheduling
   class SyncService
     attr_reader :integration

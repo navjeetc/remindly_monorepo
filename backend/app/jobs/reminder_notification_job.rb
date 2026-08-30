@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Delivers caregiver notifications for a reminder occurrence, off the request and
 # off the missed sweep.
 #

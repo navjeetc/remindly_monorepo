@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # A caregiver linked before this point almost certainly holds view, because
 # nothing in the application ever granted anything else: the column defaults to
 # view, pair_with never touched it, and no screen could change it. Any manage

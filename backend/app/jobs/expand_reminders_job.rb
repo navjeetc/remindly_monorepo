@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Materialises the occurrences a reminder is due to produce, on a timer rather
 # than when somebody happens to open a page.
 #

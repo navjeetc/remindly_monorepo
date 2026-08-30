@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DevController < WebController
   # DEV ONLY: Quick user switching for testing
   before_action :check_development_environment!

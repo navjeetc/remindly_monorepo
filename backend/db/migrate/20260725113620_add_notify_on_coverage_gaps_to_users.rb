@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddNotifyOnCoverageGapsToUsers < ActiveRecord::Migration[8.1]
   # Opt-out (defaults on) so existing behavior is unchanged: caregivers still get
   # coverage-gap alerts unless they turn them off.

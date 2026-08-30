@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The screen this replaces would have been a number field and a checkbox. The

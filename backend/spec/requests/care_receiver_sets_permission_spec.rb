@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Removing a caregiver entirely was already offered on the care receiver's own

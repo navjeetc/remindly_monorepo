@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The summary tiles used to query Ahoy::Event directly, so they showed all-time

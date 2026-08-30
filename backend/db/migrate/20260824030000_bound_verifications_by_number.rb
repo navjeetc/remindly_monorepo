@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The verification allowance was counted per account, and the account is not the
 # thing that rings. users.phone is explicitly non-unique, so two records sharing
 # a landline each carried their own five attempts — ten calls to one handset,

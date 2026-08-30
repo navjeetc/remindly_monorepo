@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Scheduling
   class BaseProvider
     attr_reader :integration

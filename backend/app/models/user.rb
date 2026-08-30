@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class User < ApplicationRecord
   enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
 

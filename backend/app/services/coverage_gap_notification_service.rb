@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CoverageGapNotificationService
   # Check for coverage gaps and notify caregivers
   # @param senior [User] The senior to check coverage for

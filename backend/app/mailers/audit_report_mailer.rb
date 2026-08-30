@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AuditReportMailer < ApplicationMailer
   def daily_report(date: Date.yesterday, recipient_email:)
     @date = date

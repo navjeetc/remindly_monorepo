@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateCaregiverLinks < ActiveRecord::Migration[8.0]
   def change
     create_table :caregiver_links do |t|

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Behaviour shared by every page a logged-out stranger can reach: the marketing
 # pages, the blog, and the subscribe response.
 #

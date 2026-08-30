@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 # Required explicitly, per backend/AGENTS.md:96, because the around hook below
 # uses Object#with. It happens to be loaded already through some other path

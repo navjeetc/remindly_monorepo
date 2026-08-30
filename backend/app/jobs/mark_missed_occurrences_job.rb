@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Marks reminder occurrences missed once their scheduled time has passed without
 # acknowledgement, and alerts caregivers about the medication ones.
 #

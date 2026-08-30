@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Occurrences used to exist only because somebody opened a page. That was fine

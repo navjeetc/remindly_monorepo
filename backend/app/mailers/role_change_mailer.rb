@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RoleChangeMailer < ApplicationMailer
   def role_updated(user:, old_role:, new_role:, changed_by:)
     @user = user

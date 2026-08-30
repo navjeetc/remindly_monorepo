@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 namespace :audit do
   # Helper method to resolve recipient email from various sources
   def self.resolve_audit_recipient_email(provided_email = nil)

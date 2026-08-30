@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Records that a call was withheld, rather than inferring it afterwards.
 #
 # The reason was being derived at notification time from scheduled_at, which

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Watches for pending reminder occurrences that have reached their scheduled time
 # and enqueues a phone call for seniors who have call reminders enabled.
 #

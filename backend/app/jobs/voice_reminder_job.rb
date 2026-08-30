@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Dials a single senior for a single reminder occurrence via Telnyx. The actual
 # interaction (speak, gather, hangup) is driven by Telnyx webhooks; this job only
 # initiates the call and records the attempt.

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 if Rails.env.development?
   puts "Creating seed data..."
 

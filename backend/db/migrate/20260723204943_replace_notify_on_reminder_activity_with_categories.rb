@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ReplaceNotifyOnReminderActivityWithCategories < ActiveRecord::Migration[8.1]
   # The single notify_on_reminder_activity flag only ever gated the medication
   # category. Replace it with a set of chosen categories so each caregiver picks

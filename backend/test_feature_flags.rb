@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Test script for feature flags
 puts "=" * 50
 puts "Testing Feature Flag System"

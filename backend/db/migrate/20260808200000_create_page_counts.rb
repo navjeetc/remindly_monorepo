@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 ## An aggregate tally of public page views, deliberately built so that no row
 ## describes a person.
 ##

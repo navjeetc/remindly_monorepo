@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Create final test reminders - 2 minutes from now, 2 minutes apart
 # Run with: rails runner create_final_test.rb
 

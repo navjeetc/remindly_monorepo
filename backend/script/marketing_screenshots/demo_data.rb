@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Demo data for the marketing screenshots.
 #
 # Deliberately fictional: the dev database has real email addresses in it, and

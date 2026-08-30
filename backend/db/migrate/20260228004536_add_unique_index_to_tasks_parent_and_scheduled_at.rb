@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddUniqueIndexToTasksParentAndScheduledAt < ActiveRecord::Migration[8.0]
   def change
     # Add unique constraint to prevent duplicate task instances for recurring tasks

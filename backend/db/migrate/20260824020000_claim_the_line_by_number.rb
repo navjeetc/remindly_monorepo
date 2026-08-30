@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # One live call per *telephone*, not per account.
 #
 # users.phone is not unique, so two user records can hold the same number — a

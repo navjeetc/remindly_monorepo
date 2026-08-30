@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TimeBlock < ApplicationRecord
   belongs_to :user
 

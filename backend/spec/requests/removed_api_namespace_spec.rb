@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The /api namespace was removed. It existed from the client-server era, before

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The mailing list signup on the public pages.
 class SubscribersController < WebController
   include PublicPage

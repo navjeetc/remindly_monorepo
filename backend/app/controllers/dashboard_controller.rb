@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DashboardController < WebController
   before_action :authenticate!
   before_action :check_role!, except: [ :profile, :update_profile, :select_role, :how_to, :contact, :submit_contact, :voice_reminders ]

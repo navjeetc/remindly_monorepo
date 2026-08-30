@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Everything under public/ is served to anyone who asks, with no auth and no

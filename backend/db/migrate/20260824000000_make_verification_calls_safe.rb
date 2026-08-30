@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Three gaps a review found in the verification call, all of the same family:
 # something decided from a value that could move between deciding and acting.
 #

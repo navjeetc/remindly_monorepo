@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Nothing in the application ever granted manage. The column defaults to view,

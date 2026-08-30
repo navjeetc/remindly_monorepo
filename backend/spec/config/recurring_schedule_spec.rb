@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # Solid Queue's own schedule parser, and a transitive dependency rather than one

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # ShiftTaskTimesIntoTheSeniorsClock excluded recurring templates with
 # `rrule: nil`, which is `rrule IS NULL` in SQL. The task form submits an empty
 # string for a one-off task rather than leaving the column NULL, so two

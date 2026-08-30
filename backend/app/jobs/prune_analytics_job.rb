@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Deletes old analytics rows.
 #
 # Ahoy.visitor_duration only controls how long the visitor cookie lives; nothing

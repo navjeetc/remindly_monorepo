@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Quick script to check reminders and occurrences
 # Run with: rails runner check_reminders.rb
 

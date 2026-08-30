@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The job every `deliver_later` runs through.
 #
 # It exists for one reason: a permanently refused address is not a temporary

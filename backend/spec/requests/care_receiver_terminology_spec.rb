@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # "Senior" narrows the product to a subset of the people it serves — a caregiver

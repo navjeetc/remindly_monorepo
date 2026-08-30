@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Consent to be telephoned, recorded durably.
 #
 # These live on users rather than in the audit trail because PruneAnalyticsJob

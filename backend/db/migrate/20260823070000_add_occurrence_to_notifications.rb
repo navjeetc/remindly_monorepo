@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Makes "already notified about this occurrence" a constraint instead of a race.
 #
 # ReminderNotificationService checked with a SELECT and then created the row, so

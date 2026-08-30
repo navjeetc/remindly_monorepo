@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CoverageGapMailer < ApplicationMailer
   # Sender inherited from ApplicationMailer. This was one of the two mailers
   # that had already been given the correct address by hand; both now inherit

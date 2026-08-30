@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Someone who asked to hear from us — the mailing list.
 #
 # Deliberately not a User. Most people who give an address here are still

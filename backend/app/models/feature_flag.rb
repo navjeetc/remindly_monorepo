@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Feature flag system for enabling/disabling features
 class FeatureFlag
   # Define available features

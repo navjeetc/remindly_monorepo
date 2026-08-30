@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # A verification call is about a number, not a dose.
 #
 # telnyx_calls was built for reminder delivery, so occurrence_id is NOT NULL and

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The blog. Posts are Markdown files in content/posts — see Post.
 class PostsController < WebController
   include PublicPage

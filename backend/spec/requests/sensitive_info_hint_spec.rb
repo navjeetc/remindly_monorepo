@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The policy asks people to keep clinical detail out of Remindly, and is candid

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 # The standalone voice client at /client/ was retired: /voice_reminders

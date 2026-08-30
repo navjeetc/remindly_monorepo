@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The checkbox submitted and the controller dropped it: reminder_params

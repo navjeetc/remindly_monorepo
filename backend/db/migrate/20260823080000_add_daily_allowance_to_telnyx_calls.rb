@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Makes the per-senior daily cap a constraint instead of a count-then-insert.
 #
 # The cap was checked by counting today's rows and then creating one, which

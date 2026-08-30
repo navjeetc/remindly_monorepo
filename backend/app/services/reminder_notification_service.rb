@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Notifies caregivers when a senior completes or misses a reminder.
 #
 # Which reminders reach a given caregiver is that caregiver's choice: each keeps a

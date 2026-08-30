@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CaregiverAvailabilitiesController < WebController
   before_action :authenticate!
   before_action :check_feature_enabled!

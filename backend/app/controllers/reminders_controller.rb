@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RemindersController < ApplicationController
   before_action :authenticate!
   before_action :set_reminder, only: %i[show update destroy]

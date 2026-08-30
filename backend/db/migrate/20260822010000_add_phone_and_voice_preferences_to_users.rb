@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddPhoneAndVoicePreferencesToUsers < ActiveRecord::Migration[8.1]
   def change
     add_column :users, :phone, :string

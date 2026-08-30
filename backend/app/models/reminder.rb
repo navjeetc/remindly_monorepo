@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Reminder < ApplicationRecord
   # Time-critical: a dose where being late matters as much as being missed.
   #

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Reads the aggregate public-page tally. See PageCount for what it contains.
 #
 # The question this page exists to answer is "did that post send anyone", so the

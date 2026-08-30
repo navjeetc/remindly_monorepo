@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ApplicationMailer < ActionMailer::Base
   # The one official address for remindly.care, and the only DKIM-verified
   # Postmark sender. Mail from anything else is rejected outright — that is not

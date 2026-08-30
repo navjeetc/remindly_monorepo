@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateTelnyxCalls < ActiveRecord::Migration[8.1]
   def change
     create_table :telnyx_calls do |t|

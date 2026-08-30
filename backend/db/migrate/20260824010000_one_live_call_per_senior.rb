@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # One live call per person, enforced by the database rather than by a read.
 #
 # call_in_flight? was a SELECT, so two reservations could both observe an idle

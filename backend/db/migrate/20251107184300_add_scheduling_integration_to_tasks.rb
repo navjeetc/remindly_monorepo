@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddSchedulingIntegrationToTasks < ActiveRecord::Migration[8.0]
   def change
     add_reference :tasks, :scheduling_integration, foreign_key: true

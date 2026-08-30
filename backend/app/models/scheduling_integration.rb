@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class SchedulingIntegration < ApplicationRecord
   belongs_to :user
   belongs_to :senior, class_name: "User", optional: true

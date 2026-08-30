@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # A caregiver types "3:00 PM" into the task form meaning 3pm where the senior

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 RSpec.describe "Ending a caregiver link (dashboard#unlink)", type: :request do

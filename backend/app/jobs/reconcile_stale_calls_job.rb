@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Closes call claims that have stopped mattering, out of the request path.
 #
 # Reconciliation asks the provider whether an old call is still connected, and

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class SubscriberMailer < ApplicationMailer
   # Sent once, when someone first joins the list. It exists to do the thing that
   # was promised on the form — hand over the routine sheet — rather than to

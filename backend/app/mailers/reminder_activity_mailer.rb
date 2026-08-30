@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ReminderActivityMailer < ApplicationMailer
   # This is where the remindly.app bug was found and fixed — here and in
   # CoverageGapMailer only, which is why the other six kept the broken

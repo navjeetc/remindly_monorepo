@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TelnyxCall < ApplicationRecord
   # Optional at the association level and required by purpose below. A reminder
   # call is always about an occurrence; a verification call is about a number and

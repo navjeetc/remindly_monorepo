@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class NormalizeUserTimezones < ActiveRecord::Migration[8.1]
   # The tz column had drifted into holding two different spellings of the same
   # thing: IANA identifiers ("America/New_York", which is the column default)

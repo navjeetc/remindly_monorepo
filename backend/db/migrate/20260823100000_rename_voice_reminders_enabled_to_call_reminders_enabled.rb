@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # "Voice reminders" already means something else in this app: the spoken
 # announcements on /voice_reminders, which a senior hears from a screen they are
 # signed in to. Telephone calls are a different feature reaching a different

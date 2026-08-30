@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddNotifyOnReminderActivityToUsers < ActiveRecord::Migration[8.1]
   def change
     # Per-caregiver notification preference, following the same boolean-column

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Scheduling
   class ProviderFactory
     # Create a provider instance based on the integration

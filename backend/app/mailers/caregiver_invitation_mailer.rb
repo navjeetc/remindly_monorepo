@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CaregiverInvitationMailer < ApplicationMailer
   def invitation_email(caregiver:, senior:, inviter:)
     @caregiver = caregiver

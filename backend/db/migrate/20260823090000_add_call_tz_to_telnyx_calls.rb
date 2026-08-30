@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The zone the daily slot was filed under.
 #
 # call_day comes from users.tz, which the senior (or a caregiver editing their

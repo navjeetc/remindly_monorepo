@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Occurrence < ApplicationRecord
   belongs_to :reminder
   has_many :acknowledgements, dependent: :destroy
