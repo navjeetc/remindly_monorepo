@@ -33,7 +33,7 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
     end
 
     it "says that 9 is what stops them" do
-      expect(text).to match(/9[^.]{0,20}stop the reminder calls/i)
+      expect(text).to match(/9[^.]{0,20}stops? the reminder calls/i)
     end
 
     # The Spanish script is live but has not been read by a native speaker, so
@@ -81,6 +81,40 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
     # which are off by default for hydration and routine.
     it "ties the unanswered alert to the time-critical flag" do
       expect(text).to match(/being late matters/i)
+    end
+  end
+
+  # The root page is the strongest surface of the three and was the last to say
+  # any of this. Its heading actively excluded the readers the calls were built
+  # for: "Works with the tablet or computer they already use" answers "what
+  # device do I need" with two, when the true answer is that a telephone will do.
+  describe "GET / (the homepage)" do
+    before { get "/" }
+
+    it "does not tell a reader with no tablet that they need a device" do
+      heading = Nokogiri::HTML(response.body).at_css("section.setup h2")
+
+      expect(heading).to be_present
+      expect(heading.text).to match(/telephone/i)
+    end
+
+    it "offers the telephone in the sentence search results show" do
+      expect(description).to match(/telephone call/i)
+    end
+
+    it "states the hours and the opt-out rather than only the good part" do
+      expect(text).to match(/8\s*am.{0,12}9\s*pm/i)
+      expect(text).to match(/9[^.]{0,20}stops? the reminder calls/i)
+    end
+
+    it "does not promise the opt-out is permanent" do
+      expect(text).not_to match(/for good|never (call|telephone|ring)|permanently/i)
+    end
+
+    # Four sentences and a link. The argument for the calls lives on the pages
+    # written to make it; this one only has to stop disqualifying people.
+    it "points at the page that explains the calls" do
+      expect(Nokogiri::HTML(response.body).css("section.setup a").map { |a| a["href"] }).to include("/how_to")
     end
   end
 

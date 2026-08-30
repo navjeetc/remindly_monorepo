@@ -9,8 +9,14 @@
   "Missed" is the same overclaim pointed the other way — it describes a dose
   rather than an unmarked reminder, and the two come apart exactly when someone
   takes their tablets and forgets to press the button.
+
+  The telephone earns its place in this sentence rather than further down: a
+  reader whose parent owns no tablet is told by the old wording that this is not
+  for them, and the calls were built for exactly that house. What had to go to
+  make room was "without phoning to ask", which said the same thing as the
+  clause before it.
 %>
-<% content_for :description, "Remindly says reminders out loud at the right time, so a parent living on their own does not have to read a screen or open an app. You set them up from wherever you are, and for medication Remindly emails you when a dose is marked done, or when the time passes and nobody marks it — without phoning to ask. Free to use." %>
+<% content_for :description, "Remindly says reminders out loud at the right time, so a parent living on their own does not have to read a screen or open an app — on a tablet they already own, or as a telephone call if there is no tablet. You set them up from wherever you are, and for medication Remindly emails you when a dose is marked done, or when the time passes and nobody marks it. Free to use." %>
 
 <%#
   Declares the product to search engines: what it is, who it is for, and that it
@@ -78,7 +84,7 @@
   medication is not a copy decision. Measure it, then say it here.
 %>
 <section class="setup">
-  <h2>Works with the tablet or computer they already use</h2>
+  <h2>Works with what they already have — a tablet, a computer, or just a telephone</h2>
 
   <ol>
     <li>
@@ -87,7 +93,8 @@
     </li>
     <li>
       <strong>Your parent hears them spoken aloud</strong> at home, without
-      having to read a screen or open an app.
+      having to read a screen or open an app — from the tablet, or down the
+      telephone if there is no tablet in the house.
     </li>
     <li>
       <%# "another phone call" meant the caregiver's own call, but Remindly
@@ -104,6 +111,20 @@
     and a speaker will do — an old tablet, a laptop, the computer already on the
     desk. Signing in is a link sent by email, so there is no password for anyone
     to remember.
+  </p>
+
+  <%# Kept to four sentences and a link. The whole case for the calls belongs on
+      /how_to and the elderly parents page; what belongs here is the fact that a
+      house with no tablet is not disqualified, which the heading above used to
+      say it was. The hours and the opt-out are in it because leaving them for
+      the other page would make this the reassuring version and that one the
+      true one. %>
+  <p class="setup-foot">
+    <strong>No tablet, and no wish for one?</strong> Remindly can telephone them
+    instead and say the reminder down the line, between 8am and 9pm at their
+    end. Nobody is called without agreeing first — the opening call only asks,
+    and never asks for personal details — and pressing 9 on any call stops the
+    reminder calls. <a href="<%= how_to_path %>">How the calls work</a>.
   </p>
 </section>
 
