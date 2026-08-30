@@ -29,7 +29,13 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
     # that makes the promise, not the digit.
     it "says the calls are agreed to first" do
       expect(text).to match(/never ask (you )?for personal details/i)
-      expect(text).to match(/only if (the person|they) press(es)? 1|starts the reminders only if/i)
+      # No alternation: the second branch used to be "starts the reminders only
+      # if", which matched without naming the keypress at all — so the copy
+      # could have stopped saying what a person must do to start the calls and
+      # this would still have passed. Both pages phrase it as "only if ...
+      # press(es) 1", so one pattern covers them and every match now contains
+      # the mechanism.
+      expect(text).to match(/only if (the person|they) press(es)? 1/i)
     end
 
     it "says that 9 is what stops them" do
