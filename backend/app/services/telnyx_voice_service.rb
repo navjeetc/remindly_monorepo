@@ -299,9 +299,21 @@ class TelnyxVoiceService
       {},
       command_id: command_id
     )
-    raise "Telnyx hangup failed for call #{call_control_id}" if response.nil?
+    return response unless response.nil?
 
-    response
+    # A refusal is not necessarily a failure. The commonest way to be told no
+    # here is that the call has already ended -- a redelivered event whose first
+    # hangup worked, or a person who put the phone down in between -- and in
+    # that case what this method was asked to achieve is already true. Raising
+    # would answer 500, have the event redelivered, and be refused for the same
+    # reason again: a loop over a call that is already gone.
+    #
+    # Only an ended call is treated as success. alive? answers nil when it
+    # cannot tell, and unknown is not good enough to stop trying to close a line
+    # somebody may still be holding open.
+    return { "already_ended" => true } if alive?(call_control_id) == false
+
+    raise "Telnyx hangup failed for call #{call_control_id}"
   end
 
   def self.hangup(call_control_id:, command_id: nil)

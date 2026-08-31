@@ -67,6 +67,37 @@ RSpec.describe TelnyxVoiceService do
   # reminder, pressed 1 again -- and the second press was never collected, so
   # the dose stayed unacknowledged and rang back twice. The announcement runs
   # about eight seconds and the wait was ten.
+  # hangup! raises so that a failed hangup answers 500 and Telnyx redelivers --
+  # otherwise a line could be left open recording silence. But the commonest
+  # refusal is "that call has already ended", and raising on that produces a
+  # redelivery loop over a call nobody is on.
+  describe ".hangup!" do
+    it "raises when the call is still up, so the event is retried" do
+      allow(described_class).to receive(:post).and_return(nil)
+      allow(described_class).to receive(:alive?).and_return(true)
+
+      expect { described_class.hangup!(call_control_id: "v3:abc") }
+        .to raise_error(/hangup failed/)
+    end
+
+    it "does not raise when the call has already ended" do
+      allow(described_class).to receive(:post).and_return(nil)
+      allow(described_class).to receive(:alive?).and_return(false)
+
+      expect { described_class.hangup!(call_control_id: "v3:abc") }.not_to raise_error
+    end
+
+    # alive? answers nil when it cannot tell, and unknown is not good enough to
+    # stop trying to close a line somebody may still be holding.
+    it "raises when it cannot tell whether the call has ended" do
+      allow(described_class).to receive(:post).and_return(nil)
+      allow(described_class).to receive(:alive?).and_return(nil)
+
+      expect { described_class.hangup!(call_control_id: "v3:abc") }
+        .to raise_error(/hangup failed/)
+    end
+  end
+
   describe ".gather_digit" do
     it "gives somebody long enough to press, and says it again if they do not" do
       sent = nil
