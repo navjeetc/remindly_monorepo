@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The call also pauses briefly before speaking, so it no longer talks over
   somebody who has just said "hello".
 
+- **A keypress arriving a moment late was lost, and the reminder rang back.**
+  The announcement runs about eight seconds and the wait for an answer was ten,
+  so somebody who pressed while it was still speaking, or a moment after it
+  finished, was not heard — the dose stayed unacknowledged and the call came
+  again five minutes later. The wait is now twenty-five seconds and the prompt
+  is repeated once, which rescues that person within the same call instead of
+  ringing them again. Waiting longer costs nothing on a call somebody answers,
+  since it ends as soon as a key is pressed.
+
 - **A repeated webhook could mark a dose taken while the reminder was still
   playing.** The keypress that asks to hear the reminder and the keypress that
   acknowledges it arrive as the same event carrying the same digit. Telnyx

@@ -210,21 +210,27 @@ class TelnyxVoiceService
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
         digits: 1,
-        # Say it once. Telnyx re-speaks the prompt when no digit is collected,
-        # and left to its default it tries several times — which on a live test
-        # put two identical recordings on a voicemail, sixty-one seconds apart
-        # against a ten-second timeout. A repeat only helps someone who fumbled
-        # the first prompt, and costs an extra voicemail message every single
-        # time nobody picks up, which is exactly what makes an automated caller
-        # feel like a robocall.
+        # Said twice, and waited on for much longer than it used to be.
         #
-        # Answering-machine detection was the intended answer to this and was
-        # abandoned: its verdict came back inverted on live calls, calling a
-        # silent person a machine and a real mailbox a person. Nothing sensitive
-        # is spoken before a keypress now, so a repeat would only ever repeat
-        # the opening line -- still not worth it, for the same robocall reason.
-        maximum_tries: 1,
-        timeout_millis: 10000,
+        # A live call had somebody press 1, hear their reminder, press 1 again --
+        # and the second press was never collected. The dose stayed unacknowledged
+        # and rang back five minutes later, twice. The announcement runs about
+        # eight seconds and the wait was ten, so a press that came a moment late,
+        # or came while the announcement was still speaking, was simply lost. Ten
+        # seconds is not a generous window for somebody who is hard of hearing and
+        # holding a handset.
+        #
+        # Waiting longer costs nothing on a call somebody answers: it ends as soon
+        # as a key is pressed. It costs a few seconds only where nobody responds,
+        # which is the case we already end promptly by hanging up.
+        #
+        # The repeat is safe now in a way it was not before. It was set to one
+        # because a repeat put two identical recordings on a voicemail -- but no
+        # title is spoken until a key is pressed, so the only thing a mailbox can
+        # hear twice is the opening line, and the second pass is what rescues
+        # somebody who missed the instruction the first time.
+        maximum_tries: 2,
+        timeout_millis: 25000,
         inter_digit_timeout_millis: 5000,
         terminating_digit: "#",
         payload: prompt,
