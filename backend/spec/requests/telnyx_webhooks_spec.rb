@@ -165,10 +165,14 @@ RSpec.describe "Telnyx webhooks", type: :request do
   # Each of these is a way the provider could be told "handled" for work that
   # was not done, retiring an event that will never come again.
   describe "events that must stay redeliverable" do
+    # call.answered alone, not answer_as_human: the helper posts two events, so
+    # `response` would describe the second one while the failure under test
+    # belongs to the first. It also describes a sequence Telnyx would never
+    # send -- a gather that failed on answer produces no gather.ended to follow.
     it "asks for a retry when the gather fails, rather than leaving the senior in silence" do
       allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
 
-      answer_as_human
+      telnyx_post("call.answered")
 
       expect(response).to have_http_status(:internal_server_error)
     end
@@ -176,7 +180,7 @@ RSpec.describe "Telnyx webhooks", type: :request do
     it "leaves answered_at unset when the gather failed, so the retry speaks" do
       allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
 
-      answer_as_human
+      telnyx_post("call.answered")
 
       expect(telnyx_call.reload.answered_at).to be_nil
     end

@@ -54,6 +54,18 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
         .with(hash_including(prompt: a_string_including("Metformin")))
     end
 
+    # The other half of the same promise. A recording holding "Nora" is not as
+    # bad as one holding a medication name, but it still identifies the person
+    # to anyone who picks up the phone, and the opening line has no need of it:
+    # the reminder itself greets them by name, after a keypress.
+    it "never contains the care receiver's name" do
+      telnyx_post("call.answered")
+
+      expect(senior.display_name).to be_present
+      expect(TelnyxVoiceService).not_to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including(senior.display_name)))
+    end
+
     # The pause is in the synthesised audio, not in our timing: we answer and
     # start speaking within milliseconds, which talks over the "hello" somebody
     # has just started saying. Reported from a live call.
