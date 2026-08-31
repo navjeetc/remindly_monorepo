@@ -32,6 +32,18 @@ en:
       Press 1 if you have done it.
       Press 2 to be reminded again in %{minutes} minutes.
       Press 9 to stop these calls.
+    # Played at the start of every reminder call, before anything else is said.
+    # Deliberately carries no task and no name: it is the only thing a voicemail
+    # can record, because the reminder itself waits for a keypress and a mailbox
+    # cannot press one.
+    #
+    # This is not answering-machine detection and does not depend on any verdict
+    # about who picked up. Detection was tried and abandoned -- on live calls it
+    # called a silent person a machine and a real mailbox a person -- so nothing
+    # is asked of the provider and nothing is inferred.
+    screening: >-
+      This is Remindly, with a reminder.
+      Press 1 to hear it.
     consent:
       asked_by: "%{arranger} asked us"
       asked_generic: "We have been asked"

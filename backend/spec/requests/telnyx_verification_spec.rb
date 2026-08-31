@@ -29,6 +29,19 @@ RSpec.describe "Telnyx verification calls", type: :request do
       }
   end
 
+  # A verification call has no opening line to get past. handle_answered hands
+  # straight to handle_verification_answered, which speaks the consent script on
+  # pickup -- the screening step belongs to reminder calls, where a title has to
+  # be kept back until somebody proves they are there. A consent call has
+  # nothing to keep back; asking is its whole purpose.
+  #
+  # So this is the pickup alone. It briefly also posted a keypress, copied from
+  # the reminder specs, which ran handle_verification_gather_ended and granted
+  # consent as a side effect of "answering".
+  def answer_as_human
+    telnyx_post("call.answered")
+  end
+
   before do
     CaregiverLink.create!(senior: senior, caregiver: caregiver)
     allow(TelnyxVoiceService).to receive(:gather_digit)
@@ -48,7 +61,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).to include("Janey asked us")
       expect(said).not_to include("Sam")
@@ -58,7 +71,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).to include("Janey asked us")
       expect(said).to include("Mom")
@@ -73,7 +86,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).not_to include("You asked us")
       expect(said).to include("We have been asked")
@@ -84,7 +97,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said.index("never ask you for personal details")).to be < said.index("press 1")
     end
@@ -95,7 +108,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).not_to match(/money|payment|charge|free/i)
     end
@@ -104,7 +117,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).to include("press 9")
     end
@@ -113,7 +126,7 @@ RSpec.describe "Telnyx verification calls", type: :request do
       said = nil
       allow(TelnyxVoiceService).to receive(:gather_digit) { |**kw| said = kw[:prompt] }
 
-      telnyx_post("call.answered")
+      answer_as_human
 
       expect(said).not_to include("with your reminder")
     end
@@ -280,7 +293,12 @@ RSpec.describe "Telnyx verification calls", type: :request do
       }
 
       expect(reserved.reload.call_control_id).to eq("v3:not-recorded-yet")
-      expect(reserved.answered_at).to be_present
+
+      # Posted directly rather than through telnyx_post: that helper references
+      # the `telnyx_call` let, and instantiating it here would claim the same
+      # (occurrence, attempt_number) as the reserved row and trip the unique
+      # index. The id is the one just adopted.
+      expect(reserved.reload.answered_at).to be_present
     end
 
     it "still drops an event that names nothing we hold" do

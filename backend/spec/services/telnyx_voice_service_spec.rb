@@ -58,17 +58,58 @@ RSpec.describe TelnyxVoiceService do
       expect(with(base_url: "https://example.com/")).to start_with("https://example.com/telnyx/webhooks")
     end
   end
-  # A live test left two identical recordings on a voicemail sixty-one seconds
-  # apart, against a ten-second timeout: Telnyx re-speaks the prompt when no
-  # digit is collected, and its default is more than once.
+  # The prompt was said once, because a live test left two identical recordings
+  # on a voicemail sixty-one seconds apart. That reason is gone: no title is
+  # spoken until a key is pressed, so the most a mailbox can now record is the
+  # opening line, twice.
+  #
+  # What replaced it is the opposite problem. Somebody pressed 1, heard their
+  # reminder, pressed 1 again -- and the second press was never collected, so
+  # the dose stayed unacknowledged and rang back twice. The announcement runs
+  # about eight seconds and the wait was ten.
+  # hangup! raises so that a failed hangup answers 500 and Telnyx redelivers --
+  # otherwise a line could be left open recording silence. But the commonest
+  # refusal is "that call has already ended", and raising on that produces a
+  # redelivery loop over a call nobody is on.
+  describe ".hangup!" do
+    it "raises when the call is still up, so the event is retried" do
+      allow(described_class).to receive(:post).and_return(nil)
+      allow(described_class).to receive(:alive?).and_return(true)
+
+      expect { described_class.hangup!(call_control_id: "v3:abc") }
+        .to raise_error(/hangup failed/)
+    end
+
+    it "does not raise when the call has already ended" do
+      allow(described_class).to receive(:post).and_return(nil)
+      allow(described_class).to receive(:alive?).and_return(false)
+
+      expect { described_class.hangup!(call_control_id: "v3:abc") }.not_to raise_error
+    end
+
+    # alive? answers nil when it cannot tell, and unknown is not good enough to
+    # stop trying to close a line somebody may still be holding.
+    it "raises when it cannot tell whether the call has ended" do
+      allow(described_class).to receive(:post).and_return(nil)
+      allow(described_class).to receive(:alive?).and_return(nil)
+
+      expect { described_class.hangup!(call_control_id: "v3:abc") }
+        .to raise_error(/hangup failed/)
+    end
+  end
+
   describe ".gather_digit" do
-    it "asks Telnyx to speak the prompt exactly once" do
+    it "gives somebody long enough to press, and says it again if they do not" do
       sent = nil
       allow(described_class).to receive(:post) { |_path, body, **| sent = body; { "data" => {} } }
 
       described_class.gather_digit(call_control_id: "v3:abc", prompt: "time for your tablet")
 
-      expect(sent[:maximum_tries]).to eq(1)
+      # Comfortably past the end of the announcement rather than a few seconds
+      # after it. Waiting longer costs nothing on a call somebody answers, since
+      # it ends the moment a key is pressed.
+      expect(sent[:timeout_millis]).to be >= 20_000
+      expect(sent[:maximum_tries]).to eq(2)
     end
 
     it "still raises when the provider refuses, so the event stays redeliverable" do

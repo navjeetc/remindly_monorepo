@@ -26,6 +26,7 @@ class TelnyxVoiceService
   OPEN_TIMEOUT = 2
   READ_TIMEOUT = 5
 
+
   # Initiate an outbound call for the given occurrence. Returns the call_control_id
   # from Telnyx so we can correlate webhooks.
   # `attempt` is a TelnyxCall already claimed by TelnyxCall.reserve. Requiring it
@@ -45,6 +46,7 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: phone,
       from: from,
+
       # attempt_id names the exact row, which is the only identifier here that
       # cannot become ambiguous: every other field is a description of the
       # attempt, and descriptions collide. The occurrence and attempt_number are
@@ -120,6 +122,7 @@ class TelnyxVoiceService
       connection_id: connection_id,
       to: number,
       from: from,
+
       # attempt_id, because the descriptive fields cannot separate these rows.
       # Verification attempt numbers restart per *destination*, so one senior
       # moving from number A to number B on the same call_day has an attempt 1
@@ -179,32 +182,59 @@ class TelnyxVoiceService
     Rails.logger.error "Telnyx speak failed for call #{call_control_id}: #{e.message}"
   end
 
+  # A person who has just picked up is usually saying "hello". We answer and
+  # start talking over them within milliseconds, which is abrupt, and worse than
+  # abrupt: they hear their own voice through the earpiece rather than the
+  # instruction, and the window to press a key is running while they work out
+  # what is happening. Reported from a live call as "the announcement came
+  # almost instantly without me saying anything".
+  #
+  # The pause goes into the synthesised audio rather than into our own timing.
+  # Delaying the command instead would mean holding a web request or waiting on
+  # a queue, and a reminder call is a bad place to depend on how busy the
+  # workers are.
+  GREETING_PAUSE = "2s"
+
+  def self.with_opening_pause(text)
+    "<speak><break time=\"#{GREETING_PAUSE}\"/>#{CGI.escapeHTML(text)}</speak>"
+  end
+
   # Speaks a prompt and collects a single DTMF digit in one action.
   #
   # Raises rather than swallowing, because the caller records the call as
   # handled once this returns. A silent failure here is the worst outcome the
   # feature has: the senior answers, hears nothing, and no retry ever comes.
   # See .speak for why language and prompt must be chosen together.
-  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil)
+  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil, payload_type: "text")
     response = post(
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
         digits: 1,
-        # Say it once. Telnyx re-speaks the prompt when no digit is collected,
-        # and left to its default it tries several times — which on a live test
-        # put two identical recordings on a voicemail, sixty-one seconds apart
-        # against a ten-second timeout. A repeat only helps someone who fumbled
-        # the first prompt, and costs an extra voicemail message every single
-        # time nobody picks up, which is exactly what makes an automated caller
-        # feel like a robocall.
+        # Said twice, and waited on for much longer than it used to be.
         #
-        # The real answer is answering-machine detection: knowing a machine
-        # picked up means hanging up rather than talking to it at all.
-        maximum_tries: 1,
-        timeout_millis: 10000,
+        # A live call had somebody press 1, hear their reminder, press 1 again --
+        # and the second press was never collected. The dose stayed unacknowledged
+        # and rang back five minutes later, twice. The announcement runs about
+        # eight seconds and the wait was ten, so a press that came a moment late,
+        # or came while the announcement was still speaking, was simply lost. Ten
+        # seconds is not a generous window for somebody who is hard of hearing and
+        # holding a handset.
+        #
+        # Waiting longer costs nothing on a call somebody answers: it ends as soon
+        # as a key is pressed. It costs a few seconds only where nobody responds,
+        # which is the case we already end promptly by hanging up.
+        #
+        # The repeat is safe now in a way it was not before. It was set to one
+        # because a repeat put two identical recordings on a voicemail -- but no
+        # title is spoken until a key is pressed, so the only thing a mailbox can
+        # hear twice is the opening line, and the second pass is what rescues
+        # somebody who missed the instruction the first time.
+        maximum_tries: 2,
+        timeout_millis: 25000,
         inter_digit_timeout_millis: 5000,
         terminating_digit: "#",
         payload: prompt,
+        payload_type: payload_type,
         voice: "female",
         language: language,
         service: "tts"
@@ -257,6 +287,35 @@ class TelnyxVoiceService
   end
 
   # Hang up a call. Used after a digit is collected or the call is done.
+  # Raises when the hangup does not land. The tolerant version below is right
+  # where a hangup is tidying up after something else has already ended the
+  # call, and wrong where it is the only thing that will end it: the screening
+  # gather times out, nothing else is going to hang up, and a swallowed failure
+  # means a 200 back to Telnyx, no redelivery, and a line left open recording
+  # silence. That is the bug this whole path exists to avoid.
+  def self.hangup!(call_control_id:, command_id: nil)
+    response = post(
+      "/calls/#{call_control_id}/actions/hangup",
+      {},
+      command_id: command_id
+    )
+    return response unless response.nil?
+
+    # A refusal is not necessarily a failure. The commonest way to be told no
+    # here is that the call has already ended -- a redelivered event whose first
+    # hangup worked, or a person who put the phone down in between -- and in
+    # that case what this method was asked to achieve is already true. Raising
+    # would answer 500, have the event redelivered, and be refused for the same
+    # reason again: a loop over a call that is already gone.
+    #
+    # Only an ended call is treated as success. alive? answers nil when it
+    # cannot tell, and unknown is not good enough to stop trying to close a line
+    # somebody may still be holding open.
+    return { "already_ended" => true } if alive?(call_control_id) == false
+
+    raise "Telnyx hangup failed for call #{call_control_id}"
+  end
+
   def self.hangup(call_control_id:, command_id: nil)
     post(
       "/calls/#{call_control_id}/actions/hangup",

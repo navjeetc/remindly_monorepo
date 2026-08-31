@@ -67,7 +67,48 @@ class TelnyxWebhooksController < ApplicationController
   # Gathering twice is safe. command_id is Telnyx's idempotency key and this
   # passes the webhook's own event id, so a redelivered event issues the same
   # command and the provider discards the duplicate rather than speaking twice.
+  # A reminder call opens with a line that carries no title. The title is spoken
+  # only after somebody presses a key.
+  #
+  # This began as answering-machine detection: ask Telnyx whether a person or a
+  # mailbox picked up, and say nothing sensitive to a mailbox. Four live calls
+  # showed the verdict is not usable. A person answering silently came back
+  # "machine" twice; the actual voicemail came back not-a-machine twice, on the
+  # provider defaults and on tuned thresholds alike. Not merely inaccurate --
+  # wrong in the direction that matters, and a reminder title reached a mailbox
+  # both times a real mailbox answered.
+  #
+  # So nothing is asked of the provider and nothing is inferred. A mailbox cannot
+  # press a key, which makes it structurally impossible for a title to reach one:
+  # no thresholds, nothing to tune, and no way for this to regress quietly.
+  #
+  # The cost is one keypress for every care receiver, which is a real burden on
+  # the people this rings and was not chosen lightly. It buys the only guarantee
+  # worth having here, and it makes Remindly name itself before asking for
+  # anything -- the same reason the consent call opens as it does.
   def handle_answered(call, event_id)
+    return if call.answered_at.present?
+
+    return handle_verification_answered(call, event_id) if call.purpose == "verification"
+
+    # Redelivery is covered by command_id: Telnyx refuses a command it has
+    # already run, and event_id is stable across redeliveries. answered_at
+    # cannot guard this one -- it means "the reminder itself has been spoken",
+    # which is precisely what has not happened yet.
+    TelnyxVoiceService.gather_digit(
+      call_control_id: call.call_control_id,
+      prompt: TelnyxVoiceService.with_opening_pause(
+        I18n.t("voice.screening", locale: call.user.spoken_locale)
+      ),
+      payload_type: "ssml",
+      language: call.user.spoken_language,
+      command_id: event_id
+    )
+  end
+
+  # answered_at doubles as the guard against speaking twice. Telnyx redelivers
+  # events, and a second prompt would talk over the first.
+  def start_prompt(call, event_id)
     return if call.answered_at.present?
 
     return handle_verification_answered(call, event_id) if call.purpose == "verification"
@@ -83,7 +124,10 @@ class TelnyxWebhooksController < ApplicationController
       command_id: event_id
     )
 
-    call.update!(answered_at: Time.current)
+    # One write, after the gather is accepted. Two writes would leave a window
+    # where answered_at is set and the screening id is not, and a redelivery
+    # landing in it would read the screening keypress as an acknowledgement.
+    call.update!(answered_at: Time.current, screening_event_id: event_id)
   end
 
   # Reminder titles are free text and most of them are imperative phrases
@@ -112,6 +156,51 @@ class TelnyxWebhooksController < ApplicationController
 
   def handle_gather_ended(call, payload, event_id)
     return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
+
+    # Telnyx sending the screening keypress a second time, which happens when our
+    # 200 does not reach it. Everything that event asked for was done on the
+    # first delivery.
+    #
+    # This cannot be inferred from answered_at, which is why it is recorded
+    # separately. answered_at means "the reminder has been spoken" and is set by
+    # the very event we need to recognise on the way back -- so a redelivered
+    # screening keypress read as an acknowledgement instead, and marked the dose
+    # taken while the person was still listening to the reminder. A false
+    # "taken" on medication is the worst thing this call can produce.
+    return if event_id.present? && call.screening_event_id == event_id
+
+    # A digit arriving before the reminder has been spoken is somebody answering
+    # the opening line, which is the only proof available that a person is on
+    # this call rather than a mailbox. Give them what they were rung about.
+    #
+    # The digits check is the whole guarantee, not a detail. Telnyx sends
+    # call.gather.ended when the gather merely times out, with no digits key at
+    # all -- so a mailbox that sits there silently produces this event exactly
+    # as a keypress does. Reading the event alone as proof of a person put
+    # "Green banana" onto a voicemail on the first live test of this design.
+    if call.answered_at.nil?
+      # The screening id is recorded by start_prompt, in the same write as
+      # answered_at and only once the gather has been accepted. Recording it
+      # here instead made a failed prompt permanent: the id was committed, the
+      # gather then raised, and the redelivery met the guard above and answered
+      # 200 -- so the retry that would have spoken never ran, and the call sat
+      # in silence.
+      return start_prompt(call, event_id) if payload["digits"].present?
+
+      # Unless they hung up on us, in which case the call is already gone and
+      # asking Telnyx to end it again fails -- and because the hangup below is
+      # the raising kind, that failure would answer 500, have the event
+      # redelivered, and fail again the same way. The same guard sits on the two
+      # other hangups in this file.
+      return if payload["status"] == "call_hangup"
+
+      # Nobody there. Hang up rather than returning: the gather is finished, so
+      # nothing else will end the call, and simply stopping here left the line
+      # open recording silence onto a voicemail for as long as the carrier
+      # allowed. Saying nothing is not the same as going away.
+      TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
+      return
+    end
 
     digits = payload["digits"]
 
@@ -180,6 +269,10 @@ class TelnyxWebhooksController < ApplicationController
   # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
     attributes = { completed_at: call.completed_at || Time.current }
+    # Nobody pressed anything, which covers both the mailbox and the phone that
+    # rang out -- the two are no longer distinguished, because the detection that
+    # told them apart proved unreliable and was removed. "voicemail" was briefly
+    # an outcome here and is not one: TelnyxCall::OUTCOMES has never listed it.
     unanswered = call.outcome == "pending"
     attributes[:outcome] = "no_response" if unanswered
 
