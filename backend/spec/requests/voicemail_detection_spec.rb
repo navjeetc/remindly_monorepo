@@ -167,6 +167,28 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
       expect(telnyx_call.reload.outcome).to eq("pending")
     end
 
+    # The guard must not outlive a prompt that never happened. Recording the
+    # screening id before the gather made a failed prompt permanent: the id was
+    # committed, the gather raised, and the redelivery was then swallowed as a
+    # duplicate -- so nothing ever spoke and the person sat listening to silence
+    # until they hung up.
+    it "still retries the prompt when the gather failed the first time" do
+      allow(TelnyxVoiceService).to receive(:gather_digit).and_raise("Telnyx said no")
+
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")
+
+      expect(telnyx_call.reload.screening_event_id).to be_nil
+
+      allow(TelnyxVoiceService).to receive(:gather_digit)
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")
+
+      # Twice: the attempt that raised, and the retry that got through. Once
+      # would mean the redelivery was swallowed and nobody ever heard anything.
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin"))).twice
+    end
+
     it "still accepts the real acknowledgement afterwards" do
       telnyx_post("call.answered")
       telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")

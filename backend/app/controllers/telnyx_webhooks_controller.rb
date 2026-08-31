@@ -124,7 +124,10 @@ class TelnyxWebhooksController < ApplicationController
       command_id: event_id
     )
 
-    call.update!(answered_at: Time.current)
+    # One write, after the gather is accepted. Two writes would leave a window
+    # where answered_at is set and the screening id is not, and a redelivery
+    # landing in it would read the screening keypress as an acknowledgement.
+    call.update!(answered_at: Time.current, screening_event_id: event_id)
   end
 
   # Reminder titles are free text and most of them are imperative phrases
@@ -176,12 +179,13 @@ class TelnyxWebhooksController < ApplicationController
     # as a keypress does. Reading the event alone as proof of a person put
     # "Green banana" onto a voicemail on the first live test of this design.
     if call.answered_at.nil?
-      if payload["digits"].present?
-        # Recorded before the prompt, so a redelivery arriving while the gather
-        # is still in flight is recognised rather than acted on twice.
-        call.update!(screening_event_id: event_id) if event_id.present?
-        return start_prompt(call, event_id)
-      end
+      # The screening id is recorded by start_prompt, in the same write as
+      # answered_at and only once the gather has been accepted. Recording it
+      # here instead made a failed prompt permanent: the id was committed, the
+      # gather then raised, and the redelivery met the guard above and answered
+      # 200 -- so the retry that would have spoken never ran, and the call sat
+      # in silence.
+      return start_prompt(call, event_id) if payload["digits"].present?
 
       # Unless they hung up on us, in which case the call is already gone and
       # asking Telnyx to end it again fails -- and because the hangup below is
