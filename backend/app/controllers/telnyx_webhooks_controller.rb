@@ -102,7 +102,13 @@ class TelnyxWebhooksController < ApplicationController
       ),
       payload_type: "ssml",
       language: call.user.spoken_language,
-      command_id: event_id
+      command_id: event_id,
+      # Said once. This is the only prompt a voicemail can reach, and repeating
+      # it is what made an unanswered call ninety seconds rather than sixty --
+      # three times over, since an unanswered reminder is tried three times. The
+      # wait after it is unchanged, so nobody who is there has less time to
+      # press.
+      max_tries: 1
     )
   end
 
@@ -121,7 +127,12 @@ class TelnyxWebhooksController < ApplicationController
       call_control_id: call.call_control_id,
       prompt: announcement_for(senior, reminder),
       language: senior.spoken_language,
-      command_id: event_id
+      command_id: event_id,
+      # Said twice, unlike the opening line. This one is reachable only after a
+      # keypress, so a mailbox can never hear it and the repeat costs nothing --
+      # while giving somebody who missed the instruction a second chance inside
+      # the same call rather than another call five minutes later.
+      max_tries: 2
     )
 
     # One write, after the gather is accepted. Two writes would leave a window
