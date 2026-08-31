@@ -112,6 +112,19 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
         .with(hash_including(call_control_id: "call-123"))
     end
 
+    # Telnyx reports a gather that ended because the caller hung up, and the
+    # call is gone by then. Hanging it up again fails, and since this path uses
+    # the raising hangup that failure would answer 500, have the event
+    # redelivered, and fail again identically -- a loop, out of somebody simply
+    # putting the phone down.
+    it "does not chase a call the person has already hung up on" do
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended", status: "call_hangup")
+
+      expect(TelnyxVoiceService).not_to have_received(:hangup!)
+      expect(response).to have_http_status(:ok)
+    end
+
     # The tolerant hangup logs and returns nil, which would mean a 200 back to
     # Telnyx, no redelivery, and the line left open -- the exact failure this
     # path exists to prevent. It has to be the raising one, so the webhook stays

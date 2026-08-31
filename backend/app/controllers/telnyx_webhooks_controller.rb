@@ -166,6 +166,13 @@ class TelnyxWebhooksController < ApplicationController
     if call.answered_at.nil?
       return start_prompt(call, event_id) if payload["digits"].present?
 
+      # Unless they hung up on us, in which case the call is already gone and
+      # asking Telnyx to end it again fails -- and because the hangup below is
+      # the raising kind, that failure would answer 500, have the event
+      # redelivered, and fail again the same way. The same guard sits on the two
+      # other hangups in this file.
+      return if payload["status"] == "call_hangup"
+
       # Nobody there. Hang up rather than returning: the gather is finished, so
       # nothing else will end the call, and simply stopping here left the line
       # open recording silence onto a voicemail for as long as the carrier
