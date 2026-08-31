@@ -24,11 +24,15 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
                        user: senior, status: "initiated", outcome: "pending")
   end
 
-  def telnyx_post(event_type, payload = {})
-    post "/telnyx/webhooks",
-      params: { token: "test-token",
-                data: { event_type: event_type,
-                        payload: payload.merge(call_control_id: telnyx_call.call_control_id) } }
+  # event_id is positional, not a keyword: with a keyword here Ruby reads the
+  # bare `digits: "1"` at every other call site as keywords rather than as the
+  # payload hash.
+  def telnyx_post(event_type, payload = {}, event_id = nil)
+    data = { event_type: event_type,
+             payload: payload.merge(call_control_id: telnyx_call.call_control_id) }
+    data[:id] = event_id if event_id
+
+    post "/telnyx/webhooks", params: { token: "test-token", data: data }
   end
 
   before do
@@ -146,6 +150,31 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
       expect(TelnyxVoiceService).not_to have_received(:gather_digit)
         .with(hash_including(prompt: a_string_including("Metformin")))
       expect(telnyx_call.reload.answered_at).to be_nil
+    end
+  end
+
+  # Telnyx redelivers an event when it does not get a 2xx -- including when our
+  # 200 was sent but never arrived. The screening keypress and the
+  # acknowledgement keypress are both call.gather.ended carrying "1", so a
+  # redelivery of the first has to be recognised rather than read as the second.
+  describe "when the screening keypress is delivered twice" do
+    it "does not mark the dose taken while the reminder is still playing" do
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")
+
+      expect(occurrence.reload.status).not_to eq("acknowledged")
+      expect(telnyx_call.reload.outcome).to eq("pending")
+    end
+
+    it "still accepts the real acknowledgement afterwards" do
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-screening")
+      telnyx_post("call.gather.ended", { digits: "1" }, "evt-acknowledgement")
+
+      expect(occurrence.reload.status).to eq("acknowledged")
+      expect(telnyx_call.reload.outcome).to eq("taken")
     end
   end
 

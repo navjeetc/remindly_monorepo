@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The call also pauses briefly before speaking, so it no longer talks over
   somebody who has just said "hello".
 
+- **A repeated webhook could mark a dose taken while the reminder was still
+  playing.** The keypress that asks to hear the reminder and the keypress that
+  acknowledges it arrive as the same event carrying the same digit. Telnyx
+  redelivers an event when it does not receive a 2xx — including when the reply
+  was sent but never arrived — so a redelivery of the first was read as the
+  second. The event that got past the opening line is now recorded, and a repeat
+  of it is recognised rather than acted on.
+
 - **The time-critical checkbox said nothing about being inert.** The early alert
   fires only from an unanswered call, so for a care receiver without phone
   reminders — or anywhere the feature is switched off, which is how development

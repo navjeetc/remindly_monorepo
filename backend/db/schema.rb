@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_29_150126) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_001326) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -242,6 +242,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_29_150126) do
     t.string "outcome", default: "pending", null: false
     t.string "purpose", default: "reminder", null: false
     t.integer "requested_by_id"
+    t.string "screening_event_id"
     t.string "status", default: "pending", null: false
     t.string "to_number"
     t.datetime "updated_at", null: false

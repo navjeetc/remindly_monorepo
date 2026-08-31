@@ -154,6 +154,18 @@ class TelnyxWebhooksController < ApplicationController
   def handle_gather_ended(call, payload, event_id)
     return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
 
+    # Telnyx sending the screening keypress a second time, which happens when our
+    # 200 does not reach it. Everything that event asked for was done on the
+    # first delivery.
+    #
+    # This cannot be inferred from answered_at, which is why it is recorded
+    # separately. answered_at means "the reminder has been spoken" and is set by
+    # the very event we need to recognise on the way back -- so a redelivered
+    # screening keypress read as an acknowledgement instead, and marked the dose
+    # taken while the person was still listening to the reminder. A false
+    # "taken" on medication is the worst thing this call can produce.
+    return if event_id.present? && call.screening_event_id == event_id
+
     # A digit arriving before the reminder has been spoken is somebody answering
     # the opening line, which is the only proof available that a person is on
     # this call rather than a mailbox. Give them what they were rung about.
@@ -164,7 +176,12 @@ class TelnyxWebhooksController < ApplicationController
     # as a keypress does. Reading the event alone as proof of a person put
     # "Green banana" onto a voicemail on the first live test of this design.
     if call.answered_at.nil?
-      return start_prompt(call, event_id) if payload["digits"].present?
+      if payload["digits"].present?
+        # Recorded before the prompt, so a redelivery arriving while the gather
+        # is still in flight is recognised rather than acted on twice.
+        call.update!(screening_event_id: event_id) if event_id.present?
+        return start_prompt(call, event_id)
+      end
 
       # Unless they hung up on us, in which case the call is already gone and
       # asking Telnyx to end it again fails -- and because the hangup below is
