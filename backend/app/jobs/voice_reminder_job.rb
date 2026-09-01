@@ -48,7 +48,16 @@ class VoiceReminderJob < ApplicationJob
     # acknowledged herself is resolved, not undelivered.
     unless occurrence.status_pending?
       if occurrence.status_missed? && occurrence.telnyx_calls.empty?
-        occurrence.suppress_call!(:not_attempted_in_time)
+        # Which of the two it was depends on the row, not on which sweep reached
+        # it first. not_attempted_in_time tells the caregiver the call was
+        # "closed as missed before Remindly managed to place the call. That is a
+        # fault at our end" -- true of a job stuck in a queue, and the opposite
+        # of the truth for a back-filled row, where nothing was ever going to be
+        # dialled because nothing came due. Saying we dropped a call we declined
+        # on purpose sends them looking for a bug in the reminder they have just
+        # edited.
+        reason = occurrence.back_filled? ? :added_after_its_time : :not_attempted_in_time
+        occurrence.suppress_call!(reason)
       end
 
       return
