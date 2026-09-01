@@ -63,12 +63,22 @@ class VoiceReminderJob < ApplicationJob
     # dated hours ago. That is right for the dashboard and wrong for a telephone:
     # nothing came due, so nothing should ring.
     if occurrence.back_filled?
-      # Also recorded here, though the scheduler normally gets there first and
-      # this job is not usually enqueued for such a row. This check exists
-      # because it is the last thing between a person and a ringing telephone,
-      # and a job delayed across an edit can arrive with the row already
-      # back-filled. suppress_call! is idempotent, so whichever runs first is the
-      # one that dates the decision.
+      # Recorded here as well, though the scheduler's sweep normally gets there
+      # first and this job is not usually enqueued for such a row at all.
+      #
+      # Not because a queued job can find its row back-filled underneath it: it
+      # cannot. Both timestamps are fixed when the row is written, and an edit
+      # destroys the pending occurrences and expands new ones rather than moving
+      # the ones that exist -- so a job delayed across an edit finds its row
+      # gone, and returns a few lines above.
+      #
+      # It is recorded because this is reachable where the sweep is not: a
+      # console call, a retry, a row older than the sweep's SUPPRESSION_LOOKBACK,
+      # some future caller that does not exist yet. Refusing without writing
+      # anything down is what left the caregiver email with nothing to say, and
+      # that must not depend on which door the refusal came through.
+      # suppress_call! is idempotent, so whichever refusal lands first is the one
+      # that dates the decision.
       occurrence.suppress_call!(:added_after_its_time)
 
       Rails.logger.info(
