@@ -35,10 +35,20 @@ class Occurrence < ApplicationRecord
   # Why the telephone never reached this person, or nil when that is not the
   # story. The caregiver email hangs off this, and the distinction is the whole
   # point: "she has not marked it as done" is a statement about her, and it is
-  # false when nobody ever asked her.
+  # the wrong thing to send when the reason nothing happened is ours.
   #
   #   :outside_calling_hours  no call was placed, and none legally could be
   #   :could_not_place        attempts were made and not one reached the provider
+  #   :not_attempted_in_time  the missed sweep closed the row before we dialled
+  #   :added_after_its_time   the row was written after the time it names, so
+  #                           there was never a moment at which it came due
+  #
+  # All four of them, because the list is what the missed email branches on. The
+  # two at the bottom were added without being written down here, and the second
+  # of them was written with no branch in the subject case -- so the body
+  # explained itself while the subject still said "No confirmation from Nora",
+  # which is the one line an inbox shows. Caught in review rather than by
+  # anybody's inbox, but the list being short by two is how it got that far.
   #
   # nil means either a call genuinely went out — answered or not, which is an
   # ordinary miss and hers to explain — or the telephone is not her channel.
