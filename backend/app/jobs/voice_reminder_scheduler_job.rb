@@ -24,26 +24,6 @@ class VoiceReminderSchedulerJob < ApplicationJob
   # performs, so this window is deliberately much tighter than its.
   LOOKBACK = 2.hours
 
-  # How late a row may be written and still be treated as having come due
-  # naturally.
-  #
-  # Recurrence.expand deliberately back-fills the most recent past slot of the
-  # day — its own comment explains why, and the reason is good: it keeps a
-  # same-day reminder visible after its clock time has passed, for a caregiver in
-  # one timezone setting a reminder for a senior in another. Harmless on a
-  # dashboard.
-  #
-  # Not harmless here. Editing a reminder regenerates its pending occurrences, so
-  # the back-filled row is created *now* and dated earlier today — and a row dated
-  # inside LOOKBACK is indistinguishable, to the query above, from one that just
-  # came due. Editing a reminder at 8pm to ring at 7pm would therefore telephone
-  # the senior straight away about a dose whose time had already passed.
-  #
-  # A minute of grace, because a reminder created for the current minute is a real
-  # thing a caregiver does, and the row is written a moment after the time it
-  # names.
-  BACKFILL_GRACE = 1.minute
-
   # How far back the refusal sweep looks, and deliberately not LOOKBACK.
   #
   # LOOKBACK answers "is this still worth telephoning about". This answers "can
@@ -105,7 +85,7 @@ class VoiceReminderSchedulerJob < ApplicationJob
         # Only the enqueue is refused here. The reason was written down by the
         # sweep above, which looks further back than this query does — so every
         # row this query can reach has already been through it.
-        next if back_filled?(occ)
+        next if occ.back_filled?
 
         # Calling hours are per-person, in their own timezone, so this cannot be
         # a WHERE clause -- every senior's window lands on a different UTC hour.
@@ -151,7 +131,7 @@ class VoiceReminderSchedulerJob < ApplicationJob
     for_seniors_taking_calls(Occurrence.status_pending)
       .where(scheduled_at: (now - SUPPRESSION_LOOKBACK)..now, call_suppressed_at: nil)
       .find_each do |occ|
-        next unless back_filled?(occ)
+        next unless occ.back_filled?
 
         # at: now, matching the outside_calling_hours suppression. The job takes
         # its clock as an argument and every decision it makes should be dated by
@@ -175,11 +155,5 @@ class VoiceReminderSchedulerJob < ApplicationJob
       .where(users: { call_reminders_enabled: true, call_opted_out_at: nil })
       .where.not(users: { phone: [ nil, "" ] })
       .where.not(users: { call_consent_at: nil })
-  end
-
-  # The row was written after the time it names, so nothing came due when the
-  # clock reached it -- there was nothing there to come due.
-  def back_filled?(occ)
-    occ.created_at > occ.scheduled_at + BACKFILL_GRACE
   end
 end

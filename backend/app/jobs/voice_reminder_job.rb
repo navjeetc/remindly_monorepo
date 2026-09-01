@@ -62,7 +62,7 @@ class VoiceReminderJob < ApplicationJob
     # reminder is created or edited, so a pending row can be written now and
     # dated hours ago. That is right for the dashboard and wrong for a telephone:
     # nothing came due, so nothing should ring.
-    if occurrence.created_at > occurrence.scheduled_at + VoiceReminderSchedulerJob::BACKFILL_GRACE
+    if occurrence.back_filled?
       # Also recorded here, though the scheduler normally gets there first and
       # this job is not usually enqueued for such a row. This check exists
       # because it is the last thing between a person and a ringing telephone,

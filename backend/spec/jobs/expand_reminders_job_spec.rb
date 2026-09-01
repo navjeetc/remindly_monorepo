@@ -32,7 +32,7 @@ RSpec.describe ExpandRemindersJob do
 
     occurrence = reminder.occurrences.reload.order(:scheduled_at).first
     expect(occurrence.created_at).to be < occurrence.scheduled_at
-    expect(occurrence.created_at > occurrence.scheduled_at + VoiceReminderSchedulerJob::BACKFILL_GRACE).to be false
+    expect(occurrence).not_to be_back_filled
   end
 
   # The property that makes it a sweep rather than a chain: it does not matter
