@@ -367,10 +367,23 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     # hours calls may be placed when it did not. That reads as an explanation
     # and is a different reason's explanation. Every reason owning its own body
     # is the only thing that catches it.
-    it "gives each reason a sentence of its own" do
-      bodies = Occurrence::PHONE_FAILURE_REASONS.map { |reason| readable(missed_mail_for(reason)) }
+    #
+    # Per part, not across both. The two templates are structured differently --
+    # the HTML mail carries the shared caveat outside its branches and the text
+    # mail repeats it inside each one -- and #137 landed with a branch in one and
+    # not the other for exactly that reason. Read as one string, a reason
+    # branched in the HTML mail alone still looks distinct, while the text mail
+    # quietly tells a text-only reader a different reason's story. Checked
+    # against that: with a fifth reason branched in HTML only, the joined version
+    # of this passed.
+    %i[html_part text_part].each do |part|
+      it "gives each reason a sentence of its own in the #{part.to_s.sub('_part', '')} mail" do
+        bodies = Occurrence::PHONE_FAILURE_REASONS.map do |reason|
+          missed_mail_for(reason).public_send(part).decoded
+        end
 
-      expect(bodies.uniq.size).to eq(Occurrence::PHONE_FAILURE_REASONS.size)
+        expect(bodies.uniq.size).to eq(Occurrence::PHONE_FAILURE_REASONS.size)
+      end
     end
   end
 end
