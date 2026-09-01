@@ -52,8 +52,13 @@ class ReminderActivityMailer < ApplicationMailer
     # simply gone by before the reminder existed, and we do not ring about a dose
     # whose moment has passed. The distinction is the same one the body makes,
     # and the subject has to carry it too: this branch was missing, so the
-    # sentence that reached the inbox was "No confirmation from Nora", which says
-    # she was asked and did not answer. She was never asked.
+    # sentence that reached the inbox was "No confirmation from Nora", which
+    # reads as her having been asked and not answered. No call was placed.
+    #
+    # No call was placed, and not "she was never asked", which is what this said
+    # until the templates below stopped saying it: the screen client announces a
+    # back-filled row like any other, so whether she was asked is a question this
+    # email cannot answer. What it knows is that the telephone stayed quiet.
     when :added_after_its_time
       "Remindly didn't call #{@senior.display_name} about #{@reminder.title}"
     when :could_not_place
