@@ -1,5 +1,12 @@
 Hi <%= @caregiver.display_name %>,
 
+<%# The caveat below sits outside these branches, as it does in the HTML mail.
+    Written once, it cannot be forgotten by the next reason added -- which is
+    what happened here twice: could_not_place and not_attempted_in_time never
+    carried it at all, and added_after_its_time shipped without it and had it
+    put back by hand. It is the sentence separating "not reached" from "not
+    done", and it belongs to every one of these branches equally. -%>
+<% if @phone_failure -%>
 <% if @phone_failure == :could_not_place -%>
 Remindly tried to call <%= @senior.display_name %> about <%= @reminder.title %> and could not get through.
 <% if @scheduled_at -%>
@@ -15,26 +22,21 @@ before Remindly managed to place the call. That is a fault at our end.
 <% elsif @phone_failure == :added_after_its_time -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, but it was added to the
-schedule after that time had already passed — usually because the reminder was added or
-edited today. Remindly does not call about a time that has gone by, so no call was
-placed for this one.
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, but it was added to
+the schedule after that time had already passed — usually because the
+reminder was added or edited today. Remindly does not call about a time
+that has gone by, so no call was placed for this one.
 <% end -%>
-<%# The same caveat the other no-call branches carry. In the HTML mail it sits
-    outside the branches and covers every phone failure; here each branch has to
-    say it, and a reader of the text-only mail would otherwise be left without
-    the one sentence that separates "not asked" from "not done". -%>
-Nobody was contacted, so this says nothing about whether <%= @senior.display_name %> did it —
-only that Remindly did not ask.
-<% elsif @phone_failure -%>
+<% else -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>
 It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside the hours
 Remindly is allowed to place reminder calls — between <%= @calling_hours %> in
 <%= @senior.display_name %>'s own time.
 <% end -%>
-Nobody was contacted, so this says nothing about whether <%= @senior.display_name %> did it —
-only that Remindly did not ask.
+<% end -%>
+Remindly did not reach <%= @senior.display_name %> by phone, so this says nothing
+about whether they did it.
 <% else -%>
 <%= @senior.display_name %> has not marked <%= @reminder.title %> as done.
 <% if @scheduled_at -%>
@@ -48,4 +50,5 @@ View <%= @senior.display_name %>'s dashboard: <%= @dashboard_url %>
 
 --
 Remindly - Caregiver Coordination
-You're receiving this because you're a caregiver for <%= @senior.display_name %>. You can turn these off in your notification settings.
+You're receiving this because you're a caregiver for <%= @senior.display_name %>.
+You can turn these off in your notification settings.

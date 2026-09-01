@@ -359,6 +359,23 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       end
     end
 
+    # Every phone failure carries the caveat, in both mails.
+    #
+    # It has been lost twice by being written per branch rather than once: two
+    # reasons never carried it in the text mail at all, and a third shipped
+    # without it. Walking the list is what makes "once, outside the branches"
+    # hold rather than being a thing somebody remembers.
+    %i[html_part text_part].each do |part|
+      it "keeps the not-reached caveat in the #{part.to_s.sub('_part', '')} mail for every reason" do
+        Occurrence::PHONE_FAILURE_REASONS.each do |reason|
+          body = missed_mail_for(reason).public_send(part).decoded.gsub(/\s+/, " ")
+
+          expect(body).to include("says nothing about whether they did it"),
+                          "#{reason} lost the caveat in the #{part}"
+        end
+      end
+    end
+
     # The check the one above is not.
     #
     # A reason with no branch of its own does not fall through to "has not

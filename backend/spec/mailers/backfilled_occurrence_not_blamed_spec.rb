@@ -178,19 +178,19 @@ RSpec.describe "A reminder edited to a time that has already passed" do
       expect(subject_line).to eq("Remindly didn't call Nora about take bp meds")
     end
 
-    # The HTML mail carries this outside the branches, so every phone failure
-    # gets it; the text mail repeats it per branch, and a new branch silently
-    # loses it. It is the sentence that separates "not asked" from "not done",
-    # which is the entire point of this change.
-    it "tells a text-only reader that nothing was asked, not that nothing was done" do
+    # The sentence that separates "not reached" from "not done", which is the
+    # entire point of this change. Both templates now carry it outside their
+    # branches; it used to be repeated per branch in the text mail, where two
+    # branches never had it and a third shipped without it.
+    it "tells a text-only reader the phone did not reach her, not that nothing was done" do
       occurrence = back_filled_occurrence
       run_scheduler
 
       mail = missed_email_for(occurrence)
       text = (mail.text_part&.body.to_s.presence || mail.body.to_s).gsub(/\s+/, " ")
 
-      expect(text).to include("Nobody was contacted")
-      expect(text).to include("says nothing about whether Nora did it")
+      expect(text).to include("Remindly did not reach Nora by phone")
+      expect(text).to include("says nothing about whether they did it")
     end
 
     # The generic phone_failure branch blames the calling-hours window, which is
