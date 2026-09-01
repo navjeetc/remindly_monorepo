@@ -23,13 +23,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was being made on her own behalf.
 
   So the wait is now recorded per language: `User::SPOKEN_LANGUAGES` carries
-  `offer:`, Mandarin carries `offer: false`, and the picker does not list it
-  while the endpoint behind the picker refuses it. The script is translated,
-  covered by the parity spec, and one word away from being offered when somebody
-  who speaks it has heard both calls end to end. The three things such a
+  `offer:`, and the picker and the endpoint behind it both read it.
+
+  Mandarin itself ships **offered**, which is a decision and not an oversight:
+  the reviewer being asked to judge the script is a Mandarin speaker, and the
+  way to ask is to let her use it as a caregiver would. The words are still
+  unreviewed and the file still says so. The three things such a
   reviewer has to decide — whether a Mandarin voice can say "Remindly" at all,
   the 您/你 register, and what happens to an English reminder title spoken
   verbatim — are written into the file rather than left for them to find.
+
+### Fixed
+- **The call-language box named a language the account was not set to.** It was
+  built from the languages on offer alone, so an account holding one that had
+  been withheld showed the first option instead — "English" for an account set
+  to Mandarin — while the line directly beneath it correctly said 中文. Two
+  claims about one setting on one screen, and pressing Save wrote the false one,
+  silently moving somebody's calls to a language nobody chose.
+
+  A withheld language is now shown as its own option and disabled: visible so
+  the screen is true, unpickable so it stays the one thing nobody may choose,
+  and leaving it for a language that is offered still works — trapping a
+  caregiver on an unreviewed script would be worse than the state the gate
+  exists to avoid. Saving without changing anything is no longer refused.
 
 ### Changed
 - **A reason the missed email cannot explain can no longer be recorded against

@@ -41,6 +41,20 @@ RSpec.describe "The language calls are spoken in", type: :request do
       expect(senior.spoken_locale).to eq(:es)
     end
 
+    # Mandarin is offered ahead of its review, which is a decision rather than
+    # an oversight: the reviewer is a Mandarin speaker, and she is being asked
+    # to judge it by using it. The script's own header still says nobody has
+    # read it, and #118 stays open until somebody has.
+    it "can be set to Mandarin, script review still outstanding" do
+      sign_in(caregiver)
+
+      patch "/dashboard/senior/#{senior.id}/spoken_language",
+        params: { user: { spoken_language: "cmn-CN" } }
+
+      expect(senior.reload.spoken_language).to eq("cmn-CN")
+      expect(senior.spoken_locale).to eq(:zh)
+    end
+
     # Cantonese is the real case: it was asked for and is absent from Telnyx's
     # speak enum entirely. Asserting the status as well as the stored value,
     # because "the database did not change" is also true of a 500 — and a spec
@@ -156,11 +170,24 @@ RSpec.describe "The language calls are spoken in", type: :request do
     end
   end
 
-  # Mandarin is translated and shipped, and still must not reach a telephone.
-  # The flag cannot express that — it is on in production, and turning it off to
-  # hold one unreviewed script back would take Spanish away too — so the wait is
-  # recorded per language in SPOKEN_LANGUAGES.
+  # A language can be held back while its script waits for a reviewer: the flag
+  # cannot express that on its own — it is on in production, and switching it
+  # off to hold one script back would take every other language with it — so the
+  # wait is recorded per language, as `offer:` in SPOKEN_LANGUAGES.
+  #
+  # Nothing is held back today. Mandarin ships offered, because the reviewer we
+  # are asking to judge it is a Mandarin speaker and the way to ask is to let
+  # her use it as a caregiver would. So these exercise the mechanism against a
+  # withheld Mandarin rather than against whatever the table holds this week —
+  # the machinery has to keep working for whichever language needs it next.
   describe "a language whose script is still waiting for a reviewer" do
+    before do
+      stub_const("User::SPOKEN_LANGUAGES",
+                 User::SPOKEN_LANGUAGES.merge(
+                   "cmn-CN" => User::SPOKEN_LANGUAGES.fetch("cmn-CN").merge(offer: false)
+                 ))
+    end
+
     it "is not offered, even with translated calls switched on" do
       expect(User.selectable_spoken_languages.keys).to include("en-US", "es-US")
       expect(User.selectable_spoken_languages.keys).not_to include("cmn-CN")
@@ -184,6 +211,62 @@ RSpec.describe "The language calls are spoken in", type: :request do
       get "/dashboard/senior/#{senior.id}"
 
       expect(response.body).not_to include("cmn-CN")
+    end
+
+    # What the screen said before this: a senior set to Mandarin showed
+    # "English" in the box, because a select whose stored value is not among its
+    # options falls back to the first one — while the line beneath it correctly
+    # said 中文. Saving without touching anything wrote the language the box was
+    # wrongly displaying.
+    context "when a row already holds it" do
+      before { senior.update_columns(spoken_language: "cmn-CN", phone: "+15551234567") }
+
+      it "shows the language the row actually holds, not the first one offered" do
+        sign_in(caregiver)
+        get "/dashboard/senior/#{senior.id}"
+
+        picker = Nokogiri::HTML(response.body).at_css("#user_spoken_language")
+        selected = picker.css("option[selected]")
+
+        expect(selected.map { |o| o["value"] }).to eq([ "cmn-CN" ])
+        expect(selected.text).to include("not available yet")
+      end
+
+      # Disabled, not merely unselected: the point of the gate is that this
+      # language cannot be chosen. Shown so the screen tells the truth, and
+      # unpickable so the truth is the only thing it can be.
+      it "will not let it be picked" do
+        sign_in(caregiver)
+        get "/dashboard/senior/#{senior.id}"
+
+        option = Nokogiri::HTML(response.body).at_css("#user_spoken_language option[value='cmn-CN']")
+
+        expect(option["disabled"]).to be_present
+      end
+
+      # English stays reachable. A caregiver must always be able to leave a
+      # language nobody has reviewed; trapping them on it would be worse than
+      # the state this whole gate exists to avoid.
+      it "still lets the caregiver move to a language that is offered" do
+        sign_in(caregiver)
+
+        patch "/dashboard/senior/#{senior.id}/spoken_language",
+          params: { user: { spoken_language: "en-US" } }
+
+        expect(senior.reload.spoken_language).to eq("en-US")
+      end
+
+      # The form posts the disabled value back for anyone who came to change
+      # something else. Refusing it would be a 403 for touching nothing.
+      it "accepts a save that changes nothing" do
+        sign_in(caregiver)
+
+        patch "/dashboard/senior/#{senior.id}/spoken_language",
+          params: { user: { spoken_language: "cmn-CN" } }
+
+        expect(response).to have_http_status(:redirect)
+        expect(senior.reload.spoken_language).to eq("cmn-CN")
+      end
     end
 
     # Playback is not gated, here for the same reason it is not gated on the

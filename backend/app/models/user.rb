@@ -65,7 +65,13 @@ class User < ApplicationRecord
     # Mandarin — flipping this to false is a decision about a live capability,
     # not a detail of this change.
     "es-US" => { label: "Español (Spanish)", locale: :es, offer: true },
-    "cmn-CN" => { label: "中文 (Mandarin)", locale: :zh, offer: false }
+    # Offered before a native speaker has signed the script off, deliberately
+    # and at the owner's direction: the reviewer we are trying to reach is a
+    # Mandarin speaker, and asking her to assess it means letting her use it the
+    # way a caregiver would. The words are still unreviewed — #118 stays open
+    # until somebody who speaks it has heard both calls end to end — and the
+    # honest reading of this line is "reachable", not "vouched for".
+    "cmn-CN" => { label: "中文 (Mandarin)", locale: :zh, offer: true }
   }.freeze
 
   validates :spoken_language, inclusion: { in: SPOKEN_LANGUAGES.keys }
