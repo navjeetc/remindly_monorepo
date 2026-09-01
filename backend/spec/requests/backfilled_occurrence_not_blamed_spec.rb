@@ -96,7 +96,7 @@ RSpec.describe "A reminder edited to a time that has already passed", type: :req
       expect(body).not_to include("hasn't marked")
     end
 
-    it "says instead that nobody was asked, and why" do
+    it "says instead that no call was placed, and why" do
       occurrence = backfilled_occurrence
       VoiceReminderSchedulerJob.new.perform
 
@@ -105,8 +105,28 @@ RSpec.describe "A reminder edited to a time that has already passed", type: :req
       ).missed
       body = (mail.html_part&.body.to_s + mail.text_part&.body.to_s + mail.body.to_s).gsub(/\s+/, " ")
 
-      expect(body).to include("was never asked about this one")
+      expect(body).to include("no call was placed for this one")
       expect(body).to match(/added to the schedule after that time had already passed/)
+    end
+
+    # The email may say only what it knows, and what it knows is that the
+    # telephone stayed quiet. The screen client announces anything due and
+    # unacknowledged today -- back-filled rows included, since nothing there
+    # looks at created_at -- and the dashboard lists it with a Done button. So a
+    # care receiver sitting in front of her screen was asked, heard it, and did
+    # not press Done. Telling her caregiver she was never asked is the same kind
+    # of false sentence as the one this whole change exists to stop sending,
+    # pointed the other way.
+    it "does not claim she was never asked, which the screen client would make untrue" do
+      occurrence = backfilled_occurrence
+      VoiceReminderSchedulerJob.new.perform
+
+      mail = ReminderActivityMailer.with(
+        caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence.reload
+      ).missed
+      body = (mail.html_part&.body.to_s + mail.text_part&.body.to_s + mail.body.to_s).gsub(/\s+/, " ")
+
+      expect(body).not_to include("was never asked")
     end
 
     # The subject is the whole message for anybody reading an inbox list or a
