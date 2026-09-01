@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A Mandarin call script, written and shipped without becoming speakable.**
+  Asked for by the caregiver who reviewed Remindly, whose own community is
+  Mandarin- and Cantonese-speaking. Cantonese is still impossible — `yue-HK` is
+  absent from Telnyx's speak enum at any price — but `cmn-CN` is in it, so the
+  words were the whole job.
+
+  Shipping them was the problem. `ENABLE_TRANSLATED_CALLS` is on in production,
+  and it is one switch for every language, so a new file under
+  `config/locales` became selectable for real calls the moment it merged. That
+  is how the Spanish draft came to be reachable while its own header still said
+  no native speaker had read it — and that draft, machine-written and plausible
+  and past a round trip through Google Translate, told a care receiver the call
+  was being made on her own behalf.
+
+  So the wait is now recorded per language: `User::SPOKEN_LANGUAGES` carries
+  `offer:`, Mandarin carries `offer: false`, and the picker does not list it
+  while the endpoint behind the picker refuses it. The script is translated,
+  covered by the parity spec, and one word away from being offered when somebody
+  who speaks it has heard both calls end to end. The three things such a
+  reviewer has to decide — whether a Mandarin voice can say "Remindly" at all,
+  the 您/你 register, and what happens to an English reminder title spoken
+  verbatim — are written into the file rather than left for them to find.
+
 ### Changed
 - **A reason the missed email cannot explain can no longer be recorded against
   an occurrence.** The email branches on why the telephone stayed quiet, and the

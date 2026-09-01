@@ -156,6 +156,64 @@ RSpec.describe "The language calls are spoken in", type: :request do
     end
   end
 
+  # Mandarin is translated and shipped, and still must not reach a telephone.
+  # The flag cannot express that — it is on in production, and turning it off to
+  # hold one unreviewed script back would take Spanish away too — so the wait is
+  # recorded per language in SPOKEN_LANGUAGES.
+  describe "a language whose script is still waiting for a reviewer" do
+    it "is not offered, even with translated calls switched on" do
+      expect(User.selectable_spoken_languages.keys).to include("en-US", "es-US")
+      expect(User.selectable_spoken_languages.keys).not_to include("cmn-CN")
+    end
+
+    # Same guarantee as the flag, one layer down: hiding the control is not a
+    # gate until the endpoint enforces it.
+    it "refuses a crafted PATCH asking for it" do
+      sign_in(caregiver)
+
+      patch "/dashboard/senior/#{senior.id}/spoken_language",
+        params: { user: { spoken_language: "cmn-CN" } }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(senior.reload.spoken_language).to eq("en-US")
+    end
+
+    it "is not in the picker the caregiver sees" do
+      senior.update!(phone: "+15551234567")
+      sign_in(caregiver)
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).not_to include("cmn-CN")
+    end
+
+    # Playback is not gated, here for the same reason it is not gated on the
+    # flag: whatever a senior is already set to keeps being spoken. Nobody can
+    # arrive in this state through the interface today, and if a row ever does,
+    # it gets the Mandarin words rather than a Mandarin voice reading English.
+    it "still reads from its own script if a row somehow holds it" do
+      senior.update_columns(spoken_language: "cmn-CN")
+
+      spoken = I18n.t("voice.announcement", name: "妈妈", task: "吃药", minutes: 10,
+                                            locale: senior.reload.spoken_locale)
+
+      expect(senior.spoken_locale).to eq(:zh)
+      expect(spoken).to include("Remindly", "请按 1")
+      expect(spoken).not_to include("Press 1")
+    end
+
+    # The register the reviewer is asked to confirm. 你 is what a machine
+    # translation reaches for and is wrong for an institution telephoning
+    # somebody it has never met.
+    it "addresses the listener formally throughout" do
+      %w[announcement screening consent.request].each do |key|
+        script = I18n.t("voice.#{key}", name: "妈妈", task: "吃药", minutes: 10,
+                                        asked: "我们受人委托", locale: :zh)
+
+        expect(script).not_to include("你")
+      end
+    end
+  end
+
   describe "when phone calls are switched off entirely" do
     before do
       allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(false)

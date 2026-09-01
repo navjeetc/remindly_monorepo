@@ -36,11 +36,16 @@ module Backend
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
 
-    # Spanish exists here only so the telephone can speak it — the dashboard is
-    # English throughout. Declared because enforce_available_locales rejects any
-    # locale not on this list, and the call script is looked up with an explicit
-    # locale: rather than by switching I18n.locale globally.
-    config.i18n.available_locales = [ :en, :es ]
+    # Spanish and Mandarin exist here only so the telephone can speak them — the
+    # dashboard is English throughout. Declared because enforce_available_locales
+    # rejects any locale not on this list, and the call script is looked up with
+    # an explicit locale: rather than by switching I18n.locale globally.
+    #
+    # A locale being available is not the same as its language being offered:
+    # cmn-CN is on this list and still cannot be chosen, because
+    # User::SPOKEN_LANGUAGES carries offer: false until a native speaker has read
+    # the script. This list is what lets the parity spec load and compare it.
+    config.i18n.available_locales = [ :en, :es, :zh ]
     config.i18n.default_locale = :en
 
     # Don't generate system test files.
