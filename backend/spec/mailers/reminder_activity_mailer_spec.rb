@@ -324,4 +324,53 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(button["style"]).to match(/color:\s*#ffffff/i)
     end
   end
+
+  # The list is what this email branches on, and it has already gone stale once:
+  # two reasons were added without being written down, and the second of them
+  # was written with no branch in the subject case -- so the line that reached
+  # the inbox was "No confirmation from Nora", which says she was asked and did
+  # not answer. These walk the list instead of trusting it, so the next reason
+  # cannot be added without this email having something of its own to say.
+  describe "every reason in Occurrence::PHONE_FAILURE_REASONS" do
+    let(:senior) { create(:user, :senior, :takes_calls, name: "Mom") }
+
+    # A reminder per reason, all due at the same moment.
+    #
+    # Occurrences are unique per (reminder, scheduled_at), so sharing one
+    # reminder would put each reason on a different clock time -- and the bodies
+    # would then differ by the time they print, which is precisely what the
+    # distinctness check below must not be satisfied by.
+    def missed_mail_for(reason)
+      reminder = Reminder.create!(user: senior, title: "Metformin", category: :medication, rrule: "FREQ=DAILY", tz: senior.tz)
+      occurrence = Occurrence.create!(reminder: reminder, scheduled_at: Time.zone.local(2026, 7, 21, 9, 0), status: :missed)
+      occurrence.suppress_call!(reason)
+
+      described_class
+        .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence)
+        .missed
+    end
+
+    Occurrence::PHONE_FAILURE_REASONS.each do |reason|
+      it "does not report #{reason} as her failing to confirm" do
+        mail = missed_mail_for(reason)
+
+        expect(mail.subject).not_to include("No confirmation from")
+        expect(readable(mail)).not_to include("has not marked")
+      end
+    end
+
+    # The check the one above is not.
+    #
+    # A reason with no branch of its own does not fall through to "has not
+    # marked" -- it falls into the generic phone-failure branch, which is the
+    # calling-hours sentence, and tells a caregiver the call fell outside the
+    # hours calls may be placed when it did not. That reads as an explanation
+    # and is a different reason's explanation. Every reason owning its own body
+    # is the only thing that catches it.
+    it "gives each reason a sentence of its own" do
+      bodies = Occurrence::PHONE_FAILURE_REASONS.map { |reason| readable(missed_mail_for(reason)) }
+
+      expect(bodies.uniq.size).to eq(Occurrence::PHONE_FAILURE_REASONS.size)
+    end
+  end
 end

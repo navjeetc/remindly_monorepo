@@ -37,18 +37,7 @@ class Occurrence < ApplicationRecord
   # point: "she has not marked it as done" is a statement about her, and it is
   # the wrong thing to send when the reason nothing happened is ours.
   #
-  #   :outside_calling_hours  no call was placed, and none legally could be
-  #   :could_not_place        attempts were made and not one reached the provider
-  #   :not_attempted_in_time  the missed sweep closed the row before we dialled
-  #   :added_after_its_time   the row was written after the time it names, so
-  #                           there was never a moment at which it came due
-  #
-  # All four of them, because the list is what the missed email branches on. The
-  # two at the bottom were added without being written down here, and the second
-  # of them was written with no branch in the subject case -- so the body
-  # explained itself while the subject still said "No confirmation from Nora",
-  # which is the one line an inbox shows. Caught in review rather than by
-  # anybody's inbox, but the list being short by two is how it got that far.
+  # The reasons themselves are PHONE_FAILURE_REASONS, above.
   #
   # nil means either a call genuinely went out — answered or not, which is an
   # ordinary miss and hers to explain — or the telephone is not her channel.
@@ -83,6 +72,32 @@ class Occurrence < ApplicationRecord
     nil
   end
 
+  # Every reason a call can go unmade, and the only values phone_failure_reason
+  # returns besides nil.
+  #
+  #   :outside_calling_hours  no call was placed, and none legally could be
+  #   :could_not_place        attempts were made and not one reached the provider
+  #   :not_attempted_in_time  the missed sweep closed the row before we dialled
+  #   :added_after_its_time   the row was written after the time it names, so
+  #                           there was never a moment at which it came due
+  #
+  # A list the code reads rather than a comment, because a comment already
+  # failed at this. Two of these were added without being written down, and this
+  # set is what the missed email branches on -- so the second of them was
+  # written with no branch in the subject case, and the line that reached the
+  # inbox was the one saying she was asked and did not answer. Review caught it,
+  # not a caregiver.
+  #
+  # suppress_call! refuses anything not on this list and the mailer spec walks
+  # it, so a reason cannot now be recorded without the email having something of
+  # its own to say about it.
+  PHONE_FAILURE_REASONS = %i[
+    outside_calling_hours
+    could_not_place
+    not_attempted_in_time
+    added_after_its_time
+  ].freeze
+
   # Written when a delivery attempt is refused before it becomes an attempt.
   # Idempotent: the first refusal is the one worth dating.
   #
@@ -92,7 +107,18 @@ class Occurrence < ApplicationRecord
   # a delayed job finds it already swept to missed — and both would read a blank
   # timestamp before either wrote, so the later one would quietly replace the
   # first reason. The WHERE clause makes the database pick.
+  # Refuses a reason it does not know, rather than writing it and letting the
+  # email work out what to say about it later. The answer to that, twice, was
+  # the wording written for the web client -- the one that reports a non-event
+  # as her lapse. Loud here is cheap: every caller passes a literal, and the
+  # spec that walks the list runs before any of them reach anybody.
   def suppress_call!(reason, at: Time.current)
+    unless PHONE_FAILURE_REASONS.include?(reason.to_s.to_sym)
+      raise ArgumentError,
+            "unknown phone failure reason #{reason.inspect} -- add it to " \
+            "Occurrence::PHONE_FAILURE_REASONS and give the missed email a branch for it"
+    end
+
     claimed = self.class.where(id: id, call_suppressed_at: nil)
                   .update_all(call_suppressed_at: at, call_suppressed_reason: reason.to_s,
                               updated_at: Time.current)
