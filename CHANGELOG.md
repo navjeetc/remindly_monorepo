@@ -26,6 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   be added without the email having something of its own to say about it.
 
 ### Fixed
+- **The missed email told a caregiver nobody had asked, when the screen had
+  asked.** Under every phone failure it ended "only that Remindly did not ask",
+  which is not true of anybody using Remindly: both channels fire, so the same
+  reminder was announced on the care receiver's screen with a Done button beside
+  it. The telephone is the only channel this email has evidence about, and it now
+  says only that — that Remindly did not reach them by phone.
+
+  The sentence also sat inside each branch of the text mail rather than outside
+  all of them, so carrying it was something a person had to remember. Two of the
+  four reasons never carried it, and a third shipped without it and had it put
+  back by hand. It is written once now, where the HTML mail has always had it.
+
+  The text mail's lines were also long enough to wrap badly in a narrow window —
+  87 characters at the worst — which plain text does not reflow its way out of.
+  Rewrapped against the longest date the format can produce rather than today's.
+
 - **A reminder edited to a time that had already passed was reported as the care
   receiver's failing.** Editing a reminder re-expands its occurrences and
   back-fills the most recent past slot of the day, so a row could be written at
