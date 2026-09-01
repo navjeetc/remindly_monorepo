@@ -96,7 +96,11 @@ class VoiceReminderSchedulerJob < ApplicationJob
         # suppress_call! is idempotent, so the scheduler seeing the same row on
         # every run for up to LOOKBACK writes once and then matches nothing.
         if occ.created_at > occ.scheduled_at + BACKFILL_GRACE
-          occ.suppress_call!(:added_after_its_time)
+          # at: now, matching the outside_calling_hours suppression below. The job
+          # takes its clock as an argument and every decision it makes should be
+          # dated by that clock, or a run driven with a simulated time records
+          # refusals stamped with the wall clock instead.
+          occ.suppress_call!(:added_after_its_time, at: now)
 
           # debug, not info: the scheduler runs every minute and this row stays in
           # scope for up to LOOKBACK, so one edit would otherwise print the same

@@ -20,6 +20,12 @@ schedule after that time had already passed — usually because the reminder was
 today. Remindly does not call about a time that has gone by, so <%= @senior.display_name %>
 was never asked about this one.
 <% end -%>
+<%# The same caveat the other no-call branches carry. In the HTML mail it sits
+    outside the branches and covers every phone failure; here each branch has to
+    say it, and a reader of the text-only mail would otherwise be left without
+    the one sentence that separates "not asked" from "not done". -%>
+Nobody was contacted, so this says nothing about whether <%= @senior.display_name %> did it —
+only that Remindly did not ask.
 <% elsif @phone_failure -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>

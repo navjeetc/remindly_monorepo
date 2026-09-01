@@ -46,6 +46,21 @@ RSpec.describe "A reminder edited to a time that has already passed", type: :req
       expect(occurrence.call_suppressed_reason).to eq("added_after_its_time")
     end
 
+    # The job takes its clock as an argument, and every decision it makes should
+    # be dated by that clock. The outside_calling_hours suppression beside this
+    # one already does.
+    it "dates the refusal by the clock the run was given" do
+      occurrence = backfilled_occurrence
+      # Ten minutes, not hours: the scheduler only looks back LOOKBACK from the
+      # clock it is given, so a distant simulated time puts the occurrence out of
+      # scope and the example passes by never reaching the code.
+      simulated = 10.minutes.from_now
+
+      VoiceReminderSchedulerJob.new.perform(now: simulated)
+
+      expect(occurrence.reload.call_suppressed_at).to be_within(1.second).of(simulated)
+    end
+
     it "still places no call, which was always right" do
       backfilled_occurrence
 
@@ -92,6 +107,39 @@ RSpec.describe "A reminder edited to a time that has already passed", type: :req
 
       expect(body).to include("was never asked about this one")
       expect(body).to match(/added to the schedule after that time had already passed/)
+    end
+
+    # The subject is the whole message for anybody reading an inbox list or a
+    # phone notification, and it was the last place still saying she failed.
+    # Fixing the body alone would have left the accusation in the only line most
+    # people actually read.
+    it "does not accuse in the subject line either" do
+      occurrence = backfilled_occurrence
+      VoiceReminderSchedulerJob.new.perform
+
+      mail = ReminderActivityMailer.with(
+        caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence.reload
+      ).missed
+
+      expect(mail.subject).not_to include("No confirmation")
+      expect(mail.subject).to eq("Remindly didn't call Nora about take bp meds")
+    end
+
+    # The HTML mail carries this outside the branches, so every phone failure
+    # gets it; the text mail repeats it per branch, and a new branch silently
+    # loses it. It is the sentence that separates "not asked" from "not done",
+    # which is the entire point of this change.
+    it "tells a text-only reader that nothing was asked, not that nothing was done" do
+      occurrence = backfilled_occurrence
+      VoiceReminderSchedulerJob.new.perform
+
+      mail = ReminderActivityMailer.with(
+        caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence.reload
+      ).missed
+      text = (mail.text_part&.body.to_s.presence || mail.body.to_s).gsub(/\s+/, " ")
+
+      expect(text).to include("Nobody was contacted")
+      expect(text).to include("says nothing about whether Nora did it")
     end
 
     # The generic phone_failure branch blames the calling-hours window, which is

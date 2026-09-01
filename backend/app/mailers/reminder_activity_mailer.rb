@@ -47,6 +47,15 @@ class ReminderActivityMailer < ApplicationMailer
     subject = case @phone_failure
     when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
+    # "didn't", not "couldn't": the others are Remindly unable to place a call,
+    # this one is Remindly declining to. Nothing stopped us -- the time had
+    # simply gone by before the reminder existed, and we do not ring about a dose
+    # whose moment has passed. The distinction is the same one the body makes,
+    # and the subject has to carry it too: this branch was missing, so the
+    # sentence that reached the inbox was "No confirmation from Nora", which says
+    # she was asked and did not answer. She was never asked.
+    when :added_after_its_time
+      "Remindly didn't call #{@senior.display_name} about #{@reminder.title}"
     when :could_not_place
       "Remindly tried to call #{@senior.display_name} about #{@reminder.title} and couldn't get through"
     else
