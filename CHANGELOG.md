@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **A reason the missed email cannot explain can no longer be recorded against
+  an occurrence.** The email branches on why the telephone stayed quiet, and the
+  reasons it knows were a comment — which had already failed at the job. Two
+  were added without being written down, and the second of them reached review
+  with no branch in the subject line, so the body explained itself while the
+  subject still said "No confirmation from Nora": the sentence that says she was
+  asked and did not answer. A reason with no branch of its own does not fall
+  through to nothing, either. It falls into the generic wording, which is the
+  calling-hours sentence, and tells a caregiver the call fell outside the hours
+  calls may be placed when it did not — an explanation, and the wrong one.
+
+  The list is now the code's rather than a comment's: an unknown reason is
+  refused when it is written, and the mailer spec walks the list and requires
+  each reason to produce a sentence no other reason produces. Nothing a
+  caregiver receives changes today; what changes is that the next reason cannot
+  be added without the email having something of its own to say about it.
+
 ### Fixed
 - **A reminder edited to a time that had already passed was reported as the care
   receiver's failing.** Editing a reminder re-expands its occurrences and
@@ -17,7 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the caregiver the person had not marked it done. Nobody had been asked: the
   occurrence existed only after its own due time. The decision is now written
   down, and the email says the reminder was added after its time had passed and
-  that nobody was asked about it.
+  that no call was placed for it. Not that nobody asked her: the screen client
+  announces a back-filled reminder like any other, so whether she was asked is
+  not something this email can know. What it knows is that the telephone stayed
+  quiet.
 
 - **A reminder call spoke the medication title to voicemail.** Telnyx answers a
   mailbox exactly as it answers a person, so the announcement played into the
