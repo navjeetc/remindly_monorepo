@@ -79,10 +79,25 @@ class VoiceReminderSchedulerJob < ApplicationJob
       .includes(reminder: :user)
       .find_each do |occ|
         # Never telephone about an occurrence that did not exist when its time
-        # came. Skipped rather than suppressed: suppress_call! records that a
-        # call was withheld, and nothing was withheld here — this row was never
-        # due in real time, so there was no call to withhold.
+        # came.
+        #
+        # The reason is recorded here rather than left implicit. #86 skipped
+        # silently, reasoning that suppress_call! notes a call was withheld and
+        # nothing was withheld -- the row was never due in real time. The
+        # reasoning holds; the consequence did not. With nothing recorded,
+        # phone_failure_reason returns nil, the missed email falls through to the
+        # wording written for the web client, and a caregiver who moved a dose to
+        # a time already past was told the care receiver had not marked it done.
+        # Nobody was asked, and the row existed only after its own due time, so
+        # there was never a moment when they could have acted on it.
+        #
+        # Recorded at this point because the row is declined here: the job below
+        # is never enqueued for it, so a write inside the job would never run.
+        # suppress_call! is idempotent, so the scheduler seeing the same row on
+        # every run for up to LOOKBACK writes once and then matches nothing.
         if occ.created_at > occ.scheduled_at + BACKFILL_GRACE
+          occ.suppress_call!(:added_after_its_time)
+
           # debug, not info: the scheduler runs every minute and this row stays in
           # scope for up to LOOKBACK, so one edit would otherwise print the same
           # line 120 times. The job logs at info when it declines, and that

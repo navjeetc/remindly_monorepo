@@ -12,6 +12,14 @@ Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, and was closed as missed
 before Remindly managed to place the call. That is a fault at our end.
 <% end -%>
+<% elsif @phone_failure == :added_after_its_time -%>
+Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
+<% if @scheduled_at -%>
+It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, but it was added to the
+schedule after that time had already passed — usually because the reminder was edited
+today. Remindly does not call about a time that has gone by, so <%= @senior.display_name %>
+was never asked about this one.
+<% end -%>
 <% elsif @phone_failure -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>

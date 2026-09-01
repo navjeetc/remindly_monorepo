@@ -63,6 +63,14 @@ class VoiceReminderJob < ApplicationJob
     # dated hours ago. That is right for the dashboard and wrong for a telephone:
     # nothing came due, so nothing should ring.
     if occurrence.created_at > occurrence.scheduled_at + VoiceReminderSchedulerJob::BACKFILL_GRACE
+      # Also recorded here, though the scheduler normally gets there first and
+      # this job is not usually enqueued for such a row. This check exists
+      # because it is the last thing between a person and a ringing telephone,
+      # and a job delayed across an edit can arrive with the row already
+      # back-filled. suppress_call! is idempotent, so whichever runs first is the
+      # one that dates the decision.
+      occurrence.suppress_call!(:added_after_its_time)
+
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} skipped: back-filled at " \
         "#{occurrence.created_at.iso8601} for #{occurrence.scheduled_at.iso8601}, which had already passed"
