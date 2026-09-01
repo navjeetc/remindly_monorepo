@@ -85,9 +85,14 @@
         they have picked up the phone, is the wrong default.
       %>
       <% if @phone_failure %>
+        <%# What this email is allowed to conclude, and it is less than it used
+            to claim. "Remindly did not ask" is not true of a care receiver
+            whose screen announced the reminder and showed a Done button beside
+            it -- which is every one of them, since both channels fire. The
+            telephone is the only channel this email has evidence about. %>
         <p style="color: #6b7280; font-size: 14px;">
-          Nobody was contacted, so this says nothing about whether
-          <%= @senior.display_name %> did it — only that Remindly did not ask.
+          Remindly did not reach <%= @senior.display_name %> by phone, so this
+          says nothing about whether they did it.
         </p>
       <% else %>
         <p style="color: #6b7280; font-size: 14px;">
