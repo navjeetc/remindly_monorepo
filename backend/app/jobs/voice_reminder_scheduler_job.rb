@@ -44,20 +44,38 @@ class VoiceReminderSchedulerJob < ApplicationJob
   # names.
   BACKFILL_GRACE = 1.minute
 
+  # How far back the refusal sweep looks, and deliberately not LOOKBACK.
+  #
+  # LOOKBACK answers "is this still worth telephoning about". This answers "can
+  # somebody still be told about this", and the missed email reaches further back
+  # than the telephone does: MarkMissedOccurrencesJob closes an occurrence GRACE
+  # after its time and emails about anything due inside NOTIFY_WINDOW. The rows
+  # that can produce a caregiver email are therefore the ones due between one and
+  # three hours ago — and LOOKBACK sees only two of those three hours.
+  #
+  # A reminder edited at 6pm whose slot was 3:30pm landed in the missing hour:
+  # back-filled, never seen by the call query, so nothing recorded, so the
+  # caregiver was told the care receiver had not marked it done. Which is the
+  # sentence this file was changed to stop sending, an hour to the left of where
+  # it was fixed. Derived from NOTIFY_WINDOW rather than written as 3.hours, so
+  # widening that window cannot leave this one behind.
+  SUPPRESSION_LOOKBACK = MarkMissedOccurrencesJob::NOTIFY_WINDOW
+
   def perform(now: Time.current)
     return unless FeatureFlag.enabled?(:phone_call_reminders)
 
+    record_back_filled_refusals(now)
+    place_due_calls(now)
+  end
+
+  private
+
+  def place_due_calls(now)
     # Occurrences that are now due, still pending, for users with a phone and
     # call reminders turned on, and have not already been called for this
     # occurrence.
-    Occurrence
-      .status_pending
+    for_seniors_taking_calls(Occurrence.status_pending)
       .where(scheduled_at: (now - LOOKBACK)..now)
-      .joins(reminder: :user)
-      .where(users: { call_reminders_enabled: true })
-      .where.not(users: { phone: [ nil, "" ] })
-      .where.not(users: { call_consent_at: nil })
-      .where(users: { call_opted_out_at: nil })
       # Skip what cannot be dialled yet or any more. Correctness does not rest on
       # this -- TelnyxCall.reserve refuses the same cases atomically, and must,
       # because two runs can pass these checks simultaneously. This is here so
@@ -79,39 +97,15 @@ class VoiceReminderSchedulerJob < ApplicationJob
       .includes(reminder: :user)
       .find_each do |occ|
         # Never telephone about an occurrence that did not exist when its time
-        # came.
+        # came. A row dated inside LOOKBACK is indistinguishable, to the query
+        # above, from one that has just come due: editing a reminder at 8pm to
+        # ring at 7pm would otherwise telephone the senior straight away about a
+        # dose whose time had already passed.
         #
-        # The reason is recorded here rather than left implicit. #86 skipped
-        # silently, reasoning that suppress_call! notes a call was withheld and
-        # nothing was withheld -- the row was never due in real time. The
-        # reasoning holds; the consequence did not. With nothing recorded,
-        # phone_failure_reason returns nil, the missed email falls through to the
-        # wording written for the web client, and a caregiver who moved a dose to
-        # a time already past was told the care receiver had not marked it done.
-        # Nobody was asked, and the row existed only after its own due time, so
-        # there was never a moment when they could have acted on it.
-        #
-        # Recorded at this point because the row is declined here: the job below
-        # is never enqueued for it, so a write inside the job would never run.
-        # suppress_call! is idempotent, so the scheduler seeing the same row on
-        # every run for up to LOOKBACK writes once and then matches nothing.
-        if occ.created_at > occ.scheduled_at + BACKFILL_GRACE
-          # at: now, matching the outside_calling_hours suppression below. The job
-          # takes its clock as an argument and every decision it makes should be
-          # dated by that clock, or a run driven with a simulated time records
-          # refusals stamped with the wall clock instead.
-          occ.suppress_call!(:added_after_its_time, at: now)
-
-          # debug, not info: the scheduler runs every minute and this row stays in
-          # scope for up to LOOKBACK, so one edit would otherwise print the same
-          # line 120 times. The job logs at info when it declines, and that
-          # happens once.
-          Rails.logger.debug(
-            "Voice reminder for occurrence #{occ.id} skipped: back-filled at " \
-            "#{occ.created_at.iso8601} for #{occ.scheduled_at.iso8601}, which had already passed"
-          )
-          next
-        end
+        # Only the enqueue is refused here. The reason was written down by the
+        # sweep above, which looks further back than this query does — so every
+        # row this query can reach has already been through it.
+        next if back_filled?(occ)
 
         # Calling hours are per-person, in their own timezone, so this cannot be
         # a WHERE clause -- every senior's window lands on a different UTC hour.
@@ -130,5 +124,62 @@ class VoiceReminderSchedulerJob < ApplicationJob
 
         VoiceReminderJob.perform_later(occ.id)
       end
+  end
+
+  # Write the refusal down for every back-filled row a caregiver could still be
+  # emailed about.
+  #
+  # Its own pass rather than a branch inside the loop above, because the two are
+  # answering different questions over different windows — see
+  # SUPPRESSION_LOOKBACK. #86 refused these rows and recorded nothing, reasoning
+  # that suppress_call! notes a call was withheld and nothing was withheld: the
+  # row was never due in real time. The reasoning holds and the consequence did
+  # not. With nothing recorded, phone_failure_reason returns nil, the missed
+  # email falls through to the wording written for the web client, and a
+  # caregiver who moved a dose to a time already past is told the care receiver
+  # had not marked it done. Nobody was telephoned, and the row existed only after
+  # its own due time.
+  #
+  # Restricted to seniors who take calls, for the reason the mailer is careful
+  # about too: a phone failure is not a story to tell about somebody whose
+  # channel is the screen.
+  #
+  # Rows already carrying a decision are left out of the query rather than
+  # re-examined, so a single edit writes one row and logs one line, instead of
+  # being reconsidered every minute for the next three hours.
+  def record_back_filled_refusals(now)
+    for_seniors_taking_calls(Occurrence.status_pending)
+      .where(scheduled_at: (now - SUPPRESSION_LOOKBACK)..now, call_suppressed_at: nil)
+      .find_each do |occ|
+        next unless back_filled?(occ)
+
+        # at: now, matching the outside_calling_hours suppression. The job takes
+        # its clock as an argument and every decision it makes should be dated by
+        # that clock, or a run driven with a simulated time records refusals
+        # stamped with the wall clock instead.
+        occ.suppress_call!(:added_after_its_time, at: now)
+
+        Rails.logger.info(
+          "Voice reminder for occurrence #{occ.id} refused: back-filled at " \
+          "#{occ.created_at.iso8601} for #{occ.scheduled_at.iso8601}, which had already passed"
+        )
+      end
+  end
+
+  # The SQL half of User#callable_by_phone?. Written once and shared by both
+  # passes: a condition dropped from one of them is a call placed to somebody who
+  # opted out, or a phone failure reported about somebody who never gave a number.
+  def for_seniors_taking_calls(relation)
+    relation
+      .joins(reminder: :user)
+      .where(users: { call_reminders_enabled: true, call_opted_out_at: nil })
+      .where.not(users: { phone: [ nil, "" ] })
+      .where.not(users: { call_consent_at: nil })
+  end
+
+  # The row was written after the time it names, so nothing came due when the
+  # clock reached it -- there was nothing there to come due.
+  def back_filled?(occ)
+    occ.created_at > occ.scheduled_at + BACKFILL_GRACE
   end
 end
