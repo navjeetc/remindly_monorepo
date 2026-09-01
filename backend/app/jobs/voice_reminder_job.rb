@@ -48,7 +48,16 @@ class VoiceReminderJob < ApplicationJob
     # acknowledged herself is resolved, not undelivered.
     unless occurrence.status_pending?
       if occurrence.status_missed? && occurrence.telnyx_calls.empty?
-        occurrence.suppress_call!(:not_attempted_in_time)
+        # Which of the two it was depends on the row, not on which sweep reached
+        # it first. not_attempted_in_time tells the caregiver the call was
+        # "closed as missed before Remindly managed to place the call. That is a
+        # fault at our end" -- true of a job stuck in a queue, and the opposite
+        # of the truth for a back-filled row, where nothing was ever going to be
+        # dialled because nothing came due. Saying we dropped a call we declined
+        # on purpose sends them looking for a bug in the reminder they have just
+        # edited.
+        reason = occurrence.back_filled? ? :added_after_its_time : :not_attempted_in_time
+        occurrence.suppress_call!(reason)
       end
 
       return
@@ -62,7 +71,25 @@ class VoiceReminderJob < ApplicationJob
     # reminder is created or edited, so a pending row can be written now and
     # dated hours ago. That is right for the dashboard and wrong for a telephone:
     # nothing came due, so nothing should ring.
-    if occurrence.created_at > occurrence.scheduled_at + VoiceReminderSchedulerJob::BACKFILL_GRACE
+    if occurrence.back_filled?
+      # Recorded here as well, though the scheduler's sweep normally gets there
+      # first and this job is not usually enqueued for such a row at all.
+      #
+      # Not because a queued job can find its row back-filled underneath it: it
+      # cannot. Both timestamps are fixed when the row is written, and an edit
+      # destroys the pending occurrences and expands new ones rather than moving
+      # the ones that exist -- so a job delayed across an edit finds its row
+      # gone, and returns a few lines above.
+      #
+      # It is recorded because this is reachable where the sweep is not: a
+      # console call, a retry, a row older than the sweep's SUPPRESSION_LOOKBACK,
+      # some future caller that does not exist yet. Refusing without writing
+      # anything down is what left the caregiver email with nothing to say, and
+      # that must not depend on which door the refusal came through.
+      # suppress_call! is idempotent, so whichever refusal lands first is the one
+      # that dates the decision.
+      occurrence.suppress_call!(:added_after_its_time)
+
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} skipped: back-filled at " \
         "#{occurrence.created_at.iso8601} for #{occurrence.scheduled_at.iso8601}, which had already passed"

@@ -160,5 +160,63 @@ RSpec.describe VoiceReminderSchedulerJob do
       expect { described_class.new.perform(now: at(10)) }
         .to have_enqueued_job(VoiceReminderJob).with(occurrence.id)
     end
+
+    it "has the refusal written down, so the caregiver email can say why" do
+      occurrence = occurrence_at(at(10) - 30.minutes, created: at(10))
+
+      described_class.new.perform(now: at(10))
+
+      expect(occurrence.reload.call_suppressed_reason).to eq("added_after_its_time")
+      expect(occurrence.call_suppressed_at).to eq(at(10))
+    end
+
+    # The hour between LOOKBACK and NOTIFY_WINDOW, which the first version of
+    # this fix could not see. Nothing rings either way — the row is far too stale
+    # to telephone about — but MarkMissedOccurrencesJob still emails about
+    # anything due inside three hours, so a refusal that is not written down here
+    # reaches the caregiver as "has not marked it done". A reminder edited at 6pm
+    # whose slot was 3:30pm is exactly this row.
+    it "is written down even when it is too stale to have been called about" do
+      occurrence = occurrence_at(at(10) - 2.5.hours, created: at(10))
+
+      described_class.new.perform(now: at(10))
+
+      expect(occurrence.reload.call_suppressed_reason).to eq("added_after_its_time")
+    end
+
+    # The control. Without it the spec above passes for a row that was never
+    # back-filled at all, and the sweep could be blaming every stale occurrence
+    # on an edit nobody made.
+    it "leaves an ordinary stale occurrence unmarked, having refused it nothing" do
+      occurrence = occurrence_at(at(10) - 2.5.hours)
+
+      described_class.new.perform(now: at(10))
+
+      expect(occurrence.reload.call_suppressed_at).to be_nil
+    end
+
+    # A phone failure is not a story to tell about somebody whose channel is the
+    # screen: she was shown the reminder and did not press Done, which is an
+    # ordinary miss and hers to explain.
+    it "records nothing for a senior who does not take calls" do
+      senior.update!(call_reminders_enabled: false)
+      occurrence = occurrence_at(at(10) - 30.minutes, created: at(10))
+
+      described_class.new.perform(now: at(10))
+
+      expect(occurrence.reload.call_suppressed_at).to be_nil
+    end
+
+    # Suppression is dated once, by the run that took the decision. The sweep
+    # sees this row for three hours and must not keep moving the timestamp
+    # forward, or "when did we decide" becomes "when did the scheduler last run".
+    it "keeps the first refusal when the sweep comes round again" do
+      occurrence = occurrence_at(at(10) - 30.minutes, created: at(10))
+
+      described_class.new.perform(now: at(10))
+      described_class.new.perform(now: at(10) + 1.hour)
+
+      expect(occurrence.reload.call_suppressed_at).to eq(at(10))
+    end
   end
 end

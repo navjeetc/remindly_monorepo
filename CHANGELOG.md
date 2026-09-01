@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A reminder edited to a time that had already passed was reported as the care
+  receiver's failing.** Editing a reminder re-expands its occurrences and
+  back-fills the most recent past slot of the day, so a row could be written at
+  8pm for 7pm. Remindly correctly refuses to telephone about a dose whose moment
+  went by before the row existed — but the refusal was not recorded, so the
+  missed email fell through to the wording written for the web client and told
+  the caregiver the person had not marked it done. Nobody had been asked: the
+  occurrence existed only after its own due time. The decision is now written
+  down, and the email says the reminder was added after its time had passed and
+  that nobody was asked about it.
+
 - **A reminder call spoke the medication title to voicemail.** Telnyx answers a
   mailbox exactly as it answers a person, so the announcement played into the
   recording and the title went with it — further than the room the privacy

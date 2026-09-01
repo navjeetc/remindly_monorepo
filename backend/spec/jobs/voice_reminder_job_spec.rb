@@ -306,6 +306,31 @@ RSpec.describe VoiceReminderJob do
       expect(TelnyxVoiceService).not_to have_received(:dial)
     end
 
+    # The scheduler's sweep records this for every row a caregiver could be
+    # emailed about, and reaching the job directly goes round it -- a console
+    # call, a retry, a row too old for the sweep's window. The refusal has to be
+    # written down whichever door it came through, or the caregiver email has
+    # nothing to say and falls back to blaming her.
+    it "records the refusal when it is reached without the scheduler" do
+      backfilled = occurrence_written_at(at(10), scheduled_at: at(10) - 5.minutes)
+
+      travel_to(at(10)) { described_class.new.perform(backfilled.id) }
+
+      expect(backfilled.reload.call_suppressed_reason).to eq("added_after_its_time")
+    end
+
+    # The sweep closing it first must not change the story. not_attempted_in_time
+    # is an apology for a call we meant to place and did not; this row is one we
+    # declined to place, and the caregiver should not be told we dropped it.
+    it "is still a refusal, not a fault of ours, when the sweep closed it first" do
+      backfilled = occurrence_written_at(at(10), scheduled_at: at(10) - 5.minutes)
+      backfilled.update!(status: :missed)
+
+      travel_to(at(10)) { described_class.new.perform(backfilled.id) }
+
+      expect(backfilled.reload.call_suppressed_reason).to eq("added_after_its_time")
+    end
+
     # The control. Without it the spec above passes for any reason at all — the
     # first draft ran outside calling hours and was blocked by that guard
     # instead, so it went green with the back-fill check deleted.

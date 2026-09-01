@@ -47,6 +47,25 @@
             It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, and was closed
             as missed before Remindly managed to place the call. That is a fault at our end.
           </p>
+        <% elsif @phone_failure == :added_after_its_time %>
+          <%# No call was placed, so no call was ignored. This row was written
+              after the time it names -- almost always because a reminder was
+              added or edited to a time that had already passed today -- and
+              Remindly deliberately does not telephone about a dose whose moment
+              went by before the row existed. Saying so is the difference
+              between explaining and accusing.
+
+              About the call, and only the call. The screen client announces
+              anything due and unacknowledged today, back-filled rows included,
+              and the dashboard lists it with a Done button beside it -- so
+              "she was never asked" is a sentence this email cannot honestly
+              say. What it knows is that Remindly did not telephone. %>
+          <p>
+            It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, but it was added
+            to the schedule after that time had already passed — usually because the reminder
+            was added or edited today. Remindly does not call about a time that has gone by,
+            so no call was placed for this one.
+          </p>
         <% elsif @phone_failure %>
           <p>
             It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside
