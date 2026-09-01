@@ -80,6 +80,17 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
         .with(hash_including(payload_type: "ssml", prompt: a_string_including("<break time=")))
     end
 
+    # A voicemail hears this line and nothing else, so every repeat of it is a
+    # longer recording and a longer call. Repeating it took an unanswered call
+    # from about sixty seconds to ninety, three times over. The wait after it is
+    # unchanged, so nobody who is there has less time to press.
+    it "is said once, because a mailbox pays for every repeat" do
+      telnyx_post("call.answered")
+
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+        .with(hash_including(max_tries: 1))
+    end
+
     it "names Remindly, so the recording is not an anonymous robocall" do
       telnyx_post("call.answered")
 
@@ -207,6 +218,17 @@ RSpec.describe "Reminder calls never speak the title unprompted", type: :request
 
       expect(TelnyxVoiceService).to have_received(:gather_digit)
         .with(hash_including(prompt: a_string_including("Metformin")))
+    end
+
+    # The announcement is only reachable after a keypress, so a mailbox can
+    # never hear it and the repeat costs nothing -- while rescuing somebody who
+    # missed the instruction. The opposite of the opening line, deliberately.
+    it "repeats the reminder itself, where nobody but a person can hear it" do
+      telnyx_post("call.answered")
+      telnyx_post("call.gather.ended", digits: "1")
+
+      expect(TelnyxVoiceService).to have_received(:gather_digit)
+        .with(hash_including(prompt: a_string_including("Metformin"), max_tries: 2))
     end
 
     it "takes the keypress that acknowledges it, as an ordinary call" do

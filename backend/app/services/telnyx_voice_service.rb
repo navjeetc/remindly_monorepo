@@ -205,12 +205,15 @@ class TelnyxVoiceService
   # handled once this returns. A silent failure here is the worst outcome the
   # feature has: the senior answers, hears nothing, and no retry ever comes.
   # See .speak for why language and prompt must be chosen together.
-  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil, payload_type: "text")
+  def self.gather_digit(call_control_id:, prompt:, language: "en-US", command_id: nil,
+                        payload_type: "text", max_tries: 2)
     response = post(
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
         digits: 1,
-        # Said twice, and waited on for much longer than it used to be.
+        # Waited on for much longer than it used to be, and said twice -- but only
+        # where saying it twice is free. See max_tries: the opening line asks for
+        # one pass, because a call nobody answers pays for every repeat.
         #
         # A live call had somebody press 1, hear their reminder, press 1 again --
         # and the second press was never collected. The dose stayed unacknowledged
@@ -224,12 +227,15 @@ class TelnyxVoiceService
         # as a key is pressed. It costs a few seconds only where nobody responds,
         # which is the case we already end promptly by hanging up.
         #
-        # The repeat is safe now in a way it was not before. It was set to one
-        # because a repeat put two identical recordings on a voicemail -- but no
-        # title is spoken until a key is pressed, so the only thing a mailbox can
-        # hear twice is the opening line, and the second pass is what rescues
-        # somebody who missed the instruction the first time.
-        maximum_tries: 2,
+        # The repeat is safe on the reminder announcement in a way it is not on
+        # the opening line, and the difference is who can hear it. The
+        # announcement plays only after a keypress, so a mailbox can never reach
+        # it and the second pass costs nothing but rescues somebody who missed
+        # the instruction. The opening line is the one a mailbox does hear, and
+        # repeating it took an unanswered call from about sixty seconds to
+        # ninety -- three times over, since an unanswered reminder is tried
+        # three times. Measured on a live call, not estimated.
+        maximum_tries: max_tries,
         timeout_millis: 25000,
         inter_digit_timeout_millis: 5000,
         terminating_digit: "#",
