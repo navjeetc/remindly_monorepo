@@ -24,7 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   The week is now enforced on both redemption paths, from one constant that the
   printed expiry also reads, so the date shown and the check behind it cannot
-  drift apart. An expired token is refused rather than deleted — a link somebody
+  drift apart. Redemption itself became a claim rather than a check followed by
+  a write, which review caught: two people holding the same token could both
+  pass the check, and the later write took the link from the earlier — a second
+  caregiver inheriting `manage` over somebody's care record while the first was
+  told they had succeeded. An expired token is refused rather than deleted — a link somebody
   tried to redeem a month late is the only record that the attempt happened —
   and the caller is told it expired, which sends them to ask for a new one
   instead of hunting for a typo.

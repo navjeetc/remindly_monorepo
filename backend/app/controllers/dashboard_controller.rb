@@ -170,9 +170,10 @@ class DashboardController < WebController
     token = params[:token]
     link = CaregiverLink.find_by(pairing_token: token)
 
-    if link&.redeemable?
-      link.pair_with(caregiver: current_user)
-      redirect_to dashboard_path, notice: "Successfully paired with #{link.senior.email}"
+    # See CaregiverLink#pair_with: the claim is what decides, so a token two
+    # people hold cannot pair both of them.
+    if link&.redeemable? && link.pair_with(caregiver: current_user)
+      redirect_to dashboard_path, notice: "Successfully paired with #{link.senior.display_name}"
     elsif link&.expired?
       redirect_to pair_dashboard_path,
                   alert: "This pairing token has expired. Ask them to generate a new one."

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # A pairing token is a bearer credential over somebody's care record: redeeming
@@ -115,6 +117,61 @@ RSpec.describe "A pairing token's week", type: :request do
       link = CaregiverLink.find_by(senior_id: senior.id)
       expect(Time.parse(response.parsed_body["expires_at"])).to be_within(1.second).of(link.expires_at)
       expect(link.expires_at).to be_within(1.second).of(link.created_at + CaregiverLink::PAIRING_TOKEN_TTL)
+    end
+  end
+
+  # Redemption used to read the row, judge it, and then write. Two people
+  # holding the same token could both pass the judgement, and the later write
+  # took the link from the earlier — a second caregiver inheriting `manage` over
+  # somebody's care record while the first was told they had succeeded.
+  describe "a token two people hold" do
+    it "pairs the first and refuses the second" do
+      link = CaregiverLink.generate_pairing_token(senior: senior)
+      other = create(:user, :caregiver, name: "Sam")
+
+      expect(link.pair_with(caregiver: caregiver)).to be(true)
+      expect(link.pair_with(caregiver: other)).to be(false)
+
+      expect(link.reload.caregiver).to eq(caregiver)
+    end
+
+    it "tells the loser there was nothing to redeem" do
+      link = CaregiverLink.generate_pairing_token(senior: senior)
+      other = create(:user, :caregiver, name: "Sam")
+      # Held from before the claim: pairing clears the column, and the loser is
+      # somebody still holding the string that used to work.
+      token = link.pairing_token
+      link.pair_with(caregiver: caregiver)
+
+      post "/caregiver_links/pair", params: { token: token }, headers: bearer(other)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(link.reload.caregiver).to eq(caregiver)
+    end
+
+    # caregiver_cannot_be_senior is a validation, and the claim is an update_all
+    # that runs none — so the rule is enforced in Ruby or not at all. It used to
+    # raise out of update! and return a 500.
+    it "will not let a care receiver redeem their own token" do
+      link = CaregiverLink.generate_pairing_token(senior: senior)
+
+      post "/caregiver_links/pair", params: { token: link.pairing_token }, headers: bearer(senior)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(link.reload.caregiver).to be_nil
+    end
+  end
+
+  describe "what the caregiver is told on success" do
+    # #79: caregiver screens name the care receiver, they do not print their
+    # email address. These two messages were left behind by that change.
+    it "names the care receiver rather than printing their email" do
+      link = CaregiverLink.generate_pairing_token(senior: senior)
+
+      post "/caregiver_links/pair", params: { token: link.pairing_token }, headers: bearer(caregiver)
+
+      expect(response.parsed_body["message"]).to include("Mom")
+      expect(response.parsed_body["message"]).not_to include(senior.email)
     end
   end
 

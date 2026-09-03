@@ -20,10 +20,12 @@ class CaregiverLinksController < ApplicationController
       return
     end
 
-    if link.redeemable?
-      link.pair_with(caregiver: current_user)
+    # The claim decides, not redeemable? alone: a token two people hold is taken
+    # by whichever request the database serves first, and the other is told
+    # there was nothing to take.
+    if link.redeemable? && link.pair_with(caregiver: current_user)
       render json: {
-        message: "Successfully paired with #{link.senior.email}",
+        message: "Successfully paired with #{link.senior.display_name}",
         senior: {
           id: link.senior.id,
           email: link.senior.email

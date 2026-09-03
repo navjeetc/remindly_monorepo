@@ -70,12 +70,38 @@ class CaregiverLink < ApplicationRecord
   # It grants the ability to *ask*, not to enable. callable_by_phone? still
   # needs a number, a recorded consent and no opt-out, and only a keypress on a
   # call the care receiver answers can write that consent.
+  # Returns true if this caregiver took the link, false if there was nothing
+  # left to take.
+  #
+  # The WHERE clause decides, not a check above it. Redemption used to read the
+  # row, judge it, and then write — and two requests holding the same token
+  # could both pass the judgement, the later one silently taking the link from
+  # the earlier. That is a second caregiver inheriting `manage` over somebody's
+  # care record while the first is told they succeeded, and nothing anywhere
+  # recording that it happened. The same handshake the acknowledgement and
+  # consent paths use: whoever loses sees zero rows updated.
+  #
+  # `caregiver_cannot_be_senior` is a validation and update_all runs none, so
+  # the one rule it enforced is checked here in Ruby. Without it a care receiver
+  # could redeem their own token and end up linked to themselves — which used to
+  # raise from update! and produce a 500, and now simply fails to claim.
   def pair_with(caregiver:)
-    update!(
-      caregiver: caregiver,
-      permission: :manage,
-      pairing_token: nil # Clear token after pairing
-    )
+    return false if caregiver.nil? || caregiver.id == senior_id
+
+    claimed = self.class
+                  .where(id: id, caregiver_id: nil)
+                  .where.not(pairing_token: nil)
+                  .update_all(
+                    caregiver_id: caregiver.id,
+                    permission: self.class.permissions[:manage],
+                    pairing_token: nil, # Clear token after pairing
+                    updated_at: Time.current
+                  )
+
+    return false if claimed.zero?
+
+    reload
+    true
   end
 
   # Check if link is active (has both senior and caregiver)
