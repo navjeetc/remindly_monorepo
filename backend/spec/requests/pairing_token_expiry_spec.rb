@@ -162,6 +162,28 @@ RSpec.describe "A pairing token's week", type: :request do
     end
   end
 
+  # The week is a condition of the claim itself, not a question asked before it.
+  # A request reading redeemable? in the last moments of the seventh day and
+  # writing just after is the boundary this closes — but the reason to close it
+  # is the other one: a caller who forgets to ask cannot redeem an expired token
+  # by accident, because the rule lives in the statement that does the writing.
+  describe "the claim itself" do
+    it "refuses an expired token even when nobody checked first" do
+      link = token_generated(8.days)
+
+      expect(link.pair_with(caregiver: caregiver)).to be(false)
+      expect(link.reload.caregiver).to be_nil
+      expect(link.pairing_token).to be_present
+    end
+
+    it "still claims one inside its week" do
+      link = token_generated(6.days)
+
+      expect(link.pair_with(caregiver: caregiver)).to be(true)
+      expect(link.reload.caregiver).to eq(caregiver)
+    end
+  end
+
   describe "what the caregiver is told on success" do
     # #79: caregiver screens name the care receiver, they do not print their
     # email address. These two messages were left behind by that change.

@@ -88,8 +88,21 @@ class CaregiverLink < ApplicationRecord
   def pair_with(caregiver:)
     return false if caregiver.nil? || caregiver.id == senior_id
 
+    # The week is part of the claim, not a question asked beforehand. Every
+    # condition that decides whether this token may be redeemed is in the one
+    # statement that redeems it — unclaimed, still carrying a token, and still
+    # inside its week — so the answer cannot change between the asking and the
+    # writing.
+    #
+    # The boundary case that motivates it is vanishingly rare: a request that
+    # reads redeemable? in the last moments of the seventh day and writes just
+    # after. The reason to close it anyway is not the odds, it is that a caller
+    # who forgets to ask redeemable? first now cannot redeem an expired token by
+    # accident. The rule belongs to the model rather than to every caller's
+    # discipline.
     claimed = self.class
                   .where(id: id, caregiver_id: nil)
+                  .where(created_at: PAIRING_TOKEN_TTL.ago..)
                   .where.not(pairing_token: nil)
                   .update_all(
                     caregiver_id: caregiver.id,
