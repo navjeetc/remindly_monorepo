@@ -76,9 +76,14 @@ class User < ApplicationRecord
 
   validates :spoken_language, inclusion: { in: SPOKEN_LANGUAGES.keys }
 
-  # What the form may offer today. English is always available; the rest wait on
+  # What the form may offer today. English is always available; the rest pass
   # both gates — the flag, which says translated calls are switched on at all,
-  # and the language's own `offer`, which says somebody has read that script.
+  # and the language's own `offer`, which says this one may be chosen.
+  #
+  # `offer` is availability, not a review signoff. Whether anybody has read a
+  # script is recorded in the script, and Mandarin is offered today with its own
+  # header still saying nobody has. Reading this flag as "vouched for" is how a
+  # future change quietly ships an unread language on the strength of a boolean.
   # Note this gates the *choice*, not playback: a senior already set to Spanish
   # keeps hearing Spanish if the flag is turned back off, because taking away a
   # language somebody is relying on is worse than the risk it was hiding.
