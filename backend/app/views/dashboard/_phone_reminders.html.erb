@@ -101,7 +101,15 @@
         what the hint says, because a caregiver reading "Language" on a settings
         panel will otherwise reasonably expect the screen to change too.
       %>
-      <% if User.selectable_spoken_languages.size > 1 %>
+      <%# Hidden when there is nothing to choose between — but "nothing to choose
+          between" is not the same as "one language on offer". A senior already
+          set to a language that has since been withheld needs this control more
+          than anyone: it is the only way back to English, and hiding it would
+          strand them on a script nobody has reviewed, which is worse than the
+          state the gate exists to prevent. The controller already allows that
+          move; before this, the screen did not offer it. %>
+      <% if User.selectable_spoken_languages.size > 1 ||
+             !User.selectable_spoken_languages.key?(senior.spoken_language) %>
       <%= form_with url: senior_spoken_language_path(senior_id: senior.id), method: :patch do |f| %>
         <label for="user_spoken_language" class="block text-sm font-medium text-gray-700">Language for calls</label>
         <%# The box has to show what the row actually holds, even when that is a

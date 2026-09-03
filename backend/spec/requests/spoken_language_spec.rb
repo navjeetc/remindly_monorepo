@@ -244,6 +244,24 @@ RSpec.describe "The language calls are spoken in", type: :request do
         expect(option["disabled"]).to be_present
       end
 
+      # The control used to be hidden whenever fewer than two languages were on
+      # offer, which is right for an account set to the only one there is and
+      # wrong for this one: with Spanish withheld too, the single option would
+      # be English, the panel would vanish, and the one caregiver who most needs
+      # to change this setting would have no way to. The endpoint allowed the
+      # move the whole time; the screen simply stopped offering it.
+      it "is still shown when English is the only language left on offer" do
+        allow(User).to receive(:selectable_spoken_languages)
+          .and_return(User::SPOKEN_LANGUAGES.slice("en-US"))
+        sign_in(caregiver)
+
+        get "/dashboard/senior/#{senior.id}"
+
+        expect(response.body).to include("user_spoken_language")
+        expect(Nokogiri::HTML(response.body).at_css("#user_spoken_language").text)
+          .to include("not available yet")
+      end
+
       # English stays reachable. A caregiver must always be able to leave a
       # language nobody has reviewed; trapping them on it would be worse than
       # the state this whole gate exists to avoid.

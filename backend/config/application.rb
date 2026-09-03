@@ -37,14 +37,17 @@ module Backend
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Spanish and Mandarin exist here only so the telephone can speak them — the
-    # dashboard is English throughout. Declared because enforce_available_locales
-    # rejects any locale not on this list, and the call script is looked up with
-    # an explicit locale: rather than by switching I18n.locale globally.
+    # dashboard is English throughout.
     #
-    # A locale being available is not the same as its language being offered:
-    # cmn-CN is on this list and still cannot be chosen, because
-    # User::SPOKEN_LANGUAGES carries offer: false until a native speaker has read
-    # the script. This list is what lets the parity spec load and compare it.
+    # A locale being available is not the same as its language being offered.
+    # This list is what lets a script be loaded and compared at all; whether a
+    # caregiver may choose it is decided separately, by `offer:` in
+    # User::SPOKEN_LANGUAGES. A locale stays here while its language is withheld
+    # — that is what lets the parity spec check a script nobody can select yet.
+    #
+    # The lookup is done with an explicit `locale:` argument rather than by
+    # switching I18n.locale globally, which is the other reason these must be
+    # declared: enforce_available_locales rejects anything not on the list.
     config.i18n.available_locales = [ :en, :es, :zh ]
     config.i18n.default_locale = :en
 

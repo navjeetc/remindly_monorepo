@@ -2,12 +2,16 @@
 # the constraints each line is written against — they are requirements, not
 # preferences.
 #
-# NOT YET READ BY A NATIVE SPEAKER, and until one has, `offer: false` in
-# User::SPOKEN_LANGUAGES keeps it out of the language picker and out of the
-# endpoint behind it. Nobody can be called with these words by accident. The
-# Spanish draft is why: it was machine-written, read as plausible, survived a
-# round trip through Google Translate, and still told a care receiver the call
-# was being made on her own behalf.
+# NOT YET READ BY A NATIVE SPEAKER. It is offered anyway, deliberately: the
+# reviewer being asked to judge it is a Mandarin speaker, and the way to ask is
+# to let her use it as a caregiver would. Setting `offer: false` for cmn-CN in
+# User::SPOKEN_LANGUAGES is what withholds a script — it drops the language from
+# the picker and from the endpoint behind it — and that is the lever to pull if
+# this needs holding back again.
+#
+# Why any of this exists: the Spanish draft was machine-written, read as
+# plausible, survived a round trip through Google Translate, and still told a
+# care receiver the call was being made on her own behalf.
 #
 # Three things a reviewer should decide, none of which a translation check would
 # raise:

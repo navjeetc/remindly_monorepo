@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **A Mandarin call script, written and shipped without becoming speakable.**
+- **A Mandarin call script, and a per-language gate for holding one back.**
   Asked for by the caregiver who reviewed Remindly, whose own community is
   Mandarin- and Cantonese-speaking. Cantonese is still impossible — `yue-HK` is
   absent from Telnyx's speak enum at any price — but `cmn-CN` is in it, so the
