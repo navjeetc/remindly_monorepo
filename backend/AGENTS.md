@@ -137,6 +137,33 @@ project's convention and appears in no entry this changelog has ever had; it was
 left here when this file was adapted from Rails' contributing guide, along with
 the `railties` and `action_view` examples elsewhere in this document.
 
+### Version Bumps
+
+Bump the version when a **significant feature** lands, not on a schedule and not
+once a quarter. Minor for a real feature, on the precedent of 0.5.0 and 0.6.0;
+patch for a fix.
+
+```bash
+./scripts/bump_version.sh 0.7.0
+```
+
+The script is the point: the version lives in three files — `VERSION`,
+`backend/VERSION` and `backend/config/deploy.yml` — and doing it by hand while
+missing `deploy.yml` is how production ends up reporting a stale number.
+
+It also inserts an empty CHANGELOG template above `[Unreleased]`. Delete it. The
+entries it asks for are the ones already written under `[Unreleased]` as each
+change landed, so promote that heading to the release instead and leave a fresh
+empty `[Unreleased]` above it.
+
+**Why this matters more than housekeeping:** the version is printed in the
+dashboard nav, on the login page, on contact and how-to, and returned by
+`GET /version` — which is the first item in `docs/POST_DEPLOY_CHECKS.md`, read
+to confirm a new image is actually live. A number that never moves makes that
+check agree with itself whether the deploy worked or not. It is exactly why
+0.5.0 was cut, and it happened again: 0.5.0 stood from 19 July through telephone
+reminders, the critical flag, two call languages and twenty-odd merged PRs.
+
 ### Test Naming
 
 - Use descriptive names: `test_hidden_field_omits_autocomplete_when_remove_hidden_field_autocomplete_is_true`
