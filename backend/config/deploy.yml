@@ -27,7 +27,7 @@ env:
     RAILS_SERVE_STATIC_FILES: "true"
     RAILS_LOG_TO_STDOUT: "true"
     RAILS_ENV: "production"
-    APP_VERSION: "0.5.0"
+    APP_VERSION: "0.6.0"
     ENABLE_NATIVE_SCHEDULING: "true"
     # The outer of two locks on reminder phone calls, and the reason it lives
     # here rather than in a console: turning calls on is a reviewed change to the

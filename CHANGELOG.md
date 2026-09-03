@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-03
+
 ### Fixed
 - **A pairing token outlived the week it promised.** Both screens that hand one
   out have always told the care receiver it expires in seven days, and nothing
