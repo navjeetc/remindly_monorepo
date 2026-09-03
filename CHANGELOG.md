@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A pairing token outlived the week it promised.** Both screens that hand one
+  out have always told the care receiver it expires in seven days, and nothing
+  enforced it: redemption asked only whether the token existed and was
+  unclaimed, so one generated months earlier still paired — and the refusal
+  message said "invalid or expired" about a state the code could not produce.
+
+  What the token carries is why the promise had to be kept rather than dropped.
+  Redeeming it grants `manage`: permission to read that person's reminders,
+  write their telephone number, and ask them to agree to automated calls.
+  Guessing 32 bytes of `SecureRandom` was never the risk; a credential
+  outliving the sentence that described it is. Someone who reads a token aloud
+  to a person who never uses it has been told it lapses, cannot see it again to
+  check, and has no screen listing what is still outstanding.
+
+  The week is now enforced on both redemption paths, from one constant that the
+  printed expiry also reads, so the date shown and the check behind it cannot
+  drift apart. An expired token is refused rather than deleted — a link somebody
+  tried to redeem a month late is the only record that the attempt happened —
+  and the caller is told it expired, which sends them to ask for a new one
+  instead of hunting for a typo.
+
 ### Added
 - **A Mandarin call script, and a per-language gate for holding one back.**
   Asked for by the caregiver who reviewed Remindly, whose own community is

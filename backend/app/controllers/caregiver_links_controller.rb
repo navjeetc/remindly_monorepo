@@ -6,7 +6,7 @@ class CaregiverLinksController < ApplicationController
     link = current_user.generate_pairing_token
     render json: {
       token: link.pairing_token,
-      expires_at: (link.created_at + 7.days).iso8601
+      expires_at: link.expires_at.iso8601
     }, status: :created
   end
 
@@ -20,7 +20,7 @@ class CaregiverLinksController < ApplicationController
       return
     end
 
-    if link.pending?
+    if link.redeemable?
       link.pair_with(caregiver: current_user)
       render json: {
         message: "Successfully paired with #{link.senior.email}",
@@ -29,6 +29,12 @@ class CaregiverLinksController < ApplicationController
           email: link.senior.email
         }
       }
+    elsif link.expired?
+      # Said plainly, and only to somebody holding the exact token: they can
+      # already tell it was real, and "invalid" would send them looking for a
+      # typo instead of asking for a new one.
+      render json: { error: "This pairing token has expired. Ask them to generate a new one." },
+             status: :unprocessable_entity
     else
       render json: { error: "Invalid or expired pairing token" }, status: :unprocessable_entity
     end

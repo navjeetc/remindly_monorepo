@@ -7,6 +7,24 @@ class CaregiverLink < ApplicationRecord
   validates :pairing_token, uniqueness: true, allow_nil: true
   validate :caregiver_cannot_be_senior
 
+  # How long a pairing token can be redeemed for.
+  #
+  # Both screens that hand one out have always told the care receiver it lasts a
+  # week, and nothing enforced it: redemption asked only whether the token
+  # existed and was unclaimed, so one generated months earlier still paired, and
+  # the refusal message said "invalid or expired" about a state the code could
+  # not produce.
+  #
+  # What the token carries is why the promise had to become true rather than the
+  # promise being dropped. pair_with grants `manage`: whoever redeems it can read
+  # this person's reminders, write their telephone number, and ask them to
+  # consent to automated calls. Guessing 32 bytes of SecureRandom is not the
+  # threat — a credential outliving the sentence that described it is. A care
+  # receiver who reads a token to somebody who never uses it has been told it
+  # lapses, cannot see it again (#113), and has no screen listing what is still
+  # outstanding.
+  PAIRING_TOKEN_TTL = 7.days
+
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
     # Generate token with collision detection and safety limit
@@ -68,6 +86,29 @@ class CaregiverLink < ApplicationRecord
   # Check if link is pending (waiting for caregiver)
   def pending?
     senior.present? && caregiver.nil? && pairing_token.present?
+  end
+
+  # When this token stops being redeemable. The one place that answer is
+  # computed — both screens that print it used to work it out for themselves,
+  # which is how the printed date and the check behind it were free to disagree.
+  def expires_at
+    created_at + PAIRING_TOKEN_TTL
+  end
+
+  def expired?
+    expires_at.past?
+  end
+
+  # Unclaimed *and* still inside its week. Redemption asks this; `pending?` keeps
+  # its old meaning, which several callers use to mean "nobody has taken this
+  # yet" — a question an expired row still answers yes to, and should, because
+  # the row is still there.
+  #
+  # Expired rows are refused rather than deleted. A link somebody tried to redeem
+  # a month late is the one record that shows the attempt was made, and throwing
+  # it away is exactly the wrong instinct for a credential over somebody's care.
+  def redeemable?
+    pending? && !expired?
   end
 
   private

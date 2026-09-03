@@ -170,9 +170,12 @@ class DashboardController < WebController
     token = params[:token]
     link = CaregiverLink.find_by(pairing_token: token)
 
-    if link&.pending?
+    if link&.redeemable?
       link.pair_with(caregiver: current_user)
       redirect_to dashboard_path, notice: "Successfully paired with #{link.senior.email}"
+    elsif link&.expired?
+      redirect_to pair_dashboard_path,
+                  alert: "This pairing token has expired. Ask them to generate a new one."
     else
       redirect_to pair_dashboard_path, alert: "Invalid or expired pairing token"
     end
@@ -182,7 +185,7 @@ class DashboardController < WebController
   def generate_token
     link = current_user.generate_pairing_token
     @pairing_token = link.pairing_token
-    @expires_at = link.created_at + 7.days
+    @expires_at = link.expires_at
   end
 
   # Writes down a number to try. Deliberately not the same act as calling it, and
