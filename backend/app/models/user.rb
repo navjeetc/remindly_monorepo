@@ -45,22 +45,52 @@ class User < ApplicationRecord
   #
   # Only codes in Telnyx's speak enum belong here. Cantonese (yue-HK) is not in
   # it at any price, which is why this list starts where it does.
+  #
+  # `offer` is whether a caregiver may choose it today, and it is per-language
+  # because the reason a script is not ready is per-language. The
+  # translated_calls flag answers "may Remindly speak anything but English at
+  # all"; this answers "has anyone read *these* words out loud". Without it,
+  # adding a file to config/locales makes it selectable for real calls the
+  # moment it merges — production runs with the flag on — which is how the
+  # Spanish draft became reachable while its own header still said it had never
+  # been reviewed.
+  #
+  # A language stays here with offer: false while it waits for that review. It
+  # is translated, spec-covered and one word away from being offered, and in the
+  # meantime the picker does not list it and the endpoint refuses it.
   SPOKEN_LANGUAGES = {
-    "en-US" => { label: "English", locale: :en },
-    "es-US" => { label: "Español (Spanish)", locale: :es }
+    "en-US" => { label: "English", locale: :en, offer: true },
+    # Offered today, though #132 records that no native speaker has read it
+    # either. Left as it is rather than withdrawn as a side effect of adding
+    # Mandarin — flipping this to false is a decision about a live capability,
+    # not a detail of this change.
+    "es-US" => { label: "Español (Spanish)", locale: :es, offer: true },
+    # Offered before a native speaker has signed the script off, deliberately
+    # and at the owner's direction: the reviewer we are trying to reach is a
+    # Mandarin speaker, and asking her to assess it means letting her use it the
+    # way a caregiver would. The words are still unreviewed — #118 stays open
+    # until somebody who speaks it has heard both calls end to end — and the
+    # honest reading of this line is "reachable", not "vouched for".
+    "cmn-CN" => { label: "中文 (Mandarin)", locale: :zh, offer: true }
   }.freeze
 
   validates :spoken_language, inclusion: { in: SPOKEN_LANGUAGES.keys }
 
-  # What the form may offer today. English is always available; the rest wait on
-  # a native speaker having read the script, which is what the flag records.
+  # What the form may offer today. English is always available; the rest pass
+  # both gates — the flag, which says translated calls are switched on at all,
+  # and the language's own `offer`, which says this one may be chosen.
+  #
+  # `offer` is availability, not a review signoff. Whether anybody has read a
+  # script is recorded in the script, and Mandarin is offered today with its own
+  # header still saying nobody has. Reading this flag as "vouched for" is how a
+  # future change quietly ships an unread language on the strength of a boolean.
   # Note this gates the *choice*, not playback: a senior already set to Spanish
   # keeps hearing Spanish if the flag is turned back off, because taking away a
   # language somebody is relying on is worse than the risk it was hiding.
   def self.selectable_spoken_languages
-    return SPOKEN_LANGUAGES if FeatureFlag.enabled?(:translated_calls)
+    return SPOKEN_LANGUAGES.slice("en-US") unless FeatureFlag.enabled?(:translated_calls)
 
-    SPOKEN_LANGUAGES.slice("en-US")
+    SPOKEN_LANGUAGES.select { |code, meta| code == "en-US" || meta[:offer] }
   end
 
   # The locale the call script is read from. Falls back rather than raising:

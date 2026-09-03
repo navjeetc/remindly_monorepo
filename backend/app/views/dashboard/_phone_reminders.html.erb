@@ -101,12 +101,43 @@
         what the hint says, because a caregiver reading "Language" on a settings
         panel will otherwise reasonably expect the screen to change too.
       %>
-      <% if User.selectable_spoken_languages.size > 1 %>
+      <%# Hidden when there is nothing to choose between — but "nothing to choose
+          between" is not the same as "one language on offer". A senior already
+          set to a language that has since been withheld needs this control more
+          than anyone: it is the only way back to English, and hiding it would
+          strand them on a script nobody has reviewed, which is worse than the
+          state the gate exists to prevent. The controller already allows that
+          move; before this, the screen did not offer it. %>
+      <% if User.selectable_spoken_languages.size > 1 ||
+             !User.selectable_spoken_languages.key?(senior.spoken_language) %>
       <%= form_with url: senior_spoken_language_path(senior_id: senior.id), method: :patch do |f| %>
         <label for="user_spoken_language" class="block text-sm font-medium text-gray-700">Language for calls</label>
+        <%# The box has to show what the row actually holds, even when that is a
+            language nobody may choose today. Built from the offered list alone,
+            it showed "English" for a senior set to Mandarin — the browser falls
+            back to the first option when the selected value is not among them —
+            while the amber line below correctly said 中文. Two claims about the
+            same setting on the same screen, one of them false, and pressing
+            Save would have written the false one.
+
+            So a withheld current language is appended as its own option and
+            disabled: visible, unpickable, and impossible to arrive at except by
+            already being there. The hidden field beneath carries the same value
+            for the browsers that submit nothing for a disabled selection —
+            duplicates resolve to the last one, so the select still wins whenever
+            it has a value of its own. %>
+        <%
+          offered  = User.selectable_spoken_languages.map { |code, meta| [ meta[:label], code ] }
+          current  = senior.spoken_language
+          withheld = offered.none? { |_label, code| code == current }
+          choices  = withheld ? offered + [ [ "#{senior.spoken_language_label} — not available yet", current ] ] : offered
+        %>
         <div class="mt-1 flex items-center gap-3">
+          <% if withheld %>
+            <%= hidden_field_tag "user[spoken_language]", current, id: nil %>
+          <% end %>
           <%= f.select :spoken_language,
-                options_for_select(User.selectable_spoken_languages.map { |code, meta| [ meta[:label], code ] }, senior.spoken_language),
+                options_for_select(choices, selected: current, disabled: (withheld ? current : nil)),
                 {},
                 name: "user[spoken_language]", id: "user_spoken_language",
                 class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>

@@ -1,0 +1,60 @@
+# Mandarin call script (Simplified Chinese). See config/locales/voice.en.yml for
+# the constraints each line is written against — they are requirements, not
+# preferences.
+#
+# NOT YET READ BY A NATIVE SPEAKER. It is offered anyway, deliberately: the
+# reviewer being asked to judge it is a Mandarin speaker, and the way to ask is
+# to let her use it as a caregiver would. Setting `offer: false` for cmn-CN in
+# User::SPOKEN_LANGUAGES is what withholds a script — it drops the language from
+# the picker and from the endpoint behind it — and that is the lever to pull if
+# this needs holding back again.
+#
+# Why any of this exists: the Spanish draft was machine-written, read as
+# plausible, survived a round trip through Google Translate, and still told a
+# care receiver the call was being made on her own behalf.
+#
+# Three things a reviewer should decide, none of which a translation check would
+# raise:
+#
+#   * **"Remindly" is left in Latin script.** A cmn-CN voice may spell it out,
+#     mangle it, or read it in an English accent mid-sentence. The name has to
+#     survive the first breath — that is the whole anti-scam move — so if it
+#     does not, the fix is a transliteration chosen by somebody who has heard
+#     the voice say both, not a quieter opening. Listen to a real call before
+#     signing off.
+#   * **The register is 您 throughout, never 你.** Same reason Spanish is usted:
+#     an institution calling an older person it has never met.
+#   * **%{task} is the caregiver's own words, spoken verbatim** and usually
+#     typed in English. A senior set to Mandarin will hear "Take meds" in the
+#     middle of a Mandarin sentence unless the caregiver writes the title in
+#     Chinese; the reminder form already warns about this in English.
+#
+# Digits stay as 1, 2 and 9 — they are what the keypad sends, not words.
+zh:
+  voice:
+    announcement: >-
+      您好，%{name}。这里是 Remindly，为您送上提醒。
+      %{task}。
+      如果您已经完成，请按 1。
+      如果需要在 %{minutes} 分钟后再次提醒，请按 2。
+      如果不想再接到这些电话，请按 9。
+    # See voice.en.yml for why this line carries no task and no name.
+    screening: >-
+      这里是 Remindly，有一条提醒。
+      请按 1 收听。
+    consent:
+      # Naming the arranger is the anti-scam move — the one thing a stranger
+      # ringing out of the blue could not know — so it stays at the front.
+      asked_by: "%{arranger} 请我们"
+      # Must not say the called party asked for anything. 受人委托 is "entrusted
+      # by someone", which is true and carries no such claim.
+      asked_generic: "我们受人委托"
+      # %{asked} sits flush against the text that follows it: this is a folded
+      # scalar, so a line break there would put a space between two Chinese
+      # clauses that should run together.
+      request: >-
+        您好。这里是 Remindly，我们找 %{name}。
+        %{asked}打电话提醒您一些事情——例如该吃药的时间。
+        我们绝不会向您索取任何个人资料。您只需要按一个键。
+        如果您愿意接收这些提醒，请现在按 1。
+        如果您不愿意，请按 9，我们不会再打来。

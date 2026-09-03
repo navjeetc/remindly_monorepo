@@ -234,7 +234,16 @@ class DashboardController < WebController
     # Deliberately not a model validation: the flag gates the choice, not
     # playback, so a senior already set to Spanish must still save cleanly when
     # it goes back off.
-    return head :forbidden unless User.selectable_spoken_languages.key?(requested)
+    #
+    # Which is what the value already on the row is doing here — the sentence
+    # above described an intention the code did not have. A withdrawn language
+    # is still shown in the picker, disabled, because the alternative was
+    # showing the wrong language; the form therefore posts it back for a
+    # caregiver who came to change something else and left this alone. Refusing
+    # that is a 403 for touching nothing. Allowing it introduces no language
+    # anywhere: it writes what is already stored.
+    unchanged = requested == senior.spoken_language
+    return head :forbidden unless unchanged || User.selectable_spoken_languages.key?(requested)
 
     if senior.update(spoken_language: requested)
       redirect_to senior_dashboard_path(senior),
