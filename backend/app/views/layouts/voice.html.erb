@@ -11,10 +11,12 @@
        compiles CSS in the browser, on a device chosen for sitting in a kitchen
        rather than for being fast. This page is the whole product for the person
        using it and it should not wait on a third party to become legible.
-    3. No third-party request at all means nothing to leak to. The token is out
-       of the address bar before this renders, so the referrer risk is already
-       handled, but a page with no outbound requests cannot acquire a new one by
-       somebody adding a font later.
+    3. No third-party request at all means nothing to leak to. This matters more
+       than it first looks: the token *is* in the address bar — that is what
+       makes the bookmark survive cookie loss — so any outbound request from
+       this page would carry it in a Referer header. A page that fetches nothing
+       cannot leak it, and cannot acquire the problem later by somebody adding a
+       font.
 
     Everything sizes in rem so the font-size below scales the whole interface —
     that is the text-size setting, and it matters more here than anywhere else

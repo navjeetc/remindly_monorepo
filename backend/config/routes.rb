@@ -64,8 +64,12 @@ Rails.application.routes.draw do
   get  "dashboard",          to: "dashboard#index", as: :dashboard
   # A reminder link. Short on purpose: this is read aloud down a telephone and
   # typed on a tablet by somebody whose eyesight is part of why you are setting
-  # this up. The token is exchanged for a cookie and dropped from the address
-  # bar on the redirect.
+  # this up.
+  #
+  # It renders the voice page rather than redirecting to it, so that the address
+  # somebody bookmarks is the address that still works after the cookies are
+  # cleared. The token therefore stays in the address bar deliberately — see
+  # VoiceRemindersController#redeem_token for what that trades away and why.
   get  "r/:token", to: "voice_reminders#show", as: :reminder_link
 
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
