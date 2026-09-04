@@ -149,10 +149,11 @@ class VoiceRemindersApp {
             
             // The credential stopped working — the link was revoked, or a
             // session expired. Reloading lands on whatever this device is
-            // actually entitled to now, which is usually the login page.
-            // Without this the page keeps showing the reminders it already had
-            // and goes on announcing them, looking exactly as it does when
-            // everything is fine.
+            // actually entitled to now: the page explaining that a link has
+            // stopped working, if the address is /r/<token>, or the login page
+            // for a session that has run out. Without this the page keeps
+            // showing the reminders it already had and goes on announcing them,
+            // looking exactly as it does when everything is fine.
             if (response.status === 401) {
                 window.location.reload();
                 return;
@@ -210,6 +211,26 @@ class VoiceRemindersApp {
         });
     }
 
+    // Reminder titles and notes are typed by a caregiver and stored as-is —
+    // Reminder validates that a title is present and nothing about what is in
+    // it. They are written into an HTML string that becomes innerHTML, so
+    // without this a title containing markup becomes markup on the care
+    // receiver's screen.
+    //
+    // That was always wrong and is worse now: in link mode the capability token
+    // is in window.location, so injected script could read the credential out
+    // of the address and send it anywhere. The person who types the title is
+    // usually the person who set the device up — but "usually" is not a
+    // security property, and a second caregiver can write reminders too.
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
     renderReminderCard(reminder) {
         // Parse the time and display in local timezone
         const scheduledDate = new Date(reminder.scheduled_at);
@@ -258,10 +279,10 @@ class VoiceRemindersApp {
         return `
             <div class="p-6 rounded-xl border-4 ${borderColor} ${bgColor} shadow-lg">
                 <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-3xl font-bold text-gray-900">${reminder.title}</h3>
+                    <h3 class="text-3xl font-bold text-gray-900">${this.escapeHtml(reminder.title)}</h3>
                     <span class="text-2xl font-semibold text-gray-700 bg-white px-4 py-2 rounded-lg">${time}</span>
                 </div>
-                ${reminder.description ? `<p class="text-xl text-gray-700 mb-4">${reminder.description}</p>` : ''}
+                ${reminder.description ? `<p class="text-xl text-gray-700 mb-4">${this.escapeHtml(reminder.description)}</p>` : ''}
                 <div class="flex items-center gap-4">${actions}</div>
             </div>
         `;

@@ -667,6 +667,12 @@ RSpec.describe "A reminder link", type: :request do
       occ = occurrence_now
       redeem
 
+      # Captured and restored, not set back to false: writing the assumed
+      # value would silently disable forgery protection for every later spec if
+      # anything ever runs with it on. acknowledgements_spec.rb does it this
+      # way for the same reason.
+      original = ActionController::Base.allow_forgery_protection
+
       begin
         ActionController::Base.allow_forgery_protection = true
 
@@ -678,7 +684,7 @@ RSpec.describe "A reminder link", type: :request do
         # because the test environment rescues it the way production does.
         expect(response).to have_http_status(:unprocessable_entity)
       ensure
-        ActionController::Base.allow_forgery_protection = false
+        ActionController::Base.allow_forgery_protection = original
       end
 
       expect(occ.reload.status).to eq("pending")
@@ -707,6 +713,40 @@ RSpec.describe "A reminder link", type: :request do
       get "/voice_reminders/today"
 
       expect(response.headers["Set-Cookie"].to_s).not_to include("reminder_link")
+    end
+  end
+
+  # Reminder titles are typed by a caregiver and stored as typed. They are
+  # written into an HTML string that becomes innerHTML, so unescaped they become
+  # markup on the care receiver's screen — and in link mode the capability token
+  # is in window.location, where injected script could read it out of the
+  # address and send it anywhere.
+  describe "a reminder title containing markup" do
+    let(:script) { public_file("voice_reminders.js") }
+
+    def public_file(name) = Rails.public_path.join(name).read
+
+    it "is escaped by the client before it reaches the DOM" do
+      expect(script).to include("escapeHtml(reminder.title)")
+      expect(script).to include("escapeHtml(reminder.description)")
+    end
+
+    it "escapes the characters that make markup" do
+      [ "&amp;", "&lt;", "&gt;", "&quot;", "&#39;" ].each do |entity|
+        expect(script).to include(entity)
+      end
+    end
+
+    # The JSON is deliberately not escaped — it is data, and escaping there
+    # would put entities into the spoken announcement.
+    it "sends the title as typed, and lets the client decide how to render it" do
+      Reminder.create!(user: care_receiver, title: "<b>bold</b>", rrule: "FREQ=DAILY", tz: care_receiver.tz)
+        .then { |r| Occurrence.create!(reminder: r, scheduled_at: Time.current, status: :pending) }
+      redeem
+
+      get "/voice_reminders/today"
+
+      expect(response.parsed_body.first["title"]).to eq("<b>bold</b>")
     end
   end
 

@@ -113,6 +113,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This is phases 1 and 2 of `docs/SENIOR_ACCESS_DESIGN.md`. Creating an account
   for somebody who never signed up is phase 3, and depends on these.
 
+### Security
+- **Reminder titles are escaped before they reach the screen.** They are typed
+  by a caregiver and stored exactly as typed — `Reminder` validates that a title
+  exists and nothing about what is in it — and the voice page writes them into
+  an HTML string it assigns to `innerHTML`. So a title containing markup became
+  markup on the care receiver's screen.
+
+  That was true before device links and is worse with them: the capability token
+  now lives in `window.location`, so script injected through a title could read
+  the credential out of the address bar and send it anywhere. The person who
+  types the title is usually the person who set the device up, but "usually" is
+  not a security property, and a second caregiver can write reminders too.
+
+  The JSON still carries the title exactly as typed. It is data there, and
+  escaping it server-side would put entities into the spoken announcement.
+
 ### Fixed
 - **The dashboard counted expired pairing tokens as pending requests.** The
   banner said "You have 2 pending pairing requests. Share the token with your
