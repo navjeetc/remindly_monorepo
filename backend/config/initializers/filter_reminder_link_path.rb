@@ -18,6 +18,14 @@
 # filter that. The residual exposure is the proxy's container log on our own
 # server, once per redemption rather than per page view. Revocation exists partly
 # for this: a link that turns up somewhere it should not be can be ended.
+#
+# This comment used to say the proxy was the *only* residual, and was wrong.
+# Ahoy records `request.original_url` as a visit's landing_page, so every
+# redemption also wrote the token into `ahoy_visits` — in plaintext, kept
+# indefinitely, and rendered on the admin audit screen, which is a worse place
+# for a credential than a log that rotates. `Ahoy::Store#credential_in_the_path?`
+# closes that. The lesson generalises: a credential in a URL comes to rest
+# wherever URLs are recorded, and each of those places has to be found.
 module FilterReminderLinkPath
   REDACTED = "/r/[FILTERED]"
 

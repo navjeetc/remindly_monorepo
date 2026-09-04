@@ -277,13 +277,24 @@ class DashboardController < WebController
   def create_reminder_link
     senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
 
+    replaced = false
+
     ActiveRecord::Base.transaction do
-      ReminderLink.live.where(user_id: senior.id).find_each(&:revoke!)
+      ReminderLink.live.where(user_id: senior.id).find_each do |live|
+        live.revoke!
+        replaced = true
+      end
       @reminder_link = ReminderLink.mint(user: senior)
     end
 
-    redirect_to senior_dashboard_path(senior),
-      notice: "New link ready for #{senior.display_name}'s device. The old one has stopped working."
+    # Only claim a bookmark stopped working if one did. On this screen, whose
+    # whole job is making the state of a device legible, telling a caregiver
+    # their first link replaced something is a small lie in the one place they
+    # are trying to build a picture of what is set up.
+    notice = "New link ready for #{senior.display_name}'s device."
+    notice += " The old one has stopped working." if replaced
+
+    redirect_to senior_dashboard_path(senior), notice: notice
   rescue ActiveRecord::RecordNotUnique
     # Two caregivers pressed the button together and the database refused the
     # loser, which is the index doing its job. Saying so is better than a 500,
@@ -300,10 +311,16 @@ class DashboardController < WebController
   # exactly as an invented one does.
   def revoke_reminder_link
     senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
-    ReminderLink.live.where(user_id: senior.id).find_by(id: params[:id])&.revoke!
+    revoked = ReminderLink.live.where(user_id: senior.id).find_by(id: params[:id])&.revoke!
 
-    redirect_to senior_dashboard_path(senior),
-      notice: "That device link has stopped working."
+    # A stale page or a double-submitted form matches nothing, and confirming a
+    # revocation this request did not perform is how somebody comes away
+    # believing a device was cut off when it never was.
+    if revoked
+      redirect_to senior_dashboard_path(senior), notice: "That device link has stopped working."
+    else
+      redirect_to senior_dashboard_path(senior), alert: "That device link had already been stopped."
+    end
   end
 
   # Asks the number whether it agrees. This is the only thing a caregiver can do

@@ -17,22 +17,37 @@
 
   <div class="px-5 py-4">
     <% if reminder_link %>
-      <p class="text-sm text-gray-700">
-        Open this on their tablet or computer once, then bookmark it.
-      </p>
+      <%# The address itself is shown only to a caregiver who may change things.
 
-      <%# Shown in full because it has to be typed or copied by hand, and
-          selectable in one gesture on a touch screen. It is a credential: the
-          copy beneath says so plainly rather than leaving a caregiver to guess
-          how carefully to treat it. %>
-      <input type="text" readonly value="<%= reminder_link_url(token: reminder_link.token) %>"
-             onclick="this.select()"
-             class="mt-2 w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-mono text-gray-800 bg-gray-50">
+          It is not merely a way to read the reminders: the device it authorises
+          can mark doses done and snooze them, which silences missed-dose mail
+          and tells the other caregivers a dose was taken. Handing that to
+          somebody whose permission is "can only look" would give them, by
+          copy and paste, precisely the writes the permission exists to
+          withhold. What they can see is whether the device is alive, which is
+          a fact about the care, not a key to it. %>
+      <% if permission == "manage" %>
+        <p class="text-sm text-gray-700">
+          Open this on their tablet or computer once, then bookmark it.
+        </p>
 
-      <p class="mt-2 text-xs text-gray-500">
-        Anyone with this address can see their reminders, so treat it like a
-        key. It does not expire.
-      </p>
+        <%# Shown in full because it has to be typed or copied by hand, and
+            selectable in one gesture on a touch screen. It is a credential: the
+            copy beneath says so plainly rather than leaving a caregiver to guess
+            how carefully to treat it. %>
+        <input type="text" readonly value="<%= reminder_link_url(token: reminder_link.token) %>"
+               onclick="this.select()"
+               class="mt-2 w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-mono text-gray-800 bg-gray-50">
+
+        <p class="mt-2 text-xs text-gray-500">
+          Anyone with this address can see their reminders and mark doses done,
+          so treat it like a key. It does not expire.
+        </p>
+      <% else %>
+        <p class="text-sm text-gray-700">
+          Their device is set up with a link.
+        </p>
+      <% end %>
 
       <p class="mt-3 text-sm text-gray-700">
         <% if reminder_link.last_used_at %>

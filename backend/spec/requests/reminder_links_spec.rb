@@ -410,6 +410,42 @@ RSpec.describe "A reminder link", type: :request do
       post "/dashboard/senior/#{care_receiver.id}/reminder_link/#{live.id}/revoke"
 
       expect(live.reload).to be_revoked
+      expect(flash[:notice]).to match(/stopped working/i)
+    end
+
+    # A stale page or a double-submitted form matches nothing. Confirming a
+    # revocation this request did not perform is how somebody comes away
+    # believing a device was cut off when it never was.
+    it "does not claim to have revoked something it did not" do
+      already = ReminderLink.mint(user: care_receiver)
+      already.revoke!
+      sign_in_caregiver
+
+      post "/dashboard/senior/#{care_receiver.id}/reminder_link/#{already.id}/revoke"
+
+      expect(flash[:notice]).to be_blank
+      expect(flash[:alert]).to match(/already been stopped/i)
+    end
+
+    # And the mirror on creation: a first link replaced no bookmark, so saying
+    # one stopped working is a small lie on the screen whose job is making the
+    # state of a device legible.
+    it "does not claim to have replaced a link that never existed" do
+      sign_in_caregiver
+
+      post "/dashboard/senior/#{care_receiver.id}/reminder_link"
+
+      expect(flash[:notice]).to match(/New link ready/i)
+      expect(flash[:notice]).not_to match(/old one/i)
+    end
+
+    it "says the old one stopped when there was one" do
+      ReminderLink.mint(user: care_receiver)
+      sign_in_caregiver
+
+      post "/dashboard/senior/#{care_receiver.id}/reminder_link"
+
+      expect(flash[:notice]).to match(/old one has stopped working/i)
     end
 
     context "a caregiver who may only look" do
@@ -423,6 +459,30 @@ RSpec.describe "A reminder link", type: :request do
 
         expect(response.body).not_to include("Create a device link")
         expect(response.body).not_to include("Stop this link")
+      end
+
+      # Hiding the buttons is not enough once a link can acknowledge. The
+      # address *is* the write permission: copied into a browser it marks doses
+      # done, which silences missed-dose mail and tells the other caregivers a
+      # dose was taken — exactly what "can only look" is meant to withhold.
+      it "is not shown the address itself" do
+        live = ReminderLink.mint(user: care_receiver)
+        sign_in_caregiver
+
+        get "/dashboard/senior/#{care_receiver.id}"
+
+        expect(response.body).not_to include(live.token)
+      end
+
+      # They still see whether the tablet is working, which is a fact about the
+      # care rather than a key to it.
+      it "still sees whether the device is alive" do
+        ReminderLink.mint(user: care_receiver).record_use!
+        sign_in_caregiver
+
+        get "/dashboard/senior/#{care_receiver.id}"
+
+        expect(response.body).to include("Last heard from")
       end
 
       # Hiding the button is not the gate. This is.

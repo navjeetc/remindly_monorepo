@@ -226,10 +226,9 @@ class VoiceRemindersApp {
             borderColor = 'border-gray-200';
         }
 
-        // Built separately so the row can be left out entirely rather than
-        // rendered empty. On a link-mode device there is nothing to put in it,
-        // and an empty flex row still takes space — a band of blank card under
-        // every reminder, on the screen where space is most expensive.
+        // Done and Snooze, or the completed marker. There is always one or the
+        // other: a device reached through a reminder link can acknowledge too,
+        // so this no longer has an empty case.
         const actions = !isCompleted ? `
                         <button id="ack-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-transparent shadow-lg text-xl font-bold rounded-xl text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300" title="Mark as done">
                             ✓ Done
@@ -239,20 +238,20 @@ class VoiceRemindersApp {
                             ⏰ Snooze
                         </button>
                         ` : ''}
-                    ` : isCompleted ? `
+                    ` : `
                         <span class="inline-flex items-center px-6 py-4 text-2xl font-bold text-green-700">
                             ✓ Completed
                         </span>
-                    ` : '';
+                    `;
 
         return `
             <div class="p-6 rounded-xl border-4 ${borderColor} ${bgColor} shadow-lg">
-                <div class="flex justify-between items-start ${reminder.description || actions ? 'mb-4' : ''}">
+                <div class="flex justify-between items-start mb-4">
                     <h3 class="text-3xl font-bold text-gray-900">${reminder.title}</h3>
                     <span class="text-2xl font-semibold text-gray-700 bg-white px-4 py-2 rounded-lg">${time}</span>
                 </div>
-                ${reminder.description ? `<p class="text-xl text-gray-700 ${actions ? 'mb-4' : ''}">${reminder.description}</p>` : ''}
-                ${actions ? `<div class="flex items-center gap-4">${actions}</div>` : ''}
+                ${reminder.description ? `<p class="text-xl text-gray-700 mb-4">${reminder.description}</p>` : ''}
+                <div class="flex items-center gap-4">${actions}</div>
             </div>
         `;
     }

@@ -55,6 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   else's dose is the query each action already ran — one credential, one care
   receiver.
 
+  Analytics no longer records these addresses at all. Ahoy stores
+  `request.original_url` as a visit's landing page, so every redemption was
+  writing a live, non-expiring credential into `ahoy_visits` in plaintext —
+  kept indefinitely, and rendered on the admin audit screen. A credential in a
+  URL comes to rest wherever URLs are recorded, and a table is a worse resting
+  place than a log, because a log rotates.
+
+  A caregiver who may only look is no longer shown the address. Since a link can
+  now mark doses done, the address *is* the write permission: copied into a
+  browser it silences missed-dose mail and tells the other caregivers a dose was
+  taken. They still see whether the device is alive, which is a fact about the
+  care rather than a key to it.
+
   The token is also kept out of Rails' request log, which `filter_parameters`
   cannot do on its own: it filters query strings and parsed parameters, never
   path segments, so `/r/<token>` was being written verbatim once per redemption.

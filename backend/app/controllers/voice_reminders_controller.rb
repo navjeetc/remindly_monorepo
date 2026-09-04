@@ -67,8 +67,13 @@ class VoiceRemindersController < WebController
     now = ActiveSupport::TimeZone[current_user.tz].now
     day = now.beginning_of_day..now.end_of_day
 
+    # includes as well as joins: the join scopes the query, and without the
+    # include every occurrence costs another query to read its title — on the
+    # endpoint a tablet polls every few seconds, all day. Two queries instead of
+    # one per reminder, on the device this page is deliberately light for.
     occurrences = Occurrence
       .joins(:reminder)
+      .includes(:reminder)
       .where(reminders: { user_id: current_user.id })
       .where(scheduled_at: day)
       .where(status: :pending)
