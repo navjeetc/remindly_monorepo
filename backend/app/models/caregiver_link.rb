@@ -25,6 +25,35 @@ class CaregiverLink < ApplicationRecord
   # outstanding.
   PAIRING_TOKEN_TTL = 7.days
 
+  # Tokens somebody could still redeem: unclaimed, still carrying a token, still
+  # inside their week. The same three conditions the claim writes with, so the
+  # count on a screen and the answer at redemption cannot disagree.
+  #
+  # They did disagree, briefly. Enforcing the week made every unclaimed token no
+  # longer a live one, and the dashboard banner was still counting all of them —
+  # so a care receiver was told to share a token generated eleven months earlier,
+  # which the caregiver would then be refused.
+  scope :redeemable, -> {
+    where(caregiver_id: nil)
+      .where(created_at: PAIRING_TOKEN_TTL.ago..)
+      .where.not(pairing_token: [ nil, "" ])
+  }
+
+  # An empty token is not a token.
+  #
+  # Nothing writes one today: generate_pairing_token always stores a
+  # SecureRandom string and pair_with clears it to nil. But the scope asks the
+  # database, `IS NOT NULL`, while pending? asks Ruby, `present?`, and a blank
+  # string is the single value those two answer differently about — so "one
+  # definition" would have been true by luck rather than by construction, and a
+  # blank could have been counted on the dashboard while redeemable? denied it.
+  #
+  # Normalising on write closes it at the source; the scope excludes blanks as
+  # well, so neither half depends on the other having done its job. It also
+  # keeps the uniqueness validation honest, which allows nil but would refuse a
+  # second empty string.
+  before_save :a_blank_token_is_no_token
+
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
     # Generate token with collision detection and safety limit
@@ -70,6 +99,7 @@ class CaregiverLink < ApplicationRecord
   # It grants the ability to *ask*, not to enable. callable_by_phone? still
   # needs a number, a recorded consent and no opt-out, and only a keypress on a
   # call the care receiver answers can write that consent.
+  #
   # Returns true if this caregiver took the link, false if there was nothing
   # left to take.
   #
@@ -101,9 +131,8 @@ class CaregiverLink < ApplicationRecord
     # accident. The rule belongs to the model rather than to every caller's
     # discipline.
     claimed = self.class
-                  .where(id: id, caregiver_id: nil)
-                  .where(created_at: PAIRING_TOKEN_TTL.ago..)
-                  .where.not(pairing_token: nil)
+                  .redeemable
+                  .where(id: id)
                   .update_all(
                     caregiver_id: caregiver.id,
                     permission: self.class.permissions[:manage],
@@ -151,6 +180,10 @@ class CaregiverLink < ApplicationRecord
   end
 
   private
+
+  def a_blank_token_is_no_token
+    self.pairing_token = nil if pairing_token.blank?
+  end
 
   def caregiver_cannot_be_senior
     if caregiver_id.present? && caregiver_id == senior_id

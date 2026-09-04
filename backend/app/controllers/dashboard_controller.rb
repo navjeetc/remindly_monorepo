@@ -45,7 +45,9 @@ class DashboardController < WebController
     elsif current_user.role_senior?
       # Seniors see their own tasks, reminders, and caregivers
       @linked_seniors = []
-      @pending_links = current_user.senior_links.where(caregiver_id: nil).where.not(pairing_token: nil)
+      # Only tokens somebody could still redeem. Counting expired ones told a
+      # care receiver to share a token that no longer works — see the scope.
+      @pending_links = current_user.senior_links.redeemable
 
       # Get today's reminders for the senior
       tz = ActiveSupport::TimeZone[current_user.tz]

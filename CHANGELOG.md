@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The dashboard counted expired pairing tokens as pending requests.** The
+  banner said "You have 2 pending pairing requests. Share the token with your
+  caregiver" while one of the two had been generated eleven months earlier —
+  sharing it would have produced nothing but a refusal at the other end.
+
+  It was right until the week became real: while every unclaimed token worked
+  forever, counting them all was accurate. Enforcing the expiry made a screen
+  wrong that nobody had touched. The count and the claim now read one
+  definition, a `redeemable` scope holding the same three conditions the claim
+  writes with, so a screen cannot promise what redemption refuses.
+
 ## [0.6.0] - 2026-09-03
 
 ### Fixed
