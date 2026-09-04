@@ -36,8 +36,23 @@ class CaregiverLink < ApplicationRecord
   scope :redeemable, -> {
     where(caregiver_id: nil)
       .where(created_at: PAIRING_TOKEN_TTL.ago..)
-      .where.not(pairing_token: nil)
+      .where.not(pairing_token: [ nil, "" ])
   }
+
+  # An empty token is not a token.
+  #
+  # Nothing writes one today: generate_pairing_token always stores a
+  # SecureRandom string and pair_with clears it to nil. But the scope asks the
+  # database, `IS NOT NULL`, while pending? asks Ruby, `present?`, and a blank
+  # string is the single value those two answer differently about — so "one
+  # definition" would have been true by luck rather than by construction, and a
+  # blank could have been counted on the dashboard while redeemable? denied it.
+  #
+  # Normalising on write closes it at the source; the scope excludes blanks as
+  # well, so neither half depends on the other having done its job. It also
+  # keeps the uniqueness validation honest, which allows nil but would refuse a
+  # second empty string.
+  before_save :a_blank_token_is_no_token
 
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
@@ -165,6 +180,10 @@ class CaregiverLink < ApplicationRecord
   end
 
   private
+
+  def a_blank_token_is_no_token
+    self.pairing_token = nil if pairing_token.blank?
+  end
 
   def caregiver_cannot_be_senior
     if caregiver_id.present? && caregiver_id == senior_id

@@ -222,6 +222,20 @@ RSpec.describe "A pairing token's week", type: :request do
       expect(response.body).not_to include("pending pairing request")
     end
 
+    # The scope asks the database and pending? asks Ruby, and a blank string is
+    # the one value they would answer differently about — so the row could have
+    # been counted on the dashboard while redeemable? denied it. Nothing writes
+    # a blank today; this makes that true by construction rather than by luck.
+    it "does not count a token that is only an empty string" do
+      link = CaregiverLink.generate_pairing_token(senior: senior)
+      link.update!(pairing_token: "")
+
+      expect(link.reload.pairing_token).to be_nil
+      expect(CaregiverLink.redeemable).not_to include(link)
+      expect(link).not_to be_redeemable
+      expect(link.pair_with(caregiver: caregiver)).to be(false)
+    end
+
     # One definition, so a screen cannot promise what redemption refuses.
     it "counts exactly what the claim will accept" do
       expired = token_generated(8.days)
