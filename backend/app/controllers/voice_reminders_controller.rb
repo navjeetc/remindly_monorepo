@@ -139,7 +139,12 @@ class VoiceRemindersController < WebController
     # A revoked token and a made-up one are answered identically. Distinguishing
     # them would tell whoever holds a dead link that it was once real, and tell
     # an enumerator which guesses were close.
-    return head :not_found unless link
+    #
+    # A page rather than an empty 404. The device reloads its own bookmark when
+    # its credential stops working, so this is what a care receiver is left
+    # looking at — and `head :not_found` left them looking at nothing at all,
+    # with no way to tell a revoked link from a broken tablet.
+    return render :unavailable, status: :not_found unless link
 
     remember_reminder_link(link)
     link.record_use_if_stale!

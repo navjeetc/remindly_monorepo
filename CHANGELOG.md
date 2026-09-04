@@ -75,6 +75,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application can reach — a residual on our own server, and part of why
   revocation is first-class rather than an afterthought.
 
+  A link that has stopped working says so. Found on a real iPhone: revoking a
+  link left the device on a blank white page, because it reloads its own
+  bookmark and an empty 404 is what came back — no explanation, on the one
+  screen in this product belonging to the person least able to work out what
+  happened. It now says the page isn't working and to ask whoever set up the
+  reminders for a new link, and says nothing about why: a revoked link and an
+  invented one get the same words, so a dead link still cannot confirm it was
+  ever real.
+
   Two ways a working device could have gone quiet, both closed. The cookie is
   renewed whenever the device is recorded as alive, so a tablet in daily use
   cannot lose its authorisation on the anniversary of the day it was set up —

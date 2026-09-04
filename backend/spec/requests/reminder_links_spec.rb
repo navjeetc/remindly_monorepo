@@ -132,6 +132,31 @@ RSpec.describe "A reminder link", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
+    # The device reloads its own bookmark when the credential stops working, so
+    # this page is what a care receiver is actually left looking at. It used to
+    # be an empty body: a white screen, on the one screen belonging to the
+    # person least able to work out what had happened.
+    it "says something a care receiver can act on" do
+      link.revoke!
+
+      redeem
+
+      expect(response.body).to include("This page isn't working")
+      expect(response.body).to include("Ask the person who set up your reminders")
+    end
+
+    # And says nothing about why, so a dead link cannot confirm it was once
+    # real — the identical-404 rule has to survive the page having words on it.
+    it "says it the same way for a token that never existed" do
+      link.revoke!
+      redeem
+      revoked = response.body
+
+      redeem("wholly-invented-token")
+
+      expect(response.body).to eq(revoked)
+    end
+
     it "refuses a revoked one" do
       link.revoke!
 
