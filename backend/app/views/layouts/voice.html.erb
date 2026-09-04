@@ -187,6 +187,32 @@
       }
       .close-btn:hover { color: #111827; }
 
+      /* Dialog buttons. `btn-primary` and `btn-secondary` are the view's own
+         names and, like the modal classes, were never defined anywhere — so
+         "Save Settings" has always looked exactly like "Reset to Defaults",
+         which is a poor arrangement when one of them discards what you just
+         set. Sized for a finger, not a mouse. */
+      .btn-primary, .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.75rem;
+        padding: 0.625rem 1.125rem;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      .btn-primary { background: #2563eb; color: #fff; }
+      .btn-primary:hover { background: #1d4ed8; }
+      .btn-secondary { background: #fff; color: #374151; border-color: #d1d5db; }
+      .btn-secondary:hover { background: #f9fafb; }
+      .btn-primary:focus, .btn-secondary:focus { outline: 4px solid #bfdbfe; outline-offset: 2px; }
+
+      /* Three buttons on one line is too many for a phone. */
+      .modal-footer { flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+
       /* Sizes */
       .h-3 { height: 0.75rem; }
       .w-3 { width: 0.75rem; }

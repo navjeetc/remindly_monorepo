@@ -292,6 +292,18 @@ RSpec.describe "A reminder link", type: :request do
       expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("no-referrer")
     end
 
+    # The settings dialog's own class names — modal, btn-primary and the rest —
+    # are the view's, not utilities, and were defined nowhere in the application
+    # until this layout. Undefined, the dialog opened as a plain block and Save
+    # looked exactly like Reset to Defaults.
+    it "styles the dialog the page actually contains" do
+      css = doc.at_css("style").text
+
+      %w[.modal .modal-content .modal-footer .btn-primary .btn-secondary .close-btn].each do |rule|
+        expect(css).to include(rule), "#{rule} is used by the page and defined nowhere"
+      end
+    end
+
     it "keeps itself out of search results" do
       expect(doc.at_css("meta[name='robots']")&.[]("content")).to include("noindex")
     end
