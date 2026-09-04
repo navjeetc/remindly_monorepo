@@ -33,6 +33,20 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%# A reminder link is a credential. Nothing here belongs in an index. %>
     <meta name="robots" content="noindex, nofollow">
+
+    <%# The document URL is the credential, so no request from this page may
+        carry it.
+
+        The browser default is strict-origin-when-cross-origin, which sends the
+        *full* URL on same-origin requests — and this page makes two of them on
+        every load: the script, and the poll to /voice_reminders/today, which
+        repeats every few seconds all day. That would write the token into a
+        Referer header on our own access logs, which is the same leak the
+        request-path redaction exists to prevent, arriving by another door.
+
+        no-referrer rather than same-origin: nothing on this page needs to know
+        where a request came from. %>
+    <meta name="referrer" content="no-referrer">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <style>

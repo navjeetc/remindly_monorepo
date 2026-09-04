@@ -288,6 +288,14 @@ RSpec.describe "A reminder link", type: :request do
       expect(doc.at_css("body")["data-can-acknowledge"]).to eq("false")
     end
 
+    # The document URL is the credential now, and the browser default sends the
+    # full URL as Referer on same-origin requests — of which this page makes one
+    # every few seconds, forever. Without this the token lands in access logs by
+    # a second route, after the first one was closed.
+    it "sends the token nowhere as a referrer" do
+      expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("no-referrer")
+    end
+
     it "keeps itself out of search results" do
       expect(doc.at_css("meta[name='robots']")&.[]("content")).to include("noindex")
     end
