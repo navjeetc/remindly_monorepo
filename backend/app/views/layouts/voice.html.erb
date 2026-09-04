@@ -242,8 +242,14 @@
   <body>
     <%# No navigation. In link mode there is no account to navigate to, and a
         signed-in care receiver reaches the rest of the app from the dashboard.
-        The one way back is offered only to somebody who can actually use it. %>
-    <% unless link_mode? %>
+        The one way back is offered only to somebody who can actually use it.
+        
+        `current_user.present?` as well as `!link_mode?`, because "not in link
+        mode" is also true of somebody with no credential at all — which is
+        exactly who sees the page saying a link has stopped working. Offering
+        them a route to the dashboard sends them to a login they have no account
+        for, on the one page whose whole job is to say ask somebody else. %>
+    <% if current_user.present? && !link_mode? %>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <%= link_to "← Back to Remindly", dashboard_path, class: "text-gray-500 text-sm" %>
       </div>

@@ -145,6 +145,19 @@ RSpec.describe "A reminder link", type: :request do
       expect(response.body).to include("Ask the person who set up your reminders")
     end
 
+    # Nothing on this page may point at the rest of the app. The person reading
+    # it has no account: the dashboard would bounce them to a login they cannot
+    # use, which is a dead end on the one page whose job is to say ask somebody
+    # else.
+    it "offers no route a person without an account cannot follow" do
+      link.revoke!
+
+      redeem
+
+      expect(response.body).not_to include("Back to Remindly")
+      expect(Nokogiri::HTML(response.body).css("a[href='#{dashboard_path}']")).to be_empty
+    end
+
     # And says nothing about why, so a dead link cannot confirm it was once
     # real — the identical-404 rule has to survive the page having words on it.
     it "says it the same way for a token that never existed" do

@@ -75,7 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application can reach — a residual on our own server, and part of why
   revocation is first-class rather than an afterthought.
 
-  A link that has stopped working says so. Found on a real iPhone: revoking a
+  A link that has stopped working says so, and offers nothing the person
+  reading it cannot use. Found on a real iPhone: revoking a
   link left the device on a blank white page, because it reloads its own
   bookmark and an empty 404 is what came back — no explanation, on the one
   screen in this product belonging to the person least able to work out what
