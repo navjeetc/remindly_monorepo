@@ -32,6 +32,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Last heard from" on the caregiver's panel is the point of the whole thing: a
   device that has gone quiet says so before anybody misses a dose over it.
 
+  On a link the Done and Snooze buttons are not drawn at all, because the
+  acknowledgement endpoints do not accept that credential yet — and a button
+  posting to them would have been answered with the login page, which the
+  browser reports as a perfectly good response. The care receiver would have
+  pressed it, nothing would have changed, and the caregiver would have been told
+  the dose was missed.
+
+  The token is also kept out of Rails' request log, which `filter_parameters`
+  cannot do on its own: it filters query strings and parsed parameters, never
+  path segments, so `/r/<token>` was being written verbatim once per redemption.
+  kamal-proxy still logs the path before Rails sees it, which nothing in the
+  application can reach — a residual on our own server, and part of why
+  revocation is first-class rather than an afterthought.
+
   This is phase 1 of `docs/SENIOR_ACCESS_DESIGN.md`. Marking a dose done from a
   link, and creating an account for somebody who never signed up, come after it.
 

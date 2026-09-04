@@ -176,7 +176,10 @@ RSpec.describe "A reminder link", type: :request do
       "the dashboard" => "/dashboard",
       "the profile" => "/profile",
       "notifications" => "/notifications",
-      "tasks" => "/tasks",
+      # The nested path, which is the one that exists: a top-level /tasks is a
+      # routing 404 and would have passed this example without ever reaching
+      # TasksController.
+      "tasks" => "/seniors/%<senior_id>d/tasks",
       "the pairing screen" => "/dashboard/pair",
       "a pairing token" => "/dashboard/generate",
       "the caregiver list" => "/caregiver_links",
@@ -184,7 +187,7 @@ RSpec.describe "A reminder link", type: :request do
       "the reminder form" => "/reminders/new"
     }.each do |name, path|
       it "cannot reach #{name}" do
-        get path
+        get format(path, senior_id: care_receiver.id)
 
         expect(response).not_to have_http_status(:ok),
           "#{path} answered 200 to a reminder-link cookie"
@@ -258,6 +261,15 @@ RSpec.describe "A reminder link", type: :request do
       expect(doc.css("a[href='#{dashboard_path}']")).to be_empty
     end
 
+    # The failure this prevents is quiet: /acknowledgements does not accept a
+    # reminder-link cookie, so a Done button here would POST, be answered with
+    # the login page, and be reported by fetch() as a perfectly good 200. The
+    # care receiver would press it, nothing would change, and the caregiver
+    # would be told the dose was missed.
+    it "does not offer a Done button it cannot honour" do
+      expect(doc.at_css("body")["data-can-acknowledge"]).to eq("false")
+    end
+
     it "keeps itself out of search results" do
       expect(doc.at_css("meta[name='robots']")&.[]("content")).to include("noindex")
     end
@@ -277,6 +289,16 @@ RSpec.describe "A reminder link", type: :request do
   # A signed-in care receiver reaches the same page through the nav, and should
   # still have a way back to the rest of the app.
   describe "the page when somebody is signed in" do
+    it "can still mark reminders done" do
+      post "/magic/verify", params: {
+        token: care_receiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
+      }
+
+      get "/voice_reminders"
+
+      expect(Nokogiri::HTML(response.body).at_css("body")["data-can-acknowledge"]).to eq("true")
+    end
+
     it "offers the way back that link mode does not" do
       post "/magic/verify", params: {
         token: care_receiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
@@ -386,12 +408,51 @@ RSpec.describe "A reminder link", type: :request do
     end
   end
 
+  # A token in a log line is a credential in a log line. filter_parameters does
+  # not reach path segments — it filters the query string and the parsed params —
+  # so Rails' own "Started GET" line was writing the token verbatim.
+  describe "what reaches the logs" do
+    def filtered(path) = ActionDispatch::Request.new(Rack::MockRequest.env_for(path)).filtered_path
+
+    it "redacts the token from the request path" do
+      expect(filtered("/r/#{link.token}")).to eq("/r/[FILTERED]")
+    end
+
+    it "leaves every other path alone" do
+      expect(filtered("/voice_reminders")).to eq("/voice_reminders")
+      expect(filtered("/reminders/12/edit")).to eq("/reminders/12/edit")
+    end
+
+    # Anchored and stopping at the next separator, so it redacts the token and
+    # not any path that merely starts the same way.
+    it "does not swallow a longer path that begins the same way" do
+      expect(filtered("/reports/2026")).to eq("/reports/2026")
+    end
+  end
+
   describe "minting" do
     it "gives each link its own token" do
       other = create(:user, :senior, name: "Dad", tz: "America/New_York")
 
       expect(ReminderLink.mint(user: care_receiver).token)
         .not_to eq(ReminderLink.mint(user: other).token)
+    end
+
+    # The index refusing a racing caregiver is correct; a 500 in their browser
+    # is not. Whichever link now exists is real, so the honest answer is to say
+    # somebody else got there first rather than to retry and revoke what they
+    # are at that moment reading off their screen.
+    it "tells a caregiver who lost the race, rather than failing" do
+      CaregiverLink.create!(senior: care_receiver, caregiver: caregiver, permission: :manage)
+      post "/magic/verify", params: {
+        token: caregiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
+      }
+      allow(ReminderLink).to receive(:mint).and_raise(ActiveRecord::RecordNotUnique.new("duplicate"))
+
+      post "/dashboard/senior/#{care_receiver.id}/reminder_link"
+
+      expect(response).to redirect_to(senior_dashboard_path(care_receiver))
+      expect(flash[:alert]).to match(/somebody else created a link/i)
     end
 
     # The database, not the controller's good intentions. Two caregivers

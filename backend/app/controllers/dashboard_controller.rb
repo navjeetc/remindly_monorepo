@@ -284,6 +284,15 @@ class DashboardController < WebController
 
     redirect_to senior_dashboard_path(senior),
       notice: "New link ready for #{senior.display_name}'s device. The old one has stopped working."
+  rescue ActiveRecord::RecordNotUnique
+    # Two caregivers pressed the button together and the database refused the
+    # loser, which is the index doing its job. Saying so is better than a 500,
+    # and better than retrying: whichever link now exists is a real one, and a
+    # second replacement would only revoke what the other caregiver is at that
+    # moment reading off their screen.
+    redirect_to senior_dashboard_path(senior),
+      alert: "Somebody else created a link for #{senior.display_name} just now. " \
+             "The one shown below is the live one."
   end
 
   # Ends the link and nothing else. It cannot remove a caregiver, cannot touch

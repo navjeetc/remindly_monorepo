@@ -44,15 +44,19 @@
 
       <% if permission == "manage" %>
         <div class="mt-4 flex items-center gap-3">
+          <%# Plain onclick, not turbo_confirm: this layout loads Tailwind and
+              nothing else — no Turbo, no UJS — so data-turbo-confirm is inert,
+              and a button that looks like it asks would revoke on one click.
+              Same reason the caregiver buttons on the dashboard use onclick. %>
           <%= button_to "Replace this link",
                 senior_reminder_link_path(senior_id: senior.id),
-                class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer",
-                form: { data: { turbo_confirm: "The bookmark on their device will stop working. Carry on?" } } %>
+                onclick: "return confirm('#{j 'The bookmark on their device will stop working, and you will need to set it up again. Carry on?'}')",
+                class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
 
           <%= button_to "Stop this link",
                 revoke_senior_reminder_link_path(senior_id: senior.id, id: reminder_link.id),
-                class: "inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 cursor-pointer",
-                form: { data: { turbo_confirm: "Their device will stop showing reminders. Carry on?" } } %>
+                onclick: "return confirm('#{j 'Their device will stop showing reminders. Carry on?'}')",
+                class: "inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 cursor-pointer" %>
         </div>
       <% end %>
     <% else %>

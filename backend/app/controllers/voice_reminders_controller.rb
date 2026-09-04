@@ -80,18 +80,20 @@ class VoiceRemindersController < WebController
     @link_mode_link
   end
 
-  # Only ever consulted when the session lookup came back empty, which is what
-  # makes the flag it sets an honest answer to "which credential let this
-  # person in" rather than "which credentials are present".
-  def link_mode_user
-    user = link_mode_link&.user
-    @arrived_by_link = user.present?
-    user
-  end
+  def link_mode_user = link_mode_link&.user
 
+  # Asked directly rather than inferred from which branch of `current_user`
+  # happened to fire.
+  #
+  # This used to read a flag that `link_mode_user` set as a side effect, which
+  # was correct only for as long as nobody reordered `current_user` — and what
+  # depends on the answer is whether the layout shows Sign Out and Profile to
+  # somebody with no account. A guarantee that survives a refactor is worth more
+  # than one that happens to hold today.
   def link_mode?
-    current_user
-    @arrived_by_link.present?
+    return false if session[:jwt_token].present? || cookies.encrypted[:jwt_token].present?
+
+    current_user.present? && link_mode_link.present?
   end
   helper_method :link_mode?
 
