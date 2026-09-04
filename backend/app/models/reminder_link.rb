@@ -93,9 +93,14 @@ class ReminderLink < ApplicationRecord
   # a tablet that had been working perfectly all along, which is worse than
   # saying nothing: the one number a caregiver would use to spot a dead device
   # would be wrong in exactly the direction that causes a false alarm.
+  # Returns whether it actually wrote, which the caller uses to decide whether
+  # to slide the cookie's expiry forward at the same time — the two are the same
+  # question ("has this device been heard from lately") answered in two places,
+  # and doing them together keeps them from disagreeing.
   def record_use_if_stale!(at: Time.current)
-    return if last_used_at.present? && last_used_at > at - USE_RECORDED_EVERY
+    return false if last_used_at.present? && last_used_at > at - USE_RECORDED_EVERY
 
     record_use!(at: at)
+    true
   end
 end

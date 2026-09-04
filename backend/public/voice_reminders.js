@@ -147,6 +147,17 @@ class VoiceRemindersApp {
                 credentials: 'include' // Important for session cookies
             });
             
+            // The credential stopped working — the link was revoked, or a
+            // session expired. Reloading lands on whatever this device is
+            // actually entitled to now, which is usually the login page.
+            // Without this the page keeps showing the reminders it already had
+            // and goes on announcing them, looking exactly as it does when
+            // everything is fine.
+            if (response.status === 401) {
+                window.location.reload();
+                return;
+            }
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }

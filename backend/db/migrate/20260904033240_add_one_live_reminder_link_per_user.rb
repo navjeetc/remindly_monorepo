@@ -12,7 +12,7 @@
 # Partial index, so revoked rows are exempt. They accumulate on purpose: a
 # revoked link keeps its last_used_at, which is the only record that a device
 # was ever really used.
-class AddOneLiveReminderLinkPerUser < ActiveRecord::Migration[8.0]
+class AddOneLiveReminderLinkPerUser < ActiveRecord::Migration[8.1]
   def change
     add_index :reminder_links, :user_id,
               unique: true,

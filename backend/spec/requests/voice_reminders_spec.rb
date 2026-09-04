@@ -150,10 +150,13 @@ RSpec.describe "The voice reminders page", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # A status rather than a redirect, because this endpoint is only ever read
+    # by fetch(), which follows redirects and would hand the page a 200 full of
+    # login HTML.
     it "refuses a stranger" do
       get "/voice_reminders/today"
 
-      expect(response).to redirect_to(login_path)
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 end

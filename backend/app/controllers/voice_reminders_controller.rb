@@ -25,7 +25,8 @@ class VoiceRemindersController < WebController
   rate_limit to: 20, within: 1.minute, only: :show, if: -> { params[:token].present? }
 
   before_action :redeem_token, only: :show
-  before_action :authenticate!
+  before_action :authenticate!, only: :show
+  before_action :authenticate_poll!, only: :today
   before_action :care_receivers_only!, only: :show
 
   layout "voice"
@@ -93,6 +94,23 @@ class VoiceRemindersController < WebController
 
   private
 
+  # The poll answers with a status rather than a redirect.
+  #
+  # WebController's authenticate! redirects to the login page, which is the
+  # right answer for somebody typing a URL and the wrong one for fetch(): the
+  # browser follows the redirect, hands back a 200 full of HTML, the JSON parse
+  # throws, and the page goes on showing the reminders it already had. A device
+  # whose link was revoked an hour ago would keep announcing them, and the
+  # screen would look exactly as it does when everything is fine.
+  #
+  # A 401 is something the client can act on, and it does — see the reload in
+  # public/voice_reminders.js.
+  def authenticate_poll!
+    return if current_user
+
+    render json: { error: "Unauthorized" }, status: :unauthorized
+  end
+
   # `GET /r/<token>` renders this page directly. It used to set the cookie and
   # redirect here, which put the token out of the address bar — and quietly
   # broke the promise the whole feature exists to keep.
@@ -149,12 +167,21 @@ class VoiceRemindersController < WebController
   # receiver's next poll — seconds — without anything having to chase cookies
   # that were already handed out.
   # Wrapped so that a device polling this page keeps its "last heard from"
-  # fresh. The concern's own lookup stays side-effect free, because the
-  # acknowledgement endpoint includes it too and a write per keypress there
-  # would be recording the same fact twice.
+  # fresh, and keeps its cookie. The concern's own lookup stays side-effect
+  # free, because the acknowledgement endpoint includes it too and a write per
+  # keypress there would be recording the same fact twice.
+  #
+  # Sliding the expiry matters more than it looks. The cookie was set once, for
+  # a year, and never renewed — so a tablet in continuous daily use would have
+  # silently lost its authorisation on the anniversary of the day it was set up,
+  # landing on a login page nobody reads. That is precisely the failure this
+  # whole feature exists to end, arriving twelve months later instead of one.
+  #
+  # Renewed on the same throttle as the timestamp, so a device polling every few
+  # seconds writes one cookie every ten minutes rather than one per request.
   def link_mode_link
     link = super
-    link&.record_use_if_stale!
+    remember_reminder_link(link) if link&.record_use_if_stale!
     link
   end
 

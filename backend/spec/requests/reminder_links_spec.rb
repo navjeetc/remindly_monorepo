@@ -177,13 +177,18 @@ RSpec.describe "A reminder link", type: :request do
       expect(response).to redirect_to(login_path)
     end
 
+    # A status, not a redirect. fetch() follows redirects, so a login page comes
+    # back as a 200 full of HTML and the device would go on announcing the
+    # reminders it already had — looking exactly as it does when everything
+    # works, for as long as the tablet stays on.
     it "stops the polling too" do
       redeem
       link.revoke!
 
       get "/voice_reminders/today"
 
-      expect(response).to redirect_to(login_path)
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body["error"]).to eq("Unauthorized")
     end
   end
 
@@ -627,6 +632,31 @@ RSpec.describe "A reminder link", type: :request do
       end
 
       expect(occ.reload.status).to eq("pending")
+    end
+  end
+
+  # A cookie set once for a year and never renewed would expire under a tablet
+  # in daily use, on the anniversary of the day it was set up — the very failure
+  # this feature exists to end, arriving twelve months later instead of one.
+  describe "keeping an active device authorised" do
+    it "renews the cookie when it records the device as alive" do
+      redeem
+
+      travel(11.months) do
+        get "/voice_reminders/today"
+
+        expect(response.headers["Set-Cookie"].to_s).to include("reminder_link")
+      end
+    end
+
+    # On the same throttle as the timestamp: a device polling every few seconds
+    # writes one cookie every ten minutes, not one per request.
+    it "does not rewrite it on every poll" do
+      redeem
+
+      get "/voice_reminders/today"
+
+      expect(response.headers["Set-Cookie"].to_s).not_to include("reminder_link")
     end
   end
 

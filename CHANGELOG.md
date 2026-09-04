@@ -75,6 +75,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   application can reach — a residual on our own server, and part of why
   revocation is first-class rather than an afterthought.
 
+  Two ways a working device could have gone quiet, both closed. The cookie is
+  renewed whenever the device is recorded as alive, so a tablet in daily use
+  cannot lose its authorisation on the anniversary of the day it was set up —
+  which is this feature's own failure mode arriving twelve months late. And the
+  JSON the page polls now answers an invalid credential with a status rather
+  than a redirect: `fetch` follows redirects, so a login page came back as a
+  perfectly good response full of HTML, and a device whose link had been revoked
+  an hour earlier would have gone on announcing the reminders it already had,
+  looking exactly as it does when everything works.
+
   A session that expires underneath the device now falls back to the link
   rather than being treated as a sign-in that no longer works. A JWT that has
   expired is still *present*, and asking only whether one existed would have

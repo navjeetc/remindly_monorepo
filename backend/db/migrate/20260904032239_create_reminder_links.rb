@@ -8,7 +8,7 @@
 # and the first anyone knows is that acknowledgements stopped. `last_used_at`
 # gives a caregiver visibility without a deadline, and `revoked_at` gives them
 # an ending they choose.
-class CreateReminderLinks < ActiveRecord::Migration[8.0]
+class CreateReminderLinks < ActiveRecord::Migration[8.1]
   def change
     create_table :reminder_links do |t|
       t.references :user, null: false, foreign_key: true
