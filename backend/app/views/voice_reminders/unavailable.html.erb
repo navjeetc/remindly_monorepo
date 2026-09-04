@@ -1,0 +1,28 @@
+<%#
+  What a device sees when its link no longer works.
+
+  It replaces a blank page. `head :not_found` was correct as a status and
+  useless as an answer: the device reloads its bookmark, gets an empty body, and
+  a care receiver is looking at a white screen with nothing on it — on the one
+  screen in this product belonging to the person least able to work out what
+  happened or what to do about it.
+
+  Deliberately says nothing about *why*. A revoked link and an invented one get
+  this same page, word for word, because telling somebody holding a dead link
+  that it was once real is exactly the disclosure the identical-404 rule exists
+  to prevent. "Ask the person who set this up" is true either way, and is the
+  only useful instruction for somebody with no account to sign in to.
+%>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  <div class="text-center">
+    <p class="text-5xl font-bold text-gray-900 mb-4">This page isn't working</p>
+
+    <p class="text-2xl text-gray-600 mb-8">
+      Ask the person who set up your reminders to send you a new link.
+    </p>
+
+    <p class="text-xl text-gray-500">
+      Your reminders are safe. Nothing has been lost.
+    </p>
+  </div>
+</div>

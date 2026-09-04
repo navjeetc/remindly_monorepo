@@ -10,7 +10,7 @@ class Ahoy::Store < Ahoy::DatabaseStore
   # public pages were not tracked. Deriving the list from the routes themselves
   # is what stops that happening again the next public page we add.
   def exclude?
-    super || public_page?
+    super || public_page? || credential_in_the_path?
   end
 
   private
@@ -28,6 +28,19 @@ class Ahoy::Store < Ahoy::DatabaseStore
   # Blog posts need a prefix match because their paths are dynamic. Nothing else
   # may be matched by prefix — "/" is in STATIC_PATHS, and every path starts
   # with it.
+  # A reminder link puts its credential in the address, and Ahoy records
+  # request.original_url as landing_page — so without this every redemption
+  # writes a live, non-expiring key into ahoy_visits in plaintext, keeps it
+  # indefinitely, and renders it on the admin audit screen. That is a worse
+  # place for it than the request log this project already redacts, because a
+  # log rotates and a table does not.
+  #
+  # Not folded into public_page?: /r/ is the opposite of a public page. It is
+  # excluded because of what the path carries, not because of who may read it.
+  def credential_in_the_path?
+    request&.path.to_s.start_with?("/r/")
+  end
+
   def public_page?
     path = request&.path
     return false if path.blank?

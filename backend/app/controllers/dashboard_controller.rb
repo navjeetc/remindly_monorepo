@@ -1,14 +1,22 @@
 class DashboardController < WebController
   before_action :authenticate!
-  before_action :check_role!, except: [ :profile, :update_profile, :select_role, :how_to, :contact, :submit_contact, :voice_reminders ]
+  before_action :check_role!, except: [ :profile, :update_profile, :select_role, :how_to, :contact, :submit_contact ]
   layout "dashboard"
 
   # A caregiver's reminder writes live here rather than in RemindersController,
   # which only ever touches current_user.reminders — somebody's own. Listed by
   # name because these five actions each resolve their own senior, so there is
   # no shared before_action to hang this on.
+  # Minting a device link hands out a credential to this care receiver's
+  # reminders and revoking one takes their tablet offline, so both sit in the
+  # same list as the reminder writes.
+  #
+  # One declaration, deliberately: a second `before_action :require_manage_for_reminder!`
+  # with its own `only:` does not add a filter, it replaces this one — which
+  # silently removed the guard from every reminder action when it was tried.
   before_action :require_manage_for_reminder!,
-    only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder]
+    only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder
+             create_reminder_link revoke_reminder_link]
 
   # Inviting is a write too, and the sharpest one: an invitation creates a
   # manage link. Without this a view-only caregiver could invite an address they
@@ -259,6 +267,62 @@ class DashboardController < WebController
     end
   end
 
+  # Mints the link a device bookmarks.
+  #
+  # One live link per care receiver: any existing one is revoked first, so
+  # "generate" cannot quietly leave two credentials outstanding where the
+  # caregiver believes there is one. Replacing a link is therefore a visible act
+  # with a visible cost — the old bookmark stops working — rather than an
+  # accumulation nobody can see.
+  def create_reminder_link
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+
+    replaced = false
+
+    ActiveRecord::Base.transaction do
+      ReminderLink.live.where(user_id: senior.id).find_each do |live|
+        live.revoke!
+        replaced = true
+      end
+      @reminder_link = ReminderLink.mint(user: senior)
+    end
+
+    # Only claim a bookmark stopped working if one did. On this screen, whose
+    # whole job is making the state of a device legible, telling a caregiver
+    # their first link replaced something is a small lie in the one place they
+    # are trying to build a picture of what is set up.
+    notice = "New link ready for #{senior.display_name}'s device."
+    notice += " The old one has stopped working." if replaced
+
+    redirect_to senior_dashboard_path(senior), notice: notice
+  rescue ActiveRecord::RecordNotUnique
+    # Two caregivers pressed the button together and the database refused the
+    # loser, which is the index doing its job. Saying so is better than a 500,
+    # and better than retrying: whichever link now exists is a real one, and a
+    # second replacement would only revoke what the other caregiver is at that
+    # moment reading off their screen.
+    redirect_to senior_dashboard_path(senior),
+      alert: "Somebody else created a link for #{senior.display_name} just now. " \
+             "The one shown below is the live one."
+  end
+
+  # Ends the link and nothing else. It cannot remove a caregiver, cannot touch
+  # the account, and cannot be used against anybody: a revoked token answers
+  # exactly as an invented one does.
+  def revoke_reminder_link
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+    revoked = ReminderLink.live.where(user_id: senior.id).find_by(id: params[:id])&.revoke!
+
+    # A stale page or a double-submitted form matches nothing, and confirming a
+    # revocation this request did not perform is how somebody comes away
+    # believing a device was cut off when it never was.
+    if revoked
+      redirect_to senior_dashboard_path(senior), notice: "That device link has stopped working."
+    else
+      redirect_to senior_dashboard_path(senior), alert: "That device link had already been stopped."
+    end
+  end
+
   # Asks the number whether it agrees. This is the only thing a caregiver can do
   # towards enabling calls, and it can only ask.
   def verify_phone
@@ -445,6 +509,7 @@ class DashboardController < WebController
     link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
     @senior = link.senior
     @permission = link.permission
+    @reminder_link = ReminderLink.live.find_by(user_id: @senior.id)
 
     # Get today's reminders
     #
@@ -775,54 +840,6 @@ class DashboardController < WebController
     ).deliver_later
 
     redirect_to senior_dashboard_path(@senior), notice: "Successfully invited #{caregiver_email} to help with #{@senior.display_name}"
-  end
-
-  # Voice reminders interface - session-based authentication
-  def voice_reminders
-    # Only seniors can access voice reminders
-    unless current_user.role_senior?
-      redirect_to dashboard_path, alert: "Voice reminders are only available for care receivers"
-      nil
-    end
-
-    # Use dashboard layout for consistent navigation
-  end
-
-  # API endpoint for voice reminders - session-based
-  def today_reminders_json
-    # Only seniors can access their own reminders
-    unless current_user.role_senior?
-      render json: { error: "Unauthorized" }, status: :unauthorized
-      return
-    end
-
-    tz = ActiveSupport::TimeZone[current_user.tz]
-    now = tz.now.beginning_of_day
-    end_of_day = now.end_of_day
-
-    Rails.logger.info "🔍 Voice Reminders Debug:"
-    Rails.logger.info "  User: #{current_user.email} (tz: #{current_user.tz})"
-    Rails.logger.info "  Time range: #{now} to #{end_of_day}"
-
-    occurrences = Occurrence
-      .joins(:reminder)
-      .where(reminders: { user_id: current_user.id })
-      .where(scheduled_at: now..end_of_day)
-      .where(status: :pending)
-      .order(:scheduled_at)
-
-    Rails.logger.info "  Found #{occurrences.count} occurrences"
-
-    render json: occurrences.map { |occ|
-      {
-        id: occ.id,
-        title: occ.reminder.title,
-        description: occ.reminder.notes || "",
-        scheduled_at: occ.scheduled_at,
-        acknowledged_at: (occ.status == "acknowledged" ? occ.updated_at : nil),
-        snoozed_until: nil
-      }
-    }
   end
 
   private

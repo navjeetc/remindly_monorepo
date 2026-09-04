@@ -48,6 +48,12 @@
     <%= render "dashboard/phone_reminders", senior: @senior, permission: @permission, attempts: @verification_attempts %>
   <% end %>
 
+  <%# Outside the phone-calls flag on purpose: the device link is the screen
+      channel, and it works for a care receiver who has no telephone at all. %>
+  <div class="mt-6">
+    <%= render "dashboard/reminder_link", senior: @senior, permission: @permission, reminder_link: @reminder_link %>
+  </div>
+
   <!-- Stats -->
   <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
     <div class="bg-white overflow-hidden shadow rounded-lg">

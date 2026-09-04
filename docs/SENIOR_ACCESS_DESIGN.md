@@ -360,16 +360,29 @@ strongest argument for easy revocation and visible "last used" information.
 ### Flow
 
 1. `GET /r/<token>` looks up a live link, sets a long-lived signed cookie
-   identifying the senior in **link mode**, touches `last_used_at`, and redirects
-   to `/voice_reminders`
-2. The token is out of the address bar and out of history going forward, and no
-   longer appears in referrers
-3. The bookmark still points at `/r/<token>`, so clearing cookies or resetting
-   the device recovers by itself
+   identifying the senior in **link mode**, touches `last_used_at`, and
+   **renders the voice page at that same address**
+2. The bookmark is therefore `/r/<token>`, and clearing cookies or resetting the
+   device recovers by itself
+3. The cookie still matters: the JSON the page polls lives at another path,
+   which the bookmarked address does not cover
 
-That last point is the real advantage over simply extending the session to a
-year: **a bookmarked capability URL survives cookie loss; a long session does
-not.**
+**Amended 2026-09-04, during implementation.** This step originally redirected
+to `/voice_reminders` so the token left the address bar. That defeats the
+feature: a caregiver opens the link on the tablet and *then* bookmarks it — or
+adds it to the home screen, which captures the current URL — so what gets saved
+after a redirect is a tokenless address that works only while the cookie lives.
+Six months later the cookies clear and the bookmark lands on a login page, which
+is the exact failure this design exists to end.
+
+So the token stays in the address bar. What that costs is browser history and
+shoulder-surfing on the care receiver's own device; what it buys is the property
+that is the whole point. The referrer leak the redirect also addressed is closed
+another way — the voice page loads no third-party assets at all, asserted by a
+spec.
+
+That is the real advantage over simply extending the session to a year: **a
+bookmarked capability URL survives cookie loss; a long session does not.**
 
 ### Rate limiting
 
@@ -413,6 +426,14 @@ after.
 
 **Phase 2 — done and snooze.** The third auth scheme in
 `AcknowledgementsController`. Makes revocation matter.
+
+**Built alongside phase 1, 2026-09-04**, rather than after it. Testing phase 1
+by hand made the reason obvious: a device authorised by a bookmark could hear
+every reminder and mark none of them done, so every dose would have become a
+missed-dose email and the caregiver told nothing was taken. Read-only is
+defensible on paper — "the senior can still sign in to mark something done" —
+and not in a kitchen, where the tablet *is* the interaction. Shipping the two
+together is what makes a link something a household can be told to use.
 
 **Phase 3 — caregiver-creates-senior.** The `provisional` state, the first-run
 screen, self-revocation, and the code display on the caregiver's side.

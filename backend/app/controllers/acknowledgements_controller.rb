@@ -1,13 +1,28 @@
-# Two different clients acknowledge reminders, and they authenticate differently:
+# Three different clients acknowledge reminders, and they authenticate
+# differently:
 #
 #   /voice_reminders   Rails page, session cookie + CSRF token (what seniors use)
 #   /client/           static JS app, Authorization: Bearer <jwt>, no CSRF token
+#   a reminder link    the same page on a device that never signs in, identified
+#                      by the signed cookie a bookmarked /r/<token> leaves behind
 #
 # Inheriting from WebController alone rejected the Bearer client at the forgery
 # check (422); inheriting from ApplicationController alone rejected the session
 # client, because its current_user only reads the Authorization header (401).
 # Either choice breaks one of them, so this accepts both.
+# The third is the reason a device link is worth having at all. A care receiver
+# whose tablet is authorised by a bookmark rather than a session could otherwise
+# hear every reminder and mark none of them done — so every dose would become a
+# missed-dose email, and the caregiver would be told nothing was taken.
+#
+# It is accepted without loosening either of the others. Bearer still decides on
+# its own; the session still decides before the link is consulted; and forgery
+# protection is untouched, because a link-mode page is still issued a session
+# cookie and still renders csrf_meta_tags — so the CSRF token in the page and
+# the one in the session match, exactly as they do for a signed-in senior. This
+# deliberately does not copy SubscribersController's skip: nothing here needs it.
 class AcknowledgementsController < WebController
+  include ReminderLinkMode
   # Skip forgery protection only for the Bearer scheme this API uses. Matching any
   # Authorization header would also disable CSRF for Basic auth injected by a
   # reverse proxy, which has nothing to do with this client.
@@ -94,10 +109,15 @@ class AcknowledgementsController < WebController
   # header, so an expired token would quietly succeed as whoever owns the browser
   # session instead of returning 401 — no stale-token logout, and one user's
   # stale action applied to another's account.
+  # A reminder link is consulted last, and only when nothing else answered, so
+  # adding it cannot change what an existing client resolves to. The occurrence
+  # lookups in both actions are already scoped to `current_user`, which is what
+  # stops a link acknowledging somebody else's reminder — one credential, one
+  # care receiver, enforced by the same query that always enforced it.
   def current_user
     return @current_user if defined?(@current_user)
 
-    @current_user = bearer_scheme? ? bearer_user : super
+    @current_user = bearer_scheme? ? bearer_user : (super || link_mode_user)
   end
 
   # RFC 7235 makes auth scheme names case-insensitive, so "bearer <token>" is as
