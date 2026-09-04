@@ -25,29 +25,50 @@ RSpec.describe "A reminder link", type: :request do
   end
 
   describe "redeeming one" do
-    it "lands on the voice page" do
+    # Served at the address itself rather than redirected to a tidier one.
+    #
+    # The bookmark is the credential, and a caregiver bookmarks what the address
+    # bar says after they open the page — so a redirect would have them saving a
+    # tokenless address that works only while the cookie lives. Six months later
+    # the cookies clear and that bookmark lands on a login page: the exact
+    # failure this feature exists to end.
+    it "shows the reminders at the address that was opened" do
       redeem
 
-      expect(response).to redirect_to(voice_reminders_path)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("My Reminders")
     end
 
-    # The point of the exchange. After the redirect the token is out of the
-    # address bar, so it stops appearing in history, in referrers, and to
-    # anybody reading the screen — while the bookmark still holds it, which is
-    # what makes the setup survive cookie loss.
-    it "leaves the token out of the page it lands on" do
+    # The credential is in the address, deliberately. It should still not be
+    # printed into the page, where it would end up in a screenshot a caregiver
+    # sends someone.
+    it "does not print the token into the page" do
       redeem
-      follow_redirect!
 
       expect(response.body).not_to include(link.token)
     end
 
-    it "opens the voice page without signing in" do
+    it "keeps working at the same address after the cookies are cleared" do
       redeem
-      follow_redirect!
+      expect(response).to have_http_status(:ok)
 
+      # What a device reset, a cleared browser or a new tablet looks like: the
+      # bookmark survives, everything else is gone.
+      reset!
+
+      redeem
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("My Reminders")
+    end
+
+    # The cookie is what lets the page poll: the JSON lives at another path,
+    # which the bookmarked address does not cover.
+    it "leaves the device able to poll" do
+      redeem
+
+      get "/voice_reminders/today"
+
+      expect(response).to have_http_status(:ok)
     end
 
     it "reads that care receiver's reminders" do
@@ -236,10 +257,7 @@ RSpec.describe "A reminder link", type: :request do
   describe "the page it lands on" do
     def doc = Nokogiri::HTML(response.body)
 
-    before do
-      redeem
-      follow_redirect!
-    end
+    before { redeem }
 
     it "loads no third-party assets" do
       external = doc.css("script[src], link[rel='stylesheet'], img[src], iframe[src]")
@@ -283,6 +301,50 @@ RSpec.describe "A reminder link", type: :request do
 
       expect(Nokogiri::HTML(response.body).at_css("html")["style"])
         .to include(User::TEXT_SCALES.fetch("largest").to_s)
+    end
+  end
+
+  # The case this whole feature exists for, and the one that would have got it
+  # wrong: the tablet is signed in until it is not. A JWT that has expired is
+  # still *present*, so asking whether a session token exists said "signed in"
+  # while the session no longer authenticated anything — and the page would then
+  # have offered Done and Snooze buttons that the expired credential cannot
+  # honour, failing silently on the one screen a care receiver relies on.
+  describe "a device whose session has expired underneath it" do
+    it "falls back to the link and knows it did" do
+      # Signed in for real, then left alone past the JWT's life.
+      post "/magic/verify", params: {
+        token: care_receiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
+      }
+      redeem
+
+      travel(31.days) do
+        get "/voice_reminders"
+
+        expect(response).to have_http_status(:ok)
+        doc = Nokogiri::HTML(response.body)
+        expect(doc.at_css("body")["data-can-acknowledge"]).to eq("false")
+        expect(doc.text).not_to include("Back to Remindly")
+      end
+    end
+
+    # And it still shows the reminders rather than a login page, which is the
+    # failure the link was built to end.
+    it "keeps announcing" do
+      post "/magic/verify", params: {
+        token: care_receiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
+      }
+      redeem
+      tz = ActiveSupport::TimeZone["America/New_York"]
+
+      travel(31.days) do
+        reminder_due(tz.now + 2.hours)
+
+        get "/voice_reminders/today"
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body.size).to eq(1)
+      end
     end
   end
 

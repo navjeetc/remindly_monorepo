@@ -15,6 +15,15 @@
 # which is the property `docs/SENIOR_ACCESS_DESIGN.md` asks for and the reason
 # this is a separate file rather than two more `before_action` exceptions.
 class VoiceRemindersController < WebController
+  # Redeeming happens here rather than in a controller of its own, so that the
+  # bookmarkable address and the page it shows are the same address. See
+  # #redeem_token.
+  #
+  # Guessing 32 bytes is not a real threat; the limit is here so enumeration
+  # attempts cost something and do not quietly fill the logs.
+  rate_limit to: 20, within: 1.minute, only: :show, if: -> { params[:token].present? }
+
+  before_action :redeem_token, only: :show
   before_action :authenticate!
   before_action :care_receivers_only!, only: :show
 
@@ -57,6 +66,48 @@ class VoiceRemindersController < WebController
 
   private
 
+  # `GET /r/<token>` renders this page directly. It used to set the cookie and
+  # redirect here, which put the token out of the address bar — and quietly
+  # broke the promise the whole feature exists to keep.
+  #
+  # The bookmark is the credential. A caregiver follows the instruction on the
+  # panel — open it on the tablet, then bookmark it — and after a redirect the
+  # address bar says `/voice_reminders`, so what gets saved, or added to the
+  # home screen, is a tokenless address that works only while the cookie lives.
+  # Clear the cookies six months later and that bookmark lands on a login page:
+  # exactly the failure this was built to end, reintroduced by the redirect that
+  # was tidying the URL.
+  #
+  # So the token stays in the address bar. What that costs is history and
+  # shoulder-surfing on the care receiver's own device; what it buys is a
+  # bookmark that still works after a device reset. The referrer leak the
+  # redirect was also guarding against is closed a different way — this page
+  # loads no third-party assets at all, which a spec asserts.
+  #
+  # The cookie is still set, because the JSON the page polls lives at another
+  # path and needs a credential of its own.
+  def redeem_token
+    return if params[:token].blank?
+
+    link = ReminderLink.live_by_token(params[:token])
+
+    # A revoked token and a made-up one are answered identically. Distinguishing
+    # them would tell whoever holds a dead link that it was once real, and tell
+    # an enumerator which guesses were close.
+    return head :not_found unless link
+
+    cookies.signed[LINK_COOKIE] = {
+      value: link.id,
+      expires: LINK_COOKIE_LIFETIME.from_now,
+      httponly: true,
+      same_site: :lax,
+      secure: Rails.env.production?
+    }
+
+    @link_mode_link = link
+    link.record_use_if_stale!
+  end
+
   # Session first, then link mode.
   #
   # This override is the entire opt-in, and it lives in one controller on
@@ -64,18 +115,27 @@ class VoiceRemindersController < WebController
   # a route added to the dashboard next year cannot accept one by forgetting
   # something — it would have to ask for it. That is what makes the boundary a
   # wall rather than a flag.
+  # @session_user is assigned on the same expression that resolves it, so it is
+  # nil exactly when the session credential did not authenticate — including
+  # when a JWT is present but expired, which is the case this page exists for.
+  # Asking whether a token is merely *present* got that backwards: a tablet
+  # carrying a stale JWT would have been treated as signed in, and shown Done
+  # and Snooze buttons that its credential can no longer honour.
   def current_user
-    @current_user ||= super || link_mode_user
+    @current_user ||= (@session_user = super) || link_mode_user
   end
 
   # The link is re-read from the database on every request rather than trusted
   # from the moment it was redeemed, so revoking one takes effect on the care
   # receiver's next poll — seconds — without anything having to chase cookies
   # that were already handed out.
+  LINK_COOKIE = :reminder_link
+  LINK_COOKIE_LIFETIME = 1.year
+
   def link_mode_link
     return @link_mode_link if defined?(@link_mode_link)
 
-    @link_mode_link = ReminderLink.live.find_by(id: cookies.signed[ReminderLinksController::COOKIE])
+    @link_mode_link = ReminderLink.live.find_by(id: cookies.signed[LINK_COOKIE])
     @link_mode_link&.record_use_if_stale!
     @link_mode_link
   end
@@ -91,9 +151,9 @@ class VoiceRemindersController < WebController
   # somebody with no account. A guarantee that survives a refactor is worth more
   # than one that happens to hold today.
   def link_mode?
-    return false if session[:jwt_token].present? || cookies.encrypted[:jwt_token].present?
+    current_user
 
-    current_user.present? && link_mode_link.present?
+    @session_user.nil? && current_user.present? && link_mode_link.present?
   end
   helper_method :link_mode?
 

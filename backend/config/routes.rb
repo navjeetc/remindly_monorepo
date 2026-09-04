@@ -66,7 +66,7 @@ Rails.application.routes.draw do
   # typed on a tablet by somebody whose eyesight is part of why you are setting
   # this up. The token is exchanged for a cookie and dropped from the address
   # bar on the redirect.
-  get  "r/:token", to: "reminder_links#show", as: :reminder_link
+  get  "r/:token", to: "voice_reminders#show", as: :reminder_link
 
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
   get  "voice_reminders/today", to: "voice_reminders#today", as: :voice_reminders_today

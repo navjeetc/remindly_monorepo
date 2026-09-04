@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-04
+
 ### Added
 - **A device link, so a care receiver's tablet stops logging itself out.** Their
   session expires, the screen shows a login page nobody reads, and the first
@@ -32,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Last heard from" on the caregiver's panel is the point of the whole thing: a
   device that has gone quiet says so before anybody misses a dose over it.
 
+  The address the device bookmarks is the address that shows the reminders. An
+  earlier draft redirected to a tidier URL, which would have had caregivers
+  bookmarking a tokenless address that works only while the cookie lives — the
+  exact failure this feature exists to end, reintroduced by tidying the URL.
+
   On a link the Done and Snooze buttons are not drawn at all, because the
   acknowledgement endpoints do not accept that credential yet — and a button
   posting to them would have been answered with the login page, which the
@@ -45,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   kamal-proxy still logs the path before Rails sees it, which nothing in the
   application can reach — a residual on our own server, and part of why
   revocation is first-class rather than an afterthought.
+
+  A session that expires underneath the device now falls back to the link
+  rather than being treated as a sign-in that no longer works. A JWT that has
+  expired is still *present*, and asking only whether one existed would have
+  shown Done and Snooze to a tablet whose credential can no longer honour them —
+  in precisely the situation the link was built to recover from.
 
   This is phase 1 of `docs/SENIOR_ACCESS_DESIGN.md`. Marking a dose done from a
   link, and creating an account for somebody who never signed up, come after it.
