@@ -59,6 +59,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shown Done and Snooze to a tablet whose credential can no longer honour them —
   in precisely the situation the link was built to recover from.
 
+  Three smaller things on the same page, two of them older than this work. The
+  settings dialog opened as a plain block that shoved the reminders down the
+  page — its class names were never defined anywhere, under the CDN either — and
+  is now a dialog. The script was cache-busted with `Time.now.to_i`, which
+  changes every second, so the tablet re-downloaded it on every load; it is
+  versioned on the file's own timestamp instead. And the day the JSON is read
+  for is now taken from a single clock reading, so a request landing on midnight
+  cannot take its start from one day and its end from the next.
+
   This is phase 1 of `docs/SENIOR_ACCESS_DESIGN.md`. Marking a dose done from a
   link, and creating an account for somebody who never signed up, come after it.
 

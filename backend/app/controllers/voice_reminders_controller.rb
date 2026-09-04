@@ -29,7 +29,23 @@ class VoiceRemindersController < WebController
 
   layout "voice"
 
+  helper_method :voice_script_version
+
   def show; end
+
+  # The script's own modification time, so the cache busts when the file
+  # changes rather than every second. Memoised per process: this is a stat call
+  # on a page a device reloads all day, and the file cannot change without a
+  # deploy, which restarts the process.
+  def voice_script_version = self.class.script_version
+
+  def self.script_version
+    @script_version ||= File.mtime(Rails.public_path.join("voice_reminders.js")).to_i
+  rescue Errno::ENOENT
+    # Missing in a way that would only happen mid-deploy or in a broken image.
+    # A page that renders without a cache-buster beats a page that 500s.
+    0
+  end
 
   # Polled by public/voice_reminders.js. Everything due today and still pending,
   # in the care receiver's own timezone — the announcement decides what to say
@@ -42,8 +58,13 @@ class VoiceRemindersController < WebController
     # would read differently depending on who was knocking.
     return render json: { error: "Unauthorized" }, status: :unauthorized unless current_user.role_senior?
 
-    tz = ActiveSupport::TimeZone[current_user.tz]
-    day = tz.now.beginning_of_day..tz.now.end_of_day
+    # One clock reading, not two. Asking tz.now twice means a request that
+    # straddles midnight can take its start from one day and its end from the
+    # next — a forty-eight hour window, on the endpoint that decides what a care
+    # receiver is told to do today. The version this was extracted from read the
+    # clock once; the extraction is what introduced the second call.
+    now = ActiveSupport::TimeZone[current_user.tz].now
+    day = now.beginning_of_day..now.end_of_day
 
     occurrences = Occurrence
       .joins(:reminder)

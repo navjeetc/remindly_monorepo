@@ -54,6 +54,51 @@ RSpec.describe "The voice reminders page", type: :request do
     end
   end
 
+  # The script is served from public/ and versioned in the query string. That
+  # version used to be Time.now.to_i, which changes every second — so the tablet
+  # re-downloaded it on every load and every reload, on the device this page is
+  # deliberately light for.
+  describe "the script tag" do
+    it "carries the same version on two loads of the same page" do
+      sign_in(care_receiver)
+
+      get "/voice_reminders"
+      first = response.body[/voice_reminders\.js\?v=(\d+)/, 1]
+      get "/voice_reminders"
+      second = response.body[/voice_reminders\.js\?v=(\d+)/, 1]
+
+      expect(first).to be_present
+      expect(second).to eq(first)
+    end
+
+    it "versions on the file rather than the clock" do
+      sign_in(care_receiver)
+
+      get "/voice_reminders"
+
+      expect(response.body).to include("voice_reminders.js?v=#{VoiceRemindersController.script_version}")
+      expect(VoiceRemindersController.script_version)
+        .to eq(File.mtime(Rails.public_path.join("voice_reminders.js")).to_i)
+    end
+  end
+
+  # A request that straddles midnight must not read its start from one day and
+  # its end from the next: that is a forty-eight hour window on the endpoint
+  # deciding what a care receiver is told to do today.
+  describe "the day the JSON is read for" do
+    it "reads the clock once" do
+      zone = ActiveSupport::TimeZone["America/New_York"]
+      allow(ActiveSupport::TimeZone).to receive(:[]).and_call_original
+      allow(ActiveSupport::TimeZone).to receive(:[]).with("America/New_York").and_return(zone)
+      allow(zone).to receive(:now).and_call_original
+      sign_in(care_receiver)
+
+      get "/voice_reminders/today"
+
+      expect(zone).to have_received(:now).once
+    end
+  end
+
   describe "the JSON the device polls" do
     it "returns today's pending reminders in the care receiver's own timezone" do
       tz = ActiveSupport::TimeZone["America/New_York"]

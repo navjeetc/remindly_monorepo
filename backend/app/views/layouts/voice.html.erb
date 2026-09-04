@@ -125,6 +125,52 @@
       .shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
       .shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
 
+      /* The settings dialog. These class names are the view's own, not utility
+         names, and nothing in the application has ever defined them — under the
+         Tailwind CDN they were just as unstyled, so the dialog opened as a plain
+         block that shoved the reminders down the page. Defining them here is
+         the first time it behaves like a dialog. */
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgb(0 0 0 / 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 50;
+      }
+      .modal-content {
+        background: #fff;
+        border-radius: 0.75rem;
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.2);
+        width: 100%;
+        max-width: 34rem;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .modal-header, .modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+      }
+      .modal-header { border-bottom: 1px solid #e5e7eb; }
+      .modal-footer { border-top: 1px solid #e5e7eb; }
+      .modal-body { padding: 1.5rem; }
+      .settings-section { margin-bottom: 1.5rem; }
+      .setting-item { margin-bottom: 0.75rem; }
+      /* Big, because it is pressed by the person this page is designed for. */
+      .close-btn {
+        border: 0;
+        background: none;
+        font-size: 2rem;
+        line-height: 1;
+        cursor: pointer;
+        color: #6b7280;
+      }
+      .close-btn:hover { color: #111827; }
+
       /* Sizes */
       .h-3 { height: 0.75rem; }
       .w-3 { width: 0.75rem; }
