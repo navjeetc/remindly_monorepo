@@ -15,6 +15,7 @@
 # which is the property `docs/SENIOR_ACCESS_DESIGN.md` asks for and the reason
 # this is a separate file rather than two more `before_action` exceptions.
 class VoiceRemindersController < WebController
+  include ReminderLinkMode
   # Redeeming happens here rather than in a controller of its own, so that the
   # bookmarkable address and the page it shows are the same address. See
   # #redeem_token.
@@ -117,15 +118,7 @@ class VoiceRemindersController < WebController
     # an enumerator which guesses were close.
     return head :not_found unless link
 
-    cookies.signed[LINK_COOKIE] = {
-      value: link.id,
-      expires: LINK_COOKIE_LIFETIME.from_now,
-      httponly: true,
-      same_site: :lax,
-      secure: Rails.env.production?
-    }
-
-    @link_mode_link = link
+    remember_reminder_link(link)
     link.record_use_if_stale!
   end
 
@@ -150,18 +143,15 @@ class VoiceRemindersController < WebController
   # from the moment it was redeemed, so revoking one takes effect on the care
   # receiver's next poll — seconds — without anything having to chase cookies
   # that were already handed out.
-  LINK_COOKIE = :reminder_link
-  LINK_COOKIE_LIFETIME = 1.year
-
+  # Wrapped so that a device polling this page keeps its "last heard from"
+  # fresh. The concern's own lookup stays side-effect free, because the
+  # acknowledgement endpoint includes it too and a write per keypress there
+  # would be recording the same fact twice.
   def link_mode_link
-    return @link_mode_link if defined?(@link_mode_link)
-
-    @link_mode_link = ReminderLink.live.find_by(id: cookies.signed[LINK_COOKIE])
-    @link_mode_link&.record_use_if_stale!
-    @link_mode_link
+    link = super
+    link&.record_use_if_stale!
+    link
   end
-
-  def link_mode_user = link_mode_link&.user
 
   # Asked directly rather than inferred from which branch of `current_user`
   # happened to fire.

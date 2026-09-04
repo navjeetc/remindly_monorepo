@@ -209,14 +209,6 @@ class VoiceRemindersApp {
         });
         
         const isCompleted = reminder.acknowledged_at;
-        // Whether this device may mark anything done. A device reached through
-        // a bookmarked reminder link cannot: /acknowledgements does not accept
-        // that credential, and a button posting to it would be answered with
-        // the login page — which fetch() reports as a perfectly good 200, so
-        // nothing would look wrong while nothing worked. Rather than a button
-        // that silently does nothing to the one screen a care receiver relies
-        // on, there is no button.
-        const canAcknowledge = document.body.dataset.canAcknowledge === 'true';
         // A reminder that has not come due yet is not asking for anything, so it
         // is shown plainly. The yellow highlight is reserved for "this is due
         // now", which is what makes it worth noticing.
@@ -234,15 +226,11 @@ class VoiceRemindersApp {
             borderColor = 'border-gray-200';
         }
 
-        return `
-            <div class="p-6 rounded-xl border-4 ${borderColor} ${bgColor} shadow-lg">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-3xl font-bold text-gray-900">${reminder.title}</h3>
-                    <span class="text-2xl font-semibold text-gray-700 bg-white px-4 py-2 rounded-lg">${time}</span>
-                </div>
-                ${reminder.description ? `<p class="text-xl text-gray-700 mb-4">${reminder.description}</p>` : ''}
-                <div class="flex items-center gap-4">
-                    ${!isCompleted && canAcknowledge ? `
+        // Built separately so the row can be left out entirely rather than
+        // rendered empty. On a link-mode device there is nothing to put in it,
+        // and an empty flex row still takes space — a band of blank card under
+        // every reminder, on the screen where space is most expensive.
+        const actions = !isCompleted ? `
                         <button id="ack-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-transparent shadow-lg text-xl font-bold rounded-xl text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300" title="Mark as done">
                             ✓ Done
                         </button>
@@ -255,8 +243,16 @@ class VoiceRemindersApp {
                         <span class="inline-flex items-center px-6 py-4 text-2xl font-bold text-green-700">
                             ✓ Completed
                         </span>
-                    ` : ''}
+                    ` : '';
+
+        return `
+            <div class="p-6 rounded-xl border-4 ${borderColor} ${bgColor} shadow-lg">
+                <div class="flex justify-between items-start ${reminder.description || actions ? 'mb-4' : ''}">
+                    <h3 class="text-3xl font-bold text-gray-900">${reminder.title}</h3>
+                    <span class="text-2xl font-semibold text-gray-700 bg-white px-4 py-2 rounded-lg">${time}</span>
                 </div>
+                ${reminder.description ? `<p class="text-xl text-gray-700 ${actions ? 'mb-4' : ''}">${reminder.description}</p>` : ''}
+                ${actions ? `<div class="flex items-center gap-4">${actions}</div>` : ''}
             </div>
         `;
     }

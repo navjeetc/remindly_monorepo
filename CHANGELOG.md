@@ -39,12 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bookmarking a tokenless address that works only while the cookie lives — the
   exact failure this feature exists to end, reintroduced by tidying the URL.
 
-  On a link the Done and Snooze buttons are not drawn at all, because the
-  acknowledgement endpoints do not accept that credential yet — and a button
-  posting to them would have been answered with the login page, which the
-  browser reports as a perfectly good response. The care receiver would have
-  pressed it, nothing would have changed, and the caregiver would have been told
-  the dose was missed.
+  **Done and Snooze work from a link**, which was going to be a later phase
+  until the first hands-on test made the problem plain: a device authorised by
+  a bookmark could hear every reminder and mark none of them done, so every dose
+  would become a missed-dose email and the caregiver would be told nothing was
+  taken. That is the product's central signal, inverted. Read-only is defensible
+  on paper — the care receiver can still sign in to mark something done — and
+  not in a kitchen, where the tablet *is* the interaction.
+
+  The acknowledgement endpoint now accepts a third credential without loosening
+  the two it already took: a Bearer token still decides on its own, a session
+  still decides before the link is consulted, and forgery protection is
+  untouched, because a link-mode page is issued a session cookie and renders
+  `csrf_meta_tags` like any other. What stops a link acknowledging somebody
+  else's dose is the query each action already ran — one credential, one care
+  receiver.
 
   The token is also kept out of Rails' request log, which `filter_parameters`
   cannot do on its own: it filters query strings and parsed parameters, never
@@ -68,8 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for is now taken from a single clock reading, so a request landing on midnight
   cannot take its start from one day and its end from the next.
 
-  This is phase 1 of `docs/SENIOR_ACCESS_DESIGN.md`. Marking a dose done from a
-  link, and creating an account for somebody who never signed up, come after it.
+  This is phases 1 and 2 of `docs/SENIOR_ACCESS_DESIGN.md`. Creating an account
+  for somebody who never signed up is phase 3, and depends on these.
 
 ### Fixed
 - **The dashboard counted expired pairing tokens as pending requests.** The

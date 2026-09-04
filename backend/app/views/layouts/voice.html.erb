@@ -213,16 +213,7 @@
     </style>
   </head>
 
-  <%# What the page is allowed to do, read by public/voice_reminders.js.
-
-      A device holding a reminder link cannot mark anything done: the
-      acknowledgement endpoints do not accept that credential, and a POST from
-      here would be answered with the login page — which fetch() reports as a
-      good 200, so the button would look like it worked and change nothing. The
-      buttons are therefore not drawn at all until link mode can acknowledge,
-      which is phase 2 of docs/SENIOR_ACCESS_DESIGN.md.
-  %>
-  <body data-can-acknowledge="<%= !link_mode? %>">
+  <body>
     <%# No navigation. In link mode there is no account to navigate to, and a
         signed-in care receiver reaches the rest of the app from the dashboard.
         The one way back is offered only to somebody who can actually use it. %>

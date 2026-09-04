@@ -427,6 +427,14 @@ after.
 **Phase 2 — done and snooze.** The third auth scheme in
 `AcknowledgementsController`. Makes revocation matter.
 
+**Built alongside phase 1, 2026-09-04**, rather than after it. Testing phase 1
+by hand made the reason obvious: a device authorised by a bookmark could hear
+every reminder and mark none of them done, so every dose would have become a
+missed-dose email and the caregiver told nothing was taken. Read-only is
+defensible on paper — "the senior can still sign in to mark something done" —
+and not in a kitchen, where the tablet *is* the interaction. Shipping the two
+together is what makes a link something a household can be told to use.
+
 **Phase 3 — caregiver-creates-senior.** The `provisional` state, the first-run
 screen, self-revocation, and the code display on the caregiver's side.
 **Requires phase 2**, for the reason given above.

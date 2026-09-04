@@ -279,15 +279,6 @@ RSpec.describe "A reminder link", type: :request do
       expect(doc.css("a[href='#{dashboard_path}']")).to be_empty
     end
 
-    # The failure this prevents is quiet: /acknowledgements does not accept a
-    # reminder-link cookie, so a Done button here would POST, be answered with
-    # the login page, and be reported by fetch() as a perfectly good 200. The
-    # care receiver would press it, nothing would change, and the caregiver
-    # would be told the dose was missed.
-    it "does not offer a Done button it cannot honour" do
-      expect(doc.at_css("body")["data-can-acknowledge"]).to eq("false")
-    end
-
     # The document URL is the credential now, and the browser default sends the
     # full URL as Referer on same-origin requests — of which this page makes one
     # every few seconds, forever. Without this the token lands in access logs by
@@ -330,9 +321,7 @@ RSpec.describe "A reminder link", type: :request do
         get "/voice_reminders"
 
         expect(response).to have_http_status(:ok)
-        doc = Nokogiri::HTML(response.body)
-        expect(doc.at_css("body")["data-can-acknowledge"]).to eq("false")
-        expect(doc.text).not_to include("Back to Remindly")
+        expect(Nokogiri::HTML(response.body).text).not_to include("Back to Remindly")
       end
     end
 
@@ -359,16 +348,6 @@ RSpec.describe "A reminder link", type: :request do
   # A signed-in care receiver reaches the same page through the nav, and should
   # still have a way back to the rest of the app.
   describe "the page when somebody is signed in" do
-    it "can still mark reminders done" do
-      post "/magic/verify", params: {
-        token: care_receiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
-      }
-
-      get "/voice_reminders"
-
-      expect(Nokogiri::HTML(response.body).at_css("body")["data-can-acknowledge"]).to eq("true")
-    end
-
     it "offers the way back that link mode does not" do
       post "/magic/verify", params: {
         token: care_receiver.signed_id(purpose: :magic_login, expires_in: 30.minutes)
@@ -497,6 +476,97 @@ RSpec.describe "A reminder link", type: :request do
     # not any path that merely starts the same way.
     it "does not swallow a longer path that begins the same way" do
       expect(filtered("/reports/2026")).to eq("/reports/2026")
+    end
+  end
+
+  # Phase 2. Without this a device authorised by a bookmark could hear every
+  # reminder and mark none of them done, so every dose would become a
+  # missed-dose email and the caregiver would be told nothing was taken — which
+  # is the product's central signal, inverted.
+  describe "marking a dose done from a link" do
+    def csrf_token = Nokogiri::HTML(response.body).at_css("meta[name='csrf-token']")&.[]("content")
+
+    def occurrence_now(user: care_receiver, title: "Take your tablets")
+      reminder_due(Time.current, title: title, user: user)
+    end
+
+    it "acknowledges" do
+      occ = occurrence_now
+      redeem
+
+      post "/acknowledgements",
+        params: { occurrence_id: occ.id, kind: "taken" }.to_json,
+        headers: { "CONTENT_TYPE" => "application/json", "X-CSRF-Token" => csrf_token }
+
+      expect(response).to have_http_status(:created)
+      expect(occ.reload.status).to eq("acknowledged")
+    end
+
+    it "snoozes" do
+      occ = occurrence_now
+      redeem
+
+      post "/acknowledgements/snooze",
+        params: { occurrence_id: occ.id, minutes: 10 }.to_json,
+        headers: { "CONTENT_TYPE" => "application/json", "X-CSRF-Token" => csrf_token }
+
+      expect(response).to have_http_status(:created)
+      expect(occ.reload.status).not_to eq("pending")
+    end
+
+    # The isolation that matters most, and it is enforced by the query each
+    # action already ran: one credential, one care receiver.
+    it "cannot acknowledge somebody else's reminder" do
+      other = create(:user, :senior, name: "Dad", tz: "America/New_York")
+      theirs = occurrence_now(user: other, title: "Not mine")
+      redeem
+
+      expect {
+        post "/acknowledgements",
+          params: { occurrence_id: theirs.id, kind: "taken" }.to_json,
+          headers: { "CONTENT_TYPE" => "application/json", "X-CSRF-Token" => csrf_token }
+      }.not_to change { theirs.reload.status }
+    end
+
+    it "stops working the moment the link is revoked" do
+      occ = occurrence_now
+      redeem
+      token = csrf_token
+      link.revoke!
+
+      post "/acknowledgements",
+        params: { occurrence_id: occ.id, kind: "taken" }.to_json,
+        headers: { "CONTENT_TYPE" => "application/json", "X-CSRF-Token" => token }
+
+      expect(occ.reload.status).to eq("pending")
+    end
+
+    # Forgery protection is untouched: a link-mode page is issued a session
+    # cookie and renders csrf_meta_tags like any other, so the existing check
+    # applies rather than being skipped for this credential.
+    #
+    # Turned on for this example only. The test environment disables it, which
+    # would have made the assertion pass while proving nothing — the request
+    # would have succeeded with no token because no token was ever required.
+    it "still refuses a request with no CSRF token" do
+      occ = occurrence_now
+      redeem
+
+      begin
+        ActionController::Base.allow_forgery_protection = true
+
+        post "/acknowledgements",
+          params: { occurrence_id: occ.id, kind: "taken" }.to_json,
+          headers: { "CONTENT_TYPE" => "application/json" }
+
+        # Rails turns the forgery failure into a 422 here rather than raising,
+        # because the test environment rescues it the way production does.
+        expect(response).to have_http_status(:unprocessable_entity)
+      ensure
+        ActionController::Base.allow_forgery_protection = false
+      end
+
+      expect(occ.reload.status).to eq("pending")
     end
   end
 
