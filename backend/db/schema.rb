@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_001326) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_033240) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -126,6 +126,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_001326) do
     t.datetime "updated_at", null: false
     t.index ["day", "path", "referrer_host", "source", "bot"], name: "index_page_counts_on_dimensions", unique: true
     t.index ["day"], name: "index_page_counts_on_day"
+  end
+
+  create_table "reminder_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_used_at"
+    t.datetime "revoked_at"
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["token"], name: "index_reminder_links_on_token", unique: true
+    t.index ["user_id", "revoked_at"], name: "index_reminder_links_on_user_id_and_revoked_at"
+    t.index ["user_id"], name: "index_reminder_links_on_user_id"
+    t.index ["user_id"], name: "index_reminder_links_one_live_per_user", unique: true, where: "revoked_at IS NULL"
   end
 
   create_table "reminders", force: :cascade do |t|
@@ -302,6 +315,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_001326) do
   add_foreign_key "caregiver_links", "users", column: "senior_id"
   add_foreign_key "notifications", "users"
   add_foreign_key "occurrences", "reminders"
+  add_foreign_key "reminder_links", "users"
   add_foreign_key "reminders", "users"
   add_foreign_key "scheduling_integrations", "users"
   add_foreign_key "scheduling_integrations", "users", column: "senior_id"

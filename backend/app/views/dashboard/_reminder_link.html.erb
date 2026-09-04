@@ -1,0 +1,75 @@
+<%#
+  The device link, from the caregiver's side.
+
+  What this panel is really for is the failure it makes visible. Today a care
+  receiver's session expires, the tablet shows a login page nobody reads, and
+  the first anyone knows is a caregiver noticing the acknowledgements stopped —
+  or not noticing. "Last heard from" is the line that ends that: a device that
+  has gone quiet says so here, before anybody misses a dose over it.
+%>
+<div class="bg-white overflow-hidden shadow rounded-lg">
+  <div class="px-5 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-medium text-gray-900">Their device</h3>
+    <p class="mt-1 text-sm text-gray-500">
+      A page they can leave open, with no signing in.
+    </p>
+  </div>
+
+  <div class="px-5 py-4">
+    <% if reminder_link %>
+      <p class="text-sm text-gray-700">
+        Open this on their tablet or computer once, then bookmark it.
+      </p>
+
+      <%# Shown in full because it has to be typed or copied by hand, and
+          selectable in one gesture on a touch screen. It is a credential: the
+          copy beneath says so plainly rather than leaving a caregiver to guess
+          how carefully to treat it. %>
+      <input type="text" readonly value="<%= reminder_link_url(token: reminder_link.token) %>"
+             onclick="this.select()"
+             class="mt-2 w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-mono text-gray-800 bg-gray-50">
+
+      <p class="mt-2 text-xs text-gray-500">
+        Anyone with this address can see their reminders, so treat it like a
+        key. It does not expire.
+      </p>
+
+      <p class="mt-3 text-sm text-gray-700">
+        <% if reminder_link.last_used_at %>
+          Last heard from <strong><%= time_ago_in_words(reminder_link.last_used_at) %> ago</strong>.
+        <% else %>
+          <strong>Never used.</strong> The device has not opened it yet.
+        <% end %>
+      </p>
+
+      <% if permission == "manage" %>
+        <div class="mt-4 flex items-center gap-3">
+          <%= button_to "Replace this link",
+                senior_reminder_link_path(senior_id: senior.id),
+                class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer",
+                form: { data: { turbo_confirm: "The bookmark on their device will stop working. Carry on?" } } %>
+
+          <%= button_to "Stop this link",
+                revoke_senior_reminder_link_path(senior_id: senior.id, id: reminder_link.id),
+                class: "inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 cursor-pointer",
+                form: { data: { turbo_confirm: "Their device will stop showing reminders. Carry on?" } } %>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-gray-700">
+        No device link yet. They currently have to sign in with their own email
+        address, and stay signed in only until the session expires.
+      </p>
+
+      <% if permission == "manage" %>
+        <%= button_to "Create a device link",
+              senior_reminder_link_path(senior_id: senior.id),
+              class: "mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer" %>
+      <% else %>
+        <p class="mt-2 text-xs text-gray-500">
+          You can see their reminders, but not set up their device.
+        </p>
+      <% end %>
+    <% end %>
+  </div>
+</div>

@@ -7,8 +7,16 @@ class DashboardController < WebController
   # which only ever touches current_user.reminders — somebody's own. Listed by
   # name because these five actions each resolve their own senior, so there is
   # no shared before_action to hang this on.
+  # Minting a device link hands out a credential to this care receiver's
+  # reminders and revoking one takes their tablet offline, so both sit in the
+  # same list as the reminder writes.
+  #
+  # One declaration, deliberately: a second `before_action :require_manage_for_reminder!`
+  # with its own `only:` does not add a filter, it replaces this one — which
+  # silently removed the guard from every reminder action when it was tried.
   before_action :require_manage_for_reminder!,
-    only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder]
+    only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder
+             create_reminder_link revoke_reminder_link]
 
   # Inviting is a write too, and the sharpest one: an invitation creates a
   # manage link. Without this a view-only caregiver could invite an address they
@@ -259,6 +267,36 @@ class DashboardController < WebController
     end
   end
 
+  # Mints the link a device bookmarks.
+  #
+  # One live link per care receiver: any existing one is revoked first, so
+  # "generate" cannot quietly leave two credentials outstanding where the
+  # caregiver believes there is one. Replacing a link is therefore a visible act
+  # with a visible cost — the old bookmark stops working — rather than an
+  # accumulation nobody can see.
+  def create_reminder_link
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+
+    ActiveRecord::Base.transaction do
+      ReminderLink.live.where(user_id: senior.id).find_each(&:revoke!)
+      @reminder_link = ReminderLink.mint(user: senior)
+    end
+
+    redirect_to senior_dashboard_path(senior),
+      notice: "New link ready for #{senior.display_name}'s device. The old one has stopped working."
+  end
+
+  # Ends the link and nothing else. It cannot remove a caregiver, cannot touch
+  # the account, and cannot be used against anybody: a revoked token answers
+  # exactly as an invented one does.
+  def revoke_reminder_link
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+    ReminderLink.live.where(user_id: senior.id).find_by(id: params[:id])&.revoke!
+
+    redirect_to senior_dashboard_path(senior),
+      notice: "That device link has stopped working."
+  end
+
   # Asks the number whether it agrees. This is the only thing a caregiver can do
   # towards enabling calls, and it can only ask.
   def verify_phone
@@ -445,6 +483,7 @@ class DashboardController < WebController
     link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
     @senior = link.senior
     @permission = link.permission
+    @reminder_link = ReminderLink.live.find_by(user_id: @senior.id)
 
     # Get today's reminders
     #

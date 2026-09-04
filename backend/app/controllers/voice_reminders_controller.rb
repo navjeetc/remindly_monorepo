@@ -18,7 +18,7 @@ class VoiceRemindersController < WebController
   before_action :authenticate!
   before_action :care_receivers_only!, only: :show
 
-  layout "dashboard"
+  layout "voice"
 
   def show; end
 
@@ -56,6 +56,44 @@ class VoiceRemindersController < WebController
   end
 
   private
+
+  # Session first, then link mode.
+  #
+  # This override is the entire opt-in, and it lives in one controller on
+  # purpose. Nothing else in the application reads the reminder-link cookie, so
+  # a route added to the dashboard next year cannot accept one by forgetting
+  # something — it would have to ask for it. That is what makes the boundary a
+  # wall rather than a flag.
+  def current_user
+    @current_user ||= super || link_mode_user
+  end
+
+  # The link is re-read from the database on every request rather than trusted
+  # from the moment it was redeemed, so revoking one takes effect on the care
+  # receiver's next poll — seconds — without anything having to chase cookies
+  # that were already handed out.
+  def link_mode_link
+    return @link_mode_link if defined?(@link_mode_link)
+
+    @link_mode_link = ReminderLink.live.find_by(id: cookies.signed[ReminderLinksController::COOKIE])
+    @link_mode_link&.record_use_if_stale!
+    @link_mode_link
+  end
+
+  # Only ever consulted when the session lookup came back empty, which is what
+  # makes the flag it sets an honest answer to "which credential let this
+  # person in" rather than "which credentials are present".
+  def link_mode_user
+    user = link_mode_link&.user
+    @arrived_by_link = user.present?
+    user
+  end
+
+  def link_mode?
+    current_user
+    @arrived_by_link.present?
+  end
+  helper_method :link_mode?
 
   # A caregiver reaching this page has nothing to hear: the reminders belong to
   # the person being cared for. The redirect is kept from the original rather

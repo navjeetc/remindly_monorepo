@@ -62,6 +62,12 @@ Rails.application.routes.draw do
 
   # Web dashboard
   get  "dashboard",          to: "dashboard#index", as: :dashboard
+  # A reminder link. Short on purpose: this is read aloud down a telephone and
+  # typed on a tablet by somebody whose eyesight is part of why you are setting
+  # this up. The token is exchanged for a cookie and dropped from the address
+  # bar on the redirect.
+  get  "r/:token", to: "reminder_links#show", as: :reminder_link
+
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
   get  "voice_reminders/today", to: "voice_reminders#today", as: :voice_reminders_today
   get  "contact",            to: "dashboard#contact", as: :contact
@@ -81,6 +87,13 @@ Rails.application.routes.draw do
   patch "dashboard/senior/:senior_id/phone", to: "dashboard#update_phone", as: :senior_phone
   patch "dashboard/senior/:senior_id/spoken_language", to: "dashboard#update_spoken_language", as: :senior_spoken_language
   post  "dashboard/senior/:senior_id/verify_phone", to: "dashboard#verify_phone", as: :verify_senior_phone
+
+  # The device link a care receiver bookmarks. Minting is a write and revoking
+  # is a write, so both are POSTs behind the same manage permission the phone
+  # panel uses — a view-only caregiver can see whether the tablet is working and
+  # change nothing about it.
+  post  "dashboard/senior/:senior_id/reminder_link", to: "dashboard#create_reminder_link", as: :senior_reminder_link
+  post  "dashboard/senior/:senior_id/reminder_link/:id/revoke", to: "dashboard#revoke_reminder_link", as: :revoke_senior_reminder_link
   get  "dashboard/senior/:senior_id/reminder/new", to: "dashboard#new_reminder", as: :new_reminder_dashboard
   post "dashboard/senior/:senior_id/reminder", to: "dashboard#create_reminder", as: :create_reminder_dashboard
   get  "dashboard/senior/:senior_id/reminder/:reminder_id/edit", to: "dashboard#edit_reminder", as: :edit_reminder_dashboard

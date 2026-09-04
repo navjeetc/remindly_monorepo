@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A device link, so a care receiver's tablet stops logging itself out.** Their
+  session expires, the screen shows a login page nobody reads, and the first
+  anyone knows is a caregiver noticing the acknowledgements stopped — or not
+  noticing. A caregiver can now generate a bookmarkable address for the device.
+  The secret in that address is the credential, so the tablet needs no email, no
+  password and no sign-in, and clearing cookies or resetting the device recovers
+  by itself because the bookmark still holds it.
+
+  What it grants is deliberately narrow, and narrow by construction rather than
+  by care: the cookie is read by one controller, so the dashboard, the profile,
+  the pairing screen, the caregiver list, tasks and notifications cannot accept
+  one even if a future route forgets this feature exists. A spec enumerates
+  them. A revoked link answers exactly as an invented one does, so a dead link
+  cannot tell its holder it was ever real.
+
+  The page it lands on now has its own layout with no third-party assets. It had
+  been pulling Tailwind from a CDN — roughly 400KB of JavaScript compiled in the
+  browser — on a device chosen for sitting in a kitchen rather than for being
+  fast, and in link mode its navigation offered Sign Out and Profile to somebody
+  with no account.
+
+  "Last heard from" on the caregiver's panel is the point of the whole thing: a
+  device that has gone quiet says so before anybody misses a dose over it.
+
+  This is phase 1 of `docs/SENIOR_ACCESS_DESIGN.md`. Marking a dose done from a
+  link, and creating an account for somebody who never signed up, come after it.
+
 ### Fixed
 - **The dashboard counted expired pairing tokens as pending requests.** The
   banner said "You have 2 pending pairing requests. Share the token with your
