@@ -25,6 +25,20 @@ class CaregiverLink < ApplicationRecord
   # outstanding.
   PAIRING_TOKEN_TTL = 7.days
 
+  # Tokens somebody could still redeem: unclaimed, still carrying a token, still
+  # inside their week. The same three conditions the claim writes with, so the
+  # count on a screen and the answer at redemption cannot disagree.
+  #
+  # They did disagree, briefly. Enforcing the week made every unclaimed token no
+  # longer a live one, and the dashboard banner was still counting all of them —
+  # so a care receiver was told to share a token generated eleven months earlier,
+  # which the caregiver would then be refused.
+  scope :redeemable, -> {
+    where(caregiver_id: nil)
+      .where(created_at: PAIRING_TOKEN_TTL.ago..)
+      .where.not(pairing_token: nil)
+  }
+
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
     # Generate token with collision detection and safety limit
@@ -70,6 +84,7 @@ class CaregiverLink < ApplicationRecord
   # It grants the ability to *ask*, not to enable. callable_by_phone? still
   # needs a number, a recorded consent and no opt-out, and only a keypress on a
   # call the care receiver answers can write that consent.
+  #
   # Returns true if this caregiver took the link, false if there was nothing
   # left to take.
   #
@@ -101,9 +116,8 @@ class CaregiverLink < ApplicationRecord
     # accident. The rule belongs to the model rather than to every caller's
     # discipline.
     claimed = self.class
-                  .where(id: id, caregiver_id: nil)
-                  .where(created_at: PAIRING_TOKEN_TTL.ago..)
-                  .where.not(pairing_token: nil)
+                  .redeemable
+                  .where(id: id)
                   .update_all(
                     caregiver_id: caregiver.id,
                     permission: self.class.permissions[:manage],

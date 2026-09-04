@@ -197,6 +197,43 @@ RSpec.describe "A pairing token's week", type: :request do
     end
   end
 
+  # Enforcing the week made a screen wrong that had been right: the dashboard
+  # counted every unclaimed token as a pending pairing request, which was true
+  # while they all worked forever. A care receiver was told to share a token
+  # generated eleven months earlier, and the caregiver would have been refused.
+  describe "the pending pairing banner" do
+    it "counts only the tokens somebody could still redeem" do
+      token_generated(11.months)
+      token_generated(2.days)
+      sign_in(senior)
+
+      get "/dashboard"
+
+      expect(response.body).to include("1 pending pairing request")
+      expect(response.body).not_to include("2 pending pairing requests")
+    end
+
+    it "says nothing when every token has expired" do
+      token_generated(11.months)
+      sign_in(senior)
+
+      get "/dashboard"
+
+      expect(response.body).not_to include("pending pairing request")
+    end
+
+    # One definition, so a screen cannot promise what redemption refuses.
+    it "counts exactly what the claim will accept" do
+      expired = token_generated(8.days)
+      live = token_generated(1.day)
+
+      expect(CaregiverLink.redeemable).to include(live)
+      expect(CaregiverLink.redeemable).not_to include(expired)
+      expect(expired.pair_with(caregiver: caregiver)).to be(false)
+      expect(live.pair_with(caregiver: caregiver)).to be(true)
+    end
+  end
+
   describe "an expired row" do
     # Refused, not deleted. A link somebody tried to redeem a month late is the
     # only record that the attempt happened.
