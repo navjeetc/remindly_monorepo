@@ -71,9 +71,14 @@
         recorded until they open the link on their device and agree to it. When
         they do, this page will show what was announced and what was marked done.
       </p>
+      <%# The host from the request, not a literal: in development this panel
+          was telling somebody to visit remindly.care, which is not where they
+          are. %>
       <p class="mt-2 text-sm text-blue-900">
-        Open the link above on their tablet or computer, or read them the
-        six-digit code and have them go to <strong>remindly.care/start</strong>.
+        Open the link above on their tablet or computer. To do it over the
+        telephone, press <strong>Set up over the phone</strong> for six numbers
+        to read out, and have them go to
+        <strong><%= start_url.sub(%r{\Ahttps?://}, "") %></strong>.
       </p>
     </div>
   <% else %>

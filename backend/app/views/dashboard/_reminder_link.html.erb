@@ -55,7 +55,7 @@
             <p class="text-sm text-blue-900">Read them these numbers:</p>
             <p class="mt-1 text-4xl font-bold tracking-widest text-blue-900"><%= reminder_link.start_code %></p>
             <p class="mt-2 text-xs text-blue-900">
-              They go to <strong>remindly.care/start</strong> on their own device and type them.
+              They go to <strong><%= start_url.sub(%r{\Ahttps?://}, "") %></strong> on their own device and type them.
               Expires <%= time_ago_in_words(reminder_link.start_code_expires_at) %> from now.
             </p>
           </div>

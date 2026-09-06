@@ -335,9 +335,13 @@ class DashboardController < WebController
       return render :new_care_receiver, status: :unprocessable_entity
     end
 
+    # Says what to do next with what actually exists. An earlier version told
+    # the caregiver to read out "the six-digit code" at a moment when no code
+    # had been generated — instructions for a thing that is one press away and
+    # not yet there.
     redirect_to senior_dashboard_path(@senior),
       notice: "#{@senior.display_name} is set up. Open their link on the device they will use, " \
-              "or read them the six-digit code, and they can start."
+              "or press \"Set up over the phone\" for six numbers to read out."
   end
 
   # Mints the link a device bookmarks.

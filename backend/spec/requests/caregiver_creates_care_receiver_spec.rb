@@ -364,6 +364,30 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       link.reload.start_code
     end
 
+    # Instructions for what exists. The first version told a caregiver to read
+    # out "the six-digit code" the moment the account was created, when no code
+    # had been generated and the button that makes one was still unpressed.
+    it "does not mention a code before there is one" do
+      reset!
+      sign_in(caregiver)
+      other = create_care_receiver(name: "Dad")
+
+      get "/dashboard/senior/#{other.id}"
+
+      expect(response.body).to include("Set up over the phone")
+      expect(response.body).not_to match(/read them the six-digit code/i)
+    end
+
+    # The host somebody is actually using, not a literal: in development this
+    # was telling people to visit remindly.care, which is not where they are.
+    it "names the host the caregiver is on" do
+      issue_code
+
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).to include("www.example.com/start")
+    end
+
     it "shows the caregiver six digits to read out" do
       code = issue_code
 
