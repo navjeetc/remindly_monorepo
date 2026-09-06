@@ -25,6 +25,19 @@ class DashboardController < WebController
   # the permission being enforced.
   before_action :require_manage_for_invite!, only: %i[invite_caregiver process_invite_caregiver]
 
+  # Asking to telephone somebody is bounded per caregiver, not only per number.
+  #
+  # The existing cap is five verification attempts per number per day, which was
+  # the right shape when reaching the phone panel required a care receiver who
+  # had signed up and handed over a token. Creating the account for them removes
+  # that gate: a signed-up stranger can name anybody, type any number and press
+  # "Call and ask", and ten accounts a day at five attempts each is fifty calls
+  # to people who have never heard of Remindly.
+  #
+  # The per-number cap does not see that, because each call is to a different
+  # number. This one counts the person doing the asking.
+  rate_limit to: 10, within: 1.day, only: :verify_phone, by: -> { current_user&.id }
+
   # Creating an account for somebody who has not asked for one is the one write
   # here that makes a person exist. Bulk creation is not a feature and a script
   # doing it is not a caregiver, so the ceiling is low and per caregiver rather

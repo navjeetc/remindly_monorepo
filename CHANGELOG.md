@@ -48,6 +48,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accumulate four days of missed doses. Saying yes materialises the day
   immediately, so a reminder due in an hour still fires.
 
+  **Agreeing by telephone counts as agreeing.** Somebody with no tablet has no
+  screen to press Yes on, so the consent call is their first-use moment: it
+  names who arranged it, asks rather than assumes, and the keypress that answers
+  it starts everything — the link becomes active, the caregiver's screens begin
+  working, and the reminders written while waiting become a day. A stronger
+  record of the answer than a tap, because there is a call behind it.
+
+  Asking to telephone somebody is now capped per caregiver as well as per
+  number. The existing cap — five verification attempts per number per day — was
+  the right shape when reaching the phone panel required a care receiver who had
+  signed up and handed over a token. Creating the account for them removes that
+  gate, and each call being to a different number is exactly what a per-number
+  cap cannot see.
+
+  **The care receiver can stop it from their own device**, with no account and
+  no signing in. Refusing at first run covers the moment before they start; this
+  covers every moment after, which is when somebody actually changes their mind.
+  It ends that link and nothing else — it cannot remove caregivers or touch the
+  account, because a web address that could cut a family off from a vulnerable
+  person would be worse than the disclosure it prevents.
+
   A caregiver cannot do this in bulk: ten a day, counted per caregiver rather
   than per address, because two people setting up their own parents from one
   house should not spend each other's allowance.

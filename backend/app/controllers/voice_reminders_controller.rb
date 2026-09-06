@@ -25,9 +25,9 @@ class VoiceRemindersController < WebController
   rate_limit to: 20, within: 1.minute, only: :show, if: -> { params[:token].present? }
 
   before_action :redeem_token, only: :show
-  before_action :authenticate!, only: %i[show start decline]
+  before_action :authenticate!, only: %i[show start decline stop]
   before_action :authenticate_poll!, only: :today
-  before_action :care_receivers_only!, only: %i[show start decline]
+  before_action :care_receivers_only!, only: %i[show start decline stop]
 
   layout "voice"
 
@@ -148,6 +148,29 @@ class VoiceRemindersController < WebController
         snoozed_until: nil
       }
     }
+  end
+
+  # Stops the reminders on this device, from this device, with no account.
+  #
+  # Invariant 4 of the design: the care receiver can always refuse, in one
+  # action, without signing in. Refusing at first run covers the moment before
+  # they start; this covers every moment after, which is where somebody actually
+  # changes their mind.
+  #
+  # Deliberately narrow. It revokes this link and nothing else — it does not
+  # remove caregivers and does not touch the account. A capability that can end
+  # itself is not the same as one that can act on the account, and only the
+  # first is safe to hand to whoever holds a URL: a leaked link that could cut a
+  # family off from a vulnerable person would be worse than the disclosure it
+  # prevents.
+  def stop
+    link = link_mode_link
+    return redirect_to voice_reminders_path unless link
+
+    link.revoke!
+    cookies.delete(ReminderLinkMode::COOKIE)
+
+    render :stopped, status: :ok
   end
 
   private

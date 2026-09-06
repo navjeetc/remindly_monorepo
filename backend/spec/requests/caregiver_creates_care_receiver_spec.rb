@@ -349,6 +349,56 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
     end
   end
 
+  # Somebody with no tablet has no screen to agree on, and the telephone is
+  # their device. The consent call is the same first-use moment the screen
+  # offers — it names who arranged it and asks rather than assumes — so the
+  # keypress that answers it starts everything.
+  describe "agreeing by telephone instead of on a screen" do
+    let!(:senior) do
+      sign_in(caregiver)
+      create_care_receiver
+    end
+
+    before do
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+    end
+
+    it "offers the phone panel before they have agreed" do
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).to include("Their phone number")
+    end
+
+    it "starts everything when they press 1" do
+      senior.update!(phone: "+15551230000")
+      Reminder.create!(user: senior, title: "Morning tablets", rrule: "FREQ=DAILY", tz: senior.tz)
+
+      # What the webhook does when somebody agrees on the call.
+      User.where(id: senior.id, phone: senior.phone)
+          .update_all(phone_verified_at: Time.current, call_consent_at: Time.current,
+                      call_opted_out_at: nil, call_reminders_enabled: true, updated_at: Time.current)
+      senior.senior_links.where(state: :provisional).find_each { |l| l.update!(state: :active) }
+      senior.reminders.find_each { |r| Recurrence.expand(r) }
+
+      expect(CaregiverLink.find_by(senior_id: senior.id).state).to eq("active")
+      expect(Occurrence.joins(:reminder).where(reminders: { user_id: senior.id })).to be_present
+    end
+
+    # The cap that the per-number one cannot see: each call is to a different
+    # number, so counting per number counts nothing about the person dialling.
+    it "limits how many people one caregiver may ask to telephone" do
+      11.times do |i|
+        post "/dashboard/care_receiver", params: { user: { name: "Person #{i}" } }
+        person = User.order(:id).last
+        person.update!(phone: "+1555123000#{i % 10}")
+        post "/dashboard/senior/#{person.id}/verify_phone"
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
   # Six digits, read down a telephone. The one channel this audience is
   # comfortable with: every other remote option asks an older person to find a
   # message in an inbox and trust a link inside it.

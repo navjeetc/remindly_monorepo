@@ -81,6 +81,10 @@ Rails.application.routes.draw do
   post "voice_reminders/start",   to: "voice_reminders#start",   as: :start_voice_reminders
   post "voice_reminders/decline", to: "voice_reminders#decline", as: :decline_voice_reminders
 
+  # Ending it later, from the device, without an account. A link may destroy
+  # itself; it may not act on the account. See VoiceRemindersController#stop.
+  post "voice_reminders/stop", to: "voice_reminders#stop", as: :stop_voice_reminders
+
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
   get  "voice_reminders/today", to: "voice_reminders#today", as: :voice_reminders_today
   get  "contact",            to: "dashboard#contact", as: :contact

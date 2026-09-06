@@ -426,6 +426,24 @@ class TelnyxWebhooksController < ApplicationController
                               call_reminders_enabled: true,
                               updated_at: Time.current)
 
+    # Agreeing by telephone is agreeing to the arrangement.
+    #
+    # A care receiver whose caregiver set them up may have no screen to press
+    # Yes on — the telephone is their device. This call is the same consent
+    # moment the first-run page offers: it names who arranged it, it asks rather
+    # than assumes, and this keypress is a stronger record of the answer than a
+    # tap, because there is a call row behind it.
+    #
+    # So it starts everything, exactly as pressing Yes does: the link becomes
+    # active, the caregiver's activity screens begin working, and the reminders
+    # written while waiting are expanded into a day.
+    if granted.positive?
+      senior.senior_links.where(state: :provisional).find_each do |link|
+        link.update!(state: :active)
+      end
+      senior.reminders.find_each { |reminder| Recurrence.expand(reminder) }
+    end
+
     if granted.zero?
       Rails.logger.warn "Verification consent ignored for user #{senior.id}: the number changed while the call was in progress"
       return call.update!(outcome: "declined", completed_at: Time.current)

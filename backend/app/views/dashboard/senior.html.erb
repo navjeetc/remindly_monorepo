@@ -44,6 +44,12 @@
   <%# Hidden with the feature, not merely disabled: with the flag off there is
       nothing here a caregiver could act on, and a panel describing calls that
       cannot be placed only raises a question nobody can answer yet. %>
+  <%# Shown before they have agreed, deliberately. Somebody with no tablet has
+      no screen to agree on, and the telephone is their device — so the consent
+      call is their first-use moment: it names who arranged it, asks rather than
+      assumes, and the keypress that answers it is what starts everything. See
+      TelnyxWebhooksController, where agreeing by telephone activates the link
+      exactly as pressing Yes on a screen does. %>
   <% if FeatureFlag.enabled?(:phone_call_reminders) %>
     <%= render "dashboard/phone_reminders", senior: @senior, permission: @permission, attempts: @verification_attempts %>
   <% end %>
