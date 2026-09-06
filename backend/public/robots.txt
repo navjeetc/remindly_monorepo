@@ -18,6 +18,10 @@ User-agent: *
 # single-use credential.
 Disallow: /login
 Disallow: /logout
+# A reminder link is a credential in an address. A crawler that fetches one
+# would land on a care receiver's reminders, and a link in a search index is a
+# link everywhere.
+Disallow: /r/
 Disallow: /magic/
 Disallow: /client/
 Disallow: /dev_login

@@ -7,6 +7,128 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-04
+
+### Added
+- **A device link, so a care receiver's tablet stops logging itself out.** Their
+  session expires, the screen shows a login page nobody reads, and the first
+  anyone knows is a caregiver noticing the acknowledgements stopped — or not
+  noticing. A caregiver can now generate a bookmarkable address for the device.
+  The secret in that address is the credential, so the tablet needs no email, no
+  password and no sign-in, and clearing cookies or resetting the device recovers
+  by itself because the bookmark still holds it.
+
+  What it grants is deliberately narrow, and narrow by construction rather than
+  by care: the cookie is read by one controller, so the dashboard, the profile,
+  the pairing screen, the caregiver list, tasks and notifications cannot accept
+  one even if a future route forgets this feature exists. A spec enumerates
+  them. A revoked link answers exactly as an invented one does, so a dead link
+  cannot tell its holder it was ever real.
+
+  The page it lands on now has its own layout with no third-party assets. It had
+  been pulling Tailwind from a CDN — roughly 400KB of JavaScript compiled in the
+  browser — on a device chosen for sitting in a kitchen rather than for being
+  fast, and in link mode its navigation offered Sign Out and Profile to somebody
+  with no account.
+
+  "Last heard from" on the caregiver's panel is the point of the whole thing: a
+  device that has gone quiet says so before anybody misses a dose over it.
+
+  The address the device bookmarks is the address that shows the reminders. An
+  earlier draft redirected to a tidier URL, which would have had caregivers
+  bookmarking a tokenless address that works only while the cookie lives — the
+  exact failure this feature exists to end, reintroduced by tidying the URL.
+
+  **Done and Snooze work from a link**, which was going to be a later phase
+  until the first hands-on test made the problem plain: a device authorised by
+  a bookmark could hear every reminder and mark none of them done, so every dose
+  would become a missed-dose email and the caregiver would be told nothing was
+  taken. That is the product's central signal, inverted. Read-only is defensible
+  on paper — the care receiver can still sign in to mark something done — and
+  not in a kitchen, where the tablet *is* the interaction.
+
+  The acknowledgement endpoint now accepts a third credential without loosening
+  the two it already took: a Bearer token still decides on its own, a session
+  still decides before the link is consulted, and forgery protection is
+  untouched, because a link-mode page is issued a session cookie and renders
+  `csrf_meta_tags` like any other. What stops a link acknowledging somebody
+  else's dose is the query each action already ran — one credential, one care
+  receiver.
+
+  Analytics no longer records these addresses at all. Ahoy stores
+  `request.original_url` as a visit's landing page, so every redemption was
+  writing a live, non-expiring credential into `ahoy_visits` in plaintext —
+  kept indefinitely, and rendered on the admin audit screen. A credential in a
+  URL comes to rest wherever URLs are recorded, and a table is a worse resting
+  place than a log, because a log rotates.
+
+  A caregiver who may only look is no longer shown the address. Since a link can
+  now mark doses done, the address *is* the write permission: copied into a
+  browser it silences missed-dose mail and tells the other caregivers a dose was
+  taken. They still see whether the device is alive, which is a fact about the
+  care rather than a key to it.
+
+  The token is also kept out of Rails' request log, which `filter_parameters`
+  cannot do on its own: it filters query strings and parsed parameters, never
+  path segments, so `/r/<token>` was being written verbatim once per redemption.
+  kamal-proxy still logs the path before Rails sees it, which nothing in the
+  application can reach — a residual on our own server, and part of why
+  revocation is first-class rather than an afterthought.
+
+  A link that has stopped working says so, and offers nothing the person
+  reading it cannot use. Found on a real iPhone: revoking a
+  link left the device on a blank white page, because it reloads its own
+  bookmark and an empty 404 is what came back — no explanation, on the one
+  screen in this product belonging to the person least able to work out what
+  happened. It now says the page isn't working and to ask whoever set up the
+  reminders for a new link, and says nothing about why: a revoked link and an
+  invented one get the same words, so a dead link still cannot confirm it was
+  ever real.
+
+  Two ways a working device could have gone quiet, both closed. The cookie is
+  renewed whenever the device is recorded as alive, so a tablet in daily use
+  cannot lose its authorisation on the anniversary of the day it was set up —
+  which is this feature's own failure mode arriving twelve months late. And the
+  JSON the page polls now answers an invalid credential with a status rather
+  than a redirect: `fetch` follows redirects, so a login page came back as a
+  perfectly good response full of HTML, and a device whose link had been revoked
+  an hour earlier would have gone on announcing the reminders it already had,
+  looking exactly as it does when everything works.
+
+  A session that expires underneath the device now falls back to the link
+  rather than being treated as a sign-in that no longer works. A JWT that has
+  expired is still *present*, and asking only whether one existed would have
+  shown Done and Snooze to a tablet whose credential can no longer honour them —
+  in precisely the situation the link was built to recover from.
+
+  Three smaller things on the same page, two of them older than this work. The
+  settings dialog opened as a plain block that shoved the reminders down the
+  page — its class names were never defined anywhere, under the CDN either — and
+  is now a dialog. The script was cache-busted with `Time.now.to_i`, which
+  changes every second, so the tablet re-downloaded it on every load; it is
+  versioned on the file's own timestamp instead. And the day the JSON is read
+  for is now taken from a single clock reading, so a request landing on midnight
+  cannot take its start from one day and its end from the next.
+
+  This is phases 1 and 2 of `docs/SENIOR_ACCESS_DESIGN.md`. Creating an account
+  for somebody who never signed up is phase 3, and depends on these.
+
+### Security
+- **Reminder titles are escaped before they reach the screen.** They are typed
+  by a caregiver and stored exactly as typed — `Reminder` validates that a title
+  exists and nothing about what is in it — and the voice page writes them into
+  an HTML string it assigns to `innerHTML`. So a title containing markup became
+  markup on the care receiver's screen.
+
+  That was true before device links and is worse with them: the capability token
+  now lives in `window.location`, so script injected through a title could read
+  the credential out of the address bar and send it anywhere. The person who
+  types the title is usually the person who set the device up, but "usually" is
+  not a security property, and a second caregiver can write reminders too.
+
+  The JSON still carries the title exactly as typed. It is data there, and
+  escaping it server-side would put entities into the spoken announcement.
+
 ### Fixed
 - **The dashboard counted expired pairing tokens as pending requests.** The
   banner said "You have 2 pending pairing requests. Share the token with your

@@ -134,4 +134,10 @@
 </div>
 
 <!-- Load session-based voice reminders JavaScript -->
-<script src="/voice_reminders.js?v=<%= Time.now.to_i %>"></script>
+<%# Busted by the file's own timestamp, not the clock.
+
+    This said `Time.now.to_i`, which changes every second, so the tablet
+    re-downloaded the script on every page load and every reload — on the device
+    this page is deliberately light for. The mtime changes when the file does,
+    which is the only time a fresh copy is wanted. %>
+<script src="/voice_reminders.js?v=<%= voice_script_version %>"></script>
