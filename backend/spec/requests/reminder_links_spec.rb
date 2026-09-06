@@ -326,8 +326,17 @@ RSpec.describe "A reminder link", type: :request do
     # full URL as Referer on same-origin requests — of which this page makes one
     # every few seconds, forever. Without this the token lands in access logs by
     # a second route, after the first one was closed.
-    it "sends the token nowhere as a referrer" do
-      expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("no-referrer")
+    # strict-origin sends the origin and never the path, so the token in the
+    # address never reaches a Referer header — while forms still carry an
+    # Origin, which no-referrer strips to "null" and Rails then refuses. That
+    # cost the first-run Yes button, on a page where fetch() kept working
+    # throughout and hid it.
+    it "sends the origin, and never the path, as a referrer" do
+      expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("strict-origin")
+    end
+
+    it "never sends a policy that nulls the origin on forms" do
+      expect(doc.at_css("meta[name='referrer']")&.[]("content")).not_to eq("no-referrer")
     end
 
     # The settings dialog's own class names — modal, btn-primary and the rest —

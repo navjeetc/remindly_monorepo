@@ -44,9 +44,18 @@
         Referer header on our own access logs, which is the same leak the
         request-path redaction exists to prevent, arriving by another door.
 
-        no-referrer rather than same-origin: nothing on this page needs to know
-        where a request came from. %>
-    <meta name="referrer" content="no-referrer">
+        **strict-origin, not no-referrer.** no-referrer was the first choice and
+        it broke the one press this whole design turns on. Under it the browser
+        sends `Origin: null` on a form submission, Rails' forgery protection
+        refuses the request, and "Yes, start my reminders" answers with an
+        exception page. fetch() is unaffected — it sends an Origin regardless,
+        which is why the acknowledgement calls kept working and why this was not
+        obvious until somebody pressed the button.
+
+        strict-origin keeps the property that mattered: the Referer carries the
+        origin and never the path, so the token in the address is not sent
+        anywhere, while forms still identify where they came from. %>
+    <meta name="referrer" content="strict-origin">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <style>
