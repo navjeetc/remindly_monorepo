@@ -88,13 +88,19 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
   # the null store it used to be, every rate limit in the application counted
   # nothing and this example would have passed while proving nothing.
   describe "how many can be created" do
+    # Asserted as a property rather than an exact number: the boundary depends
+    # on the cache store. ActiveSupport::MemoryStore#increment returns nil for a
+    # key that does not exist yet, so the first request of the day is not
+    # counted here and eleven get through; SolidCache in production counts from
+    # one. What matters either way is that it stops, and stops around ten rather
+    # than at a hundred.
     it "stops well short of bulk" do
       sign_in(caregiver)
 
-      12.times { |i| post "/dashboard/care_receiver", params: { user: { name: "Person #{i}" } } }
+      20.times { |i| post "/dashboard/care_receiver", params: { user: { name: "Person #{i}" } } }
 
-      expect(User.where(role: :senior).count).to eq(10)
       expect(response).to have_http_status(:too_many_requests)
+      expect(User.where(role: :senior).count).to be_between(10, 11)
     end
 
     # Per caregiver, not per IP: two people setting up their own parents from
@@ -273,6 +279,39 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
         expect(CaregiverLink.where(senior_id: senior.id)).to be_empty
       end
 
+      # The database carries foreign keys for telephone rows and `User` carried no
+      # association for them, so destroying an account with any call attached
+      # raised instead of saying goodbye — and this branch deliberately shows the
+      # phone panel *before* consent, so "the caregiver already pressed Call and
+      # ask" is the ordinary case rather than an exotic one.
+      it "works even after the caregiver has already tried to telephone them" do
+        senior.update!(phone: "+15557654321")
+        TelnyxCall.create!(user: senior, purpose: "verification", to_number: senior.phone,
+                           status: "initiated", outcome: "pending", attempt_number: 1,
+                           requested_by: caregiver, completed_at: Time.current)
+        get "/r/#{link.token}"
+
+        post "/voice_reminders/decline"
+
+        expect(response).to have_http_status(:ok)
+        expect(User.exists?(senior.id)).to be(false)
+        expect(TelnyxCall.where(user_id: senior.id)).to be_empty
+      end
+
+      # The calls they arranged for somebody else are that person's history.
+      it "leaves calls it merely requested for other people alone" do
+        other = create(:user, :senior, name: "Dad", tz: "America/New_York")
+        theirs = TelnyxCall.create!(user: other, purpose: "verification", to_number: "+15550001111",
+                                    status: "initiated", outcome: "pending", attempt_number: 1,
+                                    requested_by: senior, completed_at: Time.current)
+        get "/r/#{link.token}"
+
+        post "/voice_reminders/decline"
+
+        expect(TelnyxCall.exists?(theirs.id)).to be(true)
+        expect(theirs.reload.requested_by_id).to be_nil
+      end
+
       it "says so, once" do
         get "/r/#{link.token}"
 
@@ -385,6 +424,34 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       expect(Occurrence.joins(:reminder).where(reminders: { user_id: senior.id })).to be_present
     end
 
+    # Pressing 1 on that call starts everything, so pressing 9 has to be able to
+    # end it. Otherwise somebody whose only device is the telephone can decline
+    # the calls and still be left with an account another person made for them,
+    # a caregiver writing reminders into it, and no way left to say no.
+    it "deletes a provisional account when they press 9" do
+      sign_in(caregiver)
+      senior = create_care_receiver
+      senior.update!(phone: "+15557654322")
+
+      senior.senior_links.where(state: :provisional).exists?.tap { |p| expect(p).to be(true) }
+      described = TelnyxWebhooksController.new
+      described.send(:record_on, senior, call_opted_out_at: Time.current, call_reminders_enabled: false)
+      described.send(:refuse_arrangement!, senior)
+
+      expect(User.exists?(senior.id)).to be(false)
+    end
+
+    # Somebody already using Remindly who presses 9 is saying "stop telephoning
+    # me", not "delete my account". Their history is theirs.
+    it "leaves an account that has already started alone" do
+      started = create(:user, :senior, :takes_calls, name: "Mom", tz: "America/New_York")
+      CaregiverLink.create!(senior: started, caregiver: caregiver, permission: :manage)
+
+      TelnyxWebhooksController.new.send(:refuse_arrangement!, started)
+
+      expect(User.exists?(started.id)).to be(true)
+    end
+
     # The cap that the per-number one cannot see: each call is to a different
     # number, so counting per number counts nothing about the person dialling.
     it "limits how many people one caregiver may ask to telephone" do
@@ -396,6 +463,56 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       end
 
       expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
+  # Both are written once, at setup, and the person they describe can never sign
+  # in to correct them. The timezone is the one that matters: reminders are
+  # expanded in their zone, so the wrong one fires every dose at the wrong hour
+  # — a bug this project has shipped twice.
+  describe "correcting what was typed at setup" do
+    let!(:senior) do
+      sign_in(caregiver)
+      create_care_receiver(tz: "America/New_York")
+    end
+
+    it "changes the timezone" do
+      patch "/dashboard/senior/#{senior.id}/details",
+        params: { user: { name: senior.name, tz: "America/Los_Angeles" } }
+
+      expect(senior.reload.tz).to eq("America/Los_Angeles")
+    end
+
+    it "changes the name" do
+      patch "/dashboard/senior/#{senior.id}/details",
+        params: { user: { name: "Mother", tz: senior.tz } }
+
+      expect(senior.reload.name).to eq("Mother")
+    end
+
+    it "refuses to blank the name" do
+      expect {
+        patch "/dashboard/senior/#{senior.id}/details", params: { user: { name: "", tz: senior.tz } }
+      }.not_to change { senior.reload.name }
+    end
+
+    # Somebody who signed up owns their own name and their own clock. This
+    # screen is for repairing a caregiver's own typing, not for reaching into a
+    # profile that has an owner.
+    it "is not offered for somebody who can sign in themselves" do
+      theirs = create(:user, :senior, name: "Mom", tz: "America/New_York")
+      CaregiverLink.create!(senior: theirs, caregiver: caregiver, permission: :manage)
+
+      expect {
+        patch "/dashboard/senior/#{theirs.id}/details",
+          params: { user: { name: "Renamed", tz: "America/Los_Angeles" } }
+      }.not_to change { theirs.reload.tz }
+    end
+
+    it "offers the link on their page" do
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).to include(edit_care_receiver_path(senior_id: senior.id))
     end
   end
 
@@ -513,6 +630,33 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       post "/start", params: { code: code }
 
       expect(response).to have_http_status(:unprocessable_entity)
+    end
+  end
+
+  # Inviting a second caregiver to somebody who has not agreed to anything must
+  # not hand that caregiver a link born active — with it come the activity,
+  # acknowledgement and coverage screens the provisional state exists to
+  # withhold, about a person who has consented to nothing.
+  describe "inviting a second caregiver before the care receiver has agreed" do
+    it "gives them a provisional link too" do
+      sign_in(caregiver)
+      senior = create_care_receiver
+
+      post "/dashboard/senior/#{senior.id}/invite_caregiver", params: { caregiver_email: "sam@example.com" }
+
+      invited = CaregiverLink.find_by(senior_id: senior.id, caregiver_id: User.find_by(email: "sam@example.com").id)
+      expect(invited.state).to eq("provisional")
+    end
+
+    it "still gives an active link on an account that has started" do
+      started = create(:user, :senior, name: "Mom", tz: "America/New_York")
+      CaregiverLink.create!(senior: started, caregiver: caregiver, permission: :manage)
+      sign_in(caregiver)
+
+      post "/dashboard/senior/#{started.id}/invite_caregiver", params: { caregiver_email: "sam@example.com" }
+
+      invited = CaregiverLink.find_by(senior_id: started.id, caregiver_id: User.find_by(email: "sam@example.com").id)
+      expect(invited.state).to eq("active")
     end
   end
 

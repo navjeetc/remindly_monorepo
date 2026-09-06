@@ -33,7 +33,7 @@
           <%= f.date_field :date, 
               value: Date.current,
               min: Date.current,
-              class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+              class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           <p class="mt-1 text-sm text-gray-500">Select the date you'll be available</p>
         </div>
 
@@ -42,14 +42,14 @@
             <%= f.label :start_time, "Start Time", class: "block text-sm font-medium text-gray-700" %>
             <%= f.time_field :start_time, 
                 value: "09:00",
-                class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+                class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           </div>
 
           <div>
             <%= f.label :end_time, "End Time", class: "block text-sm font-medium text-gray-700" %>
             <%= f.time_field :end_time, 
                 value: "17:00",
-                class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+                class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           </div>
         </div>
 
@@ -58,7 +58,7 @@
           <%= f.text_area :notes, 
               rows: 3,
               placeholder: "e.g., Available for doctor appointments only",
-              class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+              class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
           <p class="mt-1 text-sm text-gray-500">Add any special notes about this availability</p>
         </div>
 

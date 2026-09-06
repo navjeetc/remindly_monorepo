@@ -15,7 +15,7 @@
         <%= f.select :days,
           options_for_select([ [ "Last 7 days", 7 ], [ "Last 30 days", 30 ], [ "Last 90 days", 90 ] ], @days),
           {},
-          class: "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "border block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
       </div>
       <%= f.submit "Apply", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer" %>
       <p class="text-sm text-gray-500 ml-auto">Since <%= @since.strftime("%d %b %Y") %></p>

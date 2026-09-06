@@ -18,7 +18,14 @@
           care receiver's own dashboard has said "Can make changes" since #117;
           this screen still read "Permission: Manage" for the same fact. %>
       <p class="mt-1 text-sm text-gray-500">
-        Timezone: <%= @senior.tz %> &middot;
+        Timezone: <%= @senior.tz %><%#
+          Offered only for an account with no way to correct itself. The wrong
+          zone here fires every reminder at the wrong hour and there is nobody
+          on the other side who can change it. %>
+        <% if @senior.email.blank? && may_change?(@senior) %>
+          (<%= link_to "change", edit_care_receiver_path(senior_id: @senior.id), class: "text-blue-600 hover:text-blue-800" %>)
+        <% end %>
+        &middot;
         <%= @permission == "manage" ? "You can make changes" : "You can only look" %>
       </p>
     </div>

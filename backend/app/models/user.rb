@@ -146,6 +146,18 @@ class User < ApplicationRecord
   # their whole account removed, which has to include the way into it.
   has_many :reminder_links, dependent: :destroy
 
+  # Telephone rows, which had no association at all while the database carried a
+  # foreign key for them. Refusing at first run destroys the account, and a care
+  # receiver whose caregiver had already pressed "Call and ask" would have hit a
+  # constraint failure instead of a goodbye — with the link cookie already gone,
+  # so the device could not even go back.
+  #
+  # The calls *to* this person go with them; the ones they merely arranged for
+  # somebody else are somebody else's history and are only unhooked.
+  has_many :telnyx_calls, dependent: :destroy
+  has_many :requested_telnyx_calls, class_name: "TelnyxCall", foreign_key: "requested_by_id",
+                                    dependent: :nullify, inverse_of: :requested_by
+
   # Caregiver relationships
   has_many :senior_links, class_name: "CaregiverLink", foreign_key: "senior_id", dependent: :destroy
   has_many :caregivers, through: :senior_links, source: :caregiver
@@ -307,7 +319,9 @@ class User < ApplicationRecord
   # record about a person, and a missed-dose email is a claim about them, and
   # both would be about somebody who has never seen the device.
   def awaiting_first_use?
-    senior_links.where(state: :provisional).exists?
+    return @awaiting_first_use if defined?(@awaiting_first_use)
+
+    @awaiting_first_use = senior_links.where(state: :provisional).exists?
   end
 
   def display_name

@@ -1,0 +1,39 @@
+<%#
+  Correcting what was typed at setup.
+
+  Offered only for somebody who cannot sign in and correct it themselves. The
+  timezone is the reason this screen exists: reminders are expanded in the care
+  receiver's zone, so the wrong one here means every dose fires at the wrong
+  hour, and this project has shipped that bug twice already.
+%>
+<div class="max-w-2xl mx-auto space-y-6">
+  <div>
+    <h2 class="text-3xl font-bold text-gray-900">Their details</h2>
+    <p class="mt-2 text-sm text-gray-600">
+      They have no account of their own, so this is the only place these can be changed.
+    </p>
+  </div>
+
+  <%= form_with url: care_receiver_details_path(senior_id: @senior.id), method: :patch, scope: :user,
+                class: "bg-white shadow rounded-lg p-6 space-y-5" do |f| %>
+    <div>
+      <%= f.label :name, "Their name", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :name, value: @senior.name, required: true,
+            class: "border mt-1 w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+    </div>
+
+    <div>
+      <%= f.label :tz, "Their timezone", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :tz, options_for_select(current_user.timezone_options, @senior.tz), {},
+            class: "border mt-1 w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+      <p class="mt-1 text-xs text-gray-500">
+        Where they live, not where you are. Changing this moves every reminder time with it.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <%= f.submit "Save", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer" %>
+      <%= link_to "Cancel", senior_dashboard_path(@senior), class: "text-sm text-gray-600 hover:text-gray-900" %>
+    </div>
+  <% end %>
+</div>

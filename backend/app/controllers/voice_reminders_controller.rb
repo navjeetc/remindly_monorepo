@@ -71,7 +71,12 @@ class VoiceRemindersController < WebController
     # /voice_reminders is what somebody would then save — and it works only
     # while the cookie lives, which is the failure this whole feature exists to
     # end. See redeem_token.
-    redirect_to reminder_link_path(token: link_mode_link&.token || ReminderLink.live.find_by(user_id: senior.id)&.token)
+    # Falls back rather than raising: reminder_link_path(token: nil) is a
+    # UrlGenerationError, and somebody session-authenticated with no live link
+    # would meet it on the one press that says yes.
+    token = link_mode_link&.token || ReminderLink.live.find_by(user_id: senior.id)&.token
+
+    redirect_to token ? reminder_link_path(token: token) : voice_reminders_path
   end
 
   # No.
@@ -87,8 +92,13 @@ class VoiceRemindersController < WebController
     return redirect_to voice_reminders_path unless link
 
     senior = link.senior
-    cookies.delete(ReminderLinkMode::COOKIE)
+
+    # Destroy first, forget the cookie second. The other order leaves a device
+    # that has lost its way back looking at whatever the failure produced, with
+    # the account it just refused still live — and destroying an account is
+    # exactly the operation with constraints that can refuse.
     senior.destroy!
+    cookies.delete(ReminderLinkMode::COOKIE)
 
     render :declined, status: :ok
   end

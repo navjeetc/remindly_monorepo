@@ -164,6 +164,11 @@ Rails.application.routes.draw do
   get  "dashboard/care_receiver/new", to: "dashboard#new_care_receiver", as: :new_care_receiver
   post "dashboard/care_receiver", to: "dashboard#create_care_receiver", as: :care_receivers
 
+  # Fixing what was typed at setup. Only for an account that cannot sign in to
+  # fix it itself — see DashboardController#edit_care_receiver.
+  get   "dashboard/senior/:senior_id/details", to: "dashboard#edit_care_receiver", as: :edit_care_receiver
+  patch "dashboard/senior/:senior_id/details", to: "dashboard#update_care_receiver", as: :care_receiver_details
+
   # Caregiver pairing
   resources :caregiver_links, only: [ :index, :destroy ] do
     collection do

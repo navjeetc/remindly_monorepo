@@ -73,6 +73,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   than per address, because two people setting up their own parents from one
   house should not spend each other's allowance.
 
+### Fixed
+- **One consent call stopped every reminder call in the system.** The scheduler
+  skips occurrences that were called recently with
+  `WHERE id NOT IN (SELECT occurrence_id FROM telnyx_calls …)`, and a
+  verification call — "Call and ask" — has no occurrence, so its `occurrence_id`
+  is NULL. `NOT IN (NULL, …)` is NULL in SQL rather than true, so the clause
+  matched nothing at all: for the five minutes that row stayed inside
+  `RETRY_AFTER`, no care receiver anywhere was telephoned. Nothing logged it and
+  no suppression reason was written; the doses simply went to the missed sweep
+  an hour later as though nobody had answered.
+
+  Older than this branch and found by a spec that only began failing once real
+  time passed the date it hardcoded, which is its own lesson about time-fixed
+  fixtures.
+
+- **Every text field a caregiver types into was invisible.** The markup gave
+  them a border *colour* and never a border *width*, and Tailwind's reset sets
+  the width to zero — so the reminder form was two lines of placeholder text
+  floating on white with nothing to show where to click. Thirty-eight controls
+  across thirteen files, including both reminder forms and the whole task form.
+  A spec now walks the forms and fails on any control with a colour and no
+  width.
+
 ### Changed
 - **Rate limits are now real in tests.** The test cache was `:null_store`, and
   Rails reads a rate limit's store when the controller class loads — so every

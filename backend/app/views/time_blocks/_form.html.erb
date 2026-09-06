@@ -27,19 +27,19 @@
     <!-- Reason -->
     <div class="sm:col-span-2">
       <%= f.label :reason, "Reason (Optional)", class: "block text-sm font-medium text-gray-700" %>
-      <%= f.text_field :reason, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "e.g., Sleep time, Meal time, Appointment" %>
+      <%= f.text_field :reason, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "e.g., Sleep time, Meal time, Appointment" %>
     </div>
 
     <!-- Start Time -->
     <div>
       <%= f.label :start_time, "Start Time", class: "block text-sm font-medium text-gray-700" %>
-      <%= f.datetime_local_field :start_time, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      <%= f.datetime_local_field :start_time, class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
     </div>
 
     <!-- End Time -->
     <div>
       <%= f.label :end_time, "End Time", class: "block text-sm font-medium text-gray-700" %>
-      <%= f.datetime_local_field :end_time, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      <%= f.datetime_local_field :end_time, class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
     </div>
 
     <!-- Recurring -->
@@ -69,7 +69,7 @@
           ["Every Night", "Every Night"]
         ], @time_block.recurrence_pattern),
         { include_blank: "Select pattern" },
-        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+        class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
       <p class="mt-1 text-sm text-gray-500">Only used if recurring is checked</p>
     </div>
 

@@ -27,7 +27,7 @@
     <!-- Title -->
     <div class="sm:col-span-2">
       <%= f.label :title, class: "block text-sm font-medium text-gray-700" %>
-      <%= f.text_field :title, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "e.g., Doctor Appointment" %>
+      <%= f.text_field :title, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "e.g., Doctor Appointment" %>
       <%= render "shared/sensitive_info_hint" %>
     </div>
 
@@ -44,7 +44,7 @@
           ["Other", "other"]
         ], @task.task_type),
         {},
-        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+        class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
     </div>
 
     <!-- Priority -->
@@ -58,7 +58,7 @@
           ["Urgent", "urgent"]
         ], @task.priority),
         {},
-        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+        class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
     </div>
 
     <!-- Open-Ended Task Toggle -->
@@ -85,7 +85,7 @@
       <%# Pre-fill in the senior's clock, because that is the clock the value is
           read back in when it is saved. Rendering the raw UTC instant here
           would shift the time every time someone opened the form and saved. %>
-      <%= f.datetime_local_field :scheduled_at, id: "task_scheduled_at_input", value: @task.scheduled_at_local&.strftime("%Y-%m-%dT%H:%M"), class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+      <%= f.datetime_local_field :scheduled_at, id: "task_scheduled_at_input", value: @task.scheduled_at_local&.strftime("%Y-%m-%dT%H:%M"), class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
       <p class="mt-1 text-xs text-gray-500">
         In <%= @senior.display_name %>'s time (<%= @task.zone.name.tr("_", " ") %>)<% if (local = Time.current.in_time_zone(@task.zone)) %> — it is <%= local.strftime("%-l:%M %p") %> there now<% end %>.
       </p>
@@ -262,13 +262,13 @@
     <!-- Duration -->
     <div>
       <%= f.label :duration_minutes, "Duration (minutes)", class: "block text-sm font-medium text-gray-700" %>
-      <%= f.number_field :duration_minutes, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "60" %>
+      <%= f.number_field :duration_minutes, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "60" %>
     </div>
 
     <!-- Location -->
     <div class="sm:col-span-2">
       <%= f.label :location, class: "block text-sm font-medium text-gray-700" %>
-      <%= f.text_field :location, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "e.g., Main St Clinic, 123 Main St" %>
+      <%= f.text_field :location, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "e.g., Main St Clinic, 123 Main St" %>
     </div>
 
     <!-- Assigned To -->
@@ -277,7 +277,7 @@
       <%= f.select :assigned_to_id, 
         options_for_select([["Unassigned", nil]] + @caregivers.map { |c| [c.email, c.id] }, @task.assigned_to_id),
         {},
-        class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+        class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
     </div>
 
     <!-- Status (only show for existing tasks) -->
@@ -293,21 +293,21 @@
             ["Cancelled", "cancelled"]
           ], @task.status),
           {},
-          class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
       </div>
     <% end %>
 
     <!-- Description -->
     <div class="sm:col-span-2">
       <%= f.label :description, class: "block text-sm font-medium text-gray-700" %>
-      <%= f.text_area :description, rows: 3, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "Additional details about the task..." %>
+      <%= f.text_area :description, rows: 3, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "Additional details about the task..." %>
       <%= render "shared/sensitive_info_aside" %>
     </div>
 
     <!-- Notes -->
     <div class="sm:col-span-2">
       <%= f.label :notes, "Notes/Instructions", class: "block text-sm font-medium text-gray-700" %>
-      <%= f.text_area :notes, rows: 2, class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "Important notes or instructions..." %>
+      <%= f.text_area :notes, rows: 2, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm", placeholder: "Important notes or instructions..." %>
       <%= render "shared/sensitive_info_aside" %>
     </div>
 
@@ -335,7 +335,7 @@
       <!-- Recurrence Pattern -->
       <div class="sm:col-span-2">
         <label class="block text-sm font-medium text-gray-700">Repeat</label>
-        <select id="recurrence_pattern" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+        <select id="recurrence_pattern" class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
           <option value="">Does not repeat</option>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
@@ -347,7 +347,7 @@
       <div id="daily_options" class="sm:col-span-2 hidden">
         <label class="block text-sm font-medium text-gray-700 mb-2">Every</label>
         <div class="flex items-center space-x-2">
-          <input type="number" id="daily_interval" value="1" min="1" max="30" class="w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+          <input type="number" id="daily_interval" value="1" min="1" max="30" class="border w-20 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
           <span class="text-sm text-gray-700">day(s)</span>
         </div>
       </div>
@@ -390,14 +390,14 @@
       <!-- Monthly Options -->
       <div id="monthly_options" class="sm:col-span-2 hidden">
         <label class="block text-sm font-medium text-gray-700 mb-2">On day</label>
-        <input type="number" id="monthly_day" value="1" min="1" max="31" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+        <input type="number" id="monthly_day" value="1" min="1" max="31" class="border w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
         <span class="text-sm text-gray-500 ml-2">of the month</span>
       </div>
 
       <!-- Time Selection -->
       <div id="recurrence_time" class="sm:col-span-2 hidden">
         <label class="block text-sm font-medium text-gray-700">Time</label>
-        <input type="time" id="recurrence_time_input" value="09:00" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+        <input type="time" id="recurrence_time_input" value="09:00" class="border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
       </div>
 
       <!-- Preview -->
