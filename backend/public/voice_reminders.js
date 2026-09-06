@@ -147,14 +147,17 @@ class VoiceRemindersApp {
                 credentials: 'include' // Important for session cookies
             });
             
-            // The credential stopped working — the link was revoked, or a
-            // session expired. Reloading lands on whatever this device is
+            // The credential stopped working, or has not started working yet:
+            // revoked, expired, or belonging to an account whose owner has not
+            // agreed to any of this. 403 is handled with 401 rather than
+            // falling through to the error path, where the page would keep
+            // rendering what it last had and never recover. Reloading lands on whatever this device is
             // actually entitled to now: the page explaining that a link has
             // stopped working, if the address is /r/<token>, or the login page
             // for a session that has run out. Without this the page keeps
             // showing the reminders it already had and goes on announcing them,
             // looking exactly as it does when everything is fine.
-            if (response.status === 401) {
+            if (response.status === 401 || response.status === 403) {
                 window.location.reload();
                 return;
             }

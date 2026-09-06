@@ -54,9 +54,24 @@ class VoiceRemindersController < WebController
   # Yes. From here the page behaves as it does for anybody else, and the
   # caregiver's activity screens start working.
   def start
-    awaiting_link&.update!(state: :active)
+    link = awaiting_link
+    return redirect_to voice_reminders_path unless link
 
-    redirect_to voice_reminders_path
+    senior = link.senior
+    link.update!(state: :active)
+
+    # Everything written while waiting exists as a reminder and not yet as a
+    # day: expansion was refused while this account was provisional, so the
+    # first one happens here rather than up to an hour later when the hourly
+    # sweep next runs. Somebody who says yes at nine should hear their ten
+    # o'clock dose.
+    senior.reminders.find_each { |reminder| Recurrence.expand(reminder) }
+
+    # To the address worth bookmarking, not the tidier one. A redirect to
+    # /voice_reminders is what somebody would then save — and it works only
+    # while the cookie lives, which is the failure this whole feature exists to
+    # end. See redeem_token.
+    redirect_to reminder_link_path(token: link_mode_link&.token || ReminderLink.live.find_by(user_id: senior.id)&.token)
   end
 
   # No.

@@ -144,6 +144,26 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       end
     end
 
+    # An occurrence is a record about a person, and the missed sweep turns it
+    # into a claim: "Mum missed her morning tablets", emailed to the caregiver,
+    # about somebody who has never seen the device. The account is set up on
+    # Monday and the tablet arrives on Friday.
+    it "records nothing about a person who has not agreed" do
+      post "/dashboard/senior/#{senior.id}/reminder", params: {
+        reminder: { title: "Morning tablets", rrule: "FREQ=DAILY", tz: senior.tz }
+      }
+
+      expect(Occurrence.joins(:reminder).where(reminders: { user_id: senior.id })).to be_empty
+    end
+
+    it "tells the caregiver nothing about their day, even by email" do
+      reminder = Reminder.create!(user: senior, title: "Morning tablets", rrule: "FREQ=DAILY",
+                                  tz: senior.tz, category: :medication)
+      Occurrence.create!(reminder: reminder, scheduled_at: 3.hours.ago, status: :pending)
+
+      expect(ReminderNotificationService.recipients(reminder)).to be_empty
+    end
+
     it "announces nothing on the device" do
       link = ReminderLink.live.find_by(user_id: senior.id)
       reset!
@@ -189,7 +209,32 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
         post "/voice_reminders/start"
 
         expect(CaregiverLink.find_by(senior_id: senior.id).state).to eq("active")
-        expect(response).to redirect_to(voice_reminders_path)
+      end
+
+      # Back to the address worth bookmarking, not the tidier one. Somebody
+      # bookmarks what is on screen after they press Yes, and /voice_reminders
+      # works only while the cookie lives — the failure this whole feature
+      # exists to end.
+      it "lands back on the address worth bookmarking" do
+        get "/r/#{link.token}"
+
+        post "/voice_reminders/start"
+
+        expect(response).to redirect_to(reminder_link_path(token: link.token))
+      end
+
+      # Reminders written while waiting exist as a schedule and not yet as a
+      # day, because expansion is refused for an account nobody has agreed to.
+      # Saying yes has to catch them up, or the first dose arrives whenever the
+      # hourly sweep next runs.
+      it "materialises the day that was written while waiting" do
+        Reminder.create!(user: senior, title: "Morning tablets", rrule: "FREQ=DAILY", tz: senior.tz)
+        expect(Occurrence.joins(:reminder).where(reminders: { user_id: senior.id })).to be_empty
+
+        get "/r/#{link.token}"
+        post "/voice_reminders/start"
+
+        expect(Occurrence.joins(:reminder).where(reminders: { user_id: senior.id })).to be_present
       end
 
       it "lets the device hear reminders from then on" do
@@ -245,6 +290,62 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
 
         expect(response).to have_http_status(:not_found)
       end
+    end
+  end
+
+  # The credential a view-only caregiver must not be handed, in either of its
+  # forms. The address was gated when phase 2 made a link able to write; the six
+  # digits are the same credential said out loud, and were not.
+  describe "what a caregiver who may only look can see" do
+    let!(:senior) do
+      sign_in(caregiver)
+      create_care_receiver
+    end
+    let(:link) { ReminderLink.live.find_by(user_id: senior.id) }
+    let(:looker) { create(:user, :caregiver, name: "Sam") }
+
+    before do
+      CaregiverLink.create!(senior: senior, caregiver: looker, permission: :view, state: :active)
+      post "/dashboard/senior/#{senior.id}/reminder_link/#{link.id}/start_code"
+      reset!
+      sign_in(looker)
+    end
+
+    it "is not shown the address" do
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).not_to include(link.reload.token)
+    end
+
+    # Typed at /start these six digits hand over a cookie that can mark doses
+    # done. Reading them off a screen is copy and paste with extra steps.
+    it "is not shown the six-digit code" do
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(response.body).not_to include(link.reload.start_code)
+    end
+
+    it "cannot issue one either" do
+      expect {
+        post "/dashboard/senior/#{senior.id}/reminder_link/#{link.id}/start_code"
+      }.not_to change { link.reload.start_code }
+    end
+  end
+
+  # A blank email address is no longer a typo, it is a real state — so a lookup
+  # by a missing one must refuse rather than match whichever care receiver the
+  # database returns first.
+  describe "signing in with no address" do
+    it "refuses rather than matching a care receiver who has none" do
+      sign_in(caregiver)
+      created = create_care_receiver
+      reset!
+
+      expect {
+        post "/login/magic", params: {}
+      }.not_to change { ActionMailer::Base.deliveries.count }
+
+      expect(created.reload.email).to be_nil
     end
   end
 

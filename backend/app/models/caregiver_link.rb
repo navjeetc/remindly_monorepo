@@ -184,9 +184,6 @@ class CaregiverLink < ApplicationRecord
     senior.present? && caregiver.nil? && pairing_token.present?
   end
 
-  # A caregiver may write reminders in either state; only one of them means the
-  # care receiver has agreed to anything.
-  def writable_by_caregiver? = state_provisional? || state_active?
 
   # When this token stops being redeemable. The one place that answer is
   # computed — both screens that print it used to work it out for themselves,

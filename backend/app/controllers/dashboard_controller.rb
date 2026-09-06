@@ -315,15 +315,24 @@ class DashboardController < WebController
       email_undeliverable_at: Time.current
     )
 
-    unless @senior.save
-      flash.now[:alert] = @senior.errors.full_messages.to_sentence
-      return render :new_care_receiver, status: :unprocessable_entity
-    end
+    # One transaction for all three, because two of them are meaningless alone.
+    # Committing the account first left an orphan if the link or the token
+    # failed: a care receiver with no email and no caregiver, invisible on every
+    # screen and unreachable through any of them, while the caregiver saw a 500.
+    saved = false
 
     ActiveRecord::Base.transaction do
+      saved = @senior.save
+      raise ActiveRecord::Rollback unless saved
+
       CaregiverLink.create!(senior: @senior, caregiver: current_user,
                             permission: :manage, state: :provisional)
       @reminder_link = ReminderLink.mint(user: @senior)
+    end
+
+    unless saved
+      flash.now[:alert] = @senior.errors.full_messages.to_sentence
+      return render :new_care_receiver, status: :unprocessable_entity
     end
 
     redirect_to senior_dashboard_path(@senior),

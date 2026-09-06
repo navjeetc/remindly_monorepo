@@ -43,15 +43,13 @@
           Anyone with this address can see their reminders and mark doses done,
           so treat it like a key. It does not expire.
         </p>
-      <% else %>
-        <p class="text-sm text-gray-700">
-          Their device is set up with a link.
-        </p>
-      <% end %>
 
-        <%# The telephone route. Shown only while a code is live, because a
-            six-digit secret sitting on a screen nobody is waiting to type is
-            worth less than the risk of it. %>
+        <%# The telephone route, and the code is a credential exactly as the
+            address is: typed at /start it hands the device a link-mode cookie,
+            and that cookie can mark doses done. Showing it to a caregiver whose
+            permission is "can only look" would hand them, by reading it off the
+            screen, the writes the permission exists to withhold — the same
+            mistake as showing them the URL, in different digits. %>
         <% if reminder_link.start_code_live? %>
           <div class="mt-4 rounded-md bg-blue-50 border border-blue-200 p-4">
             <p class="text-sm text-blue-900">Read them these numbers:</p>
@@ -69,6 +67,12 @@
             Gives you six numbers to read out, good for ten minutes.
           </p>
         <% end %>
+      <% else %>
+        <p class="text-sm text-gray-700">
+          Their device is set up with a link.
+        </p>
+      <% end %>
+
 
       <p class="mt-3 text-sm text-gray-700">
         <% if reminder_link.last_used_at %>

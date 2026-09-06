@@ -300,6 +300,16 @@ class User < ApplicationRecord
   # blank heading reads as a broken page rather than an unnamed person. The
   # creation form asks for a name, so this is the last resort behind a last
   # resort.
+  # Somebody a caregiver has set up who has not yet opened the link and agreed.
+  #
+  # Nothing about their day may be created, swept, counted or sent while this is
+  # true — not merely hidden from a screen. An occurrence marked missed is a
+  # record about a person, and a missed-dose email is a claim about them, and
+  # both would be about somebody who has never seen the device.
+  def awaiting_first_use?
+    senior_links.where(state: :provisional).exists?
+  end
+
   def display_name
     nickname.presence || name.presence || email.presence || "Someone"
   end

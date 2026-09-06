@@ -94,12 +94,23 @@ class ReminderNotificationService
   # caregivers. The reminder's owner is the senior by definition — we don't gate on
   # role, since a senior whose role flag was never set still owns real reminders and
   # caregiver links; the caregiver set is the gate.
+  # Only caregivers on an active link. A provisional one means the care receiver
+  # has not agreed to any of this yet, and telling a caregiver what that person
+  # did or did not do today is the surveillance case the state exists to
+  # prevent — reached through the mail rather than through a screen.
+  #
+  # Belt as well as braces: Recurrence.expand creates no occurrences for a
+  # provisional account, so there should be nothing to report. This is what
+  # holds if a row ever arrives another way.
   def self.recipients(reminder)
     senior = reminder.user
     return [] unless senior
 
     category = reminder.category
-    senior.caregivers.select { |caregiver| caregiver.notified_for?(category) }
+
+    senior.senior_links.where(state: :active).includes(:caregiver).filter_map do |link|
+      link.caregiver if link.caregiver&.notified_for?(category)
+    end
   end
 
   # kind is :acknowledged or :missed.

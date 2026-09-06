@@ -32,7 +32,17 @@
       <%= button_to "Yes, start my reminders", start_voice_reminders_path,
             class: "btn-primary text-2xl px-8 py-6" %>
 
+      <%# Asked before it happens. This press deletes the account and everything
+          written into it, there is no undo, and it sits beside "Yes" on a page
+          sized for somebody with impaired vision and dexterity — a mis-tap
+          should not be able to destroy a fortnight of reminders a caregiver
+          wrote while waiting for the tablet to arrive.
+
+          Plain onclick, not turbo_confirm: this layout loads no Turbo and no
+          UJS, so data-turbo-confirm is inert here. Same reason the caregiver's
+          own destructive buttons use onclick. %>
       <%= button_to "No thank you", decline_voice_reminders_path,
+            onclick: "return confirm('#{j 'This deletes the reminders that were set up for you. Are you sure?'}')",
             class: "btn-secondary text-2xl px-8 py-6" %>
     </div>
 

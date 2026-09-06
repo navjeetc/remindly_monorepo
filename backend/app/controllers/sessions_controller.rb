@@ -8,7 +8,18 @@ class SessionsController < ActionController::Base
 
   # Request magic link via email
   def request_magic_link
-    email = params[:email]
+    email = params[:email].to_s.strip
+
+    # Refused rather than looked up. An address is now allowed to be nil — a
+    # care receiver set up by their caregiver has none — so `find_by(email: nil)`
+    # matches a real person, and a request with the field omitted would mint a
+    # sign-in token for whichever of them the database returned first. Nothing
+    # is delivered today only because the mailer raises on a nil recipient,
+    # which is a thin thing to be standing behind.
+    if email.blank?
+      return redirect_to login_path, alert: "Enter your email address."
+    end
+
     user = User.find_or_create_by!(email: email)
     token = user.signed_id(purpose: :magic_login, expires_in: 30.minutes)
 

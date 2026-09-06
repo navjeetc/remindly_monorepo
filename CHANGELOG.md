@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expired one and a spent one are answered identically. It is the one remote
   channel this audience is comfortable with.
 
+  Nothing about a provisional care receiver is recorded, not merely hidden.
+  Reminders written while waiting are a schedule and not yet a day: no
+  occurrences are created, so the missed sweep has nothing to flip and the
+  caregiver is told nothing about somebody who has never seen the device. Set
+  Mum up on Monday for a tablet that arrives on Friday and she does not
+  accumulate four days of missed doses. Saying yes materialises the day
+  immediately, so a reminder due in an hour still fires.
+
   A caregiver cannot do this in bulk: ten a day, counted per caregiver rather
   than per address, because two people setting up their own parents from one
   house should not spend each other's allowance.
