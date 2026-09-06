@@ -1,0 +1,63 @@
+<%#
+  Setting somebody up who has no account.
+
+  Two fields, and neither of them is an email address. That absence is the
+  design rather than an omission: with no address there is no lookup, so this
+  form cannot be used to find out who already has an account, and the person
+  being set up never has to find a message in an inbox and trust a link inside
+  it — the exact interaction this audience is warned never to trust.
+
+  The copy is deliberately plain about what happens next, because a caregiver
+  who does not know the care receiver has to agree will read the empty activity
+  panel as a bug.
+%>
+<div class="max-w-2xl mx-auto space-y-6">
+  <div>
+    <h2 class="text-3xl font-bold text-gray-900">Set up someone you care for</h2>
+    <p class="mt-2 text-sm text-gray-600">
+      They do not need an email address or an account. You write the reminders;
+      they open a link on their tablet or computer once, and it stays open.
+    </p>
+  </div>
+
+  <%= form_with url: care_receivers_path, method: :post, scope: :user, class: "bg-white shadow rounded-lg p-6 space-y-5" do |f| %>
+    <div>
+      <%= f.label :name, "Their name", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.text_field :name, value: @senior&.name, required: true, autofocus: true,
+            placeholder: "Mum",
+            class: "mt-1 w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+      <p class="mt-1 text-xs text-gray-500">
+        What Remindly will call them, on screen and out loud.
+      </p>
+    </div>
+
+    <div>
+      <%= f.label :tz, "Their timezone", class: "block text-sm font-medium text-gray-700" %>
+      <%# Theirs, not yours. Reminders are expanded in this zone, so a caregiver
+          three timezones away who leaves their own here would have every dose
+          fire at the wrong hour — the clock bug this project has already had
+          twice. %>
+      <%= f.select :tz,
+            options_for_select(current_user.timezone_options, @senior&.tz || current_user.tz),
+            {},
+            class: "mt-1 w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+      <p class="mt-1 text-xs text-gray-500">
+        Where they live, not where you are. Reminder times follow their clock.
+      </p>
+    </div>
+
+    <div class="rounded-md bg-blue-50 border border-blue-200 p-4">
+      <p class="text-sm text-blue-900">
+        <strong>They have the final say.</strong> You can write reminders straight
+        away, but nothing is spoken and you will see no activity until they open
+        the link and agree. If they decline, the account is deleted.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <%= f.submit "Set them up",
+            class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer" %>
+      <%= link_to "Cancel", dashboard_path, class: "text-sm text-gray-600 hover:text-gray-900" %>
+    </div>
+  <% end %>
+</div>

@@ -4,6 +4,21 @@ class CaregiverLink < ApplicationRecord
 
   enum :permission, { view: 0, manage: 1 }, prefix: true
 
+  # How far along a link is, and therefore what the caregiver on it may do.
+  #
+  #   pending      the care receiver generated a token; nobody has redeemed it
+  #   provisional  a caregiver created the account and may write reminders into
+  #                it; the care receiver has not opened the link or agreed to
+  #                anything, so nothing about their day is visible yet
+  #   active       the care receiver started, or handed over a token themselves
+  #
+  # Authorisation splits on this rather than on whether data happens to exist,
+  # which is the difference between a guarantee and a coincidence: reminder
+  # authoring accepts provisional, and every activity, acknowledgement and
+  # coverage view requires active, so the routes refuse rather than there merely
+  # being nothing to show.
+  enum :state, { pending: 0, provisional: 1, active: 2 }, prefix: :state
+
   validates :pairing_token, uniqueness: true, allow_nil: true
   validate :caregiver_cannot_be_senior
 
@@ -77,7 +92,11 @@ class CaregiverLink < ApplicationRecord
     create!(
       senior: senior,
       pairing_token: token,
-      permission: :view
+      permission: :view,
+      # Nobody has redeemed this yet, which the column default does not assume:
+      # the default is a live relationship, because that is what almost every
+      # other row is.
+      state: :pending
     )
   end
 
@@ -118,6 +137,7 @@ class CaregiverLink < ApplicationRecord
   def pair_with(caregiver:)
     return false if caregiver.nil? || caregiver.id == senior_id
 
+
     # The week is part of the claim, not a question asked beforehand. Every
     # condition that decides whether this token may be redeemed is in the one
     # statement that redeems it — unclaimed, still carrying a token, and still
@@ -136,6 +156,10 @@ class CaregiverLink < ApplicationRecord
                   .update_all(
                     caregiver_id: caregiver.id,
                     permission: self.class.permissions[:manage],
+                    # The care receiver handed this token over themselves, which
+                    # is consent given before setup rather than at first use —
+                    # so a redeemed token is active immediately.
+                    state: self.class.states[:active],
                     pairing_token: nil, # Clear token after pairing
                     updated_at: Time.current
                   )
@@ -152,9 +176,17 @@ class CaregiverLink < ApplicationRecord
   end
 
   # Check if link is pending (waiting for caregiver)
+  # Kept as it was, and now agreeing with the column: a link with a token and no
+  # caregiver is pending, and the migration set state to match. The predicate
+  # stays because several callers ask it about the token rather than about the
+  # stage, and an expired row still answers yes to both.
   def pending?
     senior.present? && caregiver.nil? && pairing_token.present?
   end
+
+  # A caregiver may write reminders in either state; only one of them means the
+  # care receiver has agreed to anything.
+  def writable_by_caregiver? = state_provisional? || state_active?
 
   # When this token stops being redeemable. The one place that answer is
   # computed — both screens that print it used to work it out for themselves,

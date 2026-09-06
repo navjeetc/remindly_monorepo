@@ -16,7 +16,7 @@ class DashboardController < WebController
   # silently removed the guard from every reminder action when it was tried.
   before_action :require_manage_for_reminder!,
     only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder
-             create_reminder_link revoke_reminder_link]
+             create_reminder_link revoke_reminder_link issue_start_code]
 
   # Inviting is a write too, and the sharpest one: an invitation creates a
   # manage link. Without this a view-only caregiver could invite an address they
@@ -24,6 +24,13 @@ class DashboardController < WebController
   # away — a complete bypass, reached through the one endpoint that hands out
   # the permission being enforced.
   before_action :require_manage_for_invite!, only: %i[invite_caregiver process_invite_caregiver]
+
+  # Creating an account for somebody who has not asked for one is the one write
+  # here that makes a person exist. Bulk creation is not a feature and a script
+  # doing it is not a caregiver, so the ceiling is low and per caregiver rather
+  # than per IP — a household setting up two parents in an afternoon is normal.
+  rate_limit to: 10, within: 1.day, only: :create_care_receiver,
+             by: -> { current_user&.id }
 
   # Landing page - show pairing or dashboard
   def index
@@ -267,6 +274,63 @@ class DashboardController < WebController
     end
   end
 
+  def new_care_receiver
+    @senior = User.new(tz: current_user.tz)
+  end
+
+  # Creates an account for somebody who has not asked for one — which is the
+  # whole delicacy of this feature, and why the link it creates starts
+  # provisional.
+  #
+  # What the caregiver gets is the ability to write reminders and nothing else:
+  # no activity, no acknowledgements, no coverage, until the care receiver opens
+  # the link and says yes. Refusing destroys the account, which is safe for a
+  # structural reason — a provisional account can only ever contain reminders
+  # this caregiver typed.
+  #
+  # No email address is collected, deliberately. See User's validation and
+  # docs/SENIOR_ACCESS_DESIGN.md: with no address there is no lookup, so a setup
+  # form cannot be used to discover who already has an account.
+  def create_care_receiver
+    attrs = params.require(:user).permit(:name, :tz)
+
+    # Required here rather than by the model, which validates a name only on
+    # update — because a user created by a magic link has no name until they
+    # choose one. This person will never sign in to choose one, so if it is not
+    # collected now it never will be, and every screen and every spoken
+    # reminder would fall back to "Someone".
+    if attrs[:name].blank?
+      @senior = User.new(tz: attrs[:tz])
+      flash.now[:alert] = "Give them a name — it is what Remindly will call them out loud."
+      return render :new_care_receiver, status: :unprocessable_entity
+    end
+
+    @senior = User.new(
+      name: attrs[:name],
+      tz: attrs[:tz].presence || current_user.tz,
+      role: :senior,
+      # Structurally unmailable rather than merely unmailed: nothing should ever
+      # try to reach this account by email, and a nil address would otherwise
+      # reach a mailer as a nil recipient rather than being skipped.
+      email_undeliverable_at: Time.current
+    )
+
+    unless @senior.save
+      flash.now[:alert] = @senior.errors.full_messages.to_sentence
+      return render :new_care_receiver, status: :unprocessable_entity
+    end
+
+    ActiveRecord::Base.transaction do
+      CaregiverLink.create!(senior: @senior, caregiver: current_user,
+                            permission: :manage, state: :provisional)
+      @reminder_link = ReminderLink.mint(user: @senior)
+    end
+
+    redirect_to senior_dashboard_path(@senior),
+      notice: "#{@senior.display_name} is set up. Open their link on the device they will use, " \
+              "or read them the six-digit code, and they can start."
+  end
+
   # Mints the link a device bookmarks.
   #
   # One live link per care receiver: any existing one is revoked first, so
@@ -304,6 +368,23 @@ class DashboardController < WebController
     redirect_to senior_dashboard_path(senior),
       alert: "Somebody else created a link for #{senior.display_name} just now. " \
              "The one shown below is the live one."
+  end
+
+  # Six digits, good for ten minutes, so setup can happen over the telephone.
+  #
+  # Issued on demand rather than with the link: a code that sat on the screen
+  # from the moment a link was created would be stale by the time anybody rang,
+  # and a code nobody is waiting to type is a guessable secret left lying about.
+  def issue_start_code
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+    link = ReminderLink.live.where(user_id: senior.id).find_by(id: params[:id])
+
+    return redirect_to senior_dashboard_path(senior), alert: "That device link is no longer active." unless link
+
+    link.issue_start_code!
+
+    redirect_to senior_dashboard_path(senior),
+      notice: "Read them the six numbers on screen. They have ten minutes."
   end
 
   # Ends the link and nothing else. It cannot remove a caregiver, cannot touch
@@ -509,6 +590,7 @@ class DashboardController < WebController
     link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
     @senior = link.senior
     @permission = link.permission
+    @link_state = link.state
     @reminder_link = ReminderLink.live.find_by(user_id: @senior.id)
 
     # Get today's reminders

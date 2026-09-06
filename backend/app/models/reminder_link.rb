@@ -58,6 +58,54 @@ class ReminderLink < ApplicationRecord
     end
   end
 
+  # How long six digits are worth anything. Long enough to read them down a
+  # telephone and have somebody type them; short enough that a guessed code is
+  # not worth attempting, alongside the rate limit at the endpoint.
+  START_CODE_TTL = 10.minutes
+
+  # Digits, so they can be said aloud without spelling anything, and generated
+  # with SecureRandom rather than rand — a predictable setup code would be a
+  # predictable way into somebody's reminders.
+  def issue_start_code!(at: Time.current)
+    attempts = 0
+
+    begin
+      update!(start_code: format("%06d", SecureRandom.random_number(1_000_000)),
+              start_code_expires_at: at + START_CODE_TTL)
+    rescue ActiveRecord::RecordNotUnique
+      attempts += 1
+      raise if attempts > 5
+
+      retry
+    end
+
+    self
+  end
+
+  # Claims a code and spends it, atomically, returning the link or nil.
+  #
+  # Single use is the point: the WHERE clause carries every condition — the
+  # digits, an unexpired deadline, an unrevoked link — so two people racing the
+  # same code cannot both be let in, and a code cannot be replayed the moment
+  # after it works. Whoever loses sees zero rows and is answered exactly as a
+  # wrong code is.
+  def self.claim_start_code(code, at: Time.current)
+    return nil if code.blank?
+
+    link = live.find_by(start_code: code.to_s.strip)
+    return nil unless link
+    return nil if link.start_code_expires_at.nil? || link.start_code_expires_at < at
+
+    spent = where(id: link.id, start_code: link.start_code)
+              .update_all(start_code: nil, start_code_expires_at: nil, updated_at: at)
+
+    spent.zero? ? nil : link.reload
+  end
+
+  def start_code_live?(at: Time.current)
+    start_code.present? && start_code_expires_at.present? && start_code_expires_at > at
+  end
+
   def revoked? = revoked_at.present?
 
   # Revoking is the care receiver's ending as much as the caregiver's: the

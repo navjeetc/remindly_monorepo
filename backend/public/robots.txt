@@ -22,6 +22,9 @@ Disallow: /logout
 # would land on a care receiver's reminders, and a link in a search index is a
 # link everywhere.
 Disallow: /r/
+# The six-digit exchange. A crawler cannot guess a code, but it can spend the
+# rate limit that stops somebody else guessing.
+Disallow: /start
 Disallow: /magic/
 Disallow: /client/
 Disallow: /dev_login

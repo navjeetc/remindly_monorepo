@@ -25,15 +25,58 @@ class VoiceRemindersController < WebController
   rate_limit to: 20, within: 1.minute, only: :show, if: -> { params[:token].present? }
 
   before_action :redeem_token, only: :show
-  before_action :authenticate!, only: :show
+  before_action :authenticate!, only: %i[show start decline]
   before_action :authenticate_poll!, only: :today
-  before_action :care_receivers_only!, only: :show
+  before_action :care_receivers_only!, only: %i[show start decline]
 
   layout "voice"
 
   helper_method :voice_script_version
 
-  def show; end
+  def show
+    # Consent moved from before setup to first use; this is that moment.
+    #
+    # An account a caregiver created is provisional until the person it is about
+    # opens the link and says yes. Until then nothing is spoken, nothing is
+    # recorded, and the caregiver sees no activity — so what a device shows on
+    # its first visit is not the reminders but the question, naming who set this
+    # up and offering refusal in one press.
+    return unless awaiting_consent?
+
+    # The caregiver's name, not the account's. It is the one fact a stranger
+    # ringing out of the blue could not know, which is what makes it worth
+    # leading with — the same reasoning as the consent call's opening line.
+    @arranger_name = awaiting_link.caregiver&.friendly_name || "Someone"
+
+    render :first_run
+  end
+
+  # Yes. From here the page behaves as it does for anybody else, and the
+  # caregiver's activity screens start working.
+  def start
+    awaiting_link&.update!(state: :active)
+
+    redirect_to voice_reminders_path
+  end
+
+  # No.
+  #
+  # Destroys the account, which is safe for a structural reason rather than a
+  # careful one: a provisional account can only ever contain reminders the
+  # caregiver typed into it. There is nothing of this person's in there to lose,
+  # because they have never used it — and leaving a refused account in place
+  # would leave a caregiver able to keep writing reminders for somebody who
+  # said no.
+  def decline
+    link = awaiting_link
+    return redirect_to voice_reminders_path unless link
+
+    senior = link.senior
+    cookies.delete(ReminderLinkMode::COOKIE)
+    senior.destroy!
+
+    render :declined, status: :ok
+  end
 
   # The script's own modification time, so the cache busts when the file
   # changes rather than every second. Memoised per process: this is a stat call
@@ -94,6 +137,17 @@ class VoiceRemindersController < WebController
 
   private
 
+  # The provisional link for whoever is looking, if there is one. Read through
+  # senior_links so it is this care receiver's own arrangement being asked
+  # about, never one belonging to somebody else with the same device.
+  def awaiting_link
+    return nil unless current_user
+
+    current_user.senior_links.find_by(state: :provisional)
+  end
+
+  def awaiting_consent? = awaiting_link.present?
+
   # The poll answers with a status rather than a redirect.
   #
   # WebController's authenticate! redirects to the login page, which is the
@@ -106,9 +160,15 @@ class VoiceRemindersController < WebController
   # A 401 is something the client can act on, and it does — see the reload in
   # public/voice_reminders.js.
   def authenticate_poll!
-    return if current_user
+    return render json: { error: "Unauthorized" }, status: :unauthorized unless current_user
 
-    render json: { error: "Unauthorized" }, status: :unauthorized
+    # Nothing is announced before the person it is about has agreed to it. The
+    # first-run screen does not load the script at all, so this is defence
+    # against a device that was already polling when the account was created —
+    # and against anybody calling it directly.
+    return unless awaiting_consent?
+
+    render json: { error: "Not started yet" }, status: :forbidden
   end
 
   # `GET /r/<token>` renders this page directly. It used to set the cookie and

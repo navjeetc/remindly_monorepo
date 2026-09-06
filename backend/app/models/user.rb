@@ -140,6 +140,12 @@ class User < ApplicationRecord
 
   has_many :reminders, dependent: :destroy
 
+  # Destroyed with the account rather than left behind. A reminder link is a
+  # credential; an orphan row pointing at a deleted user would be a dead key
+  # nobody can see to revoke — and a care receiver who refuses at first run has
+  # their whole account removed, which has to include the way into it.
+  has_many :reminder_links, dependent: :destroy
+
   # Caregiver relationships
   has_many :senior_links, class_name: "CaregiverLink", foreign_key: "senior_id", dependent: :destroy
   has_many :caregivers, through: :senior_links, source: :caregiver
@@ -176,7 +182,17 @@ class User < ApplicationRecord
     .uniq { |_label, identifier| identifier }
     .freeze
 
-  validates :email, presence: true, uniqueness: true
+  # An address is what lets somebody sign in, so it is required of anybody who
+  # can — and a care receiver set up by their caregiver cannot, deliberately.
+  # That account has no address at all: with none there is no lookup, so no way
+  # for a setup form to reveal whether somebody already uses Remindly, and no
+  # branch that behaves differently for an address in use. See
+  # docs/SENIOR_ACCESS_DESIGN.md, "Do not ask for the senior's address".
+  #
+  # Narrow to care receivers on purpose. A caregiver or an admin with no address
+  # would be an account nobody could ever reach or recover.
+  validates :email, presence: true, unless: :role_senior?
+  validates :email, uniqueness: true, allow_nil: true
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
   validates :tz, presence: true
@@ -279,13 +295,18 @@ class User < ApplicationRecord
   end
 
   # Display name - uses nickname if available, otherwise name, otherwise email
+  # Falls through to the address, and then to something rather than nothing: a
+  # care receiver created by a caregiver has no address to fall back on, and a
+  # blank heading reads as a broken page rather than an unnamed person. The
+  # creation form asks for a name, so this is the last resort behind a last
+  # resort.
   def display_name
-    nickname.presence || name.presence || email
+    nickname.presence || name.presence || email.presence || "Someone"
   end
 
   # Friendly name for seniors to recognize caregivers
   def friendly_name
-    nickname.presence || name.presence || email.split("@").first
+    nickname.presence || name.presence || email&.split("@")&.first || "Someone"
   end
 
   # Reminder categories this caregiver wants completion/miss notifications for.

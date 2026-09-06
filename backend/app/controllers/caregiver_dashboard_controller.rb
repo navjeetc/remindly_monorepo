@@ -74,9 +74,23 @@ class CaregiverDashboardController < ApplicationController
 
   private
 
+  # Everything in this controller is activity: what was announced, what was
+  # marked done, what was missed. None of it may be shown for a care receiver
+  # who has not yet agreed to any of this — a caregiver creating an account and
+  # watching somebody's day before they have opened the link is the surveillance
+  # case the whole design is built to prevent.
+  #
+  # The route refuses rather than the query happening to return nothing, which
+  # is the difference between a guarantee and a coincidence: a provisional
+  # account has no activity today, and would have some the moment anything ran.
   def set_senior
     senior_id = params.require(:senior_id)
     link = current_user.caregiver_links.find_by!(senior_id: senior_id)
+
+    unless link.state_active?
+      return render json: { error: "Not started yet" }, status: :forbidden
+    end
+
     @senior = link.senior
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Access denied" }, status: :not_found

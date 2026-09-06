@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A caregiver can now set up the person they care for.** Until now the
+  homepage's promise — *"You create the reminders"* — could not be kept. The
+  care receiver had to sign up themselves, find a magic link in an inbox, log
+  in, generate a token and read 43 characters down a telephone, all before the
+  caregiver could write a single reminder. The product asked the person least
+  able to do email things to do email things, or nothing worked.
+
+  They now need no account, no password and **no email address at all**. That
+  absence is deliberate: with no address there is no lookup, so the setup form
+  cannot be used to discover who already uses Remindly, and nobody is asked to
+  find a message in an inbox and trust a link inside it — the exact interaction
+  this audience is warned never to trust.
+
+  **Consent did not disappear with the pairing step; it moved to first use.**
+  Access used to be structural — it could not exist unless the person receiving
+  reminders acted — and a monitoring tool set up on somebody without their
+  knowledge is a recognised pattern in elder abuse. The old design prevented
+  that by accident. This one prevents it on purpose: a new link is
+  `provisional`, which lets a caregiver write reminders and shows them nothing
+  else. No activity, no acknowledgements, no coverage, and nothing spoken. The
+  first thing the device shows is who set this up and a choice, and the routes
+  behind the caregiver's screens refuse until that choice is yes — so the
+  guarantee is that the routes say no, not that there happens to be nothing to
+  show. Refusing deletes the account, which is safe because a provisional
+  account can only ever hold reminders the caregiver typed.
+
+  **Setup works down a telephone.** The caregiver presses a button and reads out
+  six digits; the care receiver goes to `remindly.care/start` on their own device
+  and types them. Ten minutes, single use, rate limited, and a wrong code, an
+  expired one and a spent one are answered identically. It is the one remote
+  channel this audience is comfortable with.
+
+  A caregiver cannot do this in bulk: ten a day, counted per caregiver rather
+  than per address, because two people setting up their own parents from one
+  house should not spend each other's allowance.
+
+### Changed
+- **Rate limits are now real in tests.** The test cache was `:null_store`, and
+  Rails reads a rate limit's store when the controller class loads — so every
+  limit in the application counted nothing under test, and any spec written for
+  one would have passed while proving nothing. Four endpoints depend on these.
+
 ## [0.7.0] - 2026-09-04
 
 ### Added

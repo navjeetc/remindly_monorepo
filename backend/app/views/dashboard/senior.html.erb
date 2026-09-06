@@ -54,6 +54,29 @@
     <%= render "dashboard/reminder_link", senior: @senior, permission: @permission, reminder_link: @reminder_link %>
   </div>
 
+  <%# Nothing about their day until they have agreed to any of it.
+
+      A provisional account is one a caregiver created and the care receiver has
+      not yet opened. Reminders can be written — that is the point of setting up
+      before handing the device over — but the activity, the stats and the
+      missed count all describe a person who has not consented to being
+      described. The routes behind them refuse too; this is the screen agreeing
+      with them, and telling the caregiver why rather than showing zeroes that
+      read as a fault. %>
+  <% if @link_state != "active" %>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <h3 class="text-lg font-medium text-blue-900">Waiting for them to start</h3>
+      <p class="mt-2 text-sm text-blue-900">
+        Write their reminders now if you like — nothing is spoken and nothing is
+        recorded until they open the link on their device and agree to it. When
+        they do, this page will show what was announced and what was marked done.
+      </p>
+      <p class="mt-2 text-sm text-blue-900">
+        Open the link above on their tablet or computer, or read them the
+        six-digit code and have them go to <strong>remindly.care/start</strong>.
+      </p>
+    </div>
+  <% else %>
   <!-- Stats -->
   <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
     <div class="bg-white overflow-hidden shadow rounded-lg">
@@ -189,4 +212,5 @@
       <% end %>
     </div>
   </div>
+  <% end %>
 </div>

@@ -1,0 +1,43 @@
+<%#
+  The one thing this design asks of a care receiver: yes or no, once, on their
+  own device.
+
+  Consent did not disappear when pairing did — it moved from before setup to
+  first use. A monitoring tool set up on somebody without their knowledge is a
+  recognised pattern in elder abuse, and the old flow prevented it by accident,
+  because access could not exist unless the person receiving reminders acted.
+  This screen is that same guarantee, made on purpose: nothing has been spoken,
+  nothing recorded, and the caregiver has seen nothing about this person's day
+  until the button below is pressed.
+
+  Naming the caregiver is the point of the first sentence. It is the one thing a
+  stranger could not know, and it is what tells somebody whether this is their
+  daughter or a scam.
+%>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  <div class="text-center">
+    <p class="text-5xl font-bold text-gray-900 mb-8">
+      <%= @arranger_name %> set this up for you
+    </p>
+
+    <p class="text-3xl text-gray-700 mb-4">
+      Remindly can remind you about things during the day, out loud, on this device.
+    </p>
+
+    <p class="text-2xl text-gray-600 mb-12">
+      Nothing has started yet. It is up to you.
+    </p>
+
+    <div class="flex items-center justify-center gap-4">
+      <%= button_to "Yes, start my reminders", start_voice_reminders_path,
+            class: "btn-primary text-2xl px-8 py-6" %>
+
+      <%= button_to "No thank you", decline_voice_reminders_path,
+            class: "btn-secondary text-2xl px-8 py-6" %>
+    </div>
+
+    <p class="mt-12 text-xl text-gray-500">
+      If you say no, everything <%= @arranger_name %> set up is deleted.
+    </p>
+  </div>
+</div>

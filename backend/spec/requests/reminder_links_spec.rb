@@ -390,7 +390,12 @@ RSpec.describe "A reminder link", type: :request do
       tz = ActiveSupport::TimeZone["America/New_York"]
 
       travel(31.days) do
-        reminder_due(tz.now + 2.hours)
+        # Midday, not "two hours from now": run this spec after 22:00 and two
+        # hours from now is tomorrow, so the endpoint correctly returns nothing
+        # and the example fails for a reason that has nothing to do with what it
+        # is testing. It went unnoticed for a day because nobody ran the suite
+        # late enough in the evening.
+        reminder_due(tz.now.beginning_of_day + 12.hours)
 
         get "/voice_reminders/today"
 

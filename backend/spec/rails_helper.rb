@@ -30,6 +30,12 @@ rescue ActiveRecord::PendingMigrationError => e
   abort e.to_s.strip
 end
 RSpec.configure do |config|
+  # The test cache is a memory store so rate limits are real here (see
+  # config/environments/test.rb). Cleared between examples so one spec's
+  # requests never spend another's allowance, which would fail whichever
+  # example happened to run second.
+  config.before { Rails.cache.clear }
+
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_paths = [
     Rails.root.join('spec/fixtures')

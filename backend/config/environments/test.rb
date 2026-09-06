@@ -20,7 +20,18 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
-  config.cache_store = :null_store
+  # A memory store, not :null_store, so rate limits can be tested at all.
+  #
+  # Rails' `rate_limit` reads its store when the controller class loads, so
+  # against a null store every limit in the application counts nothing and any
+  # spec written for one passes while proving nothing. Four endpoints rely on
+  # these — the setup code, the reminder link, the mailing list, and creating a
+  # care receiver — and each of them is a limit somebody would otherwise be free
+  # to sit on.
+  #
+  # Cleared between examples in rails_helper, so one spec's requests cannot
+  # exhaust another's allowance.
+  config.cache_store = :memory_store
 
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
