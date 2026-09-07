@@ -454,7 +454,10 @@ class DashboardController < WebController
     link.issue_start_code!
 
     redirect_to senior_dashboard_path(senior),
-      notice: "Read them the six numbers on screen. They have ten minutes."
+      # No promise of ten minutes: a code that is still live is returned rather
+      # than replaced, so pressing again mid-call may have three minutes left
+      # rather than ten. The panel prints the real deadline.
+      notice: "Read them the six numbers on screen."
   end
 
   # Ends the link and nothing else. It cannot remove a caregiver, cannot touch

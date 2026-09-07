@@ -860,6 +860,47 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
+    # This is a button pressed during a telephone call. A double-submit, a
+    # reloaded page or the second caregiver looking at the same screen would
+    # otherwise rotate the digits mid-sentence, and the care receiver typing
+    # what they had just been told would be refused — both people staring at a
+    # code that was right a moment ago.
+    it "keeps the numbers already being read out" do
+      first = issue_code
+
+      second = issue_code
+
+      expect(second).to eq(first)
+    end
+
+    it "still works after the second press" do
+      code = issue_code
+      issue_code
+      reset!
+
+      post "/start", params: { code: code }
+
+      expect(response).to redirect_to(reminder_link_path(token: link.token))
+    end
+
+    # And does not quietly buy another ten minutes each time, which is how a
+    # short-lived secret stops being short-lived.
+    it "does not extend the deadline" do
+      issue_code
+      deadline = link.reload.start_code_expires_at
+
+      issue_code
+
+      expect(link.reload.start_code_expires_at).to eq(deadline)
+    end
+
+    it "issues a fresh one once the old has lapsed" do
+      first = issue_code
+      link.update_columns(start_code_expires_at: 1.second.ago)
+
+      expect(issue_code).not_to eq(first)
+    end
+
     # The unique index on start_code is global, so a code that expires unspent
     # keeps its six digits reserved forever. Only spending one released it, so
     # the namespace shrank monotonically and issuing would eventually fail after

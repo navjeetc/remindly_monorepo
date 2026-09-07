@@ -67,6 +67,20 @@ class ReminderLink < ApplicationRecord
   # with SecureRandom rather than rand — a predictable setup code would be a
   # predictable way into somebody's reminders.
   def issue_start_code!(at: Time.current)
+    # A code that is still live is the answer, not a reason to make another.
+    #
+    # This is a button pressed during a telephone call: "go to remindly dot care
+    # slash start, and type oh four one oh three oh". A double-submit, a
+    # reloaded page, or the other caregiver looking at the same screen would
+    # otherwise rotate the digits mid-sentence, and the care receiver typing
+    # what they were just told would be refused — with both people looking at a
+    # code that was correct a moment ago and no way to tell what happened.
+    #
+    # Deliberately not extended, either. Quietly buying another ten minutes
+    # every time somebody presses a button is how a short-lived secret stops
+    # being short-lived, and the panel prints the real deadline.
+    return self if start_code_live?(at: at)
+
     # Give back the digits nobody is going to type.
     #
     # The unique index is global and covers every non-null code, so a code that
