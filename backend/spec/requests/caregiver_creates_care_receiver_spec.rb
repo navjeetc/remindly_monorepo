@@ -516,6 +516,106 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
     end
   end
 
+  # Both bots found this independently, which is usually the sign it is real.
+  #
+  # A caregiver can invite a second caregiver before first use, and both links
+  # are provisional by design. Activating only the one that happened to be found
+  # leaves awaiting_first_use? true — so expansion stays suppressed and the
+  # device is shown the consent question *again*, where pressing No would delete
+  # the account moments after they said yes.
+  describe "consent when two caregivers were invited before it" do
+    let!(:senior) do
+      sign_in(caregiver)
+      create_care_receiver
+    end
+    let(:link) { ReminderLink.live.find_by(user_id: senior.id) }
+
+    before do
+      post "/dashboard/senior/#{senior.id}/invite_caregiver", params: { caregiver_email: "sam@example.com" }
+      reset!
+    end
+
+    it "activates every link, not the first one found" do
+      get "/r/#{link.token}"
+
+      post "/voice_reminders/start"
+
+      expect(CaregiverLink.where(senior_id: senior.id).map(&:state).uniq).to eq([ "active" ])
+    end
+
+    it "does not ask the question a second time" do
+      get "/r/#{link.token}"
+      post "/voice_reminders/start"
+
+      follow_redirect!
+
+      expect(response.body).not_to include("set this up for you")
+      expect(response.body).to include("My Reminders")
+    end
+
+    it "starts announcing rather than staying suppressed" do
+      Reminder.create!(user: senior, title: "Morning tablets", rrule: "FREQ=DAILY", tz: senior.tz)
+      get "/r/#{link.token}"
+
+      post "/voice_reminders/start"
+
+      expect(senior.reload.awaiting_first_use?).to be(false)
+      expect(Occurrence.joins(:reminder).where(reminders: { user_id: senior.id })).to be_present
+    end
+  end
+
+  # Coverage is activity: who is looking after this person, and on which days
+  # nobody is. `active?` is the legacy predicate — senior present, caregiver
+  # present — which a provisional link satisfies, because a caregiver made it.
+  describe "the coverage screen before consent" do
+    # The flag has to be on, or both examples pass on the flag's redirect and
+    # prove nothing about the state at all.
+    before do
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:native_scheduling).and_return(true)
+    end
+
+    it "is refused" do
+      sign_in(caregiver)
+      senior = create_care_receiver
+
+      get "/seniors/#{senior.id}/coverage"
+
+      expect(response).to redirect_to(dashboard_path)
+    end
+
+    it "opens once they have agreed" do
+      sign_in(caregiver)
+      senior = create_care_receiver
+      senior.senior_links.update_all(state: CaregiverLink.states[:active])
+
+      get "/seniors/#{senior.id}/coverage"
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  # check_role! asks whether a role was chosen, not which one. A care receiver
+  # posting here would be handed a manage link to a person they invented, and
+  # every other caregiver-only URL authorises through that link.
+  describe "who may set somebody up" do
+    it "refuses a care receiver" do
+      sign_in(create(:user, :senior, name: "Mom", tz: "America/New_York"))
+
+      expect {
+        post "/dashboard/care_receiver", params: { user: { name: "Invented", tz: "America/New_York" } }
+      }.not_to change { User.count }
+    end
+
+    it "refuses them the form too" do
+      sign_in(create(:user, :senior, name: "Mom", tz: "America/New_York"))
+
+      get "/dashboard/care_receiver/new"
+
+      expect(response).to redirect_to(dashboard_path)
+    end
+  end
+
   # Six digits, read down a telephone. The one channel this audience is
   # comfortable with: every other remote option asks an older person to find a
   # message in an inbox and trust a link inside it.
@@ -591,6 +691,19 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       code = issue_code
       reset!
       post "/start", params: { code: code }
+      reset!
+
+      post "/start", params: { code: code }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    # The spend carries every condition the check made. Without the expiry in
+    # the UPDATE, a code that lapsed between reading the row and writing it
+    # would still be accepted — the gap the compare-and-swap exists to close.
+    it "will not spend a code that lapsed a moment ago" do
+      code = issue_code
+      link.update_columns(start_code_expires_at: 1.second.ago)
       reset!
 
       post "/start", params: { code: code }

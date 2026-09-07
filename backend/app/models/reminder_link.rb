@@ -96,7 +96,13 @@ class ReminderLink < ApplicationRecord
     return nil unless link
     return nil if link.start_code_expires_at.nil? || link.start_code_expires_at < at
 
-    spent = where(id: link.id, start_code: link.start_code)
+    # Every condition the check made, carried into the write. Without the
+    # expiry and the revocation here, a code that lapsed — or a link revoked —
+    # between reading the row and spending it would still be accepted, which is
+    # exactly the gap the compare-and-swap was meant to close.
+    spent = live
+              .where(id: link.id, start_code: link.start_code)
+              .where(start_code_expires_at: at..)
               .update_all(start_code: nil, start_code_expires_at: nil, updated_at: at)
 
     spent.zero? ? nil : link.reload

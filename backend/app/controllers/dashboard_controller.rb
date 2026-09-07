@@ -25,6 +25,7 @@ class DashboardController < WebController
   # away — a complete bypass, reached through the one endpoint that hands out
   # the permission being enforced.
   before_action :require_manage_for_invite!, only: %i[invite_caregiver process_invite_caregiver]
+  before_action :caregivers_only!, only: %i[new_care_receiver create_care_receiver]
 
   # Asking to telephone somebody is bounded per caregiver, not only per number.
   #
@@ -294,6 +295,20 @@ class DashboardController < WebController
 
   def new_care_receiver
     @senior = User.new(tz: current_user.tz)
+  end
+
+  # Creating an account for another person is a caregiver's act.
+  #
+  # These actions inherited only authenticate! and check_role!, and the latter
+  # asks whether a role has been chosen rather than which one — so a signed-in
+  # care receiver could POST here, create a second person, and be handed a
+  # manage link to them, after which every other caregiver-only URL authorises
+  # through that link. Hiding the button from their dashboard was the only thing
+  # standing in the way, and a hidden button is not a rule.
+  def caregivers_only!
+    return if current_user.role_caregiver?
+
+    redirect_to dashboard_path, alert: "Only caregivers can set somebody up."
   end
 
   # Creates an account for somebody who has not asked for one — which is the

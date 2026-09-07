@@ -58,7 +58,19 @@ class VoiceRemindersController < WebController
     return redirect_to voice_reminders_path unless link
 
     senior = link.senior
-    link.update!(state: :active)
+
+    # Every provisional link, not the one this happened to find.
+    #
+    # A caregiver can invite a second caregiver before first use, and both links
+    # are provisional by design. Activating one left the other behind, and the
+    # consequences compound: awaiting_first_use? stays true, so expansion stays
+    # suppressed and the device is shown the consent question *again* — where
+    # pressing No would delete the account moments after they said yes.
+    #
+    # The telephone path already did this. The screen did not.
+    senior.senior_links.where(state: :provisional).find_each do |provisional|
+      provisional.update!(state: :active)
+    end
 
     # Everything written while waiting exists as a reminder and not yet as a
     # day: expansion was refused while this account was provisional, so the

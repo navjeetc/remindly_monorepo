@@ -149,7 +149,7 @@ module Scheduling
       if client_email.present? && senior.email.present?
         # A care receiver created by a caregiver has no address, and an
         # appointment cannot be matched to one that does not exist.
-        return true if senior.email.present? && senior.email.downcase.strip == client_email
+        return true if senior.email.downcase.strip == client_email
       end
 
       # Match by full name (fallback)
