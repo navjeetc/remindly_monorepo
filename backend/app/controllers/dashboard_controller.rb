@@ -305,11 +305,6 @@ class DashboardController < WebController
   # manage link to them, after which every other caregiver-only URL authorises
   # through that link. Hiding the button from their dashboard was the only thing
   # standing in the way, and a hidden button is not a rule.
-  def caregivers_only!
-    return if current_user.role_caregiver?
-
-    redirect_to dashboard_path, alert: "Only caregivers can set somebody up."
-  end
 
   # Creates an account for somebody who has not asked for one — which is the
   # whole delicacy of this feature, and why the link it creates starts
@@ -1058,6 +1053,14 @@ class DashboardController < WebController
     raise ActiveRecord::RecordNotFound if senior.email.present?
 
     senior
+  end
+
+  # Private, like every other guard here: a public method on a controller is a
+  # candidate action, and a guard that can be routed to is a strange object.
+  def caregivers_only!
+    return if current_user.role_caregiver?
+
+    redirect_to dashboard_path, alert: "Only caregivers can set somebody up."
   end
 
   def require_manage_for_reminder!

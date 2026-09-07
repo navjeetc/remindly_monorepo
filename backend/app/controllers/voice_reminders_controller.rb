@@ -145,7 +145,7 @@ class VoiceRemindersController < WebController
     # next — a forty-eight hour window, on the endpoint that decides what a care
     # receiver is told to do today. The version this was extracted from read the
     # clock once; the extraction is what introduced the second call.
-    now = ActiveSupport::TimeZone[current_user.tz].now
+    now = clock_for(current_user)
     day = now.beginning_of_day..now.end_of_day
 
     # includes as well as joins: the join scopes the query, and without the
@@ -209,7 +209,7 @@ class VoiceRemindersController < WebController
   # teach somebody to stop listening to the voice that also says take your
   # tablets, and speaking them is a separate decision with its own design.
   def coming_up
-    now = ActiveSupport::TimeZone[current_user.tz].now
+    now = clock_for(current_user)
 
     tasks = Task.where(senior_id: current_user.id, visible_to_senior: true)
                 .where.not(status: :completed)
@@ -236,6 +236,22 @@ class VoiceRemindersController < WebController
   end
 
   private
+
+  # Their clock, and the server's if theirs cannot be read.
+  #
+  # `tz` is a stored string and not every stored string resolves: older rows,
+  # manual edits, and a profile form that once wrote two spellings of the same
+  # zone — this project has had that bug twice. ActiveSupport::TimeZone[]
+  # answers nil for those, and `.now` on nil is a 500 on the page a care
+  # receiver leaves open all day.
+  #
+  # Falling back is right here and wrong elsewhere: within_calling_hours?
+  # refuses rather than guessing, because a guessed zone can telephone somebody
+  # at 3am. Nothing here rings a phone — it decides which day to list — so a
+  # readable page beats a correct refusal.
+  def clock_for(user)
+    (ActiveSupport::TimeZone[user.tz.to_s] || Time.zone).now
+  end
 
   # The provisional link for whoever is looking, if there is one. Read through
   # senior_links so it is this care receiver's own arrangement being asked

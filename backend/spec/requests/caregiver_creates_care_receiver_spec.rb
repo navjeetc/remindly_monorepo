@@ -739,6 +739,23 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
+    # `tz` is a stored string and not every stored string resolves — older rows,
+    # manual edits, and a profile form that once wrote two spellings of the same
+    # zone. TimeZone[] answers nil for those, and `.now` on nil is a 500 on the
+    # page a care receiver leaves open all day.
+    it "still answers for somebody whose stored timezone does not resolve" do
+      senior.update_columns(tz: "Not/AZone")
+      task(title: "Doctor Shah", at: 2.days.from_now)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+      coming_up = response.status
+
+      get "/voice_reminders/today"
+
+      expect([ coming_up, response.status ]).to eq([ 200, 200 ])
+    end
+
     it "gives the page somewhere to put them" do
       get "/r/#{link.token}"
 
