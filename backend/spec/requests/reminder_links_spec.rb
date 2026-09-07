@@ -351,6 +351,21 @@ RSpec.describe "A reminder link", type: :request do
       end
     end
 
+    # The layout's CSS is a written-out subset of the names the markup uses, so
+    # a section added later renders unstyled unless its names are added too —
+    # which has now happened twice.
+    it "defines every class the page and its script emit" do
+      css = doc.at_css("style").text
+      markup = Rails.root.join("app/views/voice_reminders/show.html.erb").read
+      script = Rails.public_path.join("voice_reminders.js").read
+
+      used = (markup + script).scan(/class="([^"$]*)"/).flatten.join(" ").split
+      responsive = ->(name) { name.include?(":") }
+      missing = used.uniq.reject { |name| responsive.call(name) || css.include?(".#{name} ") || css.include?(".#{name}{") || css.include?(".#{name},") }
+
+      expect(missing).to be_empty, "used by the page and defined nowhere: #{missing.join(', ')}"
+    end
+
     it "keeps itself out of search results" do
       expect(doc.at_css("meta[name='robots']")&.[]("content")).to include("noindex")
     end

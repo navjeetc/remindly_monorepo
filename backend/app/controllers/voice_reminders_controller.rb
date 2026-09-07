@@ -26,7 +26,7 @@ class VoiceRemindersController < WebController
 
   before_action :redeem_token, only: :show
   before_action :authenticate!, only: %i[show start decline stop]
-  before_action :authenticate_poll!, only: :today
+  before_action :authenticate_poll!, only: %i[today coming_up]
   before_action :care_receivers_only!, only: %i[show start decline stop]
 
   layout "voice"
@@ -193,6 +193,38 @@ class VoiceRemindersController < WebController
     cookies.delete(ReminderLinkMode::COOKIE)
 
     render :stopped, status: :ok
+  end
+
+  # Tasks somebody else arranged, which this screen has never shown.
+  #
+  # The care receiver's signed-in dashboard has always listed them; this page
+  # never has, and until now that only cost somebody who chose the voice page
+  # over signing in. A care receiver their caregiver set up has no account at
+  # all, so this page is their whole interface — a caregiver ticking "visible to
+  # the care receiver" on Thursday's appointment would be telling nobody, while
+  # the screen looked exactly as though it had worked.
+  #
+  # Shown, not spoken. A dose is a thing to do now; a task is a thing that is
+  # happening. Announcing "appointment on Thursday" every few minutes would
+  # teach somebody to stop listening to the voice that also says take your
+  # tablets, and speaking them is a separate decision with its own design.
+  def coming_up
+    now = ActiveSupport::TimeZone[current_user.tz].now
+
+    tasks = Task.where(senior_id: current_user.id, visible_to_senior: true)
+                .where.not(status: :completed)
+                .where(scheduled_at: now.beginning_of_day..(now + 7.days).end_of_day)
+                .order(:scheduled_at)
+                .limit(5)
+
+    render json: tasks.map { |task|
+      {
+        id: task.id,
+        title: task.title,
+        scheduled_at: task.scheduled_at,
+        location: task.location.presence
+      }
+    }
   end
 
   private

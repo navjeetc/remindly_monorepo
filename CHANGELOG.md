@@ -64,6 +64,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gate, and each call being to a different number is exactly what a per-number
   cap cannot see.
 
+  **The device now shows what somebody else arranged.** A care receiver's
+  signed-in dashboard has always listed tasks marked visible to them; the voice
+  page never has, and until now that only cost somebody who preferred the voice
+  page to signing in. It matters differently for an account with no email: that
+  page is their whole interface, so a caregiver ticking "visible to the care
+  receiver" on Thursday's appointment was telling nobody — while the screen
+  looked exactly as though it had worked. Shown under the reminders, not spoken:
+  a dose is a thing to do now, and a voice repeating "appointment on Thursday"
+  every few minutes teaches somebody to stop listening to the one that also says
+  take your tablets.
+
   **The care receiver can stop it from their own device**, with no account and
   no signing in. Refusing at first run covers the moment before they start; this
   covers every moment after, which is when somebody actually changes their mind.

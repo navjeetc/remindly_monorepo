@@ -616,6 +616,99 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
     end
   end
 
+  # The care receiver's signed-in dashboard has always listed tasks; the voice
+  # page never has. That only cost somebody who preferred the voice page until
+  # this release, when it became the whole interface for a person with no
+  # account — a caregiver ticking "visible to the care receiver" on Thursday's
+  # appointment would have been telling nobody, while the screen looked exactly
+  # as though it had worked.
+  describe "what somebody else arranged, on the device" do
+    let!(:senior) do
+      sign_in(caregiver)
+      create_care_receiver
+    end
+    let(:link) { ReminderLink.live.find_by(user_id: senior.id) }
+
+    def task(title:, at:, visible: true, status: :pending, location: nil)
+      Task.create!(senior_id: senior.id, created_by_id: caregiver.id, title: title,
+                   task_type: :appointment, priority: :medium, status: status,
+                   visible_to_senior: visible, location: location, scheduled_at: at)
+    end
+
+    before do
+      senior.senior_links.update_all(state: CaregiverLink.states[:active])
+      reset!
+    end
+
+    it "lists one arranged for this week" do
+      task(title: "Doctor Shah", at: 2.days.from_now, location: "The surgery")
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body.first["title"]).to eq("Doctor Shah")
+      expect(response.parsed_body.first["location"]).to eq("The surgery")
+    end
+
+    # The caregiver decides what this person sees. A task not marked visible is
+    # caregiver coordination and is none of their business.
+    it "leaves out what the caregiver kept to themselves" do
+      task(title: "Ring the pharmacy", at: 1.day.from_now, visible: false)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    it "leaves out what is already done" do
+      task(title: "Collect prescription", at: 1.day.from_now, status: :completed)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    it "leaves out next month" do
+      task(title: "Dentist", at: 30.days.from_now)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    it "never shows somebody else's" do
+      other = create(:user, :senior, name: "Dad", tz: "America/New_York")
+      Task.create!(senior_id: other.id, created_by_id: caregiver.id, title: "Not mine",
+                   task_type: :appointment, priority: :medium, visible_to_senior: true,
+                   scheduled_at: 1.day.from_now)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    # Same gate as everything else about their day.
+    it "is refused before they have agreed" do
+      senior.senior_links.update_all(state: CaregiverLink.states[:provisional])
+      task(title: "Doctor Shah", at: 2.days.from_now)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "gives the page somewhere to put them" do
+      get "/r/#{link.token}"
+
+      expect(response.body).to include('id="comingUpList"')
+    end
+  end
+
   # Six digits, read down a telephone. The one channel this audience is
   # comfortable with: every other remote option asks an older person to find a
   # message in an inbox and trust a link inside it.

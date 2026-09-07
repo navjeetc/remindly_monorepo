@@ -233,6 +233,15 @@
       .mt-12 { margin-top: 3rem; }
       .mb-12 { margin-bottom: 3rem; }
 
+      /* The page's own wrapper. Never styled and never needed to be — defined
+         so that "every class this page uses is defined here" is a rule with no
+         exceptions, which is what makes the spec that checks it worth having. */
+      .voice-reminders-container { width: 100%; }
+
+      /* Used by the "Coming up" list. */
+      .bg-gray-50 { background-color: #f9fafb; }
+      .mt-8 { margin-top: 2rem; }
+
       /* Sizes */
       .h-3 { height: 0.75rem; }
       .w-3 { width: 0.75rem; }

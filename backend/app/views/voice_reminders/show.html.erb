@@ -28,6 +28,15 @@
                 </div>
             </div>
             
+            <%# What somebody else arranged. Below the reminders, because a
+                dose due now matters more than an appointment on Thursday, and
+                hidden entirely when there is nothing — an empty heading on this
+                screen reads as something broken. %>
+            <div id="comingUp" class="mt-8" style="display: none;">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Coming up</h2>
+                <div id="comingUpList" class="space-y-4"></div>
+            </div>
+
             <!-- Hidden controls for caregivers/debugging -->
             <div class="mt-8 pt-6 border-t border-gray-200">
                 <details class="text-sm text-gray-500">

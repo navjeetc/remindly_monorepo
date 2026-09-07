@@ -87,6 +87,13 @@ Rails.application.routes.draw do
 
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
   get  "voice_reminders/today", to: "voice_reminders#today", as: :voice_reminders_today
+
+  # What is coming up that somebody else arranged: appointments, a lift, a
+  # delivery. A second endpoint rather than another key on the one above,
+  # because a tablet may be running a cached copy of the script — and a page
+  # that has been open for a week meeting a response it cannot parse is exactly
+  # the silent death this whole feature exists to end.
+  get  "voice_reminders/coming_up", to: "voice_reminders#coming_up", as: :voice_reminders_coming_up
   get  "contact",            to: "dashboard#contact", as: :contact
   post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile

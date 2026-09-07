@@ -140,6 +140,58 @@ class VoiceRemindersApp {
         }
     }
 
+    // Tasks somebody else arranged: an appointment, a lift, a delivery.
+    //
+    // Its own request rather than another key on /voice_reminders/today,
+    // because a tablet left open for a week is running whatever script it
+    // fetched then — and a cached copy meeting a changed response shape would
+    // stop the page updating without saying so.
+    //
+    // Failure here is deliberately quiet. The reminders are the product; if
+    // this request fails the page should carry on announcing them rather than
+    // throw away a working screen over an appointment list.
+    async loadComingUp() {
+        const section = document.getElementById('comingUp');
+        const list = document.getElementById('comingUpList');
+        if (!section || !list) return;
+
+        try {
+            const response = await fetch('/voice_reminders/coming_up', { credentials: 'include' });
+            if (!response.ok) return;
+
+            const tasks = await response.json();
+            if (!tasks.length) {
+                section.style.display = 'none';
+                return;
+            }
+
+            list.innerHTML = tasks.map(task => this.renderComingUpCard(task)).join('');
+            section.style.display = 'block';
+        } catch (error) {
+            console.error('Could not load what is coming up:', error);
+        }
+    }
+
+    renderComingUpCard(task) {
+        const when = new Date(task.scheduled_at);
+        const today = new Date();
+        const isToday = when.toDateString() === today.toDateString();
+        const day = isToday
+            ? 'Today'
+            : when.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        const time = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        return `
+            <div class="p-6 rounded-xl border-2 border-gray-200 bg-white">
+                <div class="flex justify-between items-start">
+                    <h3 class="text-2xl font-bold text-gray-900">${this.escapeHtml(task.title)}</h3>
+                    <span class="text-xl font-semibold text-gray-700">${day}, ${time}</span>
+                </div>
+                ${task.location ? `<p class="text-xl text-gray-700 mt-2">${this.escapeHtml(task.location)}</p>` : ''}
+            </div>
+        `;
+    }
+
     async loadReminders() {
         try {
             this.updateStatus('loading');
@@ -173,6 +225,7 @@ class VoiceRemindersApp {
             this.updateStats();
             this.announceNewReminders();
             this.updateStatus('online');
+            this.loadComingUp();
 
             // Retry a replay that was deferred because reminder state was unknown
             // when the user unlocked. The periodic poll calls through here, so a
