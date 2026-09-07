@@ -65,12 +65,23 @@ class VoiceReminderSchedulerJob < ApplicationJob
       # window. The window alone was the bug: attempts reused one row, so its
       # created_at never advanced and an unanswered senior was re-dialled every
       # minute for the full hour before the missed sweep closed the occurrence.
+      #
+      # `where.not(occurrence_id: nil)` on both subqueries is load-bearing, not
+      # tidiness. A verification call — "Call and ask" — has no occurrence, so
+      # its occurrence_id is NULL, and `id NOT IN (NULL, ...)` is NULL in SQL
+      # rather than true: the whole clause matches nothing. One caregiver asking
+      # one person for consent therefore stopped every scheduled reminder call
+      # for every care receiver, for the five minutes that row stayed inside
+      # RETRY_AFTER. Nothing logged it, and the occurrences simply went to the
+      # missed sweep an hour later as though nobody had answered.
       .where.not(
         id: TelnyxCall.select(:occurrence_id)
+          .where.not(occurrence_id: nil)
           .where("telnyx_calls.created_at > ?", now - TelnyxCall::RETRY_AFTER)
       )
       .where.not(
         id: TelnyxCall.select(:occurrence_id)
+          .where.not(occurrence_id: nil)
           .group(:occurrence_id)
           .having("COUNT(*) >= ?", TelnyxCall::MAX_ATTEMPTS)
       )

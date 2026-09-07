@@ -140,6 +140,24 @@ class User < ApplicationRecord
 
   has_many :reminders, dependent: :destroy
 
+  # Destroyed with the account rather than left behind. A reminder link is a
+  # credential; an orphan row pointing at a deleted user would be a dead key
+  # nobody can see to revoke — and a care receiver who refuses at first run has
+  # their whole account removed, which has to include the way into it.
+  has_many :reminder_links, dependent: :destroy
+
+  # Telephone rows, which had no association at all while the database carried a
+  # foreign key for them. Refusing at first run destroys the account, and a care
+  # receiver whose caregiver had already pressed "Call and ask" would have hit a
+  # constraint failure instead of a goodbye — with the link cookie already gone,
+  # so the device could not even go back.
+  #
+  # The calls *to* this person go with them; the ones they merely arranged for
+  # somebody else are somebody else's history and are only unhooked.
+  has_many :telnyx_calls, dependent: :destroy
+  has_many :requested_telnyx_calls, class_name: "TelnyxCall", foreign_key: "requested_by_id",
+                                    dependent: :nullify, inverse_of: :requested_by
+
   # Caregiver relationships
   has_many :senior_links, class_name: "CaregiverLink", foreign_key: "senior_id", dependent: :destroy
   has_many :caregivers, through: :senior_links, source: :caregiver
@@ -176,7 +194,17 @@ class User < ApplicationRecord
     .uniq { |_label, identifier| identifier }
     .freeze
 
-  validates :email, presence: true, uniqueness: true
+  # An address is what lets somebody sign in, so it is required of anybody who
+  # can — and a care receiver set up by their caregiver cannot, deliberately.
+  # That account has no address at all: with none there is no lookup, so no way
+  # for a setup form to reveal whether somebody already uses Remindly, and no
+  # branch that behaves differently for an address in use. See
+  # docs/SENIOR_ACCESS_DESIGN.md, "Do not ask for the senior's address".
+  #
+  # Narrow to care receivers on purpose. A caregiver or an admin with no address
+  # would be an account nobody could ever reach or recover.
+  validates :email, presence: true, unless: :role_senior?
+  validates :email, uniqueness: true, allow_nil: true
   validates :name, presence: true, on: :update, if: -> { !new_record? }
   attribute :tz, :string, default: "America/New_York"
   validates :tz, presence: true
@@ -279,13 +307,30 @@ class User < ApplicationRecord
   end
 
   # Display name - uses nickname if available, otherwise name, otherwise email
+  # Falls through to the address, and then to something rather than nothing: a
+  # care receiver created by a caregiver has no address to fall back on, and a
+  # blank heading reads as a broken page rather than an unnamed person. The
+  # creation form asks for a name, so this is the last resort behind a last
+  # resort.
+  # Somebody a caregiver has set up who has not yet opened the link and agreed.
+  #
+  # Nothing about their day may be created, swept, counted or sent while this is
+  # true — not merely hidden from a screen. An occurrence marked missed is a
+  # record about a person, and a missed-dose email is a claim about them, and
+  # both would be about somebody who has never seen the device.
+  def awaiting_first_use?
+    return @awaiting_first_use if defined?(@awaiting_first_use)
+
+    @awaiting_first_use = senior_links.where(state: :provisional).exists?
+  end
+
   def display_name
-    nickname.presence || name.presence || email
+    nickname.presence || name.presence || email.presence || "Someone"
   end
 
   # Friendly name for seniors to recognize caregivers
   def friendly_name
-    nickname.presence || name.presence || email.split("@").first
+    nickname.presence || name.presence || email&.split("@")&.first || "Someone"
   end
 
   # Reminder categories this caregiver wants completion/miss notifications for.

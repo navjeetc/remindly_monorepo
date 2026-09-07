@@ -16,7 +16,8 @@ class DashboardController < WebController
   # silently removed the guard from every reminder action when it was tried.
   before_action :require_manage_for_reminder!,
     only: %i[new_reminder edit_reminder create_reminder update_reminder delete_reminder
-             create_reminder_link revoke_reminder_link]
+             create_reminder_link revoke_reminder_link issue_start_code
+             edit_care_receiver update_care_receiver]
 
   # Inviting is a write too, and the sharpest one: an invitation creates a
   # manage link. Without this a view-only caregiver could invite an address they
@@ -24,6 +25,31 @@ class DashboardController < WebController
   # away — a complete bypass, reached through the one endpoint that hands out
   # the permission being enforced.
   before_action :require_manage_for_invite!, only: %i[invite_caregiver process_invite_caregiver]
+  before_action :caregivers_only!, only: %i[new_care_receiver create_care_receiver]
+
+  # Asking to telephone somebody is bounded per caregiver, not only per number.
+  #
+  # The existing cap is five verification attempts per number per day, which was
+  # the right shape when reaching the phone panel required a care receiver who
+  # had signed up and handed over a token. Creating the account for them removes
+  # that gate: a signed-up stranger can name anybody, type any number and press
+  # "Call and ask", and ten accounts a day at five attempts each is fifty calls
+  # to people who have never heard of Remindly.
+  #
+  # The per-number cap does not see that, because each call is to a different
+  # number. This one counts the person doing the asking.
+  # Named, because a controller with more than one rate limit shares a cache key
+  # between them unless each says which it is — so the two would spend each
+  # other's allowance, and neither would hold at the number it advertises.
+  rate_limit to: 10, within: 1.day, only: :verify_phone,
+             by: -> { current_user&.id }, name: "asking-to-telephone"
+
+  # Creating an account for somebody who has not asked for one is the one write
+  # here that makes a person exist. Bulk creation is not a feature and a script
+  # doing it is not a caregiver, so the ceiling is low and per caregiver rather
+  # than per IP — a household setting up two parents in an afternoon is normal.
+  rate_limit to: 10, within: 1.day, only: :create_care_receiver,
+             by: -> { current_user&.id }, name: "creating-care-receivers"
 
   # Landing page - show pairing or dashboard
   def index
@@ -267,6 +293,114 @@ class DashboardController < WebController
     end
   end
 
+  def new_care_receiver
+    @senior = User.new(tz: current_user.tz)
+  end
+
+  # Creating an account for another person is a caregiver's act.
+  #
+  # These actions inherited only authenticate! and check_role!, and the latter
+  # asks whether a role has been chosen rather than which one — so a signed-in
+  # care receiver could POST here, create a second person, and be handed a
+  # manage link to them, after which every other caregiver-only URL authorises
+  # through that link. Hiding the button from their dashboard was the only thing
+  # standing in the way, and a hidden button is not a rule.
+
+  # Creates an account for somebody who has not asked for one — which is the
+  # whole delicacy of this feature, and why the link it creates starts
+  # provisional.
+  #
+  # What the caregiver gets is the ability to write reminders and nothing else:
+  # no activity, no acknowledgements, no coverage, until the care receiver opens
+  # the link and says yes. Refusing destroys the account, which is safe for a
+  # structural reason — a provisional account can only ever contain reminders
+  # this caregiver typed.
+  #
+  # No email address is collected, deliberately. See User's validation and
+  # docs/SENIOR_ACCESS_DESIGN.md: with no address there is no lookup, so a setup
+  # form cannot be used to discover who already has an account.
+  def create_care_receiver
+    attrs = params.require(:user).permit(:name, :tz)
+
+    # Required here rather than by the model, which validates a name only on
+    # update — because a user created by a magic link has no name until they
+    # choose one. This person will never sign in to choose one, so if it is not
+    # collected now it never will be, and every screen and every spoken
+    # reminder would fall back to "Someone".
+    if attrs[:name].blank?
+      @senior = User.new(tz: attrs[:tz])
+      flash.now[:alert] = "Give them a name — it is what Remindly will call them out loud."
+      return render :new_care_receiver, status: :unprocessable_entity
+    end
+
+    @senior = User.new(
+      name: attrs[:name],
+      tz: attrs[:tz].presence || current_user.tz,
+      role: :senior,
+      # Structurally unmailable rather than merely unmailed: nothing should ever
+      # try to reach this account by email, and a nil address would otherwise
+      # reach a mailer as a nil recipient rather than being skipped.
+      email_undeliverable_at: Time.current
+    )
+
+    # One transaction for all three, because two of them are meaningless alone.
+    # Committing the account first left an orphan if the link or the token
+    # failed: a care receiver with no email and no caregiver, invisible on every
+    # screen and unreachable through any of them, while the caregiver saw a 500.
+    saved = false
+
+    ActiveRecord::Base.transaction do
+      saved = @senior.save
+      raise ActiveRecord::Rollback unless saved
+
+      CaregiverLink.create!(senior: @senior, caregiver: current_user,
+                            permission: :manage, state: :provisional)
+      @reminder_link = ReminderLink.mint(user: @senior)
+    end
+
+    unless saved
+      flash.now[:alert] = @senior.errors.full_messages.to_sentence
+      return render :new_care_receiver, status: :unprocessable_entity
+    end
+
+    # Says what to do next with what actually exists. An earlier version told
+    # the caregiver to read out "the six-digit code" at a moment when no code
+    # had been generated — instructions for a thing that is one press away and
+    # not yet there.
+    redirect_to senior_dashboard_path(@senior),
+      notice: "#{@senior.display_name} is set up. Open their link on the device they will use, " \
+              "or press \"Set up over the phone\" for six numbers to read out."
+  end
+
+  def edit_care_receiver
+    @senior = repairable_care_receiver
+  end
+
+  # The only way a wrong name or timezone ever gets corrected.
+  #
+  # Both are written once, at setup, and this project has had the timezone bug
+  # twice: reminders are expanded in the care receiver's zone, so a caregiver
+  # three timezones away who leaves their own selected has every dose firing at
+  # the wrong hour, forever. They cannot fix it themselves — an account created
+  # this way has no address and can never sign in — so without this the repair
+  # is a console command.
+  #
+  # Restricted to accounts that cannot sign in. Somebody who signed up owns
+  # their own name and their own clock, and a caregiver editing them would be
+  # reaching into a profile rather than repairing their own typing.
+  def update_care_receiver
+    @senior = repairable_care_receiver
+    attrs = params.require(:user).permit(:name, :tz)
+
+    if attrs[:name].present? && @senior.update(name: attrs[:name], tz: attrs[:tz].presence || @senior.tz)
+      redirect_to senior_dashboard_path(@senior), notice: "Saved."
+    else
+      flash.now[:alert] = @senior.errors.full_messages.presence&.to_sentence ||
+                          "Give them a name — it is what Remindly will call them out loud."
+      render :edit_care_receiver, status: :unprocessable_entity
+    end
+  end
+
   # Mints the link a device bookmarks.
   #
   # One live link per care receiver: any existing one is revoked first, so
@@ -304,6 +438,26 @@ class DashboardController < WebController
     redirect_to senior_dashboard_path(senior),
       alert: "Somebody else created a link for #{senior.display_name} just now. " \
              "The one shown below is the live one."
+  end
+
+  # Six digits, good for ten minutes, so setup can happen over the telephone.
+  #
+  # Issued on demand rather than with the link: a code that sat on the screen
+  # from the moment a link was created would be stale by the time anybody rang,
+  # and a code nobody is waiting to type is a guessable secret left lying about.
+  def issue_start_code
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+    link = ReminderLink.live.where(user_id: senior.id).find_by(id: params[:id])
+
+    return redirect_to senior_dashboard_path(senior), alert: "That device link is no longer active." unless link
+
+    link.issue_start_code!
+
+    redirect_to senior_dashboard_path(senior),
+      # No promise of ten minutes: a code that is still live is returned rather
+      # than replaced, so pressing again mid-call may have three minutes left
+      # rather than ten. The panel prints the real deadline.
+      notice: "Read them the six numbers on screen."
   end
 
   # Ends the link and nothing else. It cannot remove a caregiver, cannot touch
@@ -509,6 +663,7 @@ class DashboardController < WebController
     link = current_user.caregiver_links.find_by!(senior_id: @senior_id)
     @senior = link.senior
     @permission = link.permission
+    @link_state = link.state
     @reminder_link = ReminderLink.live.find_by(user_id: @senior.id)
 
     # Get today's reminders
@@ -826,10 +981,20 @@ class DashboardController < WebController
     # calls. callable_by_phone? still needs a number, a recorded consent and no
     # opt-out, and only a keypress on a call the care receiver answers writes
     # that consent.
+    # Inherits the state of the link doing the inviting. The column defaults to
+    # active, which is right for almost every row and wrong for exactly this
+    # one: inviting a second caregiver to a care receiver who has not agreed to
+    # anything yet would hand that caregiver a link born active, and with it the
+    # activity, acknowledgement and coverage screens the provisional state
+    # exists to withhold. The person being invited about would have consented to
+    # nothing, and the second caregiver would see their day.
+    inviting_link = current_user.caregiver_links.find_by(senior_id: @senior.id)
+
     CaregiverLink.create!(
       senior_id: @senior.id,
       caregiver_id: caregiver.id,
-      permission: :manage
+      permission: :manage,
+      state: inviting_link&.state || :active
     )
 
     # Send invitation email to the caregiver
@@ -884,6 +1049,23 @@ class DashboardController < WebController
   # Reading a care receiver's reminders is open to anybody linked to them;
   # writing is not. Resolved from params rather than @senior, because this runs
   # before the actions that set it.
+  # An account somebody else created, which therefore has nobody able to correct
+  # it from the inside.
+  def repairable_care_receiver
+    senior = current_user.caregiver_links.find_by!(senior_id: params[:senior_id]).senior
+    raise ActiveRecord::RecordNotFound if senior.email.present?
+
+    senior
+  end
+
+  # Private, like every other guard here: a public method on a controller is a
+  # candidate action, and a guard that can be routed to is a strange object.
+  def caregivers_only!
+    return if current_user.role_caregiver?
+
+    redirect_to dashboard_path, alert: "Only caregivers can set somebody up."
+  end
+
   def require_manage_for_reminder!
     link = current_user.caregiver_links.find_by(senior_id: params[:senior_id])
     return if link.nil? # the action's own find_by! reports this properly

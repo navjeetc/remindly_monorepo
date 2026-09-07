@@ -54,9 +54,17 @@ class SeniorCoverageController < WebController
   def set_senior
     @senior = User.find(params[:senior_id])
 
-    # Verify current user is linked to this senior
+    # Verify current user is linked to this senior, and that the care receiver
+    # has agreed to any of this.
+    #
+    # `active?` is the legacy predicate — senior present, caregiver present —
+    # and a provisional link satisfies both, because a caregiver created it.
+    # Reading it here let the creator open somebody's coverage before that
+    # person had opened anything, which is the boundary the state exists to
+    # draw. The name collision is the trap: two predicates, one word, opposite
+    # answers for exactly the case that matters.
     link = current_user.caregiver_links.find_by(senior_id: @senior.id)
-    unless link&.active?
+    unless link&.state_active?
       redirect_to dashboard_path, alert: "You don't have access to this care receiver's information"
     end
   end

@@ -25,15 +25,97 @@ class VoiceRemindersController < WebController
   rate_limit to: 20, within: 1.minute, only: :show, if: -> { params[:token].present? }
 
   before_action :redeem_token, only: :show
-  before_action :authenticate!, only: :show
-  before_action :authenticate_poll!, only: :today
-  before_action :care_receivers_only!, only: :show
+  before_action :authenticate!, only: %i[show start decline stop]
+  # stopped and declined are deliberately outside every guard above: they are
+  # what a device sees after its credential has been given up.
+  before_action :authenticate_poll!, only: %i[today coming_up]
+  before_action :care_receivers_only!, only: %i[show start decline stop]
 
   layout "voice"
 
   helper_method :voice_script_version
 
-  def show; end
+  def show
+    # Consent moved from before setup to first use; this is that moment.
+    #
+    # An account a caregiver created is provisional until the person it is about
+    # opens the link and says yes. Until then nothing is spoken, nothing is
+    # recorded, and the caregiver sees no activity — so what a device shows on
+    # its first visit is not the reminders but the question, naming who set this
+    # up and offering refusal in one press.
+    return unless awaiting_consent?
+
+    # The caregiver's name, not the account's. It is the one fact a stranger
+    # ringing out of the blue could not know, which is what makes it worth
+    # leading with — the same reasoning as the consent call's opening line.
+    @arranger_name = awaiting_link.caregiver&.friendly_name || "Someone"
+
+    render :first_run
+  end
+
+  # Yes. From here the page behaves as it does for anybody else, and the
+  # caregiver's activity screens start working.
+  def start
+    link = awaiting_link
+    return redirect_to voice_reminders_path unless link
+
+    senior = link.senior
+
+    # Every provisional link, not the one this happened to find.
+    #
+    # A caregiver can invite a second caregiver before first use, and both links
+    # are provisional by design. Activating one left the other behind, and the
+    # consequences compound: awaiting_first_use? stays true, so expansion stays
+    # suppressed and the device is shown the consent question *again* — where
+    # pressing No would delete the account moments after they said yes.
+    #
+    # The telephone path already did this. The screen did not.
+    senior.senior_links.where(state: :provisional).find_each do |provisional|
+      provisional.update!(state: :active)
+    end
+
+    # Everything written while waiting exists as a reminder and not yet as a
+    # day: expansion was refused while this account was provisional, so the
+    # first one happens here rather than up to an hour later when the hourly
+    # sweep next runs. Somebody who says yes at nine should hear their ten
+    # o'clock dose.
+    senior.reminders.find_each { |reminder| Recurrence.expand(reminder) }
+
+    # To the address worth bookmarking, not the tidier one. A redirect to
+    # /voice_reminders is what somebody would then save — and it works only
+    # while the cookie lives, which is the failure this whole feature exists to
+    # end. See redeem_token.
+    # Falls back rather than raising: reminder_link_path(token: nil) is a
+    # UrlGenerationError, and somebody session-authenticated with no live link
+    # would meet it on the one press that says yes.
+    token = link_mode_link&.token || ReminderLink.live.find_by(user_id: senior.id)&.token
+
+    redirect_to token ? reminder_link_path(token: token) : voice_reminders_path
+  end
+
+  # No.
+  #
+  # Destroys the account, which is safe for a structural reason rather than a
+  # careful one: a provisional account can only ever contain reminders the
+  # caregiver typed into it. There is nothing of this person's in there to lose,
+  # because they have never used it — and leaving a refused account in place
+  # would leave a caregiver able to keep writing reminders for somebody who
+  # said no.
+  def decline
+    link = awaiting_link
+    return redirect_to voice_reminders_path unless link
+
+    senior = link.senior
+
+    # Destroy first, forget the cookie second. The other order leaves a device
+    # that has lost its way back looking at whatever the failure produced, with
+    # the account it just refused still live — and destroying an account is
+    # exactly the operation with constraints that can refuse.
+    senior.destroy!
+    cookies.delete(ReminderLinkMode::COOKIE)
+
+    redirect_to declined_voice_reminders_path
+  end
 
   # The script's own modification time, so the cache busts when the file
   # changes rather than every second. Memoised per process: this is a stat call
@@ -65,7 +147,7 @@ class VoiceRemindersController < WebController
     # next — a forty-eight hour window, on the endpoint that decides what a care
     # receiver is told to do today. The version this was extracted from read the
     # clock once; the extraction is what introduced the second call.
-    now = ActiveSupport::TimeZone[current_user.tz].now
+    now = clock_for(current_user)
     day = now.beginning_of_day..now.end_of_day
 
     # includes as well as joins: the join scopes the query, and without the
@@ -92,7 +174,107 @@ class VoiceRemindersController < WebController
     }
   end
 
+  # Stops the reminders on this device, from this device, with no account.
+  #
+  # Invariant 4 of the design: the care receiver can always refuse, in one
+  # action, without signing in. Refusing at first run covers the moment before
+  # they start; this covers every moment after, which is where somebody actually
+  # changes their mind.
+  #
+  # Deliberately narrow. It revokes this link and nothing else — it does not
+  # remove caregivers and does not touch the account. A capability that can end
+  # itself is not the same as one that can act on the account, and only the
+  # first is safe to hand to whoever holds a URL: a leaked link that could cut a
+  # family off from a vulnerable person would be worse than the disclosure it
+  # prevents.
+  def stop
+    link = link_mode_link
+    return redirect_to voice_reminders_path unless link
+
+    link.revoke!
+    cookies.delete(ReminderLinkMode::COOKIE)
+
+    redirect_to stopped_voice_reminders_path
+  end
+
+  # The two endings, as pages somebody can land on and reload.
+  #
+  # No authentication, deliberately: by the time either is shown the credential
+  # is gone — that is the whole point of both actions — and requiring one would
+  # send the person who just pressed the button to a login page they have no
+  # account for. Neither page contains anything about anybody; they are a
+  # sentence and a suggestion.
+  def stopped; end
+  def declined; end
+
+  # Tasks somebody else arranged, which this screen has never shown.
+  #
+  # The care receiver's signed-in dashboard has always listed them; this page
+  # never has, and until now that only cost somebody who chose the voice page
+  # over signing in. A care receiver their caregiver set up has no account at
+  # all, so this page is their whole interface — a caregiver ticking "visible to
+  # the care receiver" on Thursday's appointment would be telling nobody, while
+  # the screen looked exactly as though it had worked.
+  #
+  # Shown, not spoken. A dose is a thing to do now; a task is a thing that is
+  # happening. Announcing "appointment on Thursday" every few minutes would
+  # teach somebody to stop listening to the voice that also says take your
+  # tablets, and speaking them is a separate decision with its own design.
+  def coming_up
+    now = clock_for(current_user)
+
+    tasks = Task.where(senior_id: current_user.id, visible_to_senior: true)
+                .where.not(status: :completed)
+                .where(scheduled_at: now.beginning_of_day..(now + 7.days).end_of_day)
+                .includes(:assigned_to)
+                .order(:scheduled_at)
+                .limit(5)
+
+    render json: tasks.map { |task|
+      {
+        id: task.id,
+        title: task.title,
+        scheduled_at: task.scheduled_at,
+        location: task.location.presence,
+        # friendly_name rather than the address behind it — the method exists
+        # for exactly this, naming a caregiver in a way the person being cared
+        # for would recognise. Nil when nobody has taken it, which the page says
+        # in words rather than leaving a blank line: "somebody is coming" and
+        # "nobody has said yes yet" are different facts, and the second is the
+        # one worth mentioning to whoever is waiting.
+        assigned_to: task.assigned_to&.friendly_name
+      }
+    }
+  end
+
   private
+
+  # Their clock, and the server's if theirs cannot be read.
+  #
+  # `tz` is a stored string and not every stored string resolves: older rows,
+  # manual edits, and a profile form that once wrote two spellings of the same
+  # zone — this project has had that bug twice. ActiveSupport::TimeZone[]
+  # answers nil for those, and `.now` on nil is a 500 on the page a care
+  # receiver leaves open all day.
+  #
+  # Falling back is right here and wrong elsewhere: within_calling_hours?
+  # refuses rather than guessing, because a guessed zone can telephone somebody
+  # at 3am. Nothing here rings a phone — it decides which day to list — so a
+  # readable page beats a correct refusal.
+  def clock_for(user)
+    (ActiveSupport::TimeZone[user.tz.to_s] || Time.zone).now
+  end
+
+  # The provisional link for whoever is looking, if there is one. Read through
+  # senior_links so it is this care receiver's own arrangement being asked
+  # about, never one belonging to somebody else with the same device.
+  def awaiting_link
+    return nil unless current_user
+
+    current_user.senior_links.find_by(state: :provisional)
+  end
+
+  def awaiting_consent? = awaiting_link.present?
 
   # The poll answers with a status rather than a redirect.
   #
@@ -106,9 +288,15 @@ class VoiceRemindersController < WebController
   # A 401 is something the client can act on, and it does — see the reload in
   # public/voice_reminders.js.
   def authenticate_poll!
-    return if current_user
+    return render json: { error: "Unauthorized" }, status: :unauthorized unless current_user
 
-    render json: { error: "Unauthorized" }, status: :unauthorized
+    # Nothing is announced before the person it is about has agreed to it. The
+    # first-run screen does not load the script at all, so this is defence
+    # against a device that was already polling when the account was created —
+    # and against anybody calling it directly.
+    return unless awaiting_consent?
+
+    render json: { error: "Not started yet" }, status: :forbidden
   end
 
   # `GET /r/<token>` renders this page directly. It used to set the cookie and

@@ -44,9 +44,18 @@
         Referer header on our own access logs, which is the same leak the
         request-path redaction exists to prevent, arriving by another door.
 
-        no-referrer rather than same-origin: nothing on this page needs to know
-        where a request came from. %>
-    <meta name="referrer" content="no-referrer">
+        **strict-origin, not no-referrer.** no-referrer was the first choice and
+        it broke the one press this whole design turns on. Under it the browser
+        sends `Origin: null` on a form submission, Rails' forgery protection
+        refuses the request, and "Yes, start my reminders" answers with an
+        exception page. fetch() is unaffected — it sends an Origin regardless,
+        which is why the acknowledgement calls kept working and why this was not
+        obvious until somebody pressed the button.
+
+        strict-origin keeps the property that mattered: the Referer carries the
+        origin and never the path, so the token in the address is not sent
+        anywhere, while forms still identify where they came from. %>
+    <meta name="referrer" content="strict-origin">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <style>
@@ -212,6 +221,26 @@
 
       /* Three buttons on one line is too many for a phone. */
       .modal-footer { flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+
+      /* Used by the six-digit field and the first-run buttons. The layout's CSS
+         is a written-out subset of the names the views use, so a page added
+         later renders unstyled unless its names are added here — which is what
+         happened to the settings dialog, twice. */
+      .w-64 { width: 16rem; }
+      .tracking-widest { letter-spacing: 0.1em; }
+      .px-8 { padding-left: 2rem; padding-right: 2rem; }
+      .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+      .mt-12 { margin-top: 3rem; }
+      .mb-12 { margin-bottom: 3rem; }
+
+      /* The page's own wrapper. Never styled and never needed to be — defined
+         so that "every class this page uses is defined here" is a rule with no
+         exceptions, which is what makes the spec that checks it worth having. */
+      .voice-reminders-container { width: 100%; }
+
+      /* Used by the "Coming up" list. */
+      .bg-gray-50 { background-color: #f9fafb; }
+      .mt-8 { margin-top: 2rem; }
 
       /* Sizes */
       .h-3 { height: 0.75rem; }

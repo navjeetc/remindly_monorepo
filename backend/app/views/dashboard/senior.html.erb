@@ -18,7 +18,14 @@
           care receiver's own dashboard has said "Can make changes" since #117;
           this screen still read "Permission: Manage" for the same fact. %>
       <p class="mt-1 text-sm text-gray-500">
-        Timezone: <%= @senior.tz %> &middot;
+        Timezone: <%= @senior.tz %><%#
+          Offered only for an account with no way to correct itself. The wrong
+          zone here fires every reminder at the wrong hour and there is nobody
+          on the other side who can change it. %>
+        <% if @senior.email.blank? && may_change?(@senior) %>
+          (<%= link_to "change", edit_care_receiver_path(senior_id: @senior.id), class: "text-blue-600 hover:text-blue-800" %>)
+        <% end %>
+        &middot;
         <%= @permission == "manage" ? "You can make changes" : "You can only look" %>
       </p>
     </div>
@@ -44,6 +51,12 @@
   <%# Hidden with the feature, not merely disabled: with the flag off there is
       nothing here a caregiver could act on, and a panel describing calls that
       cannot be placed only raises a question nobody can answer yet. %>
+  <%# Shown before they have agreed, deliberately. Somebody with no tablet has
+      no screen to agree on, and the telephone is their device — so the consent
+      call is their first-use moment: it names who arranged it, asks rather than
+      assumes, and the keypress that answers it is what starts everything. See
+      TelnyxWebhooksController, where agreeing by telephone activates the link
+      exactly as pressing Yes on a screen does. %>
   <% if FeatureFlag.enabled?(:phone_call_reminders) %>
     <%= render "dashboard/phone_reminders", senior: @senior, permission: @permission, attempts: @verification_attempts %>
   <% end %>
@@ -54,6 +67,34 @@
     <%= render "dashboard/reminder_link", senior: @senior, permission: @permission, reminder_link: @reminder_link %>
   </div>
 
+  <%# Nothing about their day until they have agreed to any of it.
+
+      A provisional account is one a caregiver created and the care receiver has
+      not yet opened. Reminders can be written — that is the point of setting up
+      before handing the device over — but the activity, the stats and the
+      missed count all describe a person who has not consented to being
+      described. The routes behind them refuse too; this is the screen agreeing
+      with them, and telling the caregiver why rather than showing zeroes that
+      read as a fault. %>
+  <% if @link_state != "active" %>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <h3 class="text-lg font-medium text-blue-900">Waiting for them to start</h3>
+      <p class="mt-2 text-sm text-blue-900">
+        Write their reminders now if you like — nothing is spoken and nothing is
+        recorded until they open the link on their device and agree to it. When
+        they do, this page will show what was announced and what was marked done.
+      </p>
+      <%# The host from the request, not a literal: in development this panel
+          was telling somebody to visit remindly.care, which is not where they
+          are. %>
+      <p class="mt-2 text-sm text-blue-900">
+        Open the link above on their tablet or computer. To do it over the
+        telephone, press <strong>Set up over the phone</strong> for six numbers
+        to read out, and have them go to
+        <strong><%= start_url.sub(%r{\Ahttps?://}, "") %></strong>.
+      </p>
+    </div>
+  <% else %>
   <!-- Stats -->
   <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
     <div class="bg-white overflow-hidden shadow rounded-lg">
@@ -189,4 +230,5 @@
       <% end %>
     </div>
   </div>
+  <% end %>
 </div>

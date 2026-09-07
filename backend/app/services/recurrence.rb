@@ -1,5 +1,14 @@
 class Recurrence
   def self.expand(reminder, horizon_hours: 24)
+    # Nothing is materialised for somebody who has not agreed to any of this.
+    #
+    # A caregiver may write reminders into a provisional account — that is the
+    # point of setting up before the tablet arrives — but an occurrence is not a
+    # plan, it is a record: the missed sweep flips it and emails the caregiver
+    # that this person missed their tablets, about somebody who has never seen
+    # the device. Expansion resumes the moment they say yes.
+    return [] if reminder.user&.awaiting_first_use?
+
     # The reminder's stamp, then the senior's clock, then the server's.
     #
     # The stamp comes first deliberately, even though the senior's clock is the

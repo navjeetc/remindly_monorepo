@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_033240) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_06_021641) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -81,9 +81,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_033240) do
     t.string "pairing_token"
     t.integer "permission", default: 0, null: false
     t.integer "senior_id", null: false
+    t.integer "state", default: 2, null: false
     t.datetime "updated_at", null: false
     t.index ["pairing_token"], name: "index_caregiver_links_on_pairing_token", unique: true
     t.index ["senior_id", "caregiver_id"], name: "index_caregiver_links_on_senior_id_and_caregiver_id", unique: true
+    t.index ["senior_id", "state"], name: "index_caregiver_links_on_senior_id_and_state"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -132,9 +134,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_033240) do
     t.datetime "created_at", null: false
     t.datetime "last_used_at"
     t.datetime "revoked_at"
+    t.string "start_code"
+    t.datetime "start_code_expires_at"
     t.string "token", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
+    t.index ["start_code"], name: "index_reminder_links_on_start_code", unique: true, where: "start_code IS NOT NULL"
     t.index ["token"], name: "index_reminder_links_on_token", unique: true
     t.index ["user_id", "revoked_at"], name: "index_reminder_links_on_user_id_and_revoked_at"
     t.index ["user_id"], name: "index_reminder_links_on_user_id"
@@ -292,7 +297,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_033240) do
     t.datetime "call_opted_out_at"
     t.boolean "call_reminders_enabled", default: false, null: false
     t.datetime "created_at", null: false
-    t.string "email", null: false
+    t.string "email"
     t.datetime "email_undeliverable_at"
     t.string "name"
     t.string "nickname"

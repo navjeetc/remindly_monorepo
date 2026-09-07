@@ -28,6 +28,15 @@
                 </div>
             </div>
             
+            <%# What somebody else arranged. Below the reminders, because a
+                dose due now matters more than an appointment on Thursday, and
+                hidden entirely when there is nothing — an empty heading on this
+                screen reads as something broken. %>
+            <div id="comingUp" class="mt-8" style="display: none;">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Coming up</h2>
+                <div id="comingUpList" class="space-y-4"></div>
+            </div>
+
             <!-- Hidden controls for caregivers/debugging -->
             <div class="mt-8 pt-6 border-t border-gray-200">
                 <details class="text-sm text-gray-500">
@@ -45,6 +54,17 @@
                         <button id="clearAnnouncedBtn" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" title="Clear announced reminders list">
                             🗑️ Clear Announced
                         </button>
+                        <%# The care receiver's own way out, and the only thing
+                            on this page that is theirs alone. Offered only in
+                            link mode: somebody signed in can manage this
+                            properly from their dashboard, and a signed-in
+                            senior pressing it would be revoking a device they
+                            may not be sitting at. %>
+                        <% if link_mode? %>
+                          <%= button_to "Stop these reminders", stop_voice_reminders_path,
+                                onclick: "return confirm('#{j 'This device will stop showing your reminders. Are you sure?'}')",
+                                class: "btn-secondary" %>
+                        <% end %>
                         <span id="statusIndicator" class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
                     </div>
                 </details>

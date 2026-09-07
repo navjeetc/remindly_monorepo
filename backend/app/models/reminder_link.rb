@@ -58,6 +58,90 @@ class ReminderLink < ApplicationRecord
     end
   end
 
+  # How long six digits are worth anything. Long enough to read them down a
+  # telephone and have somebody type them; short enough that a guessed code is
+  # not worth attempting, alongside the rate limit at the endpoint.
+  START_CODE_TTL = 10.minutes
+
+  # Digits, so they can be said aloud without spelling anything, and generated
+  # with SecureRandom rather than rand — a predictable setup code would be a
+  # predictable way into somebody's reminders.
+  def issue_start_code!(at: Time.current)
+    # A code that is still live is the answer, not a reason to make another.
+    #
+    # This is a button pressed during a telephone call: "go to remindly dot care
+    # slash start, and type oh four one oh three oh". A double-submit, a
+    # reloaded page, or the other caregiver looking at the same screen would
+    # otherwise rotate the digits mid-sentence, and the care receiver typing
+    # what they were just told would be refused — with both people looking at a
+    # code that was correct a moment ago and no way to tell what happened.
+    #
+    # Deliberately not extended, either. Quietly buying another ten minutes
+    # every time somebody presses a button is how a short-lived secret stops
+    # being short-lived, and the panel prints the real deadline.
+    return self if start_code_live?(at: at)
+
+    # Give back the digits nobody is going to type.
+    #
+    # The unique index is global and covers every non-null code, so a code that
+    # expired unspent keeps its six digits reserved forever. Nothing ever
+    # released them: only *spending* a code cleared it. The namespace is a
+    # million values and it only ever shrank, so collisions in the loop below
+    # would climb until issuing a code raised after five attempts — years away
+    # and monotonic, which is the kind of failure that arrives with no warning
+    # and no obvious cause.
+    #
+    # Swept on issue rather than by a job: this is the only moment the shortage
+    # would ever matter, and a table that repairs itself needs no schedule.
+    self.class.where.not(start_code: nil)
+        .where(start_code_expires_at: ...at)
+        .update_all(start_code: nil, start_code_expires_at: nil, updated_at: at)
+
+    attempts = 0
+
+    begin
+      update!(start_code: format("%06d", SecureRandom.random_number(1_000_000)),
+              start_code_expires_at: at + START_CODE_TTL)
+    rescue ActiveRecord::RecordNotUnique
+      attempts += 1
+      raise if attempts > 5
+
+      retry
+    end
+
+    self
+  end
+
+  # Claims a code and spends it, atomically, returning the link or nil.
+  #
+  # Single use is the point: the WHERE clause carries every condition — the
+  # digits, an unexpired deadline, an unrevoked link — so two people racing the
+  # same code cannot both be let in, and a code cannot be replayed the moment
+  # after it works. Whoever loses sees zero rows and is answered exactly as a
+  # wrong code is.
+  def self.claim_start_code(code, at: Time.current)
+    return nil if code.blank?
+
+    link = live.find_by(start_code: code.to_s.strip)
+    return nil unless link
+    return nil if link.start_code_expires_at.nil? || link.start_code_expires_at < at
+
+    # Every condition the check made, carried into the write. Without the
+    # expiry and the revocation here, a code that lapsed — or a link revoked —
+    # between reading the row and spending it would still be accepted, which is
+    # exactly the gap the compare-and-swap was meant to close.
+    spent = live
+              .where(id: link.id, start_code: link.start_code)
+              .where(start_code_expires_at: at..)
+              .update_all(start_code: nil, start_code_expires_at: nil, updated_at: at)
+
+    spent.zero? ? nil : link.reload
+  end
+
+  def start_code_live?(at: Time.current)
+    start_code.present? && start_code_expires_at.present? && start_code_expires_at > at
+  end
+
   def revoked? = revoked_at.present?
 
   # Revoking is the care receiver's ending as much as the caregiver's: the

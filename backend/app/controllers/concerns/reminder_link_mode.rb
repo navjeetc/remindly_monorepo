@@ -20,6 +20,13 @@ module ReminderLinkMode
   COOKIE = :reminder_link
   COOKIE_LIFETIME = 1.year
 
+  included do
+    # The layout asks this to decide whether to offer a way back into the rest
+    # of the app. Defined here so every controller that may honour a link can
+    # answer it, rather than each one growing its own.
+    helper_method :link_mode? if respond_to?(:helper_method)
+  end
+
   private
 
   # The link is re-read from the database on every request rather than trusted
@@ -33,6 +40,12 @@ module ReminderLinkMode
   end
 
   def link_mode_user = link_mode_link&.user
+
+  # Whether the person looking got here on a reminder link rather than a
+  # session. Overridden in VoiceRemindersController, which knows which
+  # credential actually answered; everywhere else a link cookie being present is
+  # the whole story.
+  def link_mode? = link_mode_link.present?
 
   def remember_reminder_link(link)
     cookies.signed[COOKIE] = {

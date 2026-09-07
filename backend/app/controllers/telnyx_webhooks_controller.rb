@@ -426,6 +426,24 @@ class TelnyxWebhooksController < ApplicationController
                               call_reminders_enabled: true,
                               updated_at: Time.current)
 
+    # Agreeing by telephone is agreeing to the arrangement.
+    #
+    # A care receiver whose caregiver set them up may have no screen to press
+    # Yes on — the telephone is their device. This call is the same consent
+    # moment the first-run page offers: it names who arranged it, it asks rather
+    # than assumes, and this keypress is a stronger record of the answer than a
+    # tap, because there is a call row behind it.
+    #
+    # So it starts everything, exactly as pressing Yes does: the link becomes
+    # active, the caregiver's activity screens begin working, and the reminders
+    # written while waiting are expanded into a day.
+    if granted.positive?
+      senior.senior_links.where(state: :provisional).find_each do |link|
+        link.update!(state: :active)
+      end
+      senior.reminders.find_each { |reminder| Recurrence.expand(reminder) }
+    end
+
     if granted.zero?
       Rails.logger.warn "Verification consent ignored for user #{senior.id}: the number changed while the call was in progress"
       return call.update!(outcome: "declined", completed_at: Time.current)
@@ -445,6 +463,33 @@ class TelnyxWebhooksController < ApplicationController
       record_on(senior, call_opted_out_at: Time.current, call_reminders_enabled: false)
       call.update!(outcome: "opted_out", completed_at: Time.current)
     end
+
+    # On a provisional account, 9 is a refusal of the whole arrangement.
+    #
+    # Pressing 1 on this call starts everything, so pressing 9 has to be able to
+    # end it — otherwise somebody whose only device is the telephone can decline
+    # the calls and still have an account somebody else made for them, with a
+    # caregiver writing reminders into it and no way left to say no. The screen
+    # has offered that refusal since first-run; the telephone did not.
+    #
+    # Only while provisional. Somebody already using Remindly who presses 9 is
+    # saying "stop telephoning me", not "delete my account", and their history
+    # is theirs.
+    refuse_arrangement!(senior)
+  end
+
+  # Destroys an account nobody has agreed to. Safe for the same structural
+  # reason the screen's "No thank you" is: a provisional account can only ever
+  # hold reminders a caregiver typed into it.
+  def refuse_arrangement!(senior)
+    return unless senior.senior_links.where(state: :provisional).exists?
+
+    senior.destroy!
+  rescue StandardError => e
+    Rails.logger.error(
+      "Refusing the arrangement failed for user #{senior.id}: #{e.class}: #{e.message}\n" \
+      "#{Array(e.backtrace).first(5).join("\n")}"
+    )
   end
 
   # Writes what happened on a call, bypassing validation deliberately.

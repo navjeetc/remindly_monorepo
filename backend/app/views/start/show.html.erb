@@ -1,0 +1,45 @@
+<%#
+  The care receiver's side of a telephone conversation: "go to remindly dot
+  care slash start, and type these six numbers."
+
+  Its own layout, no navigation, and the field is the only thing on the page —
+  whoever is typing is being talked through it by somebody who cannot see their
+  screen.
+%>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  <div class="text-center">
+    <%# A real label rather than a heading that looks like one.
+
+        The field had no accessible name at all: a screen reader announced "edit
+        text, blank" on the one page in this product whose entire job is typing
+        six numbers somebody is reading to you down a telephone — with impaired
+        vision being part of why the telephone is the channel. Making the
+        instruction the label means the visible words are the announced words,
+        which is better than a hidden duplicate that can drift from them. %>
+    <%= label_tag :code, "Type your six numbers", class: "block text-5xl font-bold text-gray-900 mb-8" %>
+
+    <% if flash.now[:alert] || flash[:alert] %>
+      <p id="code_help" class="text-2xl text-gray-700 mb-8"><%= flash.now[:alert] || flash[:alert] %></p>
+    <% else %>
+      <p id="code_help" class="text-2xl text-gray-600 mb-8">
+        The person setting this up will read them to you.
+      </p>
+    <% end %>
+
+    <%= form_with url: start_path, method: :post do |f| %>
+      <%# inputmode numeric so a tablet shows a keypad rather than a keyboard,
+          and autocomplete off so a previous code is never offered back.
+          aria-describedby carries the sentence under the label, so somebody
+          hearing the page is told who will read the numbers out. %>
+      <%= text_field_tag :code, nil,
+            inputmode: "numeric", pattern: "[0-9]*", autocomplete: "off",
+            autofocus: true, maxlength: 6, required: true,
+            "aria-describedby": "code_help",
+            class: "w-64 text-center text-5xl font-bold tracking-widest border-4 border-gray-300 rounded-xl py-4 px-3" %>
+
+      <div class="mt-8">
+        <%= submit_tag "Start", class: "btn-primary text-2xl px-8 py-6", data: { disable_with: nil } %>
+      </div>
+    <% end %>
+  </div>
+</div>

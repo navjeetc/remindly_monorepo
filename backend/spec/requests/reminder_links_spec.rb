@@ -326,8 +326,17 @@ RSpec.describe "A reminder link", type: :request do
     # full URL as Referer on same-origin requests — of which this page makes one
     # every few seconds, forever. Without this the token lands in access logs by
     # a second route, after the first one was closed.
-    it "sends the token nowhere as a referrer" do
-      expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("no-referrer")
+    # strict-origin sends the origin and never the path, so the token in the
+    # address never reaches a Referer header — while forms still carry an
+    # Origin, which no-referrer strips to "null" and Rails then refuses. That
+    # cost the first-run Yes button, on a page where fetch() kept working
+    # throughout and hid it.
+    it "sends the origin, and never the path, as a referrer" do
+      expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("strict-origin")
+    end
+
+    it "never sends a policy that nulls the origin on forms" do
+      expect(doc.at_css("meta[name='referrer']")&.[]("content")).not_to eq("no-referrer")
     end
 
     # The settings dialog's own class names — modal, btn-primary and the rest —
@@ -340,6 +349,21 @@ RSpec.describe "A reminder link", type: :request do
       %w[.modal .modal-content .modal-footer .btn-primary .btn-secondary .close-btn].each do |rule|
         expect(css).to include(rule), "#{rule} is used by the page and defined nowhere"
       end
+    end
+
+    # The layout's CSS is a written-out subset of the names the markup uses, so
+    # a section added later renders unstyled unless its names are added too —
+    # which has now happened twice.
+    it "defines every class the page and its script emit" do
+      css = doc.at_css("style").text
+      markup = Rails.root.join("app/views/voice_reminders/show.html.erb").read
+      script = Rails.public_path.join("voice_reminders.js").read
+
+      used = (markup + script).scan(/class="([^"$]*)"/).flatten.join(" ").split
+      responsive = ->(name) { name.include?(":") }
+      missing = used.uniq.reject { |name| responsive.call(name) || css.include?(".#{name} ") || css.include?(".#{name}{") || css.include?(".#{name},") }
+
+      expect(missing).to be_empty, "used by the page and defined nowhere: #{missing.join(', ')}"
     end
 
     it "keeps itself out of search results" do
@@ -390,7 +414,12 @@ RSpec.describe "A reminder link", type: :request do
       tz = ActiveSupport::TimeZone["America/New_York"]
 
       travel(31.days) do
-        reminder_due(tz.now + 2.hours)
+        # Midday, not "two hours from now": run this spec after 22:00 and two
+        # hours from now is tomorrow, so the endpoint correctly returns nothing
+        # and the example fails for a reason that has nothing to do with what it
+        # is testing. It went unnoticed for a day because nobody ran the suite
+        # late enough in the evening.
+        reminder_due(tz.now.beginning_of_day + 12.hours)
 
         get "/voice_reminders/today"
 
@@ -798,6 +827,88 @@ RSpec.describe "A reminder link", type: :request do
 
       expect(ReminderLink.exists?(link.id)).to be(true)
       expect(link.reload.last_used_at).to be_present
+    end
+  end
+
+  # "Stop these reminders" — the care receiver taking their screen back.
+  #
+  # It had no coverage at all until now, which is the wrong place for a gap: it
+  # is the one destructive button on a page belonging to somebody with no
+  # account, and the person pressing it is withdrawing consent. What it must
+  # *not* do matters as much as what it does.
+  describe "stopping them" do
+    it "kills the link the device is holding" do
+      redeem
+
+      post "/voice_reminders/stop"
+
+      expect(link.reload.revoked_at).to be_present
+      expect(ReminderLink.live).not_to include(link)
+    end
+
+    it "leaves the person, their reminders and their history alone" do
+      occurrence = reminder_due(1.hour.from_now)
+      redeem
+
+      post "/voice_reminders/stop"
+
+      expect(User.exists?(care_receiver.id)).to be(true)
+      expect(Occurrence.exists?(occurrence.id)).to be(true)
+    end
+
+    # Refusing at first run deletes the account; this does not. Somebody who
+    # wants the tablet to stop talking has not asked to be erased, and their
+    # caregiver can hand them a new link tomorrow.
+    it "is not the same act as refusing" do
+      redeem
+
+      post "/voice_reminders/stop"
+
+      expect(care_receiver.reload.awaiting_first_use?).to be(false)
+    end
+
+    it "lands somewhere that says what happened" do
+      redeem
+
+      post "/voice_reminders/stop"
+      follow_redirect!
+
+      expect(response.body).to include("Reminders stopped")
+    end
+
+    # Reached by pressing refresh on the page that just said it stopped.
+    #
+    # This rendered straight out of the POST until the walkthrough found it, so
+    # the address bar held the endpoint and a reload sent the device to a login
+    # page — asking for a password from the one person in this product who has
+    # no account, seconds after they pressed a button that worked.
+    it "survives a reload, rather than demanding a login nobody has" do
+      redeem
+      post "/voice_reminders/stop"
+      follow_redirect!
+
+      # Whatever the device is actually showing, fetched again — which is what
+      # refresh does. Asserting on the named path instead would prove the page
+      # exists while saying nothing about whether anybody lands on it.
+      get response.request.url
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Reminders stopped")
+    end
+
+    it "leaves the bookmark showing the dead-link page, not a login form" do
+      redeem
+      token = link.token
+
+      post "/voice_reminders/stop"
+      get "/r/#{token}"
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to include("This page isn't working")
+    end
+
+    it "does nothing for a device that is not holding a link" do
+      expect { post "/voice_reminders/stop" }.not_to change { ReminderLink.live.count }
     end
   end
 end

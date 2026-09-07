@@ -70,10 +70,40 @@ Rails.application.routes.draw do
   # somebody bookmarks is the address that still works after the cookies are
   # cleared. The token therefore stays in the address bar deliberately — see
   # VoiceRemindersController#redeem_token for what that trades away and why.
+  # Short enough to say down a telephone. See StartController.
+  get  "start", to: "start#show", as: :start
+  post "start", to: "start#create"
+
   get  "r/:token", to: "voice_reminders#show", as: :reminder_link
+
+  # The first thing a care receiver ever says to Remindly, and the only thing
+  # this design asks of them: yes or no, on their own device, once.
+  post "voice_reminders/start",   to: "voice_reminders#start",   as: :start_voice_reminders
+  post "voice_reminders/decline", to: "voice_reminders#decline", as: :decline_voice_reminders
+
+  # Ending it later, from the device, without an account. A link may destroy
+  # itself; it may not act on the account. See VoiceRemindersController#stop.
+  post "voice_reminders/stop", to: "voice_reminders#stop", as: :stop_voice_reminders
+
+  # Where those two land afterwards.
+  #
+  # Both used to render straight from the POST, so the address bar held the
+  # endpoint and a reload left the device on a login page it has no account
+  # for — a dead end reached by pressing refresh, on the screen belonging to
+  # somebody with no way to sign in. These are plain pages with nothing in them
+  # but words, so they need no credential and a reload simply shows them again.
+  get "voice_reminders/stopped",  to: "voice_reminders#stopped",  as: :stopped_voice_reminders
+  get "voice_reminders/declined", to: "voice_reminders#declined", as: :declined_voice_reminders
 
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
   get  "voice_reminders/today", to: "voice_reminders#today", as: :voice_reminders_today
+
+  # What is coming up that somebody else arranged: appointments, a lift, a
+  # delivery. A second endpoint rather than another key on the one above,
+  # because a tablet may be running a cached copy of the script — and a page
+  # that has been open for a week meeting a response it cannot parse is exactly
+  # the silent death this whole feature exists to end.
+  get  "voice_reminders/coming_up", to: "voice_reminders#coming_up", as: :voice_reminders_coming_up
   get  "contact",            to: "dashboard#contact", as: :contact
   post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile
@@ -98,6 +128,7 @@ Rails.application.routes.draw do
   # change nothing about it.
   post  "dashboard/senior/:senior_id/reminder_link", to: "dashboard#create_reminder_link", as: :senior_reminder_link
   post  "dashboard/senior/:senior_id/reminder_link/:id/revoke", to: "dashboard#revoke_reminder_link", as: :revoke_senior_reminder_link
+  post  "dashboard/senior/:senior_id/reminder_link/:id/start_code", to: "dashboard#issue_start_code", as: :start_code_senior_reminder_link
   get  "dashboard/senior/:senior_id/reminder/new", to: "dashboard#new_reminder", as: :new_reminder_dashboard
   post "dashboard/senior/:senior_id/reminder", to: "dashboard#create_reminder", as: :create_reminder_dashboard
   get  "dashboard/senior/:senior_id/reminder/:reminder_id/edit", to: "dashboard#edit_reminder", as: :edit_reminder_dashboard
@@ -143,6 +174,17 @@ Rails.application.routes.draw do
       post :snooze
     end
   end
+
+  # Setting somebody up who has no account and may never want one. The care
+  # receiver's involvement is opening the link and agreeing; everything before
+  # that is the caregiver's, and nothing is visible to them until it happens.
+  get  "dashboard/care_receiver/new", to: "dashboard#new_care_receiver", as: :new_care_receiver
+  post "dashboard/care_receiver", to: "dashboard#create_care_receiver", as: :care_receivers
+
+  # Fixing what was typed at setup. Only for an account that cannot sign in to
+  # fix it itself — see DashboardController#edit_care_receiver.
+  get   "dashboard/senior/:senior_id/details", to: "dashboard#edit_care_receiver", as: :edit_care_receiver
+  patch "dashboard/senior/:senior_id/details", to: "dashboard#update_care_receiver", as: :care_receiver_details
 
   # Caregiver pairing
   resources :caregiver_links, only: [ :index, :destroy ] do

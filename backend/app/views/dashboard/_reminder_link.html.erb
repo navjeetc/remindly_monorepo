@@ -43,11 +43,36 @@
           Anyone with this address can see their reminders and mark doses done,
           so treat it like a key. It does not expire.
         </p>
+
+        <%# The telephone route, and the code is a credential exactly as the
+            address is: typed at /start it hands the device a link-mode cookie,
+            and that cookie can mark doses done. Showing it to a caregiver whose
+            permission is "can only look" would hand them, by reading it off the
+            screen, the writes the permission exists to withhold — the same
+            mistake as showing them the URL, in different digits. %>
+        <% if reminder_link.start_code_live? %>
+          <div class="mt-4 rounded-md bg-blue-50 border border-blue-200 p-4">
+            <p class="text-sm text-blue-900">Read them these numbers:</p>
+            <p class="mt-1 text-4xl font-bold tracking-widest text-blue-900"><%= reminder_link.start_code %></p>
+            <p class="mt-2 text-xs text-blue-900">
+              They go to <strong><%= start_url.sub(%r{\Ahttps?://}, "") %></strong> on their own device and type them.
+              Expires <%= time_ago_in_words(reminder_link.start_code_expires_at) %> from now.
+            </p>
+          </div>
+        <% else %>
+          <%= button_to "Set up over the phone",
+                start_code_senior_reminder_link_path(senior_id: senior.id, id: reminder_link.id),
+                class: "mt-4 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+          <p class="mt-1 text-xs text-gray-500">
+            Gives you six numbers to read out, good for ten minutes.
+          </p>
+        <% end %>
       <% else %>
         <p class="text-sm text-gray-700">
           Their device is set up with a link.
         </p>
       <% end %>
+
 
       <p class="mt-3 text-sm text-gray-700">
         <% if reminder_link.last_used_at %>

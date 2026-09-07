@@ -132,8 +132,22 @@ RSpec.describe "Care receiver terminology", type: :request do
       sign_in(unlinked)
       get "/dashboard"
 
-      expect(page_text.scan("Pair with a care receiver").length).to eq(1)
+      # Two ways in, once each: set somebody up, or pair with a token they
+      # already have. Never "Generate Pairing Token", which is the care
+      # receiver's own action on their own dashboard.
+      expect(page_text.scan("Pair with a token").length).to eq(1)
+      expect(page_text.scan("Set up someone new").length).to eq(1)
       expect(page_text).not_to include("Generate Pairing Token")
+    end
+
+    # Setting somebody up leads, because it is the one a caregiver can complete
+    # alone. Pairing needs the other person to have signed up already and to
+    # read out a token — the step this release exists to stop requiring.
+    it "leads with the route that does not need the other person first" do
+      sign_in(create(:user, :caregiver, name: "Sam"))
+      get "/dashboard"
+
+      expect(page_text.index("Set up someone new")).to be < page_text.index("Pair with a token")
     end
   end
 

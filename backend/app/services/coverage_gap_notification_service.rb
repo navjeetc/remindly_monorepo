@@ -6,7 +6,17 @@ class CoverageGapNotificationService
   def self.check_and_notify(senior, start_date = Date.current, end_date = Date.current + 14.days)
     return unless senior.role_senior?
 
-    caregivers = senior.caregivers.where(notify_on_coverage_gaps: true)
+    # Nobody hears about a person who has not agreed to any of this.
+    #
+    # A care receiver their caregiver set up has no availability rows at all, so
+    # every day is a gap — and this job runs daily. Without the state filter the
+    # morning after somebody was set up brought an email headed "Coverage gaps
+    # for Mum" about a person who has never opened the link, which is the same
+    # surveillance the reminder notifications were gated to prevent, arriving
+    # through a different mailer.
+    caregivers = senior.caregivers
+                       .where(notify_on_coverage_gaps: true)
+                       .where(caregiver_links: { state: CaregiverLink.states[:active] })
     return if caregivers.empty?
 
     # Find coverage gaps

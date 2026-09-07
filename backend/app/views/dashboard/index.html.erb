@@ -21,7 +21,8 @@
       <% end %>
       <% if current_user.role_caregiver? %>
         <% unless showing_empty_state %>
-          <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+          <%= link_to "Set up someone new", new_care_receiver_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+          <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
         <% end %>
         <% if FeatureFlag.enabled?(:native_scheduling) %>
           <%= link_to "My Availability", caregiver_availabilities_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
@@ -294,9 +295,17 @@
         </div>
       <% else %>
         <h3 class="mt-2 text-sm font-medium text-gray-900">Nobody linked yet</h3>
-        <p class="mt-1 text-sm text-gray-500">Get started by pairing with someone using their pairing token.</p>
-        <div class="mt-6">
-          <%= link_to "Pair with a care receiver", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        <%# Setting somebody up leads, because it is the thing a caregiver
+            arriving here can actually do on their own. Pairing needs the other
+            person to have signed up first and to read out a token, which is the
+            step this release exists to stop requiring. %>
+        <p class="mt-1 text-sm text-gray-500">
+          Set up the person you care for — they need no account and no email address.
+          If they already use Remindly, pair with their token instead.
+        </p>
+        <div class="mt-6 flex items-center justify-center gap-3">
+          <%= link_to "Set up someone new", new_care_receiver_path, class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+          <%= link_to "Pair with a token", pair_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
         </div>
       <% end %>
     </div>

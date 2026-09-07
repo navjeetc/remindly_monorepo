@@ -7,6 +7,114 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-06
+
+### Added
+- **A caregiver can now set up the person they care for.** Until now the
+  homepage's promise — *"You create the reminders"* — could not be kept. The
+  care receiver had to sign up themselves, find a magic link in an inbox, log
+  in, generate a token and read 43 characters down a telephone, all before the
+  caregiver could write a single reminder. The product asked the person least
+  able to do email things to do email things, or nothing worked.
+
+  They now need no account, no password and **no email address at all**. That
+  absence is deliberate: with no address there is no lookup, so the setup form
+  cannot be used to discover who already uses Remindly, and nobody is asked to
+  find a message in an inbox and trust a link inside it — the exact interaction
+  this audience is warned never to trust.
+
+  **Consent did not disappear with the pairing step; it moved to first use.**
+  Access used to be structural — it could not exist unless the person receiving
+  reminders acted — and a monitoring tool set up on somebody without their
+  knowledge is a recognised pattern in elder abuse. The old design prevented
+  that by accident. This one prevents it on purpose: a new link is
+  `provisional`, which lets a caregiver write reminders and shows them nothing
+  else. No activity, no acknowledgements, no coverage, and nothing spoken. The
+  first thing the device shows is who set this up and a choice, and the routes
+  behind the caregiver's screens refuse until that choice is yes — so the
+  guarantee is that the routes say no, not that there happens to be nothing to
+  show. Refusing deletes the account, which is safe because a provisional
+  account can only ever hold reminders the caregiver typed.
+
+  **Setup works down a telephone.** The caregiver presses a button and reads out
+  six digits; the care receiver goes to `remindly.care/start` on their own device
+  and types them. Ten minutes, single use, rate limited, and a wrong code, an
+  expired one and a spent one are answered identically. It is the one remote
+  channel this audience is comfortable with.
+
+  Nothing about a provisional care receiver is recorded, not merely hidden.
+  Reminders written while waiting are a schedule and not yet a day: no
+  occurrences are created, so the missed sweep has nothing to flip and the
+  caregiver is told nothing about somebody who has never seen the device. Set
+  Mum up on Monday for a tablet that arrives on Friday and she does not
+  accumulate four days of missed doses. Saying yes materialises the day
+  immediately, so a reminder due in an hour still fires.
+
+  **Agreeing by telephone counts as agreeing.** Somebody with no tablet has no
+  screen to press Yes on, so the consent call is their first-use moment: it
+  names who arranged it, asks rather than assumes, and the keypress that answers
+  it starts everything — the link becomes active, the caregiver's screens begin
+  working, and the reminders written while waiting become a day. A stronger
+  record of the answer than a tap, because there is a call behind it.
+
+  Asking to telephone somebody is now capped per caregiver as well as per
+  number. The existing cap — five verification attempts per number per day — was
+  the right shape when reaching the phone panel required a care receiver who had
+  signed up and handed over a token. Creating the account for them removes that
+  gate, and each call being to a different number is exactly what a per-number
+  cap cannot see.
+
+  **The device now shows what somebody else arranged.** A care receiver's
+  signed-in dashboard has always listed tasks marked visible to them; the voice
+  page never has, and until now that only cost somebody who preferred the voice
+  page to signing in. It matters differently for an account with no email: that
+  page is their whole interface, so a caregiver ticking "visible to the care
+  receiver" on Thursday's appointment was telling nobody — while the screen
+  looked exactly as though it had worked. Shown under the reminders, not spoken:
+  a dose is a thing to do now, and a voice repeating "appointment on Thursday"
+  every few minutes teaches somebody to stop listening to the one that also says
+  take your tablets.
+
+  **The care receiver can stop it from their own device**, with no account and
+  no signing in. Refusing at first run covers the moment before they start; this
+  covers every moment after, which is when somebody actually changes their mind.
+  It ends that link and nothing else — it cannot remove caregivers or touch the
+  account, because a web address that could cut a family off from a vulnerable
+  person would be worse than the disclosure it prevents.
+
+  A caregiver cannot do this in bulk: ten a day, counted per caregiver rather
+  than per address, because two people setting up their own parents from one
+  house should not spend each other's allowance.
+
+### Fixed
+- **One consent call stopped every reminder call in the system.** The scheduler
+  skips occurrences that were called recently with
+  `WHERE id NOT IN (SELECT occurrence_id FROM telnyx_calls …)`, and a
+  verification call — "Call and ask" — has no occurrence, so its `occurrence_id`
+  is NULL. `NOT IN (NULL, …)` is NULL in SQL rather than true, so the clause
+  matched nothing at all: for the five minutes that row stayed inside
+  `RETRY_AFTER`, no care receiver anywhere was telephoned. Nothing logged it and
+  no suppression reason was written; the doses simply went to the missed sweep
+  an hour later as though nobody had answered.
+
+  Older than this branch and found by a spec that only began failing once real
+  time passed the date it hardcoded, which is its own lesson about time-fixed
+  fixtures.
+
+- **Every text field a caregiver types into was invisible.** The markup gave
+  them a border *colour* and never a border *width*, and Tailwind's reset sets
+  the width to zero — so the reminder form was two lines of placeholder text
+  floating on white with nothing to show where to click. Thirty-eight controls
+  across thirteen files, including both reminder forms and the whole task form.
+  A spec now walks the forms and fails on any control with a colour and no
+  width.
+
+### Changed
+- **Rate limits are now real in tests.** The test cache was `:null_store`, and
+  Rails reads a rate limit's store when the controller class loads — so every
+  limit in the application counted nothing under test, and any spec written for
+  one would have passed while proving nothing. Four endpoints depend on these.
+
 ## [0.7.0] - 2026-09-04
 
 ### Added

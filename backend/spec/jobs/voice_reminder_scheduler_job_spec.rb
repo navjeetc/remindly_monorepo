@@ -41,6 +41,23 @@ RSpec.describe VoiceReminderSchedulerJob do
     expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
   end
 
+  # A verification call has no occurrence, so its occurrence_id is NULL — and
+  # `id NOT IN (NULL, ...)` is NULL in SQL, not true, so the clause matches
+  # nothing at all. One caregiver asking one person for consent therefore
+  # stopped every scheduled call for every care receiver until that row aged out
+  # of RETRY_AFTER, silently: no log, no suppression reason, and the occurrences
+  # went to the missed sweep an hour later as though nobody had answered.
+  it "still calls while somebody else's consent call is in flight" do
+    occurrence = due_at(at(10))
+    TelnyxCall.create!(user: create(:user, :senior, :takes_calls, name: "Someone else"),
+                       purpose: "verification", to_number: "+15559999999",
+                       status: "initiated", outcome: "pending",
+                       attempt_number: 1, created_at: at(10) - 1.minute)
+
+    expect { described_class.new.perform(now: at(10)) }
+      .to have_enqueued_job(VoiceReminderJob).with(occurrence.id)
+  end
+
   it "enqueues a call for an occurrence that has come due inside calling hours" do
     occurrence = due_at(at(10))
 
