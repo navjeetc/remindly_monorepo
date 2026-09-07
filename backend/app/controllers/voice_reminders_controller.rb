@@ -214,6 +214,7 @@ class VoiceRemindersController < WebController
     tasks = Task.where(senior_id: current_user.id, visible_to_senior: true)
                 .where.not(status: :completed)
                 .where(scheduled_at: now.beginning_of_day..(now + 7.days).end_of_day)
+                .includes(:assigned_to)
                 .order(:scheduled_at)
                 .limit(5)
 
@@ -222,7 +223,14 @@ class VoiceRemindersController < WebController
         id: task.id,
         title: task.title,
         scheduled_at: task.scheduled_at,
-        location: task.location.presence
+        location: task.location.presence,
+        # friendly_name rather than the address behind it — the method exists
+        # for exactly this, naming a caregiver in a way the person being cared
+        # for would recognise. Nil when nobody has taken it, which the page says
+        # in words rather than leaving a blank line: "somebody is coming" and
+        # "nobody has said yes yet" are different facts, and the second is the
+        # one worth mentioning to whoever is waiting.
+        assigned_to: task.assigned_to&.friendly_name
       }
     }
   end

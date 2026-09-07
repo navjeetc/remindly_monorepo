@@ -650,6 +650,43 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       expect(response.parsed_body.first["location"]).to eq("The surgery")
     end
 
+    # Somebody waiting at home wants to know whether anyone is coming. "Jane is
+    # helping" and "nobody has taken this one yet" are different facts, and the
+    # second is the one worth saying out loud.
+    it "names whoever is helping" do
+      helper = create(:user, :caregiver, name: "Sam", nickname: "Sammy")
+      CaregiverLink.create!(senior: senior, caregiver: helper, permission: :view, state: :active)
+      task(title: "Doctor Shah", at: 2.days.from_now).update!(assigned_to: helper)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body.first["assigned_to"]).to eq("Sammy")
+    end
+
+    it "says so plainly when nobody has taken it" do
+      task(title: "Doctor Shah", at: 2.days.from_now)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.parsed_body.first["assigned_to"]).to be_nil
+    end
+
+    # A caregiver with no name would otherwise be introduced to the person they
+    # care for by their email address.
+    it "never names them by their email address" do
+      nameless = User.create!(email: "helper@example.com", role: :caregiver, tz: "America/New_York")
+      CaregiverLink.create!(senior: senior, caregiver: nameless, permission: :view, state: :active)
+      task(title: "Doctor Shah", at: 2.days.from_now).update!(assigned_to: nameless)
+      get "/r/#{link.token}"
+
+      get "/voice_reminders/coming_up"
+
+      expect(response.body).not_to include("helper@example.com")
+      expect(response.parsed_body.first["assigned_to"]).to eq("helper")
+    end
+
     # The caregiver decides what this person sees. A task not marked visible is
     # caregiver coordination and is none of their business.
     it "leaves out what the caregiver kept to themselves" do

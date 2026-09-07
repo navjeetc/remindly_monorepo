@@ -188,6 +188,11 @@ class VoiceRemindersApp {
                     <span class="text-xl font-semibold text-gray-700">${day}, ${time}</span>
                 </div>
                 ${task.location ? `<p class="text-xl text-gray-700 mt-2">${this.escapeHtml(task.location)}</p>` : ''}
+                <p class="text-xl text-gray-600 mt-2">
+                    ${task.assigned_to
+                        ? `${this.escapeHtml(task.assigned_to)} is helping`
+                        : 'Nobody has taken this one yet'}
+                </p>
             </div>
         `;
     }
