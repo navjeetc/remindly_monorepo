@@ -26,6 +26,8 @@ class VoiceRemindersController < WebController
 
   before_action :redeem_token, only: :show
   before_action :authenticate!, only: %i[show start decline stop]
+  # stopped and declined are deliberately outside every guard above: they are
+  # what a device sees after its credential has been given up.
   before_action :authenticate_poll!, only: %i[today coming_up]
   before_action :care_receivers_only!, only: %i[show start decline stop]
 
@@ -112,7 +114,7 @@ class VoiceRemindersController < WebController
     senior.destroy!
     cookies.delete(ReminderLinkMode::COOKIE)
 
-    render :declined, status: :ok
+    redirect_to declined_voice_reminders_path
   end
 
   # The script's own modification time, so the cache busts when the file
@@ -192,8 +194,18 @@ class VoiceRemindersController < WebController
     link.revoke!
     cookies.delete(ReminderLinkMode::COOKIE)
 
-    render :stopped, status: :ok
+    redirect_to stopped_voice_reminders_path
   end
+
+  # The two endings, as pages somebody can land on and reload.
+  #
+  # No authentication, deliberately: by the time either is shown the credential
+  # is gone — that is the whole point of both actions — and requiring one would
+  # send the person who just pressed the button to a login page they have no
+  # account for. Neither page contains anything about anybody; they are a
+  # sentence and a suggestion.
+  def stopped; end
+  def declined; end
 
   # Tasks somebody else arranged, which this screen has never shown.
   #

@@ -829,4 +829,86 @@ RSpec.describe "A reminder link", type: :request do
       expect(link.reload.last_used_at).to be_present
     end
   end
+
+  # "Stop these reminders" — the care receiver taking their screen back.
+  #
+  # It had no coverage at all until now, which is the wrong place for a gap: it
+  # is the one destructive button on a page belonging to somebody with no
+  # account, and the person pressing it is withdrawing consent. What it must
+  # *not* do matters as much as what it does.
+  describe "stopping them" do
+    it "kills the link the device is holding" do
+      redeem
+
+      post "/voice_reminders/stop"
+
+      expect(link.reload.revoked_at).to be_present
+      expect(ReminderLink.live).not_to include(link)
+    end
+
+    it "leaves the person, their reminders and their history alone" do
+      occurrence = reminder_due(1.hour.from_now)
+      redeem
+
+      post "/voice_reminders/stop"
+
+      expect(User.exists?(care_receiver.id)).to be(true)
+      expect(Occurrence.exists?(occurrence.id)).to be(true)
+    end
+
+    # Refusing at first run deletes the account; this does not. Somebody who
+    # wants the tablet to stop talking has not asked to be erased, and their
+    # caregiver can hand them a new link tomorrow.
+    it "is not the same act as refusing" do
+      redeem
+
+      post "/voice_reminders/stop"
+
+      expect(care_receiver.reload.awaiting_first_use?).to be(false)
+    end
+
+    it "lands somewhere that says what happened" do
+      redeem
+
+      post "/voice_reminders/stop"
+      follow_redirect!
+
+      expect(response.body).to include("Reminders stopped")
+    end
+
+    # Reached by pressing refresh on the page that just said it stopped.
+    #
+    # This rendered straight out of the POST until the walkthrough found it, so
+    # the address bar held the endpoint and a reload sent the device to a login
+    # page — asking for a password from the one person in this product who has
+    # no account, seconds after they pressed a button that worked.
+    it "survives a reload, rather than demanding a login nobody has" do
+      redeem
+      post "/voice_reminders/stop"
+      follow_redirect!
+
+      # Whatever the device is actually showing, fetched again — which is what
+      # refresh does. Asserting on the named path instead would prove the page
+      # exists while saying nothing about whether anybody lands on it.
+      get response.request.url
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Reminders stopped")
+    end
+
+    it "leaves the bookmark showing the dead-link page, not a login form" do
+      redeem
+      token = link.token
+
+      post "/voice_reminders/stop"
+      get "/r/#{token}"
+
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to include("This page isn't working")
+    end
+
+    it "does nothing for a device that is not holding a link" do
+      expect { post "/voice_reminders/stop" }.not_to change { ReminderLink.live.count }
+    end
+  end
 end

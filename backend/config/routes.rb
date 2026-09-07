@@ -85,6 +85,16 @@ Rails.application.routes.draw do
   # itself; it may not act on the account. See VoiceRemindersController#stop.
   post "voice_reminders/stop", to: "voice_reminders#stop", as: :stop_voice_reminders
 
+  # Where those two land afterwards.
+  #
+  # Both used to render straight from the POST, so the address bar held the
+  # endpoint and a reload left the device on a login page it has no account
+  # for — a dead end reached by pressing refresh, on the screen belonging to
+  # somebody with no way to sign in. These are plain pages with nothing in them
+  # but words, so they need no credential and a reload simply shows them again.
+  get "voice_reminders/stopped",  to: "voice_reminders#stopped",  as: :stopped_voice_reminders
+  get "voice_reminders/declined", to: "voice_reminders#declined", as: :declined_voice_reminders
+
   get  "voice_reminders",    to: "voice_reminders#show", as: :voice_reminders
   get  "voice_reminders/today", to: "voice_reminders#today", as: :voice_reminders_today
 

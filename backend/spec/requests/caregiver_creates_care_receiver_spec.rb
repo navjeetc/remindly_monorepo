@@ -293,7 +293,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
 
         post "/voice_reminders/decline"
 
-        expect(response).to have_http_status(:ok)
+        expect(response).to redirect_to(declined_voice_reminders_path)
         expect(User.exists?(senior.id)).to be(false)
         expect(TelnyxCall.where(user_id: senior.id)).to be_empty
       end
@@ -316,7 +316,28 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
         get "/r/#{link.token}"
 
         post "/voice_reminders/decline"
+        follow_redirect!
 
+        expect(response.body).to include("That's all deleted")
+      end
+
+      # Reached by pressing refresh on the page that says goodbye.
+      #
+      # Both endings used to render straight out of the POST, so the address bar
+      # held the endpoint: reloading took the device to a login page belonging to
+      # an account that no longer exists, asking for a password nobody ever had.
+      # A redirect to a plain page means refresh shows the same sentence again.
+      it "survives a reload, rather than demanding a login nobody has" do
+        get "/r/#{link.token}"
+        post "/voice_reminders/decline"
+        follow_redirect!
+
+        # The address the device is left on, fetched again — refresh, in other
+        # words. A named path here would prove the page exists and nothing about
+        # whether pressing refresh reaches it.
+        get response.request.url
+
+        expect(response).to have_http_status(:ok)
         expect(response.body).to include("That's all deleted")
       end
 
