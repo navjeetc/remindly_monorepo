@@ -663,6 +663,21 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       expect(response.body).to include(code)
     end
 
+    # The field had no accessible name: a screen reader announced "edit text,
+    # blank" on the page whose whole job is typing numbers being read aloud to
+    # somebody whose eyesight is part of why the telephone is the channel.
+    it "gives the field a name a screen reader can announce" do
+      get "/start"
+
+      doc = Nokogiri::HTML(response.body)
+      field = doc.at_css("#code")
+      label = doc.at_css("label[for=code]")
+
+      expect(label&.text).to include("six numbers")
+      expect(field["aria-describedby"]).to eq("code_help")
+      expect(doc.at_css("#code_help")).to be_present
+    end
+
     it "lets the care receiver's device in with them" do
       code = issue_code
       reset!
