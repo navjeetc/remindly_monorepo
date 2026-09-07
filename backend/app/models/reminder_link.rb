@@ -67,6 +67,22 @@ class ReminderLink < ApplicationRecord
   # with SecureRandom rather than rand — a predictable setup code would be a
   # predictable way into somebody's reminders.
   def issue_start_code!(at: Time.current)
+    # Give back the digits nobody is going to type.
+    #
+    # The unique index is global and covers every non-null code, so a code that
+    # expired unspent keeps its six digits reserved forever. Nothing ever
+    # released them: only *spending* a code cleared it. The namespace is a
+    # million values and it only ever shrank, so collisions in the loop below
+    # would climb until issuing a code raised after five attempts — years away
+    # and monotonic, which is the kind of failure that arrives with no warning
+    # and no obvious cause.
+    #
+    # Swept on issue rather than by a job: this is the only moment the shortage
+    # would ever matter, and a table that repairs itself needs no schedule.
+    self.class.where.not(start_code: nil)
+        .where(start_code_expires_at: ...at)
+        .update_all(start_code: nil, start_code_expires_at: nil, updated_at: at)
+
     attempts = 0
 
     begin

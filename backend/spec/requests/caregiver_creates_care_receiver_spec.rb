@@ -843,6 +843,33 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
+    # The unique index on start_code is global, so a code that expires unspent
+    # keeps its six digits reserved forever. Only spending one released it, so
+    # the namespace shrank monotonically and issuing would eventually fail after
+    # five collisions — years away, with no warning and no obvious cause.
+    it "gives back the digits of a code nobody typed" do
+      other = create(:user, :senior, name: "Dad", tz: "America/New_York")
+      stale = ReminderLink.mint(user: other)
+      stale.issue_start_code!
+      stale.update_columns(start_code_expires_at: 1.hour.ago)
+      abandoned = stale.start_code
+
+      issue_code
+
+      expect(stale.reload.start_code).to be_nil
+      expect(abandoned).to be_present
+    end
+
+    it "leaves a code somebody is still waiting to type alone" do
+      other = create(:user, :senior, name: "Dad", tz: "America/New_York")
+      live = ReminderLink.mint(user: other)
+      live.issue_start_code!
+
+      issue_code
+
+      expect(live.reload.start_code).to be_present
+    end
+
     # The spend carries every condition the check made. Without the expiry in
     # the UPDATE, a code that lapsed between reading the row and writing it
     # would still be accepted — the gap the compare-and-swap exists to close.
