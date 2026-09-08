@@ -496,7 +496,7 @@ RSpec.describe "Pages", type: :request do
       [ "/", "/faq", "/how_to", "/routine_sheet", "/blog", Post.all.first.path ].each do |path|
         get path
 
-        # "Free in beta", not "Free": the word on its own was a promise the
+        # "Free while in beta", not "Free": the word on its own was a promise the
         # product had not decided to keep. A clinician weighing whether to
         # recommend this to a client reads permanently-free as a hobby project,
         # and a caregiver deserves to know a price may arrive before they wire
@@ -509,7 +509,11 @@ RSpec.describe "Pages", type: :request do
         # that actually occurs — the wording changed and this spec is the thing
         # that notices.
         expect(badge).to be_present, "no badge on #{path}"
-        expect(badge.text).to eq("Free in beta"),
+        # The same words as the note in the body, deliberately. This is a claim
+        # about money, and two phrasings of it invite a reader to wonder whether
+        # they mean different things — "Free in beta" can be read as "free, and
+        # also in beta", which is not the promise being made.
+        expect(badge.text).to eq("Free while in beta"),
                               "badge on #{path} says #{badge.text.inspect}"
       end
     end
