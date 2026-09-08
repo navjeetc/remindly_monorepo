@@ -502,7 +502,15 @@ RSpec.describe "Pages", type: :request do
         # and a caregiver deserves to know a price may arrive before they wire
         # their mother's morning dose to it. The FAQ carries the detail; this
         # badge only has to stop the word standing alone.
-        expect(doc.at_css("header .badge-free")&.text).to eq("Free in beta"), "no badge on #{path}"
+        badge = doc.at_css("header .badge-free")
+
+        # Says which of the two failures happened. "no badge" was printed even
+        # when the badge was present with the wrong words, which is the case
+        # that actually occurs — the wording changed and this spec is the thing
+        # that notices.
+        expect(badge).to be_present, "no badge on #{path}"
+        expect(badge.text).to eq("Free in beta"),
+                              "badge on #{path} says #{badge.text.inspect}"
       end
     end
 

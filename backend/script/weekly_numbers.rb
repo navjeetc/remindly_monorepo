@@ -4,35 +4,59 @@
 #
 # In production, from the repo root:
 #
-#   ssh root@161.35.104.56 'docker exec $(docker ps -q --filter label=service=remindly-backend --filter label=role=web | head -1) bin/rails runner script/weekly_numbers.rb'
+#   ssh navjeetc@161.35.104.56 "docker exec -i \
+#     \$(docker ps -q --filter label=service=remindly-backend --filter label=role=web | head -1) \
+#     bin/rails runner -" < backend/script/weekly_numbers.rb
 #
 # This is a script and not a feature on purpose. It measures whether anybody is
 # using Remindly; it does not help anybody use it. The moment it wants a
 # dashboard, a mailer or a job, it has stopped being worth its own weight.
 #
-# The funnel below is the one that matters, because each step is a place a real
+# The funnel is the one that matters, because each step is a place a real
 # caregiver has actually stopped:
 #
-#   signed up -> created someone -> handed over a link -> that link was opened
-#             -> wrote a reminder -> somebody pressed Done
+#   signed up -> created someone -> that person opened it -> agreed
+#             -> a reminder was written -> somebody pressed Done
 #
-# Kimberly Marmol reached "handed over a link" in November 2026 and stopped, for
+# Kimberly Marmol reached "created someone" in November 2026 and stopped, for
 # ten months, and nothing in the product noticed. These are the numbers that
 # would have said so.
+#
+# Every draft of this script has flattered the product in a different way, and
+# each is worth naming so the next one is not reinvented:
+#
+#   - counting acknowledgement *events* against a denominator of *people*,
+#     which printed "somebody pressed Done — 400%"
+#   - treating an outside address linked to Navjeet's own senior account as a
+#     household, which dragged his four reminders into the funnel behind it
+#   - deciding ownership from the care receiver's email, so a real outside
+#     caregiver using the accountless flow — whose care receiver has no address
+#     by design — was filed as internal and vanished from every count
+#
+# A metric that flatters is worse than no metric.
 
-ACCOUNTS = %w[example.com anakhsoft.com chabbewal.com].freeze
+INTERNAL_DOMAINS = %w[example.com anakhsoft.com chabbewal.com].freeze
 
-def mine?(user)
+# Whether an account with an address is one of Navjeet's own. Only ever asked
+# about accounts that have an address: a care receiver created through the
+# accountless flow has none by design, and deciding from that emptiness is the
+# bug that hid every real household using the current setup route.
+def internal_address?(user)
   email = user.email.to_s.downcase
-  return true if email.empty? # accountless care receivers belong to whoever made them
+  return false if email.empty?
   return true if email.include?("navjeet")
 
-  ACCOUNTS.any? { |domain| email.end_with?("@#{domain}") }
+  INTERNAL_DOMAINS.any? { |domain| email.end_with?("@#{domain}") }
 end
+
+# A care receiver belongs to whoever the link says, unless they are demonstrably
+# one of Navjeet's own accounts. No address means no evidence against, so they
+# count as the caregiver's — which is the whole point of the accountless flow.
+def demo_senior?(senior) = internal_address?(senior)
 
 def row(label, value, of: nil)
   share = of && of.positive? ? format("  (%d%%)", (value * 100.0 / of).round) : ""
-  puts format("  %-34s %5d%s", label, value, share)
+  puts format("  %-36s %5d%s", label, value, share)
 end
 
 now = Time.current
@@ -44,89 +68,108 @@ puts "=" * 58
 
 # --- Who is actually out there -------------------------------------------
 #
-# Split rather than totalled. A count that includes Navjeet's own test accounts
-# has flattered every previous look at this and is the reason the real number
-# was a surprise.
+# Outsiders are every caregiver whose own address is not Navjeet's, including
+# those who have created nobody. Filtering them out by their care receivers
+# would make the first funnel step permanently 100% and hide the drop-off
+# between signing up and setting somebody up — which, on the evidence so far,
+# is where people go.
 
-# A real household needs both halves to be somebody else's. An outside address
-# linked to Navjeet's own senior account is a demo, not a user — and it drags
-# his four reminders into the funnel behind it, which is exactly how a metric
-# ends up reporting that the product is working.
 caregivers = User.where(role: :caregiver).to_a
-outsiders  = caregivers.reject { |u| mine?(u) }
-                       .select { |cg| cg.seniors.any? { |s| !mine?(s) } }
-demos      = caregivers.reject { |u| mine?(u) }.size - outsiders.size
+outsiders  = caregivers.reject { |u| internal_address?(u) }
+
+# Their care receivers, minus Navjeet's own account looked at through somebody
+# else's login. Those are demonstrations, and they arrive complete with his
+# reminders and his acknowledgements.
+theirs = outsiders.to_h { |cg| [ cg, cg.seniors.reject { |s| demo_senior?(s) } ] }
+demo_only = theirs.count { |cg, seniors| seniors.empty? && cg.seniors.any? }
 
 puts
 puts "CAREGIVERS"
 row "accounts", caregivers.size
-row "real households", outsiders.size
-row "outside demos on your account", demos
+row "not yours", outsiders.size
+row "of those, only demoing your account", demo_only
 row "signed up this week", caregivers.count { |u| u.created_at > week }
 
 # --- The funnel ----------------------------------------------------------
 #
-# Every row counts the same thing: outside caregivers who have reached that
-# step. Mixing units here is how a funnel starts reporting 400% — an earlier
-# version counted acknowledgement *events* against a denominator of *people*.
-# One unit, one denominator, all the way down.
+# Every row counts the same thing: outside caregivers who reached that step, out
+# of every outside caregiver. One unit, one denominator, all the way down.
+#
+# There is deliberately no "handed over a link" row. create_care_receiver mints
+# the link inside the same transaction that creates the person, so such a row
+# would be true the instant "created someone" was, and would report a handoff
+# for a caregiver who closed the tab immediately afterwards. The first honest
+# evidence that anything reached the care receiver is the link being opened.
 
-def reached(caregivers)
-  caregivers.count { |cg| yield(cg.seniors.reject { |s| mine?(s) }) }
+def reached(households)
+  households.count { |_cg, seniors| seniors.any? && yield(seniors.map(&:id)) }
 end
 
-created  = reached(outsiders) { |ss| ss.any? }
-handed   = reached(outsiders) { |ss| ReminderLink.where(user_id: ss.map(&:id)).exists? }
-opened   = reached(outsiders) { |ss| ReminderLink.where(user_id: ss.map(&:id)).where.not(last_used_at: nil).exists? }
-accepted = outsiders.count { |cg| cg.caregiver_links.any? { |l| l.state_active? && !mine?(l.senior) } }
-wrote    = reached(outsiders) { |ss| Reminder.where(user_id: ss.map(&:id)).exists? }
-done     = reached(outsiders) do |ss|
-  Acknowledgement.joins(occurrence: :reminder).where(reminders: { user_id: ss.map(&:id) }).exists?
+created  = theirs.count { |_cg, seniors| seniors.any? }
+opened   = reached(theirs) { |ids| ReminderLink.where(user_id: ids).where.not(last_used_at: nil).exists? }
+accepted = outsiders.count do |cg|
+  cg.caregiver_links.any? { |l| l.state_active? && l.senior && !demo_senior?(l.senior) }
+end
+wrote = reached(theirs) { |ids| Reminder.where(user_id: ids).exists? }
+# kind: :taken only. Acknowledgement also stores snooze and skip, and a snoozed
+# dose is the opposite of the thing this row claims to count.
+done = reached(theirs) do |ids|
+  Acknowledgement.kind_taken.joins(occurrence: :reminder)
+                 .where(reminders: { user_id: ids }).exists?
 end
 
 puts
 puts "THE FUNNEL (outside caregivers, #{outsiders.size} of them)"
-row "created someone",       created,  of: outsiders.size
-row "handed over a link",    handed,   of: outsiders.size
-row "link was opened",       opened,   of: outsiders.size
-row "the person accepted",   accepted, of: outsiders.size
-row "wrote a reminder",      wrote,    of: outsiders.size
-row "somebody pressed Done", done,     of: outsiders.size
+row "created someone",        created,  of: outsiders.size
+row "they opened it",         opened,   of: outsiders.size
+row "they agreed",            accepted, of: outsiders.size
+row "a reminder was written", wrote,    of: outsiders.size
+row "somebody pressed Done",  done,     of: outsiders.size
 
 # --- Where people are stuck right now ------------------------------------
 #
-# Not a count of events but of people sitting in a state, which is the thing
-# worth acting on. Each of these is somebody you could email today.
+# People sitting in a state, not events, because each of these is somebody to
+# write to today. Counted over live links only: a revoked row is kept so its
+# last use stays readable, and counting that history would leave every replaced
+# credential permanently stuck, one household appearing several times and
+# sometimes in two rows at once.
 
-all_seniors = outsiders.flat_map { |cg| cg.seniors.reject { |s| mine?(s) } }.uniq
-device_links = ReminderLink.where(user_id: all_seniors.map(&:id))
+households = theirs.values.flatten.uniq
+live_links = ReminderLink.live.where(user_id: households.map(&:id))
 
-stalled_no_reminder = all_seniors.reject { |s| s.reminders.exists? }
-never_opened = device_links.where(last_used_at: nil)
-quiet = device_links.where.not(last_used_at: nil).where(last_used_at: ...(now - 3.days))
+no_reminder = households.reject { |s| s.reminders.exists? }
+never_opened = User.where(id: live_links.where(last_used_at: nil).select(:user_id))
+quiet = User.where(id: live_links.where.not(last_used_at: nil)
+                                 .where(last_used_at: ...(now - 3.days)).select(:user_id))
 
 puts
-puts "STUCK RIGHT NOW"
-row "set up, no reminder written", stalled_no_reminder.size
-row "link never opened",           never_opened.count
-row "device quiet 3+ days",        quiet.count
+puts "STUCK RIGHT NOW (people, not links)"
+row "set up, no reminder written", no_reminder.size
+row "never opened it",             never_opened.count
+row "went quiet 3+ days ago",      quiet.count
 
-if (names = stalled_no_reminder.map { |s| s.caregivers.map(&:email) }.flatten.uniq.compact_blank).any?
+if (writeable = no_reminder.flat_map { |s| s.caregivers.map(&:email) }.uniq.compact_blank).any?
   puts
   puts "  who to write to:"
-  names.each { |e| puts "    #{e}" }
+  writeable.each { |e| puts "    #{e}" }
 end
 
 # --- Is the thing that fires actually firing -----------------------------
 #
 # Distinguishes "nobody uses it" from "it is broken", which look identical from
-# the outside and need opposite responses.
+# outside and need opposite responses. Calls are counted only when the provider
+# accepted one: a row is reserved before dialling, so counting reservations
+# would report calls placed during precisely the outage this section exists to
+# reveal.
 
 puts
 puts "LAST 7 DAYS"
-row "occurrences due",   Occurrence.where(scheduled_at: week..now).count
-row "marked done",       Acknowledgement.where(created_at: week..now).count
-row "went missed",       Occurrence.where(scheduled_at: week..now, status: :missed).count
-row "calls placed",      TelnyxCall.where(created_at: week..now).count
+row "occurrences due", Occurrence.where(scheduled_at: week..now).count
+row "marked done",     Acknowledgement.kind_taken.where(created_at: week..now).count
+row "snoozed or skipped",
+    Acknowledgement.where(created_at: week..now).where.not(kind: :taken).count
+row "went missed",     Occurrence.where(scheduled_at: week..now, status: :missed).count
+row "reminder calls placed",
+    TelnyxCall.reminders.where(created_at: week..now).where.not(call_control_id: nil).count
 
 puts
