@@ -496,7 +496,13 @@ RSpec.describe "Pages", type: :request do
       [ "/", "/faq", "/how_to", "/routine_sheet", "/blog", Post.all.first.path ].each do |path|
         get path
 
-        expect(doc.at_css("header .badge-free")&.text).to eq("Free"), "no badge on #{path}"
+        # "Free in beta", not "Free": the word on its own was a promise the
+        # product had not decided to keep. A clinician weighing whether to
+        # recommend this to a client reads permanently-free as a hobby project,
+        # and a caregiver deserves to know a price may arrive before they wire
+        # their mother's morning dose to it. The FAQ carries the detail; this
+        # badge only has to stop the word standing alone.
+        expect(doc.at_css("header .badge-free")&.text).to eq("Free in beta"), "no badge on #{path}"
       end
     end
 
