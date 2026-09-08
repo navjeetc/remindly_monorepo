@@ -34,9 +34,15 @@ RSpec.describe "The free promise on the public pages", type: :request do
         expect(note).not_to match(/no limit|unlimited/i)
       end
 
-      # The load-bearing one. Left exactly as it is until there is a business
-      # decision behind changing it, because softening it early costs real trust
-      # and breaking it later costs more.
+      # The load-bearing one, and still pinned word for word.
+      #
+      # 2026-09-08: the surrounding note now reads "Free while in beta", which
+      # is the business decision this comment used to be waiting for. The
+      # sentence itself did not soften and must not: "no trial that quietly
+      # ends" was never a promise that a price could never come, only that one
+      # would never arrive silently — and the note now says out loud that
+      # anyone using Remindly hears first. Breaking that later costs more than
+      # softening it early would have.
       it "still promises the free version will not quietly end" do
         expect(note).to match(/no trial that quietly ends/i)
       end

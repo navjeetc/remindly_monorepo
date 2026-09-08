@@ -88,7 +88,10 @@ puts "CAREGIVERS"
 row "accounts", caregivers.size
 row "not yours", outsiders.size
 row "of those, only demoing your account", demo_only
-row "signed up this week", caregivers.count { |u| u.created_at > week }
+# outsiders, not caregivers: counting Navjeet's own test accounts as new
+# signups is the exact flattery this file's preamble warns about, and it
+# reported four in a week when the honest number was nought.
+row "signed up this week", outsiders.count { |u| u.created_at > week }
 
 # --- The funnel ----------------------------------------------------------
 #
@@ -105,8 +108,20 @@ def reached(households)
   households.count { |_cg, seniors| seniors.any? && yield(seniors.map(&:id)) }
 end
 
-created  = theirs.count { |_cg, seniors| seniors.any? }
-opened   = reached(theirs) { |ids| ReminderLink.where(user_id: ids).where.not(last_used_at: nil).exists? }
+created = theirs.count { |_cg, seniors| seniors.any? }
+
+# Evidence the care receiver actually turned up, which arrives differently on
+# the two routes. Accountless: the device link has been used. Pairing: they hold
+# their own account, which they can only have got by signing up and signing in
+# to generate the code — so the account itself is the evidence.
+#
+# Counting only the link made the funnel non-monotonic, reporting nought here
+# above ones on every row beneath it: a drop-off that never happened, for
+# households that had simply arrived the other way.
+turned_up = reached(theirs) do |ids|
+  ReminderLink.where(user_id: ids).where.not(last_used_at: nil).exists? ||
+    User.where(id: ids).where.not(email: [ nil, "" ]).exists?
+end
 accepted = outsiders.count do |cg|
   cg.caregiver_links.any? { |l| l.state_active? && l.senior && !demo_senior?(l.senior) }
 end
@@ -121,7 +136,7 @@ end
 puts
 puts "THE FUNNEL (outside caregivers, #{outsiders.size} of them)"
 row "created someone",        created,  of: outsiders.size
-row "they opened it",         opened,   of: outsiders.size
+row "the person turned up",   turned_up, of: outsiders.size
 row "they agreed",            accepted, of: outsiders.size
 row "a reminder was written", wrote,    of: outsiders.size
 row "somebody pressed Done",  done,     of: outsiders.size
@@ -135,20 +150,34 @@ row "somebody pressed Done",  done,     of: outsiders.size
 # sometimes in two rows at once.
 
 households = theirs.values.flatten.uniq
-live_links = ReminderLink.live.where(user_id: households.map(&:id))
+ids = households.map(&:id)
+all_links = ReminderLink.where(user_id: ids)
+live_links = ReminderLink.live.where(user_id: ids)
 
 no_reminder = households.reject { |s| s.reminders.exists? }
-never_opened = User.where(id: live_links.where(last_used_at: nil).select(:user_id))
+
+# Over every link they have ever held, not just the live one. Replacing a device
+# revokes the used link and mints a fresh one — ReminderLink.mint refuses a
+# second live link — so asking only the live row would report a household that
+# has been listening for months as having never opened it.
+with_link = User.where(id: all_links.select(:user_id))
+ever_used = User.where(id: all_links.where.not(last_used_at: nil).select(:user_id))
+never_opened = with_link.where.not(id: ever_used.select(:id))
+
 quiet = User.where(id: live_links.where.not(last_used_at: nil)
                                  .where(last_used_at: ...(now - 3.days)).select(:user_id))
 
 puts
 puts "STUCK RIGHT NOW (people, not links)"
 row "set up, no reminder written", no_reminder.size
-row "never opened it",             never_opened.count
-row "went quiet 3+ days ago",      quiet.count
+puts "  — of those on a device link (#{with_link.count}):"
+row "never opened it",        never_opened.count
+row "went quiet 3+ days ago", quiet.count
 
-if (writeable = no_reminder.flat_map { |s| s.caregivers.map(&:email) }.uniq.compact_blank).any?
+# Their caregivers, not Navjeet — he is linked to several of these people and
+# does not need telling to write to himself.
+if (writeable = no_reminder.flat_map { |s| s.caregivers.reject { |c| internal_address?(c) } }
+                           .map(&:email).uniq.compact_blank).any?
   puts
   puts "  who to write to:"
   writeable.each { |e| puts "    #{e}" }
