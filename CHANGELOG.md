@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-09
+
+### Changed
+- **The homepage leads with the telephone call.** It opened on *"Caring for a
+  parent from a distance"* — a description of the reader's situation, which they
+  already know they are in — followed by sixty words before the product appeared.
+  The heading is now *"A phone call, not another app to learn"*.
+
+  The reordering matters more than the wording. Reminder calls have been on in
+  production since August, but the page sold the tablet first and mentioned the
+  telephone in a subordinate clause at the end of the lead. A visitor whose
+  parent owns no tablet — most of the market, and the house the calls were built
+  for — had to read three clauses before learning the product was for them.
+
+- **The four steps are named by who acts**: you schedule it, Remindly calls,
+  they press one key, you are told. There were three, and *"they press one key"*
+  was folded inside another — the only step the reader actually doubts, hidden
+  in the middle of a sentence. Laid out two by two rather than in a single
+  column.
+
+- **The page closes on the moment being sold** rather than on a link inviting
+  the reader to go and compare products. That link moved above *Getting
+  started*.
+
+### Added
+- **A transcript of a real reminder call.** The single thing a caregiver most
+  wants to know before wiring their mother's morning dose to this — what does an
+  automated voice actually say to her — and the site answered it nowhere. Every
+  quoted line is the script in `config/locales/voice.en.yml`, word for word,
+  including the screening line that plays first on every call.
+
+  `spec/requests/home_call_transcript_spec.rb` compares the page against I18n
+  and against `TelnyxCall::MAX_ATTEMPTS` and `RETRY_AFTER` rather than against a
+  second copy of the wording, so rewording the script fails the build until the
+  homepage is rewritten with it. Quoting a call as if it were a recording is
+  only honest for as long as that holds.
+
+- **A section on what happens when nobody answers** — three attempts, five
+  minutes apart, inside the calling hours, and an email on every unanswered
+  attempt for reminders marked as ones where being late matters. All of that
+  already worked; none of it was on the page.
+
+### Changed (visual)
+- **Warm neutrals and a serif for headings across the marketing pages.** The
+  palette was cool grey on white, which reads like a utility bill for a product
+  whose subject is somebody's mother. The brand blue is deliberately unchanged —
+  it is the dashboard's blue, and signing up should not feel like arriving at a
+  different product — and the serif is drawn from families the machine already
+  has, because these pages must make no third-party request.
+
 ## [0.8.0] - 2026-09-06
 
 ### Added
