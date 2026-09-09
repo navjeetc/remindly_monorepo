@@ -34,7 +34,12 @@ RSpec.describe "Pages", type: :request do
         get "/"
 
         expect(response).to have_http_status(:ok)
-        expect(doc.at_css("h1").text).to include("Caring for a parent")
+        # Was "Caring for a parent", which described the reader's situation
+        # rather than the product. The heading now has to name the thing that
+        # decides whether the page is for you at all: everyone arriving assumes
+        # a reminder product is an app, and the house with no tablet in it is
+        # most of the market.
+        expect(doc.at_css("h1").text).to match(/phone call/i)
       end
 
       # The site previously had no indexable homepage at all: / was
@@ -75,7 +80,10 @@ RSpec.describe "Pages", type: :request do
         # heading now covers the telephone as well, so it matches on the part
         # that carries the meaning: they need nothing new.
         expect(panel.at_css("h2").text).to match(/already have|already use/i)
-        expect(panel.css("ol li").length).to eq(3)
+        # Four since the steps were named by who acts. The fourth is "they
+        # press one key" -- previously folded into another step, which hid the
+        # only step the reader doubts.
+        expect(panel.css("ol li").length).to eq(4)
         expect(panel.text).to match(/nothing to install/i)
 
         # Document order via XPath rather than Node#line: line numbers come from

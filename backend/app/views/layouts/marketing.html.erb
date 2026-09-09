@@ -77,14 +77,33 @@
       should not block rendering on a third-party request. Small enough to read.
     %>
     <style>
+      /*
+        Warm neutrals rather than the cool greys this started with. The subject
+        is somebody's mother, and a blue-grey page reads like a utility bill;
+        the paper tone costs nothing and is the single change that most moves
+        how the page feels. The brand blue is unchanged on purpose — it is the
+        same blue as the dashboard, and a visitor who signs up should not
+        arrive somewhere that looks like a different product.
+
+        --accent is used for one thing only: the rule down the side of the call
+        transcript. Give it a second job and it stops being an accent.
+      */
       :root {
-        --ink: #1f2933;
-        --muted: #52606d;
-        --line: #e4e7eb;
+        --ink: #241f1b;
+        --muted: #6b6259;
+        --line: #eae3da;
         --brand: #2f5bea;
         --brand-dark: #1e40af;
-        --bg: #ffffff;
-        --bg-soft: #f5f7fa;
+        --accent: #b4541f;
+        --bg: #fffdfa;
+        --bg-soft: #f7f3ee;
+
+        /* No webfont: this page must make no third-party request (there is a
+           spec), and a Google Fonts <link> is exactly that. A serif drawn from
+           what the machine already has is free, and the switch from one family
+           to two is most of what makes a page look composed rather than
+           typed. */
+        --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
       }
 
       *, *::before, *::after { box-sizing: border-box; }
@@ -107,31 +126,40 @@
       .logo { font-size: 1.5rem; font-weight: 700; color: var(--brand); text-decoration: none; }
 
       h1 {
-        font-size: clamp(2rem, 5vw, 2.75rem);
-        line-height: 1.15;
-        margin: 2.5rem 0 1rem;
+        font-family: var(--serif);
+        font-size: clamp(2.25rem, 6vw, 3.25rem);
+        line-height: 1.1;
+        margin: 3rem 0 1.25rem;
         letter-spacing: -0.02em;
+        font-weight: 600;
+        text-wrap: balance;
       }
       h2 {
-        font-size: 1.5rem;
-        margin: 2.5rem 0 0.75rem;
+        font-family: var(--serif);
+        font-size: 1.65rem;
+        margin: 3rem 0 0.75rem;
         letter-spacing: -0.01em;
+        font-weight: 600;
+        text-wrap: balance;
       }
       /* Until the landing page there was no h3 anywhere in prose — the only
          ones on the site are on the printable sheets. A run of questions under
          one h2 needs the level to be visible, and the browser default is bold
          body text tight against the paragraph above it.
 
-         The sheets are deliberately not styled from here: .sheet-heading sets
-         its own size in em, so print density stays where the print rules put
-         it. */
+         The sheets take their size from .sheet-heading, in em, so print
+         density stays where the print rules put it -- and they opt out of the
+         serif explicitly further down, because a printed sheet is read under
+         different conditions than a web page. */
       h3 {
-        font-size: 1.2rem;
+        font-family: var(--serif);
+        font-size: 1.25rem;
         margin: 2rem 0 0.5rem;
         letter-spacing: -0.01em;
+        font-weight: 600;
       }
       p { margin: 0 0 1rem; }
-      .lead { font-size: 1.25rem; color: var(--muted); }
+      .lead { font-size: 1.3rem; line-height: 1.55; color: var(--muted); text-wrap: pretty; }
 
       .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 2rem 0 3rem; }
 
@@ -256,9 +284,81 @@
       }
       .setup-foot { margin: 1.25rem 0 0; font-size: 1rem; color: var(--muted); }
 
+      /* Two by two rather than four across. The measure here is 46rem; four
+         columns inside it gives each step about nine characters a line, which
+         is a column of confetti rather than a sentence. */
       @media (min-width: 40rem) {
-        .setup ol { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .setup ol { grid-template-columns: repeat(2, 1fr); gap: 1.5rem 2rem; }
       }
+
+      /*
+        The one thing a visitor cannot picture and most wants to know: what
+        does this sound like when it rings my mother's telephone. Every line
+        below is the script the app actually speaks -- see config/locales/
+        voice.en.yml -- so if that copy changes, this has to change with it.
+        A spec pins the wording for exactly that reason.
+
+        Styled as a transcript rather than as prose: alternating speakers, the
+        accent rule down the side, the machine's words in quotes and the
+        keypresses not. It should read as a recording of something that
+        happened, because that is the claim.
+      */
+      .transcript {
+        margin: 3rem -1rem;
+        padding: 1.5rem 1.5rem 1.25rem;
+        background: var(--bg-soft);
+        border-left: 4px solid var(--accent);
+        border-radius: 0 0.9rem 0.9rem 0;
+      }
+      .transcript h2 { margin: 0 0 0.35rem; font-size: 1.4rem; }
+      .transcript-when { color: var(--muted); font-size: 1rem; margin: 0 0 1.25rem; }
+
+      .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; }
+      .lines li {
+        font-size: 1.05rem;
+        line-height: 1.55;
+        padding-left: 6.5rem;
+        position: relative;
+        text-wrap: pretty;
+      }
+      .lines .who {
+        position: absolute;
+        left: 0;
+        width: 5.75rem;
+        text-align: right;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        /* Optical alignment: the label is small caps against 1.05rem prose, so
+           sitting it on the same baseline leaves it looking dropped. */
+        top: 0.28em;
+      }
+      /* What the machine says. Everything else on these lines is stage
+         direction, and the quotes alone were not enough to tell them apart. */
+      .lines .said { color: var(--ink); }
+      .lines .did { color: var(--muted); font-style: italic; }
+
+      .transcript-foot {
+        margin: 1.5rem 0 0;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--line);
+        font-size: 1rem;
+        color: var(--muted);
+      }
+
+      @media (max-width: 34rem) {
+        /* The label column costs a third of a phone's width. Stack it. */
+        .lines li { padding-left: 0; }
+        .lines .who { position: static; display: block; width: auto; text-align: left; margin-bottom: 0.15rem; }
+      }
+
+      /* The closing call to action. Deliberately not .actions: a spec counts
+         the primary buttons inside that container, because the hero is meant to
+         offer exactly one decision, and a second one down here should not be
+         able to satisfy it. */
+      .actions-end { margin: 1.5rem 0 0; }
 
       .note {
         background: var(--bg-soft);
@@ -431,6 +531,13 @@
          10.5pt — enlarging the headings on the one layout whose whole purpose
          is fitting a page. 1.17em is the browser default these have always had. */
       .sheet-heading { font-size: 1.17em; margin: 2rem 0 0.5rem; }
+
+      /* The serif on h1/h2/h3 is a marketing decision, and these are not
+         marketing: they are printed, pinned to a fridge, and read at speed by
+         somebody with the eyesight of an eighty-year-old. Sans is the safer
+         letterform at that job, so the sheets opt back out of it explicitly
+         rather than by luck. */
+      .sheet-title, .sheet-heading { font-family: inherit; font-weight: 700; }
       .sheet-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
       .sheet-table th {
         text-align: left;
