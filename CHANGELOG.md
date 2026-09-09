@@ -45,9 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only honest for as long as that holds.
 
 - **A section on what happens when nobody answers** — three attempts, five
-  minutes apart, inside the calling hours, and an email on every unanswered
-  attempt for reminders marked as ones where being late matters. All of that
-  already worked; none of it was on the page.
+  minutes apart, inside the calling hours, and, for reminders marked as ones
+  where being late matters, an email as soon as the first call goes unanswered,
+  saying how many are still on the way. All of that already worked; none of it
+  was on the page.
 
 ### Changed (visual)
 - **Warm neutrals and a serif for headings across the marketing pages.** The

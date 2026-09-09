@@ -16,7 +16,7 @@
   of the market: the tablet is the second option in almost every house, and it
   was being sold as the first.
 %>
-<% content_for :description, "Remindly telephones a parent living on their own and says the reminder out loud — a telephone call to the phone already in the house, or spoken from a tablet if there is one. They press one key. You set the reminders up from wherever you are, and for medication Remindly emails you when a dose is marked done, or when the time passes and nobody marks it. Free to use." %>
+<% content_for :description, "Remindly telephones a parent living on their own and says the reminder out loud — a telephone call to the phone already in the house, or spoken from a tablet if there is one. They answer it with a keypress. You set the reminders up from wherever you are, and for medication Remindly emails you when a dose is marked done, or when the time passes and nobody marks it. Free to use." %>
 
 <%#
   Declares the product to search engines: what it is, who it is for, and that it
@@ -59,8 +59,8 @@
 <p class="lead">
   Remindly rings their own telephone at the right time and says the reminder out
   loud — the morning tablets, Thursday's appointment, a glass of water. They
-  press one key. You get an email saying what happened, so checking in does not
-  have to mean ringing to ask.
+  answer it with a keypress. For medication, you get an email saying what
+  happened, so checking in does not have to mean ringing to ask.
 </p>
 
 <%#
@@ -108,7 +108,7 @@
   Four steps now rather than three, and each named by who acts. The three said
   "you create", "your parent hears", "you see" — which skipped the step the
   reader is most unsure about, the one where an eighty-year-old is expected to
-  do something. Making "they press one key" its own numbered step is the point:
+  do something. Making the keypress its own numbered step is the point:
   it is a step, it is small, and hiding it inside another one made it look like
   something being glossed over.
 %>
@@ -127,9 +127,14 @@
       speak from that instead.
     </li>
     <li>
-      <strong>They press one key</strong> — 1 for done, 2 to be reminded again
-      shortly. On a screen it is one big button instead. Never more than one
-      thing to press, and nothing to read.
+      <%# Two presses on a telephone, not one: the screening line asks for a
+          keypress before the reminder is spoken at all, which is what stops a
+          reminder being read onto an answering machine. The transcript below
+          shows both, so a step claiming one was contradicted on the same
+          page. %>
+      <strong>They press a key</strong> — 1 to hear the reminder, then 1 for
+      done or 2 to be reminded again shortly. On a screen it is one big button
+      instead. Never more than one key at a time, and nothing to read.
     </li>
     <li>
       <%# Scoped to medication on purpose. Acknowledged and missed emails go to
@@ -233,9 +238,11 @@
 
 <p>
   When you have marked a reminder as one where <strong>being late matters</strong>,
-  you are emailed on every attempt that goes unanswered, with how many are left
-  — not once at the end of the day, and not only after the last try. That is
-  the whole reason that setting exists.
+  you are emailed as soon as the <em>first</em> call goes unanswered — while the
+  other attempts are still to come, and the email says how many are still on the
+  way. Once, not once per attempt. That is the whole reason that setting exists:
+  to hear about it early enough to do something, rather than at the end of the
+  day.
 </p>
 
 <%#
