@@ -6,10 +6,27 @@ DTMF digit, acknowledge or snooze, notify the caregiver. Calling hours are
 enforced in the called party's own timezone, and an unresolvable timezone blocks
 the call rather than defaulting to anything.
 
-What is **not** built is the part this document argues matters most: there is no
-consent record, no number verification, and no answering-machine detection. The
-gates in "Before any code" remain decisions only Navjeet can make, and production
-has no Telnyx credentials, so nothing is enabled there.
+Two of the three things this paragraph used to list as missing have since been
+built, and the paragraph was not updated — corrected 2026-09-09, because a status
+header that understates what exists is read as a to-do list and the work gets
+scoped twice.
+
+**Consent is built.** `call_consent_at`, `call_opted_out_at` and
+`call_reminders_enabled` on `User`; `callable_by_phone?` requires all three and
+lets an opt-out beat a later consent. A verification call asks the number itself
+to agree, pressing 9 on any call opts out permanently, and the job re-reads
+consent rather than trusting the scheduler's query.
+
+**Number verification is built.** `phone_verified_at`,
+`TelnyxCall.reserve_verification`, capped at five attempts per number per day.
+
+**Answering-machine detection is not built** and remains a genuine gap: a
+reminder spoken to a voicemail greeting consumes an attempt and looks delivered.
+
+The gates in "Before any code" remain decisions only Navjeet can make — the
+monetisation question below is still open — and production has no Telnyx
+credentials, so nothing is enabled there. See `helloremind-inspiration.md` for
+what a competitor charging for this channel implies about that decision.
 
 Proposed 2026-08-18; first working call 2026-08-23. Read alongside `SENIOR_ACCESS_DESIGN.md`, which solves an
 overlapping problem by a different route — see "Relationship to the access

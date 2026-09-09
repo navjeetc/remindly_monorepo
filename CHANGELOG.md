@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`docs/helloremind-inspiration.md`** — what Remindly should take from
+  HelloRemind, a competitor selling the phone-call channel Remindly built and
+  has not enabled. Their existence answers the question
+  `PHONE_CALL_REMINDERS_DESIGN.md` stalled on: somebody is charging for reminder
+  calls, so a paid call channel is not a thing nobody buys.
+
+  Four gaps, verified against the code rather than assumed: **no SMS anywhere**
+  (the largest, and the right channel for an unanswered critical dose — email is
+  the wrong medium for that message), **no answering-machine detection** (a
+  reminder spoken to a voicemail greeting consumes an attempt and looks
+  delivered), **no recorded voice** (text-to-speech only, where they offer a
+  family member's own voice), and **single-tier escalation**.
+
+  The document records what could not be established as carefully as what could.
+  `helloremind.me` is blocked by the egress proxy here, so every claim in it
+  comes from search-index summaries of their own pages — and **the UI half was
+  not attempted at all**, because no screenshot, colour or layout was ever
+  observed. Writing a "UI direction inspired by HelloRemind" from that would be
+  invention with a competitor's name on it, and would be read later as a record
+  of what they do.
+
+### Fixed
+- **`PHONE_CALL_REMINDERS_DESIGN.md` claimed two built things were missing.** Its
+  status header listed "no consent record, no number verification, and no
+  answering-machine detection" as not built. Consent and number verification have
+  both existed for some time — `call_consent_at`, `call_opted_out_at`,
+  `callable_by_phone?`, the verification call that asks the number itself to
+  agree, keypad opt-out on every call, `phone_verified_at`,
+  `TelnyxCall.reserve_verification` and its five-per-day cap. Only the
+  answering-machine detection was still true.
+
+  Corrected rather than left, because a status header that understates what
+  exists is read as a to-do list, and the next person to pick this up scopes work
+  that is already done.
+
 ## [0.8.0] - 2026-09-06
 
 ### Added
