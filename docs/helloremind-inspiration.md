@@ -1,190 +1,214 @@
 # HelloRemind as a model for Remindly
 
 **Purpose:** work out what Remindly should take from HelloRemind
-(`helloremind.me`), which sells the product Remindly gives away: automated
-reminder calls for an older person, set up by the family who care for them.
+(`helloremind.me`), which is building the product Remindly gives away:
+automated reminder calls for an older person, set up by the family who care for
+them.
 
-## Read this first: how much of the below is actually evidence
+## What this is based on
 
-**The site could not be opened.** `helloremind.me` and `www.helloremind.me` are
-both blocked by the network egress proxy on the machine this was written on, so
-every claim about HelloRemind here comes from search-index summaries of their
-`/about` and `/help` pages, not from the pages themselves.
+Two mobile screenshots of their homepage, supplied 2026-09-11, plus
+search-index summaries of their `/about` and `/help` pages. The site itself is
+blocked by the network egress proxy here, so nothing below comes from browsing
+it.
 
-That has two consequences, and the second is the more important:
+That is enough for the homepage's design language and its top-of-funnel copy,
+which is what the UI recommendations rest on. It is **not** enough for the
+signed-up product: no signup flow, no caregiver dashboard, no pricing page, and
+no call has been seen. Anything about how their app behaves after the trial
+starts is unknown and is not guessed at here.
 
-- **The functional claims below are quotable but thin.** They are HelloRemind's
-  own marketing wording as a search index recorded it. Nobody has seen the
-  product, a signup flow, a price, or a call.
-- **The UI half of this document does not exist, and could not be faked.** Not
-  one screenshot, colour, layout or piece of page structure was observed. Any
-  "UI direction inspired by HelloRemind" written from here would be invention
-  with a competitor's name attached to it, which is worse than nothing: it would
-  be read later as a record of what they do.
+## The single most important correction
 
-So this document covers functionality, and stops where the evidence stops. See
-**What is needed to do the UI half** at the end.
+**HelloRemind has not launched.** Both calls to action on the homepage — the
+nav button and the hero button — read **"Coming Soon"**. Beside the hero button:
+*"14 days free · no credit card"*.
 
-## What HelloRemind sells, as far as can be established
+An earlier revision of this document said a competitor was *charging* for
+reminder calls and treated that as demand evidence for Remindly's deferred
+monetisation decision. That was wrong, and it was the load-bearing claim, so it
+is corrected here rather than quietly edited: they have announced a trial and a
+price, and have no customers. What their existence establishes is that somebody
+else looked at this market and concluded a subscription was the model. It
+establishes nothing about whether families buy.
 
-An automated reminder *call* service aimed at the caregiver, not the senior.
-Their claimed capabilities:
+`PHONE_CALL_REMINDERS_DESIGN.md`'s monetisation gate therefore stands exactly
+where it stood. Nobody has validated this price.
 
-| Claim | Source wording |
+## Their positioning, verbatim
+
+| Slot | Copy |
 | --- | --- |
-| Phone calls and text messages | "automated phone calls and text message reminders" |
-| A choice of voice | "personalized voice recordings or text-to-speech" |
-| Retries, then escalation | "smart retries and automatic escalation to multiple caregivers" |
-| No device required | "no app required — just a phone call they already know how to answer" |
-| Tone as a feature | "warm and personal, not automated and cold" |
-| Not for emergencies | "should never be relied upon for critical or emergency medical situations" |
+| Eyebrow | "A DAILY CALL, NOT AN APP" |
+| H1 | "Know they're okay — *without asking*." |
+| Sub | "Automated reminder calls your loved one will answer, plus real-time updates straight to you. The phone she already has. Nothing for her to learn." |
+| Pull-quote | "Every morning I wake up wondering, 'Did Dad take his pills?'" |
+| Under it | "You shouldn't have to choose between hovering and not knowing. HelloRemind makes the call, hears the answer, and tells you. You get to go back to being family." |
+| Section head | "How a reminder becomes relief" |
+| Sub | "Four steps · about two minutes to set up" |
 
-Two of these are worth noticing beyond the feature list.
+Three things are worth taking from this and one is worth refusing.
 
-**They sell the same disclaimer Remindly does.** "Never rely on this for
-emergencies" is on their marketing page, not buried in terms. Remindly reached
-the same position independently — the `_critical_alert_caveat` partial, the FAQ's
-refusal to say a dose was "taken" when it was only *marked done*. This is
-evidence the honesty is not costing Remindly anything competitively. A paying
-competitor prints it too.
+**They name the feeling, not the mechanism.** "Know they're okay", "becomes
+relief", "go back to being family". Remindly's homepage describes what the
+software does and is unusually careful about it; HelloRemind describes what the
+caregiver gets back. These are not in conflict — Remindly's own best line,
+*"You cannot be there for every tablet, every appointment, every glass of
+water"*, already does it. There is one of it.
 
-**They sell warmth as the differentiator**, not features. "Warm and personal, not
-automated and cold" is doing the work that a feature comparison usually does.
-This is the one piece of positioning Remindly has no equivalent for, and the
-cheapest thing on this page to act on.
+**They put a number on setup.** "about two minutes". Remindly's homepage
+deliberately refuses to, and the comment above that copy says why: nobody has
+timed it, and inventing a number on the page a caregiver trusts with their
+parent's medication is not a copy decision. That refusal is right. **Time the
+setup, then say it** — this is the cheapest conversion win available and it is
+blocked only on a stopwatch.
 
-## What Remindly already has
+**They sell the absence of a device as the headline**, not as a reassurance
+further down. "A DAILY CALL, NOT AN APP". "Nothing for her to learn."
 
-The phone channel is much further along than `PHONE_CALL_REMINDERS_DESIGN.md`
-claims. That document's status header is out of date and has been corrected in
-the same commit as this file; the detail is worth stating here because it
-changes what is left to build.
+**What to refuse:** "Automated reminder calls your loved one *will answer*". No
+service can promise that, and the same page elsewhere admits it is not for
+critical situations. Remindly's copy standard — it will not say a dose was
+"taken" when it means "marked done" — already rules this sentence out.
 
-| HelloRemind claim | Remindly today |
+## Their design language
+
+Observed from the two screenshots.
+
+| | |
 | --- | --- |
-| Automated phone calls | **Built.** `VoiceReminderJob` → `TelnyxVoiceService`, driven by webhooks. Verified against a real handset. |
-| Keypad response | **Built.** One DTMF digit maps onto the existing `Acknowledgement` kinds — 1 taken, 2 snooze, 3 skip. |
-| Smart retries | **Built, and bounded.** `MAX_ATTEMPTS = 3`, `RETRY_AFTER = 5.minutes`, plus a per-person daily ceiling and a unique index on `(occurrence_id, attempt_number)` so two runs cannot both claim an attempt. |
-| Escalation to multiple caregivers | **Built for email.** `ReminderNotificationService.notify_unanswered` mails *every* linked caregiver on each unanswered attempt of a `critical?` reminder, deliberately ignoring both category preferences and quiet hours. |
-| Consent | **Built.** `call_consent_at`, `call_opted_out_at`, `call_reminders_enabled`; a verification call asks the number itself to agree, and pressing 9 on any call opts out permanently. Re-checked inside the job, not trusted from the scheduler's query. |
-| Number verification | **Built.** `phone_verified_at`, `TelnyxCall.reserve_verification`, capped at five attempts per number per day. |
+| Ground | warm cream, roughly `#f7f3ec` — not white |
+| Cards | white, on the cream, radius ~24px |
+| Accent | salmon/coral, roughly `#e8806b`, on fully-rounded pill buttons |
+| Highlight | pale yellow, as a glow behind the hero card and as a row tint |
+| Dark band | warm near-black, roughly `#2b2724`, full-bleed between cream sections |
+| Display type | a serif, large, regular weight — headings and pull-quotes |
+| Body type | a sans, generous line height |
+| Italic serif | reserved for **anything spoken aloud** |
+| Metadata | separated by a middle dot: "Morning meds · daily 9:00 AM" |
 
-Calling hours are enforced in the called party's own timezone, and an
-unresolvable timezone blocks the call rather than defaulting to one.
+The whole thing reads domestic rather than clinical. That is the argument: this
+is a product about your mother, not about a patient.
 
-The whole channel sits behind the `phone_call_reminders` feature flag, and
-production has no Telnyx credentials — so none of it is switched on.
+**Their accent fails contrast.** White text on `#e8806b` measures **2.9:1** —
+under WCAG AA for any text size. Remindly puts seniors in front of these pages
+and ships a per-user text scale, so it cannot copy that. The implementation
+below uses a deeper terracotta measured at 5.2:1 on cream and 5.7:1 for white
+on the accent.
 
-## The real gaps
+### The idea worth stealing outright
 
-Four, in the order they are worth doing.
+**The hero transcript.** Under their headline sits a white card showing a call
+as a chat transcript: *"Ruth's kitchen phone · 9:00 AM"*, subtitled *"the same
+phone she's answered for forty years"*, then a dark right-aligned bubble —
+*"Hello?"* — and a pale left-aligned one — *"Good morning, Ruth. Time for your
+heart pills."*
 
-### 1. There is no SMS channel at all
+This solves the problem Remindly's marketing site has always had. Everything
+this product does happens out loud in somebody's kitchen. A web page can only
+ever *assert* that, and the homepage's paragraphs are all assertions about a
+sound. A transcript is the one way to put a spoken product on a screen.
+
+Implemented on the homepage in this change — see below.
+
+## Functional gaps
+
+Verified against the code, not assumed.
+
+### 1. No SMS anywhere
 
 `grep -ril "sms\|twilio\|text_message"` over `app`, `lib`, `config` and
-`db/schema.rb` returns nothing. This is the largest verified functional gap, and
-the cheapest to close:
-
-- A text costs roughly a twentieth of a call and has no answering-machine
-  problem, no calling-hours problem in the same acute form, and no "did a person
-  or a voicemail hear this" ambiguity.
-- It is the natural **escalation** channel. Today an unanswered critical dose
-  emails the caregivers. Email is the wrong medium for "your mother has not
-  answered three calls about her 8am dose" — HelloRemind escalates by text, and
-  they are right to.
-- It reaches the caregiver, who is the one holding a smartphone. The senior may
-  well still want the call.
-
-The existing `notify_unanswered` path is the correct insertion point: recipients,
-deduplication and the critical-only rule are already decided there.
+`db/schema.rb` returns nothing. Largest gap, cheapest to close, and the natural
+**escalation** channel: today an unanswered critical dose emails every linked
+caregiver, and email is the wrong medium for "your mother has not answered
+three calls about her 8am dose". `ReminderNotificationService.notify_unanswered`
+is the insertion point — recipients, deduplication and the critical-only rule
+are already decided there.
 
 ### 2. No answering-machine detection
 
-Still genuinely absent — the one item the design doc's "not built" list gets
-right. Without it a reminder is spoken to a voicemail greeting and the attempt is
-consumed. For a product whose entire claim is "the reminder reached them", this
-is the gap that makes the difference between the call working and appearing to.
+A reminder spoken to a voicemail greeting consumes an attempt and looks
+delivered. For a product whose claim is "the reminder reached them", this is the
+difference between working and appearing to. Telnyx prices AMD per call, so it
+folds into the money question.
 
-Telnyx prices AMD per call, which folds into the money question below.
+### 3. Check-ins are not a distinct thing
 
-### 3. Text-to-speech only — no recorded voice
+Their sample schedule lists three items, and the third is highlighted:
 
-HelloRemind offers "personalized voice recordings **or** text-to-speech".
-Remindly has only the second, on both the browser client and the phone calls.
+> Morning meds · daily 9:00 AM
+> Dr. Patel visit · Thu 2:00 PM
+> **"Are you OK?" · Sundays**
 
-A daughter's own voice saying "Mum, it's half eight, time for your tablets" is a
-different product from a synthesised one, and it is the concrete mechanism behind
-the "warm, not cold" positioning that HelloRemind leads with. It is also the
-feature on this page most likely to make somebody choose one service over the
-other, and it needs no new provider — an uploaded audio file played by Telnyx,
-and `<audio>` on the voice page.
+That is not a task reminder. It is a recurring welfare check whose *answer* is
+the payload — there is nothing to mark done. `competitor-gap-action-plan.md`
+already lists scheduled check-ins as a gap ("distinct from task reminders",
+"support a check-in window rather than requiring an exact minute"); a second
+competitor leading with one is corroboration.
 
-Note what it costs elsewhere: the app currently has no Active Storage. This adds
-file upload, storage on the DigitalOcean volume, and a moderation question
-nobody has asked yet.
+Remindly can express this today only as a reminder somebody marks done, which
+records the wrong fact.
 
-### 4. Escalation is single-tier
+### 4. Text-to-speech only
 
-Every caregiver is notified at once, by email. HelloRemind escalates — implying
-an order and a delay. Worth building only after (1), because a tiered escalation
-whose only channel is email is not worth the schema.
+They offer "personalized voice recordings **or** text-to-speech". A daughter's
+own voice is the concrete mechanism behind the warmth they sell, and it needs no
+new provider — an uploaded file played by Telnyx, and `<audio>` on the voice
+page. It does need Active Storage, which the app does not currently have, plus a
+moderation question nobody has asked.
 
-## The decision none of this can route around
+### 5. Escalation is single-tier
 
-`PHONE_CALL_REMINDERS_DESIGN.md` argues that calls are the first feature with a
-marginal cost, estimates **$3–5 per senior per month**, and stops: nothing should
-be built until the monetisation model is chosen, because the answer changes both
-the schema and the copy.
+Every caregiver is notified at once, by email. Theirs implies an order and a
+delay. Worth building only after SMS — a tiered escalation whose only channel is
+email is not worth the schema.
 
-**HelloRemind is the evidence that argument was waiting for.** A competitor is
-charging for exactly this and describing it as a service rather than an app. That
-does not decide Remindly's model, but it removes the worry that a paid reminder
-call is a thing nobody buys.
+## What Remindly already has
 
-SMS does not escape the problem, it only makes it cheaper — a text still costs
-per message, and the homepage still says *"Free while in beta — no card, no ads,
-no sales calls"* with an explicit promise that **"if charging ever becomes
-necessary, you will be told first."** That sentence was written to be kept. Any
-of the four gaps above ships either behind that promise being honoured, or not at
-all.
+`PHONE_CALL_REMINDERS_DESIGN.md` understated this badly; its status header has
+been corrected in the same branch. Calls, keypad acknowledgement, three bounded
+retries, per-day call ceilings, consent (including keypad opt-out), number
+verification, and multi-caregiver alerting on unanswered critical doses are all
+built. The channel is behind the `phone_call_reminders` flag and production has
+no Telnyx credentials, so none of it is on.
 
-## What is worth copying that costs nothing
+**A thing to check:** the homepage and meta description already tell readers
+Remindly will telephone a parent who has no tablet. If production genuinely
+cannot place calls, that copy is promising a channel that is switched off.
 
-The one recommendation here that needs no provider, no schema and no money
-decision: **HelloRemind sells warmth, and Remindly sells accuracy.**
+## What was implemented in this change
 
-Remindly's copy is unusually careful — it will not say "taken" when it means
-"marked done", and it says out loud that a browser page has to stay open. That
-care is a genuine asset and should not be traded away. But read end to end, the
-public pages describe a mechanism, and HelloRemind describes a feeling.
+UI only, and no existing sentence was rewritten. The public copy is annotated
+with the reasoning behind individual phrasings and several record wording that
+was argued over and settled; it is not for redecorating against a competitor.
 
-These are not in conflict. "A voice they know, at the time it matters" is both
-warm and true. The homepage already has one sentence doing this — *"You cannot be
-there for every tablet, every appointment, every glass of water"* — and it is the
-best line on the site. There is one of it.
+- **The marketing palette moved from cool blue on white to the warm cream,
+  terracotta and pale-yellow system above.** Every pair measured against AA and
+  recorded in the CSS: ink 14.7:1, muted 6.8:1, accent 5.2:1, white-on-accent
+  5.7:1, ink-on-highlight 13.5:1, dark band 14.8:1.
+- **Serif display type for headings**, sans for body. System fonts only —
+  this layout loads nothing third-party on purpose, so their exact face cannot
+  be matched; Georgia is the one real serif present effectively everywhere.
+- **Pill buttons and larger card radii.**
+- **The hero transcript**, showing the real exchange: the tablet speaks, the
+  senior presses the green ✓ Done the voice client actually renders, and the
+  caregiver's email arrives. It closes by saying Remindly knows the button was
+  pressed and cannot know whether the tablet was swallowed — the claim the rest
+  of the site is careful about, stated in the one place it would be easiest to
+  overclaim by implication.
 
-This is a copy direction, not a copy change. The public pages are annotated with
-the reasoning behind individual sentences and several record wording that was
-argued over and settled; they should not be rewritten against a competitor
-nobody has seen.
-
-## What is needed to do the UI half
-
-The request that produced this document asked for inspiration in **UI and
-functionality**. Only the second half could be attempted. To do the first, one of:
-
-- Screenshots of HelloRemind's homepage, signup, and caregiver dashboard.
-- A saved copy of the pages (`File → Save Page As`), which carries the real CSS.
-- Running the work somewhere `helloremind.me` is not blocked by the egress proxy.
-
-Without one of those, any UI work claiming their influence is fabricated.
+The transcript is deliberately the tablet, not a phone call: the phone channel
+is switched off in production, and a homepage picture of a working call would be
+advertising it.
 
 ## Suggested order
 
-1. **Decide the money question.** It gates everything else and is not an
-   engineering task.
-2. **SMS**, as the escalation channel first and a reminder channel second.
-3. **Answering-machine detection**, before the call channel is enabled for
-   anyone who is not testing it.
-4. **Recorded voice**, as the differentiator, once storage is warranted.
-5. **Tiered escalation**, last, and only if families ask for it.
+1. **Time the setup and put the number on the page.** A stopwatch.
+2. **Decide the money question.** Unchanged by any of this — they have no
+   customers either.
+3. **SMS**, as the escalation channel first and a reminder channel second.
+4. **Check-ins** as a first-class type, with a window rather than a minute.
+5. **Answering-machine detection**, before calls are enabled for anyone who is
+   not testing them.
+6. **Recorded voice**, once storage is warranted.
+7. **Tiered escalation**, last, and only if families ask.

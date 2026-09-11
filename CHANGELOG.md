@@ -7,29 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The marketing site takes its visual language from HelloRemind.** A
+  competitor building reminder calls for the same families, whose homepage
+  argues visually that this is a domestic product rather than a clinical one.
+  The old palette — cool blue on white — was correct and indistinguishable from
+  every other SaaS page a caregiver has already been sold to from.
+
+  Now: a warm cream ground with white cards, a terracotta accent on pill
+  buttons, a pale-yellow highlight, and a serif for headings against the
+  existing sans body. **Every colour pair was measured rather than eyeballed**,
+  and the numbers are recorded in the CSS beside the tokens: ink on cream
+  14.7:1, muted 6.8:1, accent on cream 5.2:1, white on accent 5.7:1, ink on
+  highlight 13.5:1, white on the dark band 14.8:1 — all clearing WCAG AA.
+
+  The accent is deliberately *deeper* than the salmon HelloRemind uses. Theirs
+  is roughly `#e8806b` and carries white button text at **2.9:1**, under AA at
+  any size. This site ships a per-user text scale and puts seniors in front of
+  these pages; it cannot inherit a contrast failure because a competitor has
+  one.
+
+  Headings use a system serif stack. The marketing layout loads nothing
+  third-party on purpose — these are the pages search engines index — so a
+  webfont was not available and their exact face could not be matched.
+
+  **No existing sentence was rewritten.** The public copy is annotated with the
+  reasoning behind individual phrasings, and several record wording that was
+  argued over and settled. It is not for redecorating against a competitor
+  nobody has bought from yet.
+
 ### Added
-- **`docs/helloremind-inspiration.md`** — what Remindly should take from
-  HelloRemind, a competitor selling the phone-call channel Remindly built and
-  has not enabled. Their existence answers the question
-  `PHONE_CALL_REMINDERS_DESIGN.md` stalled on: somebody is charging for reminder
-  calls, so a paid call channel is not a thing nobody buys.
+- **The homepage shows a reminder instead of only describing one.** A transcript
+  card under the hero: the tablet speaks, the senior presses the green ✓ Done
+  the voice client actually renders, and the caregiver's email arrives.
 
-  Four gaps, verified against the code rather than assumed: **no SMS anywhere**
-  (the largest, and the right channel for an unanswered critical dose — email is
-  the wrong medium for that message), **no answering-machine detection** (a
-  reminder spoken to a voicemail greeting consumes an attempt and looks
-  delivered), **no recorded voice** (text-to-speech only, where they offer a
-  family member's own voice), and **single-tier escalation**.
+  Borrowed outright from HelloRemind, and the best idea on their site. It fixes
+  a problem this page has always had — everything Remindly does happens out loud
+  in somebody's kitchen, and every paragraph above the fold is therefore an
+  *assertion about a sound*. A transcript is the one way to put a spoken product
+  on a screen.
 
-  The document records what could not be established as carefully as what could.
-  `helloremind.me` is blocked by the egress proxy here, so every claim in it
-  comes from search-index summaries of their own pages — and **the UI half was
-  not attempted at all**, because no screenshot, colour or layout was ever
-  observed. Writing a "UI direction inspired by HelloRemind" from that would be
-  invention with a competitor's name on it, and would be read later as a record
-  of what they do.
+  It shows the tablet rather than a phone call on purpose: the phone channel is
+  behind a feature flag and production has no Telnyx credentials, so a picture
+  of a working call would be advertising one.
+
+  The card closes by saying Remindly knows the button was pressed and cannot
+  know whether the tablet was swallowed. That is the claim the rest of the site
+  is careful about, and a picture is exactly where it would be easiest to
+  overclaim by implication instead.
+
+- **`docs/helloremind-inspiration.md`** — their positioning and design language
+  recorded verbatim, plus five functional gaps checked against the code: no SMS
+  anywhere, no answering-machine detection, **no first-class check-in** (their
+  sample schedule highlights `"Are you OK?" · Sundays`, which is a welfare check
+  whose answer is the payload, not a task to mark done), text-to-speech only, and
+  single-tier escalation.
+
+  It also records what is *not* known. The site is blocked by the egress proxy
+  here; two supplied mobile screenshots cover the homepage, and nothing of the
+  signed-up product — signup, dashboard, pricing page, an actual call — has been
+  seen.
 
 ### Fixed
+- **The claim that a competitor is already charging for reminder calls was
+  wrong.** An earlier draft of `helloremind-inspiration.md` and of this entry
+  treated HelloRemind as evidence that families buy this, and offered it as the
+  demand signal `PHONE_CALL_REMINDERS_DESIGN.md` was waiting for.
+
+  Their homepage says **"Coming Soon"** on both calls to action. They have
+  announced a trial — *"14 days free · no credit card"* — and have no customers.
+  What that establishes is that somebody else concluded a subscription was the
+  model; it establishes nothing about demand. Corrected rather than edited away,
+  because it was the load-bearing claim and the monetisation gate depends on it.
+  **That gate stands exactly where it stood.**
+
 - **`PHONE_CALL_REMINDERS_DESIGN.md` claimed two built things were missing.** Its
   status header listed "no consent record, no number verification, and no
   answering-machine detection" as not built. Consent and number verification have

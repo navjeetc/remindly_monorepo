@@ -77,14 +77,48 @@
       should not block rendering on a third-party request. Small enough to read.
     %>
     <style>
+      /*
+        Warm palette, taken from HelloRemind — a competitor selling reminder
+        calls, whose whole visual argument is that this is a domestic product
+        rather than a medical one. Cream ground, white cards, one warm accent.
+        The old palette was cool blue on white: correct, and indistinguishable
+        from every other SaaS page a caregiver has been sold to from.
+
+        Every pair below was measured, not eyeballed, against WCAG AA:
+
+          ink #23201d on cream .................. 14.7:1
+          muted #5a544c on cream ................  6.8:1
+          brand #a84a2d on cream ................  5.2:1
+          white on brand ........................  5.7:1
+          ink on highlight #f6ebb4 .............. 13.5:1
+          white on dark #2b2724 ................. 14.8:1
+          dark-muted #d6d0c8 on dark ............  9.7:1
+
+        The accent is deliberately deeper than the salmon HelloRemind uses.
+        Theirs is roughly #e8806b, which carries white text at 2.9:1 — under
+        AA for any size. This site sets its own text scale for people who need
+        it and puts seniors in front of these pages; it cannot ship a headline
+        button that fails contrast because a competitor's does.
+      */
       :root {
-        --ink: #1f2933;
-        --muted: #52606d;
-        --line: #e4e7eb;
-        --brand: #2f5bea;
-        --brand-dark: #1e40af;
-        --bg: #ffffff;
-        --bg-soft: #f5f7fa;
+        --ink: #23201d;
+        --muted: #5a544c;
+        --line: #e6ded2;
+        --brand: #a84a2d;
+        --brand-dark: #8d3c23;
+        --bg: #f7f3ec;
+        --bg-soft: #fffefb;
+        --highlight: #f6ebb4;
+        --dark: #2b2724;
+        --dark-muted: #d6d0c8;
+
+        /*
+          Display serif for headings and for anything spoken aloud. System
+          fonts only — this layout loads nothing third-party on purpose, so a
+          webfont is not available to match their exact face. Georgia is the
+          one real serif present on effectively every desktop and phone.
+        */
+        --display: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
       }
 
       *, *::before, *::after { box-sizing: border-box; }
@@ -106,14 +140,21 @@
       header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
       .logo { font-size: 1.5rem; font-weight: 700; color: var(--brand); text-decoration: none; }
 
+      /* Headings carry the serif; body stays sans. The split is what makes the
+         page read as a letter rather than a dashboard, and it is the cheapest
+         half of the borrowed design — one font-family declaration. */
       h1 {
-        font-size: clamp(2rem, 5vw, 2.75rem);
-        line-height: 1.15;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2.25rem, 6vw, 3.1rem);
+        line-height: 1.12;
         margin: 2.5rem 0 1rem;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.015em;
       }
       h2 {
-        font-size: 1.5rem;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(1.6rem, 3.5vw, 1.95rem);
         margin: 2.5rem 0 0.75rem;
         letter-spacing: -0.01em;
       }
@@ -126,7 +167,9 @@
          its own size in em, so print density stays where the print rules put
          it. */
       h3 {
-        font-size: 1.2rem;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 1.25rem;
         margin: 2rem 0 0.5rem;
         letter-spacing: -0.01em;
       }
@@ -138,8 +181,8 @@
       /* Generous hit areas: some visitors here are the seniors themselves. */
       .btn {
         display: inline-block;
-        padding: 0.9rem 1.5rem;
-        border-radius: 0.6rem;
+        padding: 0.95rem 1.75rem;
+        border-radius: 999px;
         /* font: inherit before font-weight — a <button> defaults to a smaller
            system font, so without this the button ones came out visibly
            smaller than the <a> ones sitting next to them. */
@@ -151,8 +194,8 @@
       }
       .btn-primary { background: var(--brand); color: #fff; }
       .btn-primary:hover { background: var(--brand-dark); }
-      .btn-secondary { border-color: var(--line); color: var(--ink); }
-      .btn-secondary:hover { background: var(--bg-soft); }
+      .btn-secondary { border-color: var(--line); background: var(--bg-soft); color: var(--ink); }
+      .btn-secondary:hover { background: #fff; border-color: var(--muted); }
 
       .btn:focus-visible, a:focus-visible {
         outline: 3px solid var(--brand);
@@ -218,7 +261,7 @@
       .setup {
         background: var(--bg-soft);
         border: 1px solid var(--line);
-        border-radius: 0.9rem;
+        border-radius: 1.25rem;
         padding: 1.5rem;
         margin: 0 0 2.5rem;
       }
@@ -260,6 +303,125 @@
         .setup ol { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
       }
 
+      /*
+        What a reminder sounds like, drawn as a transcript.
+
+        Taken straight from HelloRemind, and the best idea on their site. This
+        product's central problem as a *web page* is that its output is audio:
+        everything Remindly does happens in a kitchen, out loud, and a page can
+        only ever assert that. A transcript shows it instead. It is the one
+        piece of a spoken product that can be put on a screen.
+
+        The halo is a blurred pseudo-element rather than a box-shadow so the
+        yellow reads as light falling on the card, not as a border around it.
+      */
+      .transcript {
+        position: relative;
+        margin: 0 0 3rem;
+      }
+      .transcript::before {
+        content: "";
+        position: absolute;
+        inset: -0.75rem -0.25rem 2.5rem;
+        background: var(--highlight);
+        border-radius: 2rem;
+        filter: blur(1.25rem);
+        opacity: 0.85;
+        z-index: 0;
+      }
+      .transcript-card {
+        position: relative;
+        z-index: 1;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+      }
+
+      .transcript-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+      .transcript-avatar {
+        flex: none;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        background: var(--highlight);
+        color: var(--ink);
+        font-family: var(--display);
+        font-size: 1.2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .transcript-who { flex: 1 1 auto; }
+      .transcript-who strong { display: block; font-size: 1.05rem; }
+      .transcript-who span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.4;
+        margin-top: 0.15rem;
+      }
+
+      /* Both bubbles are the display serif in italic: on this page, italic
+         serif means "this was said out loud". The rule holds wherever spoken
+         words appear, which is what keeps it legible as a convention rather
+         than as decoration. */
+      .said {
+        font-family: var(--display);
+        font-style: italic;
+        font-size: 1.05rem;
+        line-height: 1.5;
+        padding: 0.85rem 1.1rem;
+        border-radius: 1.1rem;
+        max-width: 85%;
+        margin: 0 0 0.75rem;
+      }
+      /* Remindly speaking — left, the voice that starts the exchange. */
+      .said-app {
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-bottom-left-radius: 0.35rem;
+        color: var(--ink);
+      }
+      /* The person answering — right, and inverted, so the two voices are
+         told apart by position and colour rather than by a label. */
+      .said-them {
+        background: var(--dark);
+        color: #fff;
+        border-bottom-right-radius: 0.35rem;
+        margin-left: auto;
+      }
+
+      /* An action rather than a line of speech, so deliberately not a bubble
+         and not the serif — it is stage direction, not dialogue. */
+      .transcript-action {
+        color: var(--muted);
+        font-size: 0.95rem;
+        text-align: center;
+        margin: 1.25rem 0;
+      }
+
+      .transcript-foot {
+        margin: 1.5rem 0 0;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--line);
+        font-size: 1rem;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+      .transcript-foot strong { color: var(--ink); }
+
+      @media (min-width: 40rem) {
+        .transcript-card { padding: 2rem; }
+        .said { max-width: 78%; }
+      }
+
       .note {
         background: var(--bg-soft);
         border-left: 4px solid var(--brand);
@@ -290,7 +452,8 @@
         margin: 2rem -1rem 2.5rem;
         padding: 1rem;
         background: var(--bg-soft);
-        border-radius: 0.9rem;
+        border: 1px solid var(--line);
+        border-radius: 1.25rem;
       }
       .shot img {
         display: block;
@@ -298,7 +461,7 @@
         height: auto;
         border: 1px solid var(--line);
         border-radius: 0.6rem;
-        box-shadow: 0 8px 24px rgb(31 41 51 / 12%);
+        box-shadow: 0 8px 24px rgb(43 39 36 / 10%);
       }
       .shot figcaption {
         margin-top: 0.9rem;
@@ -354,7 +517,8 @@
       /* Mailing list */
       .subscribe {
         background: var(--bg-soft);
-        border-radius: 0.6rem;
+        border: 1px solid var(--line);
+        border-radius: 1.25rem;
         padding: 1.5rem;
         margin: 3rem 0 1rem;
       }

@@ -86,6 +86,51 @@
 </p>
 
 <%#
+  What a reminder actually sounds like, drawn as a transcript.
+
+  Borrowed from HelloRemind, who sell reminder calls and put a rendered
+  conversation directly under their headline. It is the best idea on their site
+  and it solves a problem this page has always had: everything Remindly does
+  happens out loud, in somebody's kitchen, and a web page can only assert that.
+  Every sentence above this one is a *claim* about a sound. This shows it.
+
+  The exchange is the real one, not a dramatisation. The tablet speaks first
+  — it is not a phone call, so nobody says hello — the button is the green
+  "✓ Done" the voice client actually renders, and the email is the one
+  ReminderNotificationService sends on acknowledgement.
+
+  The closing line is the reason this card can exist at all. HelloRemind's
+  equivalent card ends with the reminder being spoken and leaves the
+  implication where it falls. This one says what was and was not established,
+  in the same breath as the good news, because that is the claim the rest of
+  the site is careful about and a picture is exactly where it would be easiest
+  to quietly overclaim.
+%>
+<figure class="transcript">
+  <div class="transcript-card">
+    <div class="transcript-head">
+      <div class="transcript-avatar" aria-hidden="true">M</div>
+      <div class="transcript-who">
+        <strong>Mum&rsquo;s kitchen &middot; 8:00 AM</strong>
+        <span>spoken aloud, on the tablet she already owns &mdash; nothing to open, nothing to read</span>
+      </div>
+    </div>
+
+    <p class="said said-app">&ldquo;Good morning. It&rsquo;s time for your blood pressure tablet.&rdquo;</p>
+
+    <p class="transcript-action">She presses the big green <strong>&check; Done</strong> button.</p>
+
+    <p class="said said-them">&ldquo;That&rsquo;s that done, then.&rdquo;</p>
+
+    <figcaption class="transcript-foot">
+      <strong>An email reaches you a few seconds later: marked done, 8:02 AM.</strong>
+      Remindly knows the button was pressed. Whether the tablet was swallowed it
+      cannot know, and does not say.
+    </figcaption>
+  </div>
+</figure>
+
+<%#
   The practical objection, answered before anything else: what device, is there
   an app, what do I actually have to do. These are the same three steps that
   used to sit under "What it looks like at yours", roughly five hundred words
