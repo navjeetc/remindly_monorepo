@@ -62,10 +62,11 @@
                     data: { turbo: false } %>
                 <%= link_to 'Settings', edit_scheduling_integration_path(integration), 
                     class: 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
-                <%= button_to 'Disconnect', scheduling_integration_path(integration), 
+                <%# onclick, not turbo_confirm -- no Turbo in this layout. %>
+                <%= button_to 'Disconnect', scheduling_integration_path(integration),
                     method: :delete,
-                    data: { turbo_confirm: 'Are you sure? Synced tasks will remain but won\'t update automatically.' },
-                    class: 'px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50' %>
+                    onclick: "return confirm('#{j "Disconnect this integration? Tasks already synced stay, but nothing updates automatically after this."}')",
+                    class: 'px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50 cursor-pointer' %>
               </div>
             </div>
           </div>

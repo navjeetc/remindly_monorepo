@@ -202,7 +202,20 @@
                     <% if FeatureFlag.enabled?(:native_scheduling) %>
                       <%= link_to "Coverage", senior_coverage_path(link.senior), class: "inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50" %>
                     <% end %>
-                    <%= button_to "Unlink", unlink_dashboard_path(link.id), method: :delete, data: { confirm: "Are you sure?" }, class: "inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50" %>
+                    <%#
+                      onclick, not data-confirm. This layout loads Tailwind and
+                      nothing else -- no Turbo, no UJS -- so data-confirm never
+                      ran and this button unlinked a care receiver on one click
+                      while looking like it asked first. Same fix, and the same
+                      reason, as the buttons in _reminder_link.
+                      Names what is lost rather than saying "Are you sure?": a
+                      caregiver reported mistaking destructive controls here,
+                      and a prompt that does not say what it is about is one
+                      more thing to click through.
+                    %>
+                    <%= button_to "Unlink", unlink_dashboard_path(link.id), method: :delete,
+                          onclick: "return confirm('#{j "Unlink #{link.senior.display_name}? You will stop seeing their reminders and activity, and will need a new invitation to get access back."}')",
+                          class: "inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 cursor-pointer" %>
                   </div>
                 </div>
               </div>

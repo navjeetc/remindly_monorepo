@@ -185,14 +185,46 @@ class User < ApplicationRecord
   has_many :visits, class_name: "Ahoy::Visit", dependent: :destroy
   has_many :events, class_name: "Ahoy::Event", dependent: :destroy
 
-  # Label from Rails, value from IANA — see #tz= for why the value must be the
-  # identifier. Deduped because several Rails zone names share one IANA zone
-  # ("Edinburgh" and "London" are both Europe/London), and a select holding the
-  # same value twice cannot round-trip the second one.
-  TIMEZONE_OPTIONS = ActiveSupport::TimeZone.all
-    .map { |zone| [ zone.to_s, zone.tzinfo.name ] }
-    .uniq { |_label, identifier| identifier }
-    .freeze
+  # Label from Rails' zone names, value from IANA — see #tz= for why the value
+  # must be the identifier. Deduped because several Rails zone names share one
+  # IANA zone ("Edinburgh" and "London" are both Europe/London), and a select
+  # holding the same value twice cannot round-trip the second one. The dedupe
+  # runs over ActiveSupport's own ordering so the surviving name is the same one
+  # this list has always shown.
+  #
+  # The offset in the label is computed here rather than taken from
+  # ActiveSupport::TimeZone#to_s, which formats #utc_offset — that is
+  # tzinfo.base_utc_offset, the zone's *standard* offset, and it does not move
+  # when daylight saving does. Between March and November Rails therefore labels
+  # half the world with a number it is not currently on: "(GMT-05:00) Eastern
+  # Time (US & Canada)" in September, when Eastern is observing -04:00.
+  #
+  # A caregiver hit exactly the failure that causes. Wanting the -04:00 she was
+  # really on, she passed over Eastern — labelled -05:00 — and picked
+  # "(GMT-04:00) Atlantic Time (Canada)", which in September is -03:00. Her care
+  # receiver's clock was an hour out, and edit_care_receiver says why that is the
+  # worst field on the form to get wrong: reminders are expanded in the care
+  # receiver's zone, so the wrong one here means every dose fires at the wrong
+  # time. She noticed only because a screen quoted the hour back to her.
+  #
+  # So: label each zone with the offset it is observing *now*, and sort by it, so
+  # the number beside a zone is one a caregiver can check against their own
+  # clock. Sorting matters as much as the label — relabelling without resorting
+  # leaves the list looking shuffled for half the year.
+  #
+  # Computed per call rather than frozen into a constant. The answer changes
+  # twice a year, and a constant would hold whichever half of the year the
+  # process happened to boot in until it was restarted.
+  def self.timezone_options(now = Time.now.utc)
+    ActiveSupport::TimeZone.all
+      .uniq { |zone| zone.tzinfo.name }
+      .map { |zone|
+        offset = zone.tzinfo.period_for_utc(now).observed_utc_offset
+        [ offset, "(GMT#{ActiveSupport::TimeZone.seconds_to_utc_offset(offset)}) #{zone.name}", zone.tzinfo.name ]
+      }
+      .sort_by { |offset, label, _identifier| [ offset, label ] }
+      .map { |_offset, label, identifier| [ label, identifier ] }
+  end
 
   # An address is what lets somebody sign in, so it is required of anybody who
   # can — and a care receiver set up by their caregiver cannot, deliberately.
@@ -301,9 +333,10 @@ class User < ApplicationRecord
   # resolves fine) but would match no option and put this form right back where
   # it started, so it is added to the list rather than dropped from it.
   def timezone_options
-    return TIMEZONE_OPTIONS if TIMEZONE_OPTIONS.any? { |_label, identifier| identifier == tz }
+    options = self.class.timezone_options
+    return options if options.any? { |_label, identifier| identifier == tz }
 
-    TIMEZONE_OPTIONS + [ [ tz, tz ] ]
+    options + [ [ tz, tz ] ]
   end
 
   # Display name - uses nickname if available, otherwise name, otherwise email

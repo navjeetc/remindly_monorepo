@@ -322,12 +322,19 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(response.body).to include("for Mom")
     end
 
+    # Was pinned to the exact words "won't ring yet" until a caregiver read them
+    # as a promise that it *would* ring later, left the house on the strength of
+    # it, and got no call: the verification call is started by hand from this
+    # screen and nothing dials on its own. What the screen owes the reader is
+    # that the action is unavailable, not that a call is pending — so that is
+    # what is asserted, plus the old phrasing staying gone.
     it "says so when the senior's clock puts them outside calling hours" do
       senior.update!(tz: "Asia/Tokyo")
 
       get senior_dashboard_path(senior)
 
-      expect(response.body).to include("won't ring yet")
+      expect(response.body).to include("can't start this call yet")
+      expect(response.body).not_to include("won't ring yet")
     end
 
     it "says nothing about a clock it cannot read" do
@@ -359,7 +366,7 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       get senior_dashboard_path(senior)
 
       expect(response.body).to match(/disabled/)
-      expect(response.body).to include("won't ring yet")
+      expect(response.body).to include("can't start this call yet")
     end
 
     # A disabled control with nothing explaining it reads as a broken page, and

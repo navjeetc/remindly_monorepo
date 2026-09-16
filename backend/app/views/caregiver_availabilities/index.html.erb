@@ -53,10 +53,10 @@
                 <div class="ml-4 flex-shrink-0 flex space-x-2">
                   <%= link_to "Edit", edit_caregiver_availability_path(availability), 
                       class: "px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100" %>
-                  <%= button_to "Delete", caregiver_availability_path(availability), 
+                  <%= button_to "Delete", caregiver_availability_path(availability),
                       method: :delete,
-                      data: { confirm: "Are you sure?" },
-                      class: "px-3 py-1 text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100" %>
+                      onclick: "return confirm('#{j "Delete this availability? It will no longer count towards cover."}')",
+                      class: "px-3 py-1 text-sm font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 cursor-pointer" %>
                 </div>
               </div>
             </div>

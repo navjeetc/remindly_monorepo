@@ -47,7 +47,16 @@
     <% elsif senior.phone.present? %>
       <p class="text-sm text-gray-700">
         We have <strong><%= senior.phone %></strong> but haven't been told it's alright to use it.
-        We'll ring once and ask <%= senior.display_name %> to press 1. Nothing is scheduled until they do.
+        <%#
+          Says who places the call, because a caregiver asked and could not tell.
+          She read "we'll ring once" plus the clock below as a call that was
+          coming, left the house, and found out it was not. Nothing dials a
+          number that has not agreed yet — the one call that asks is started by
+          hand, from this screen, by her.
+        %>
+        When you press the button below we'll ring once, and ask
+        <%= senior.display_name %> to press 1. Nothing is scheduled until they do,
+        and nothing rings on its own before then.
       </p>
       <p class="text-sm text-gray-500">
         Save this number in <%= senior.display_name %>'s phone first, as
@@ -198,8 +207,13 @@
               It's <strong><%= local_now.strftime("%-l:%M%P") %> (<%= local_now.strftime("%Z") %>)</strong>
               for <%= senior.display_name %>.
               <% unless may_call %>
+                <%# "won't ring yet" was read as "will ring later". It is the
+                    button that is unavailable until 8am, not a call that is
+                    queued behind the hour. %>
                 We only call between <%= User::CALLING_HOURS.first %>am and
-                <%= User::CALLING_HOURS.max + 1 - 12 %>pm, so this won't ring yet.
+                <%= User::CALLING_HOURS.max + 1 - 12 %>pm,
+                so you can't start this call yet — come back after
+                <%= User::CALLING_HOURS.first %>am their time and press it then.
               <% end %>
             </p>
           <% elsif !may_call %>

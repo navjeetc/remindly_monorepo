@@ -69,6 +69,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   seen.
 
 ### Fixed
+- **The timezone picker labelled every zone with the wrong offset for eight
+  months of the year.** Reported by a caregiver, 2026-09, and it had already put
+  a care receiver's whole day an hour out.
+
+  `ActiveSupport::TimeZone#to_s` formats `#utc_offset`, which is
+  `tzinfo.base_utc_offset` — the zone's *standard* offset. It does not move when
+  daylight saving does. So from March to November the list said "(GMT-05:00)
+  Eastern Time (US & Canada)" while Eastern was observing -04:00, and
+  "(GMT-04:00) Atlantic Time (Canada)" while Atlantic was observing -03:00.
+
+  The caregiver wanted the -04:00 she was actually on. Eastern claimed -05:00,
+  so she passed over it and chose the entry that said -04:00 — Atlantic. Her
+  care receiver's clock ran an hour ahead, and `edit_care_receiver` says exactly
+  why that is the worst field on the form to get wrong: reminders are expanded in
+  the care receiver's zone, so the wrong one means every dose fires at the wrong
+  time. She only noticed because the phone-reminders panel quoted the hour back
+  to her.
+
+  Each zone is now labelled with the offset it is observing *now*, and the list
+  is sorted by it — relabelling without resorting leaves the list looking
+  shuffled for half the year. Computed per call rather than frozen into a
+  constant, because the answer changes twice a year and a boot-time constant
+  holds whichever half of the year the process started in.
+
+- **Ten destructive buttons asked for confirmation that never appeared.** The
+  same caregiver asked for confirmation on deleting a care receiver, not knowing
+  that the confirmations already in the code had never once run.
+
+  The `dashboard` layout loads Tailwind from a CDN and nothing else — no Turbo,
+  no UJS — so `data: { confirm: ... }` and `data: { turbo_confirm: ... }` are
+  inert attributes. Every one of these destroyed on a single click while looking
+  like it asked first: Unlink a care receiver, Delete Reminder, Delete Task
+  ("This action cannot be undone"), Cancel Task, Unassign Me, Delete a task
+  comment, Delete a time block, Delete an availability, and Disconnect
+  Integration in two places.
+
+  All ten now use `onclick: "return confirm(...)"`, which is what
+  `_reminder_link` and `voice_reminders/first_run` already worked out and
+  documented — the fix existed in the repo and had not been applied to the rest.
+  The messages name what is being destroyed and what is lost, rather than asking
+  "Are you sure?" about an unnamed thing.
+
+- **"so this won't ring yet" was read as a promise that it would ring later.**
+  The verification call is started by hand from the phone-reminders panel;
+  nothing dials a number that has not agreed yet. A caregiver read that sentence
+  next to the care receiver's clock, understood a call to be pending, and left
+  town. No call was coming.
+
+  The panel now says who places the call ("When you press the button below we'll
+  ring once") and that the hour blocks the *button*, not a queued call ("you
+  can't start this call yet — come back after 8am their time and press it
+  then"). Two specs pinned the old phrase verbatim; they now assert the
+  explanation exists and that the ambiguous wording stays gone.
+
 - **The claim that a competitor is already charging for reminder calls was
   wrong.** An earlier draft of `helloremind-inspiration.md` and of this entry
   treated HelloRemind as evidence that families buy this, and offered it as the

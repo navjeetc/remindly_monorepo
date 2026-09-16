@@ -50,16 +50,64 @@ RSpec.describe User do
     # zoneinfo and has changed format before, and none of that is what this
     # guards. The identifier is the half the column has to agree with.
     it "offers options whose values are the identifiers it stores" do
-      values = User::TIMEZONE_OPTIONS.map { |_label, identifier| identifier }
+      values = User.timezone_options.map { |_label, identifier| identifier }
 
       expect(values).to include("America/New_York")
       expect(values).not_to include("Eastern Time (US & Canada)")
     end
 
     it "labels each option, so the list is readable" do
-      labels = User::TIMEZONE_OPTIONS.to_h.invert
+      labels = User.timezone_options.to_h.invert
 
       expect(labels.fetch("America/New_York")).to include("Eastern Time (US & Canada)")
+    end
+
+    # Reported by a caregiver, 2026-09. Rails labels a zone with its standard
+    # offset all year: ActiveSupport::TimeZone#to_s formats base_utc_offset. In
+    # September that tells an Eastern caregiver she is on -05:00 when she is on
+    # -04:00, and tells her Atlantic is the -04:00 she is looking for when it is
+    # really -03:00. She picked Atlantic, and her care receiver's day ran an hour
+    # out.
+    #
+    # Asserted at two fixed instants rather than "now", so the spec means the
+    # same thing in July as in December.
+    describe "the offset shown beside each zone" do
+      let(:summer) { Time.utc(2026, 9, 16, 12) } # daylight saving in effect
+      let(:winter) { Time.utc(2026, 1, 15, 12) } # standard time
+
+      def label_for(identifier, now)
+        User.timezone_options(now).to_h.invert.fetch(identifier)
+      end
+
+      it "shows the offset the zone is actually observing, not its standard one" do
+        expect(label_for("America/New_York", summer)).to include("-04:00")
+        expect(label_for("America/New_York", winter)).to include("-05:00")
+      end
+
+      it "does the same for the zone next door, which is what made the two confusable" do
+        expect(label_for("America/Halifax", summer)).to include("-03:00")
+        expect(label_for("America/Halifax", winter)).to include("-04:00")
+      end
+
+      # The actual failure: two adjacent zones must never advertise the same
+      # offset at the same instant, or the list cannot be used to tell them apart.
+      it "never labels Eastern and Atlantic with the same offset at one instant" do
+        [ summer, winter ].each do |now|
+          expect(label_for("America/New_York", now)).not_to eq(label_for("America/Halifax", now))
+        end
+      end
+
+      # Compared as minutes, not as the printed string: "+01:00" sorts before
+      # "-12:00" lexicographically, so a string comparison here fails against a
+      # list that is in exactly the right order.
+      it "orders the list by the offset it is showing, so the numbers run in sequence" do
+        minutes = User.timezone_options(summer).map do |label, _id|
+          sign, hours, mins = label.match(/GMT([+-])(\d\d):(\d\d)/).captures
+          (hours.to_i * 60 + mins.to_i) * (sign == "-" ? -1 : 1)
+        end
+
+        expect(minutes).to eq(minutes.sort)
+      end
     end
 
     it "keeps a stored zone selectable even when Rails' curated list omits it" do

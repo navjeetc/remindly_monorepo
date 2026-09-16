@@ -53,7 +53,9 @@
                   <%= link_to "Edit", edit_senior_time_block_path(@senior, time_block), class: "inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
                   <% end %>
                   <% if may_change?(@senior) %>
-                  <%= button_to "Delete", senior_time_block_path(@senior, time_block), method: :delete, data: { confirm: "Are you sure?" }, class: "inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700" %>
+                  <%= button_to "Delete", senior_time_block_path(@senior, time_block), method: :delete,
+                    onclick: "return confirm('#{j "Delete this time block? Reminders will no longer be held back during it."}')",
+                    class: "inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 cursor-pointer" %>
                   <% end %>
                 </div>
               </div>
