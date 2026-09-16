@@ -68,6 +68,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signed-up product — signup, dashboard, pricing page, an actual call — has been
   seen.
 
+### Added
+- **`script/retime_person.rb`** — moves somebody to the zone they are actually
+  in, keeping the times their reminders were meant to happen at. Dry run unless
+  `--apply`.
+
+  Written because correcting the zone by hand is not enough and *looks* like it
+  worked. `Reminder#tz` repairs itself on any save, but the callback is on the
+  reminder, so updating the user alone leaves every existing reminder stamped
+  with the old zone. `start_time` does not repair itself at all: it is an
+  absolute instant, so re-stamping the zone re-expresses the same moment in new
+  words. A reminder written as 1:45pm in Halifax is 16:45 UTC, and 16:45 UTC read
+  in New York is 12:45pm — the row then says New York and still fires an hour
+  early, which is the worst of both, because the screen agrees with the caregiver
+  and the telephone does not.
+
+  A script and not a button on purpose. Whether a zone change should carry the
+  wall clock is #105, and the answer depends on something the database cannot
+  see: somebody who really moved to Halifax wants 8am to become 8am Halifax,
+  while somebody who was never there wants the instant put back. The operator
+  knows which case it is. Tasks are untouched for the same reason.
+
 ### Fixed
 - **The timezone picker labelled every zone with the wrong offset for eight
   months of the year.** Reported by a caregiver, 2026-09, and it had already put
