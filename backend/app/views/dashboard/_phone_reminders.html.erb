@@ -96,12 +96,21 @@
       <%= form_with url: senior_phone_path(senior_id: senior.id), method: :patch do |f| %>
         <label for="user_phone" class="block text-sm font-medium text-gray-700">Their phone number</label>
         <div class="mt-1 flex items-center gap-3">
-          <%= f.telephone_field :phone, value: senior.phone, name: "user[phone]", id: "user_phone",
-                placeholder: "+15551234567",
+          <%# The placeholder shows the shape most people will type, not the
+              shape the column stores. It said +15551234567 for as long as the
+              field has existed, which reads as an instruction — and one that
+              made a caregiver in Ohio look up what E.164 was before Remindly
+              would take their mother's number. Ten digits now arrive as +1. %>
+          <%= f.telephone_field :phone, value: formatted_phone_number(senior.phone), name: "user[phone]", id: "user_phone",
+                placeholder: "555-123-4567",
                 class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
           <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
         </div>
-        <p class="mt-1 text-xs text-gray-500">Include the country code. Changing it means asking again.</p>
+        <p class="mt-1 text-xs text-gray-500">
+          US and Canada numbers can be typed plain — we'll add the +1.
+          Anywhere else, start with + and the country code.
+          Changing the number means asking again.
+        </p>
       <% end %>
 
       <%#
