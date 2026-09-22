@@ -122,6 +122,12 @@ Rails.application.routes.draw do
   patch "dashboard/senior/:senior_id/spoken_language", to: "dashboard#update_spoken_language", as: :senior_spoken_language
   post  "dashboard/senior/:senior_id/verify_phone", to: "dashboard#verify_phone", as: :verify_senior_phone
 
+  # No :senior_id, unlike every other route in this block. The card describes
+  # Remindly's calling number, which is the same one for every care receiver —
+  # scoping it to a senior would imply a number of their own and invite the next
+  # person to give them one.
+  get   "dashboard/caller_id_card", to: "dashboard#caller_id_card", as: :caller_id_card
+
   # The device link a care receiver bookmarks. Minting is a write and revoking
   # is a write, so both are POSTs behind the same manage permission the phone
   # panel uses — a view-only caregiver can see whether the tablet is working and

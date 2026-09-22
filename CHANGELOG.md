@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-22
+
+### Added
+- **The phone panel prints the number Remindly calls from, and offers a contact
+  card for it.** The panel has told caregivers to save "this number" in the care
+  receiver's phone since the feature shipped, and never showed one: the value
+  lived in credentials and appeared nowhere a person could read it. The
+  instruction was unfollowable, on the step the whole feature rests on.
+
+  A saved contact is the strongest defence against a handset screening the call.
+  It shows a name instead of an unknown caller, and it clears iOS *Silence
+  Unknown Callers*, which otherwise routes the call to voicemail without
+  ringing — and a voicemail cannot press 1, so a screened consent call is not a
+  delayed setup but one that never completes. In production the first caregiver
+  to reach this step had both her consent calls answered and dropped inside four
+  seconds with no keypress, and reported that Remindly had never rung her.
+
+- **A message the caregiver can send on.** The person who has to save the
+  contact is usually not the person reading the screen, so the panel carries
+  ready-made wording naming the number, the keypress that agrees, and the
+  keypress that stops the calls.
+
+- **`GET /dashboard/caller_id_card`** returns that number as a `.vcf`, behind the
+  reminder-calls flag and with no senior in the route: the number is Remindly's
+  own and the same for everybody.
+
+### Changed
+- Numbers on the phone panel are grouped for reading (`+1 571-517-0980`) rather
+  than printed as stored.
+
 ## [0.9.0] - 2026-09-09
 
 ### Changed
