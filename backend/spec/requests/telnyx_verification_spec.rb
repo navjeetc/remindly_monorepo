@@ -46,6 +46,11 @@ RSpec.describe "Telnyx verification calls", type: :request do
     CaregiverLink.create!(senior: senior, caregiver: caregiver)
     allow(TelnyxVoiceService).to receive(:gather_digit)
     allow(TelnyxVoiceService).to receive(:hangup)
+    # A settled call now says goodbye, so these examples reach speak and its
+    # raising sibling. Unstubbed they left the suite making real HTTP requests to
+    # Telnyx -- which is slow when it fails and worse when it does not.
+    allow(TelnyxVoiceService).to receive(:speak).and_return({ "data" => { "result" => "ok" } })
+    allow(TelnyxVoiceService).to receive(:hangup!)
     allow(Rails.application.credentials).to receive(:dig).and_call_original
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_token).and_return("test-token")
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_public_key).and_return(nil)

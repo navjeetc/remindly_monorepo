@@ -41,6 +41,11 @@ RSpec.describe "Telnyx webhooks", type: :request do
     # raises "doubles outside of the per-test lifecycle".
     allow(TelnyxVoiceService).to receive(:gather_digit)
     allow(TelnyxVoiceService).to receive(:hangup)
+    # A settled call now says goodbye, so these examples reach speak and its
+    # raising sibling. Unstubbed they left the suite making real HTTP requests to
+    # Telnyx -- which is slow when it fails and worse when it does not.
+    allow(TelnyxVoiceService).to receive(:speak).and_return({ "data" => { "result" => "ok" } })
+    allow(TelnyxVoiceService).to receive(:hangup!)
 
     # TelnyxVoiceService reads credentials with dig, not the .telnyx reader.
     allow(Rails.application.credentials).to receive(:dig).and_call_original

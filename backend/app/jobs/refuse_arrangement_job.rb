@@ -56,7 +56,7 @@ class RefuseArrangementJob < ApplicationJob
     senior.with_lock do
       return unless senior.reload.senior_links.where(state: :provisional).exists?
 
-      open_calls = senior.telnyx_calls.where(completed_at: nil).pluck(:call_control_id).compact
+      open_calls = calls_that_may_still_be_up(senior).pluck(:call_control_id).compact
       senior.destroy!
     end
 
@@ -71,7 +71,30 @@ class RefuseArrangementJob < ApplicationJob
     )
   end
 
+  # How far back an opted-out call is still worth hanging up. Comfortably longer
+  # than a farewell and shorter than anything that could be a different call.
+  FAREWELL_WINDOW = 10.minutes
+
   private
+
+    # completed_at alone is not enough to say a call has ended.
+    #
+    # opt_out! stamps completed_at and say_farewell clears it again for the
+    # length of the goodbye. Between those two writes the row claims to be
+    # finished while the line is still up -- and if the process dies in that gap,
+    # or the redelivery never comes, nothing clears it again. Filtering on
+    # completed_at: nil would then skip the one call that matters, delete the row
+    # with the user, and leave the handset connected with nothing left to close
+    # it.
+    #
+    # So a recent opted-out call is included whatever its stamp says. Hanging up
+    # a call that has already ended costs one refused request; the other way
+    # round costs somebody an open line.
+    def calls_that_may_still_be_up(senior)
+      senior.telnyx_calls
+            .where(completed_at: nil)
+            .or(senior.telnyx_calls.where(outcome: "opted_out", created_at: FAREWELL_WINDOW.ago..))
+    end
 
     # Nothing may be left ringing on a number whose account has just vanished.
     #

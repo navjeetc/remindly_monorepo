@@ -54,6 +54,38 @@ RSpec.describe RefuseArrangementJob, type: :job do
     expect(TelnyxCall.exists?(call.id)).to be(false)
   end
 
+  # opt_out! stamps completed_at and say_farewell clears it again for the length
+  # of the goodbye. A process dying in that gap leaves a row claiming to be
+  # finished while the line is still up -- and filtering on completed_at alone
+  # would skip the one call that matters, then delete it with the user.
+  it "closes a recent opted-out call even when it claims to be finished" do
+    provisional_link
+    TelnyxCall.create!(call_control_id: "v3:farewell-pending", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "gathering", outcome: "opted_out",
+                       completed_at: Time.current)
+
+    allow(TelnyxVoiceService).to receive(:hangup)
+
+    described_class.perform_now(senior.id)
+
+    expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:farewell-pending"))
+  end
+
+  # Not every finished call, though: an old one is a different call, and dialling
+  # the provider about it buys nothing.
+  it "leaves an old finished call alone" do
+    provisional_link
+    TelnyxCall.create!(call_control_id: "v3:ancient", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "hangup", outcome: "opted_out",
+                       created_at: 2.hours.ago, completed_at: 2.hours.ago)
+
+    allow(TelnyxVoiceService).to receive(:hangup)
+
+    described_class.perform_now(senior.id)
+
+    expect(TelnyxVoiceService).not_to have_received(:hangup)
+  end
+
   # Ending somebody's reminder is not a side effect this job is entitled to. An
   # account that became active in the meantime may well be on a call, so nothing
   # is hung up until the deletion itself has been authorised.
