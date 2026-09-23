@@ -15,10 +15,21 @@
 class FarewellFallbackJob < ApplicationJob
   queue_as :default
 
+  # The provider could not confirm the call ended. Raised so the attempt is
+  # retried rather than treated as done.
+  class HangupUnconfirmed < StandardError; end
+
   # The longest farewell is about eight seconds, measured on a live call. This is
   # long enough that the event path always wins when it works, and short enough
   # that a lost event costs somebody half a minute rather than an evening.
   WAIT = 30.seconds
+
+  # Retried on the same clock while the provider still says the call is up, or
+  # cannot say. After that the claim is left standing on purpose: a number held
+  # a little too long is closed by the stale-call reconciliation the next time
+  # anything is reserved for it, while a number freed too early lets a second
+  # call be dialled into a handset still connected to the first.
+  retry_on HangupUnconfirmed, wait: WAIT, attempts: 5
 
   def perform(call_id)
     call = TelnyxCall.find_by(id: call_id)
@@ -27,14 +38,23 @@ class FarewellFallbackJob < ApplicationJob
     # The event path finished the job, which is the ordinary case.
     return if call.status == "hangup" || call.completed_at.present?
 
-    # Tolerant, because this is tidying up after a call that has almost
-    # certainly ended on its own by now, and a failure here must not retry
-    # forever against a call nobody is on.
-    TelnyxVoiceService.hangup(call_control_id: call.call_control_id) if call.call_control_id.present?
+    # The raising hangup, and the number is released only once it succeeds.
+    #
+    # This used the tolerant one and stamped completed_at whatever came back, on
+    # the view that freeing the number mattered most. It does not: the tolerant
+    # hangup swallows a refusal, so a transient failure released the claim on a
+    # call that was still connected, and the scheduler could dial a second call
+    # into it. hangup! succeeds when the provider ends the call or confirms it
+    # has already ended, and raises when it can tell neither -- which is the case
+    # that has to be retried rather than assumed.
+    if call.call_control_id.present?
+      begin
+        TelnyxVoiceService.hangup!(call_control_id: call.call_control_id)
+      rescue RuntimeError => e
+        raise HangupUnconfirmed, e.message
+      end
+    end
 
-    # Stamped whatever the provider answered. The farewell's business is over,
-    # and releasing the number is what matters: a row left claiming the line
-    # blocks the next reminder to this person for as long as it stands.
     TelnyxCall.where(id: call.id, completed_at: nil)
               .update_all(completed_at: Time.current, updated_at: Time.current)
   end

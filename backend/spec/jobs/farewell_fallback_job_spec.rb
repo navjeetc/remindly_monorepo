@@ -15,14 +15,14 @@ RSpec.describe FarewellFallbackJob, type: :job do
                          completed_at: nil }.merge(attrs))
   end
 
-  before { allow(TelnyxVoiceService).to receive(:hangup) }
+  before { allow(TelnyxVoiceService).to receive(:hangup!) }
 
   it "ends a call whose farewell never reported finishing, and frees the number" do
     call = farewell_call
 
     described_class.perform_now(call.id)
 
-    expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:farewell"))
+    expect(TelnyxVoiceService).to have_received(:hangup!).with(hash_including(call_control_id: "v3:farewell"))
     expect(call.reload.completed_at).to be_present
     expect(TelnyxCall.call_in_flight?(senior, Time.current)).to be(false)
   end
@@ -33,18 +33,20 @@ RSpec.describe FarewellFallbackJob, type: :job do
 
     described_class.perform_now(call.id)
 
-    expect(TelnyxVoiceService).not_to have_received(:hangup)
+    expect(TelnyxVoiceService).not_to have_received(:hangup!)
   end
 
-  # Releasing the number matters more than the provider's answer. A row left
-  # claiming the line blocks this person's next reminder.
-  it "frees the number even when the hangup is refused" do
-    allow(TelnyxVoiceService).to receive(:hangup).and_return(nil)
+  # Freeing a number whose call may still be connected lets a second call be
+  # dialled into it. An unconfirmed hangup is retried, and the claim stands in
+  # the meantime -- held too long is recoverable, freed too early is not.
+  it "keeps the number claimed, and retries, when the hangup cannot be confirmed" do
+    allow(TelnyxVoiceService).to receive(:hangup!).and_raise(RuntimeError, "Telnyx hangup failed")
     call = farewell_call
 
-    described_class.perform_now(call.id)
+    expect { described_class.perform_now(call.id) }
+      .to have_enqueued_job(described_class).with(call.id)
 
-    expect(call.reload.completed_at).to be_present
+    expect(call.reload.completed_at).to be_nil
   end
 
   it "does nothing for a call that no longer exists" do
