@@ -29,6 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nobody to thank, and a refused verification is somebody who listened and said
   nothing. Farewells are spoken in the language the rest of the call used.
 
+- **Five seconds of dead air after every keypress.** The gather sent `digits: 1`,
+  which Telnyx does not accept and ignores, so `maximum_digits` kept its default
+  of 128 and the provider waited out the inter-digit timeout for a second digit
+  nobody was going to press. Measured at exactly 5.000s on live calls.
+
+  It was not only silence: the acknowledgement, the caregiver's notification and
+  the farewell all wait on `call.gather.ended`, so pressing 1 to say a dose was
+  taken did nothing observable for five seconds — long enough to assume the press
+  had not registered and press again. A reply now begins about 0.6s after the
+  key.
+
 ## [0.10.0] - 2026-09-22
 
 ### Added
