@@ -44,6 +44,27 @@ en:
     screening: >-
       This is Remindly, with a reminder.
       Press 1 to hear it.
+    # Said after a key is pressed, before the line goes dead.
+    #
+    # Without these the call simply ends at the moment somebody has done the one
+    # thing it asked of them, which from the other end is indistinguishable from
+    # a dropped call. Reported from a live setup call: "after pressing 1, the
+    # system just hangs up". The daily reminder did the same, on every call.
+    #
+    # Short on purpose. This is the end of a telephone call, not a summary of the
+    # product -- and the line is held open until each one finishes speaking.
+    confirmation:
+      consented: >-
+        Thank you. You are all set.
+        We will call you when it is time for a reminder.
+        You can press 9 on any call to stop them.
+      opted_out: >-
+        Thank you. We will not call you again.
+        There is nothing else you need to do.
+      taken: >-
+        Thank you. We have marked that done.
+      snoozed: >-
+        Alright. We will call you again in %{minutes} minutes.
     consent:
       asked_by: "%{arranger} asked us"
       asked_generic: "We have been asked"

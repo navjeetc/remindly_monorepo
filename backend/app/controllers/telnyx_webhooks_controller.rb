@@ -36,6 +36,8 @@ class TelnyxWebhooksController < ApplicationController
       handle_answered(call, event_id)
     when "call.gather.ended"
       handle_gather_ended(call, payload, event_id)
+    when "call.speak.ended"
+      handle_speak_ended(call, payload, event_id)
     when "call.hangup"
       handle_hangup(call)
     end
@@ -265,7 +267,12 @@ class TelnyxWebhooksController < ApplicationController
     ReminderNotificationJob.perform_later(call.occurrence_id, "acknowledged") if call.outcome == "taken"
 
     # If the gather ended because the caller hung up, the call is already gone.
-    unless payload["status"] == "call_hangup"
+    #
+    # Otherwise say what was recorded before ending it. When there is a farewell
+    # to speak the line stays open until call.speak.ended, so pressing 1 no
+    # longer ends the call in the same instant -- which is what it did every day
+    # on every reminder, and read as a dropped call.
+    unless payload["status"] == "call_hangup" || say_farewell(call, event_id)
       TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
     end
   end
@@ -386,6 +393,12 @@ class TelnyxWebhooksController < ApplicationController
         call.update!(outcome: "declined", completed_at: Time.current)
       end
     end
+
+    # The setup call is the one this was reported on: it recorded the agreement
+    # and went dead without a word, at the moment somebody had done the only
+    # thing it asked of them. A declined call still ends in silence, because
+    # there is nothing to thank somebody for and nothing they need to know.
+    return if say_farewell(call, event_id)
 
     hang_up_unless_already_gone(call, payload, event_id)
   end
@@ -533,6 +546,65 @@ class TelnyxWebhooksController < ApplicationController
     return if payload["status"] == "call_hangup"
 
     TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+  end
+
+  # Outcomes that end a call with something said rather than with silence.
+  #
+  # Listed rather than inferred from "the outcome is no longer pending", because
+  # the two that are missing matter: a call nobody pressed anything on has
+  # nobody to thank, and a declined verification is somebody who listened and
+  # said nothing -- talking at them further is not a courtesy.
+  FAREWELLS = {
+    "consented" => :consented,
+    "opted_out" => :opted_out,
+    "taken" => :taken,
+    "snooze" => :snoozed
+  }.freeze
+
+  # Say goodbye, and let the goodbye finish.
+  #
+  # Hanging up straight after the speak command would cut the audio off mid-word
+  # -- the hangup does not wait for the queued speech -- so the line is held and
+  # call.speak.ended ends it instead. That event is the only thing that knows the
+  # sentence has actually been heard.
+  #
+  # Returns false when nothing was said, and the caller hangs up as it always
+  # did. speak swallows its own errors and answers nil, so a provider refusing
+  # the command cannot leave a call open listening to silence: the worst case is
+  # the abrupt ending we have today, which is what this replaces rather than
+  # something it can make worse.
+  def say_farewell(call, event_id)
+    key = FAREWELLS[call.outcome]
+    return false if key.nil?
+
+    message = I18n.t("voice.confirmation.#{key}",
+                     minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
+                     locale: call.user.spoken_locale)
+
+    spoken = TelnyxVoiceService.speak(
+      call_control_id: call.call_control_id,
+      message: message,
+      language: call.user.spoken_language,
+      # Distinct from the event's own id, which the hangup and the gather already
+      # use as their idempotency key: Telnyx refuses a command_id it has already
+      # run, so sharing one would silently drop whichever command came second.
+      command_id: "farewell-#{event_id}"
+    )
+
+    spoken.present?
+  end
+
+  # The farewell has finished, so the call can end.
+  #
+  # Guarded on the outcome rather than on anything about the event, because the
+  # opening prompt and the reminder itself are also speech: a bare "speech ended,
+  # hang up" would end the call in the pause where somebody is deciding which key
+  # to press. Only a call whose business is settled is ended here, and FAREWELLS
+  # is exactly that set.
+  def handle_speak_ended(call, payload, event_id)
+    return unless FAREWELLS.key?(call.outcome)
+
+    hang_up_unless_already_gone(call, payload, event_id)
   end
 
   # Snoozing writes the acknowledgement AND schedules the next occurrence, which
