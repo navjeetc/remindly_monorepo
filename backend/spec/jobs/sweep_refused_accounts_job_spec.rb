@@ -43,6 +43,16 @@ RSpec.describe SweepRefusedAccountsJob, type: :job do
     expect(User.exists?(senior.id)).to be(true)
   end
 
+  it "never sweeps an account that also has an active link" do
+    senior = refused(opted_out_at: 2.hours.ago)
+    other = create(:user, :caregiver, name: "Sam", email: "sam@example.com")
+    CaregiverLink.create!(senior: senior, caregiver: other, permission: :manage, state: :active)
+
+    described_class.perform_now
+
+    expect(User.exists?(senior.id)).to be(true)
+  end
+
   it "ignores a provisional account that has not refused anything" do
     senior = refused(opted_out_at: nil)
 

@@ -29,8 +29,8 @@ class SweepRefusedAccountsJob < ApplicationJob
   private
 
   def refused_accounts
-    User.where.not(call_opted_out_at: nil)
+    User.refusable_by_telephone
+        .where.not(call_opted_out_at: nil)
         .where(call_opted_out_at: ..SETTLE.ago)
-        .where(id: CaregiverLink.where(state: :provisional).select(:senior_id))
   end
 end

@@ -554,7 +554,7 @@ class TelnyxWebhooksController < ApplicationController
   # cannot leave a refused account standing. It re-reads the provisional state
   # before deleting anything.
   def refuse_arrangement!(senior)
-    return unless senior.senior_links.where(state: :provisional).exists?
+    return unless senior.refusable_by_telephone?
 
     RefuseArrangementJob.set(wait: RefuseArrangementJob::DELAY).perform_later(senior.id)
   rescue StandardError => e

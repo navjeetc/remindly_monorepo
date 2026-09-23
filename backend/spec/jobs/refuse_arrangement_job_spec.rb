@@ -33,6 +33,19 @@ RSpec.describe RefuseArrangementJob, type: :job do
     expect(User.exists?(senior.id)).to be(true)
   end
 
+  # Links are rows, and an account can hold a provisional one alongside an
+  # active one. "Some link is provisional" would delete somebody already using
+  # Remindly with another caregiver.
+  it "never deletes an account that has an active link, whatever else it has" do
+    provisional_link
+    other = create(:user, :caregiver, name: "Sam", email: "sam@example.com")
+    CaregiverLink.create!(senior: senior, caregiver: other, permission: :manage, state: :active)
+
+    described_class.perform_now(senior.id)
+
+    expect(User.exists?(senior.id)).to be(true)
+  end
+
   it "does nothing for an account already gone" do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end

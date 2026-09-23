@@ -30,7 +30,7 @@ class RefuseArrangementJob < ApplicationJob
     # activate a link in between, and an active account is not one a keypress
     # may delete: somebody already using Remindly who presses 9 is saying "stop
     # telephoning me", not "delete my account".
-    return unless senior.senior_links.where(state: :provisional).exists?
+    return unless senior.refusable_by_telephone?
 
     # Three steps, in this order, because two earlier orderings were each wrong
     # in a different direction.
@@ -58,7 +58,7 @@ class RefuseArrangementJob < ApplicationJob
     # thirty seconds wide to one statement under the database's own write
     # serialisation.
     open_calls = senior.with_lock do
-      next [] unless senior.reload.senior_links.where(state: :provisional).exists?
+      next [] unless senior.reload.refusable_by_telephone?
 
       calls_that_may_still_be_up(senior).pluck(:call_control_id).compact
     end
@@ -66,7 +66,7 @@ class RefuseArrangementJob < ApplicationJob
     close(open_calls)
 
     senior.with_lock do
-      next unless senior.reload.senior_links.where(state: :provisional).exists?
+      next unless senior.reload.refusable_by_telephone?
 
       senior.destroy!
     end
