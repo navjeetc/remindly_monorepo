@@ -210,7 +210,22 @@ class TelnyxVoiceService
     response = post(
       "/calls/#{call_control_id}/actions/gather_using_speak",
       {
-        digits: 1,
+        # One digit is the whole vocabulary of this call, so the gather ends the
+        # moment it arrives.
+        #
+        # This used to say `digits: 1`, which Telnyx does not accept and silently
+        # ignores -- maximum_digits is the real name, and it defaults to 128. So
+        # every keypress was followed by the provider waiting the full
+        # inter_digit_timeout for a second digit that was never coming: five
+        # seconds of dead air after every press, measured at exactly 5.000s on
+        # two live calls, on the verification call and the daily reminder alike.
+        #
+        # It cost more than silence. The acknowledgement, the caregiver's email
+        # and the farewell all wait on call.gather.ended, so pressing 1 to say a
+        # dose was taken did nothing observable for five seconds -- long enough
+        # for somebody to assume the press had not registered and press again.
+        minimum_digits: 1,
+        maximum_digits: 1,
         # Waited on for much longer than it used to be, and said twice -- but only
         # where saying it twice is free. See max_tries: the opening line asks for
         # one pass, because a call nobody answers pays for every repeat.
@@ -237,6 +252,10 @@ class TelnyxVoiceService
         # three times. Measured on a live call, not estimated.
         maximum_tries: max_tries,
         timeout_millis: 25000,
+        # Both of these only govern a second digit, which maximum_digits now
+        # makes impossible. Left in place rather than removed: they cost nothing,
+        # and they are the settings that would matter again the day this call
+        # asks for anything longer than one key.
         inter_digit_timeout_millis: 5000,
         terminating_digit: "#",
         payload: prompt,
