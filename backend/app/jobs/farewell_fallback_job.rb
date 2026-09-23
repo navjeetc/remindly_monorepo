@@ -36,7 +36,14 @@ class FarewellFallbackJob < ApplicationJob
     return unless call
 
     # The event path finished the job, which is the ordinary case.
-    return if call.status == "hangup" || call.completed_at.present?
+    #
+    # Read from the terminal status alone. completed_at is not evidence the call
+    # ended: when another row already held this number's live claim, hold_line
+    # could not clear it, so a farewell could be playing on a call whose row
+    # still read as complete -- and skipping on that would leave it connected.
+    # hangup! on a call that has in fact ended is harmless; it confirms and
+    # returns.
+    return if call.status == "hangup"
 
     # The raising hangup, and the number is released only once it succeeds.
     #

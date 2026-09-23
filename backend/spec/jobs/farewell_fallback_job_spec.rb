@@ -49,6 +49,17 @@ RSpec.describe FarewellFallbackJob, type: :job do
     expect(call.reload.completed_at).to be_nil
   end
 
+  # completed_at is not evidence the call ended. When another row already held
+  # the number's live claim, the farewell could not clear it, so a goodbye could
+  # be playing on a row that still reads as complete.
+  it "ends a farewell call even when its row reads as complete" do
+    call = farewell_call(completed_at: 1.minute.ago)
+
+    described_class.perform_now(call.id)
+
+    expect(TelnyxVoiceService).to have_received(:hangup!).with(hash_including(call_control_id: "v3:farewell"))
+  end
+
   it "does nothing for a call that no longer exists" do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end

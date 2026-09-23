@@ -36,9 +36,18 @@ class TelnyxWebhooksController < ApplicationController
     # which made every later check for "has this call ended" answer no. The
     # farewell's re-claim of the line reads exactly that, so a settled call could
     # be un-completed, and speech queued, after it had already gone.
-    attributes = { last_payload: event.to_json }
-    attributes[:status] = status_from_event(event_type) unless call.status == "hangup"
-    call.update!(attributes)
+    #
+    # Enforced by the database, not by the copy of the row this request loaded.
+    # A hangup and a late event can both read the row before either writes, and
+    # an in-memory check would let the late one commit second and resurrect a
+    # call that has ended. The WHERE clause is what makes the hangup win.
+    call.update!(last_payload: event.to_json)
+    unless event_type == "call.hangup"
+      TelnyxCall.where(id: call.id).where.not(status: "hangup")
+                .update_all(status: status_from_event(event_type), updated_at: Time.current)
+    end
+    TelnyxCall.where(id: call.id).update_all(status: "hangup", updated_at: Time.current) if event_type == "call.hangup"
+    call.reload
 
     case event_type
     when "call.answered"
@@ -646,6 +655,15 @@ class TelnyxWebhooksController < ApplicationController
     # farewell -- so the handler hung up on the goodbye that was already
     # playing. A delivery that finds the farewell already claimed has nothing to
     # do: the first one is speaking it, and will end the call when it finishes.
+    #
+    # The fallback is scheduled first, before the claim and before the speak.
+    # Scheduling it last left a gap: a worker dying after the claim, or an
+    # enqueue failing after the speech was accepted, left a claim that every
+    # redelivery would read as "already handled" and nothing that would ever end
+    # the call. An extra fallback for a delivery that loses the claim is
+    # harmless -- it finds the call ended and does nothing.
+    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
+
     claimed = TelnyxCall.where(id: call.id, farewell_requested_at: nil)
                         .update_all(farewell_requested_at: Time.current, updated_at: Time.current)
     return true if claimed.zero?
@@ -702,8 +720,6 @@ class TelnyxWebhooksController < ApplicationController
       # about it here, and it must not fail the webhook: the outcome is recorded.
       Rails.logger.warn "Could not re-claim the line for call #{call.id}: #{e.message}"
     end
-
-    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
   end
 
   # Hang up where nothing else will, keeping the number claimed until it lands.
@@ -714,6 +730,7 @@ class TelnyxWebhooksController < ApplicationController
   # free and a second call could be placed to a handset still connected to the
   # first. The line is held until call.hangup confirms it, or the fallback does.
   def end_call(call, event_id)
+    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
     hold_line(call)
     TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
   end

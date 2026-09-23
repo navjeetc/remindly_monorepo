@@ -80,10 +80,6 @@ class RefuseArrangementJob < ApplicationJob
     )
   end
 
-  # How far back an opted-out call is still worth hanging up. Comfortably longer
-  # than a farewell and shorter than anything that could be a different call.
-  FAREWELL_WINDOW = 10.minutes
-
   private
 
   # Only the call that carried the refusal, and never anything newer.
@@ -99,8 +95,14 @@ class RefuseArrangementJob < ApplicationJob
   # a later verification call and the device's own start screen -- so the one
   # call that might still be live besides the refusal is somebody pressing 1
   # to agree, and ending that one would be the worst thing this job could do.
+  #
+  # Any refusal call not known to have ended, however old. A time window here
+  # used to cap it at ten minutes, which the daily sweep -- running an hour or
+  # more after a refusal whose own cleanup failed -- could never reach, so the
+  # backstop deleted the rows without trying the hangup at all. The sticky
+  # hangup status says which of these calls are certainly over.
   def calls_that_may_still_be_up(senior)
-    senior.telnyx_calls.where(outcome: "opted_out", created_at: FAREWELL_WINDOW.ago..)
+    senior.telnyx_calls.where(outcome: "opted_out").where.not(status: "hangup")
   end
 
   # Nothing may be left ringing on a number whose account has just vanished.

@@ -43,7 +43,7 @@ RSpec.describe RefuseArrangementJob, type: :job do
   it "closes a call still open before deleting the account it belongs to" do
     provisional_link
     call = TelnyxCall.create!(call_control_id: "v3:still-live", user: senior, purpose: "verification",
-                              to_number: senior.phone, status: "hangup", outcome: "opted_out")
+                              to_number: senior.phone, status: "speaking", outcome: "opted_out")
 
     allow(TelnyxVoiceService).to receive(:hangup)
 
@@ -71,9 +71,9 @@ RSpec.describe RefuseArrangementJob, type: :job do
     expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:farewell-pending"))
   end
 
-  # Not every finished call, though: an old one is a different call, and dialling
-  # the provider about it buys nothing.
-  it "leaves an old finished call alone" do
+  # Not a call known to have ended, though: the sticky hangup status says so, and
+  # dialling the provider about it buys nothing.
+  it "leaves a refusal call that has already hung up alone" do
     provisional_link
     TelnyxCall.create!(call_control_id: "v3:ancient", user: senior, purpose: "verification",
                        to_number: senior.phone, status: "hangup", outcome: "opted_out",
@@ -102,6 +102,22 @@ RSpec.describe RefuseArrangementJob, type: :job do
 
     expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:refusal"))
     expect(TelnyxVoiceService).not_to have_received(:hangup).with(hash_including(call_control_id: "v3:newer"))
+  end
+
+  # The daily sweep reaches a refusal an hour or more after it happened. A time
+  # window on this cleanup used to put the refusal call out of the sweep's reach,
+  # so the backstop deleted the rows without trying the hangup at all.
+  it "still closes an old refusal call that was never seen to end" do
+    provisional_link
+    TelnyxCall.create!(call_control_id: "v3:old-but-open", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "speaking", outcome: "opted_out",
+                       created_at: 3.hours.ago)
+
+    allow(TelnyxVoiceService).to receive(:hangup)
+
+    described_class.perform_now(senior.id)
+
+    expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:old-but-open"))
   end
 
   # Ending somebody's reminder is not a side effect this job is entitled to. An

@@ -174,7 +174,10 @@ RSpec.describe "What a call says before it ends", type: :request do
       # Still claimed while that hangup is unconfirmed: a raise would be retried,
       # and in between nothing else may be dialled into a handset still connected.
       expect(call.reload.completed_at).to be_nil
-      expect(FarewellFallbackJob).to have_been_enqueued.with(call.id)
+      # Scheduled before the farewell was attempted and again by the hangup that
+      # replaced it. The second finds the call ended and does nothing; what
+      # matters is that there is no moment with nothing scheduled.
+      expect(FarewellFallbackJob).to have_been_enqueued.with(call.id).at_least(:once)
 
       telnyx_post("call.hangup", call)
 
@@ -236,6 +239,18 @@ RSpec.describe "What a call says before it ends", type: :request do
 
       expect(TelnyxVoiceService).to have_received(:speak).once
       expect(TelnyxVoiceService).not_to have_received(:hangup!)
+    end
+
+    # A hangup and a late event can both load the row before either writes. The
+    # terminal status has to be enforced by the database, or the late one
+    # commits second and resurrects a call that has ended.
+    it "never lets a later event overwrite a hangup" do
+      telnyx_post("call.gather.ended", call, digits: "1")
+      TelnyxCall.where(id: call.id).update_all(status: "hangup")
+
+      telnyx_post("call.speak.started", call, speak_id: "late")
+
+      expect(call.reload.status).to eq("hangup")
     end
 
     it "records the consent either way" do
