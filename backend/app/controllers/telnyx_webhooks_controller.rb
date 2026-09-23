@@ -36,6 +36,8 @@ class TelnyxWebhooksController < ApplicationController
       handle_answered(call, event_id)
     when "call.gather.ended"
       handle_gather_ended(call, payload, event_id)
+    when "call.speak.started"
+      remember_farewell_speech(call, payload)
     when "call.speak.ended"
       handle_speak_ended(call, payload, event_id)
     when "call.hangup"
@@ -632,6 +634,27 @@ class TelnyxWebhooksController < ApplicationController
   # hang up" would end the call in the pause where somebody is deciding which key
   # to press. Only a call whose business is settled is ended here, and FAREWELLS
   # is exactly that set.
+  # Which speech this is.
+  #
+  # The provider names each one with a speak_id, and the only place it appears
+  # is on the events -- the speak command itself answers a bare result. So the
+  # first speech to start after the outcome settles is taken as the farewell and
+  # its id recorded, which is enough to tell its ending apart from anything
+  # else's.
+  #
+  # Only one is ever recorded per call: once claimed, a later speech cannot take
+  # the name. Nothing else speaks after a settled outcome today, and if
+  # something ever does, it must not be able to end the call by finishing.
+  def remember_farewell_speech(call, payload)
+    return unless FAREWELLS.key?(call.outcome)
+    return if call.farewell_speak_id.present?
+
+    speak_id = payload["speak_id"].presence
+    return if speak_id.nil?
+
+    call.update_columns(farewell_speak_id: speak_id, updated_at: Time.current)
+  end
+
   # The raising hangup, not the tolerant one.
   #
   # This event is now the only thing that will end the call: the keypress
@@ -639,9 +662,26 @@ class TelnyxWebhooksController < ApplicationController
   # never redelivers, and the senior is left connected in silence -- which is
   # the exact failure hangup! was written for. hangup! is still safe on a call
   # that has already ended, because it checks before raising.
+  #
+  # Matched on the speech rather than on the outcome alone. The outcome is
+  # already settled before a word is spoken, so every speak.ended after it
+  # looked like the farewell's -- and a prompt whose speech was still playing
+  # when somebody pressed a key would end its own call, cutting off the goodbye
+  # this exists to deliver. Today's prompts go out through gather_using_speak,
+  # which emits no speak events at all (confirmed on two live calls), so the
+  # case is latent rather than active. It stops being latent the first time
+  # anything speaks with `speak`.
+  #
+  # An unrecognised speech is not a reason to hold the line, though: if no
+  # farewell id was ever recorded, nothing of ours is playing, and the call
+  # still has to end.
   def handle_speak_ended(call, payload, event_id)
     return unless FAREWELLS.key?(call.outcome)
     return if payload["status"] == "call_hangup"
+
+    speak_id = payload["speak_id"].presence
+    claimed = call.farewell_speak_id.presence
+    return if claimed.present? && speak_id.present? && claimed != speak_id
 
     TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
   end

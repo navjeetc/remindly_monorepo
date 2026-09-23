@@ -102,6 +102,34 @@ RSpec.describe "What a call says before it ends", type: :request do
       expect(TelnyxVoiceService).to have_received(:hangup)
     end
 
+    # The outcome settles before a word is spoken, so every speak.ended that
+    # follows it looked like the farewell's. A prompt still speaking when
+    # somebody pressed a key would then end its own call and cut off the
+    # goodbye. Today's prompts use gather_using_speak, which emits no speak
+    # events -- this keeps the case shut if that ever changes.
+    it "hangs up for the farewell's own speech, not for any speech" do
+      telnyx_post("call.gather.ended", call, digits: "1")
+      telnyx_post("call.speak.started", call, speak_id: "farewell-speech")
+
+      telnyx_post("call.speak.ended", call, speak_id: "some-other-speech")
+
+      expect(TelnyxVoiceService).not_to have_received(:hangup!)
+
+      telnyx_post("call.speak.ended", call, speak_id: "farewell-speech")
+
+      expect(TelnyxVoiceService).to have_received(:hangup!)
+    end
+
+    # A speech we never saw start is not ours, and holding the line for it would
+    # leave somebody connected to silence.
+    it "still ends a call whose farewell speech was never seen to start" do
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      telnyx_post("call.speak.ended", call)
+
+      expect(TelnyxVoiceService).to have_received(:hangup!)
+    end
+
     # completed_at is the live-call claim: call_in_flight? and the unique index
     # both read it. Stamping it before the farewell has played would free the
     # handset while somebody is still listening, and the scheduler could dial a
