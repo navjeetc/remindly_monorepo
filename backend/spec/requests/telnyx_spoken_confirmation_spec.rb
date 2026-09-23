@@ -156,6 +156,46 @@ RSpec.describe "What a call says before it ends", type: :request do
       expect(call.reload.completed_at).to be_present
     end
 
+    # The review case this spec set missed. speak used to end on
+    # Rails.logger.error, which answers true, so a timed-out command reported a
+    # speech that never left the process -- the line was then held open for a
+    # call.speak.ended that could never arrive. Stubbing the raise rather than
+    # the return value, because the return value was the bug.
+    it "hangs up when the speak command never reaches the provider" do
+      allow(TelnyxVoiceService).to receive(:speak).and_call_original
+      allow(TelnyxVoiceService).to receive(:post).and_raise(Net::ReadTimeout)
+
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(TelnyxVoiceService).to have_received(:hangup)
+      expect(call.reload.completed_at).to be_present
+    end
+
+    # Somebody can press 1 and put the phone down before this event is
+    # delivered. Speaking to a call that has gone posts a farewell nothing will
+    # hear, and clears the claim on their number for an event that can never
+    # come.
+    it "says nothing to a call that has already hung up" do
+      telnyx_post("call.gather.ended", call, digits: "1", status: "call_hangup")
+
+      expect(TelnyxVoiceService).not_to have_received(:speak)
+      expect(call.reload.completed_at).to be_present
+    end
+
+    # call.gather.ended and call.hangup can be in flight together, and Puma
+    # serves them concurrently. The hangup has to win: nothing else is coming to
+    # stamp the row, and a cleared completed_at would claim the line until
+    # reconciliation noticed.
+    it "does not un-complete a call the hangup has already finished" do
+      telnyx_post("call.hangup", call)
+      completed = call.reload.completed_at
+      expect(completed).to be_present
+
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(call.reload.completed_at).to eq(completed)
+    end
+
     it "records the consent either way" do
       telnyx_post("call.gather.ended", call, digits: "1")
 

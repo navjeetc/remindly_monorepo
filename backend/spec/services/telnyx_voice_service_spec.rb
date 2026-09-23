@@ -98,6 +98,20 @@ RSpec.describe TelnyxVoiceService do
     end
   end
 
+  describe ".speak" do
+    # It used to end on Rails.logger.error, which answers true -- so a timed-out
+    # command reported a speech that never left the process. The farewell path
+    # reads this value to decide whether to hold the line open for a
+    # call.speak.ended that was never going to arrive.
+    it "answers nil when the command never reaches the provider" do
+      allow(described_class).to receive(:post).and_raise(Net::ReadTimeout)
+
+      result = described_class.speak(call_control_id: "v3:abc", message: "thank you")
+
+      expect(result).to be_nil
+    end
+  end
+
   describe ".gather_digit" do
     it "gives somebody long enough to press, and says it again if they do not" do
       sent = nil

@@ -179,7 +179,13 @@ class TelnyxVoiceService
       command_id: command_id
     )
   rescue => e
+    # nil explicitly. Rails.logger.error answers true, so a rescue ending on it
+    # reported a speech that never left this process -- and the farewell path
+    # reads this value to decide whether to hold the line open for a
+    # call.speak.ended that a timed-out command will never produce. A swallowed
+    # exception must look like the failure it is.
     Rails.logger.error "Telnyx speak failed for call #{call_control_id}: #{e.message}"
+    nil
   end
 
   # A person who has just picked up is usually saying "hello". We answer and

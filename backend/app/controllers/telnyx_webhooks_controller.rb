@@ -400,6 +400,14 @@ class TelnyxWebhooksController < ApplicationController
     # and went dead without a word, at the moment somebody had done the only
     # thing it asked of them. A declined call still ends in silence, because
     # there is nothing to thank somebody for and nothing they need to know.
+    #
+    # Nothing is spoken to a call that has already gone, which is why the status
+    # is read before the farewell rather than after it -- the reminder path has
+    # always had the checks this way round. Somebody who presses 1 and puts the
+    # phone down before this event is delivered would otherwise have a farewell
+    # posted to a dead call, and the claim on their number cleared for a call
+    # that can never produce the event that would restore it.
+    return hang_up_unless_already_gone(call, payload, event_id) if payload["status"] == "call_hangup"
     return if say_farewell(call, event_id)
 
     hang_up_unless_already_gone(call, payload, event_id)
@@ -512,6 +520,17 @@ class TelnyxWebhooksController < ApplicationController
     return unless senior.senior_links.where(state: :provisional).exists?
 
     RefuseArrangementJob.set(wait: RefuseArrangementJob::DELAY).perform_later(senior.id)
+  rescue StandardError => e
+    # The same swallow the inline destroy had, and for a sharper reason now that
+    # this is an enqueue. A raise here escapes opt_out! before the farewell is
+    # spoken and answers 500, and the redelivery cannot recover: outcome is
+    # already "opted_out", so the guard above skips opt_out! entirely and this
+    # is never reached again. The refusal itself is recorded either way -- the
+    # calls are off -- and this line is what makes the rest diagnosable.
+    Rails.logger.error(
+      "Could not schedule the refusal for user #{senior.id}: #{e.class}: #{e.message}\n" \
+      "#{Array(e.backtrace).first(5).join("\n")}"
+    )
   end
 
   # Writes what happened on a call, bypassing validation deliberately.
@@ -615,8 +634,16 @@ class TelnyxWebhooksController < ApplicationController
     # speak.ended leaves the claim standing, which is what the stale-call
     # reconciliation exists to close -- the same path that already covers a
     # worker dying mid-call.
+    # Conditional, because the hangup may already have happened. Telnyx does not
+    # serialise deliveries and Puma serves them concurrently, so somebody who
+    # presses 1 and puts the phone straight down can have call.gather.ended and
+    # call.hangup in flight together. An unconditional write here would
+    # un-complete a call the hangup handler had just finished, and nothing
+    # further is coming to stamp it again -- the row would go on claiming the
+    # line until reconciliation noticed.
     begin
-      call.update_columns(completed_at: nil, updated_at: Time.current)
+      TelnyxCall.where(id: call.id).where.not(status: "hangup")
+                .update_all(completed_at: nil, updated_at: Time.current)
     rescue ActiveRecord::RecordNotUnique => e
       # Another row already holds the live claim for this number. Nothing to do
       # about it here, and it must not fail the webhook: the farewell is already
