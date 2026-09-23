@@ -88,10 +88,12 @@ RSpec.describe "What a call says before it ends", type: :request do
 
       expect(TelnyxVoiceService).not_to have_received(:speak)
         .with(hash_including(message: /Thank you/))
-      expect(TelnyxVoiceService).to have_received(:hangup)
+      # The raising hangup: with no farewell playing this is the only thing left
+      # to close the line, so a failure must answer 500 and be redelivered.
+      expect(TelnyxVoiceService).to have_received(:hangup!)
     end
 
-    # speak swallows its own errors and answers nil. The call must still end --
+    # speak answers nil when the provider refuses. The call must still end --
     # the worst case is the abrupt ending this replaces, never a line left open
     # on somebody's telephone.
     it "still hangs up when the provider refuses to speak" do
@@ -99,7 +101,7 @@ RSpec.describe "What a call says before it ends", type: :request do
 
       telnyx_post("call.gather.ended", call, digits: "1")
 
-      expect(TelnyxVoiceService).to have_received(:hangup)
+      expect(TelnyxVoiceService).to have_received(:hangup!)
     end
 
     # The outcome settles before a word is spoken, so every speak.ended that
@@ -167,7 +169,7 @@ RSpec.describe "What a call says before it ends", type: :request do
 
       telnyx_post("call.gather.ended", call, digits: "1")
 
-      expect(TelnyxVoiceService).to have_received(:hangup)
+      expect(TelnyxVoiceService).to have_received(:hangup!)
       expect(call.reload.completed_at).to be_present
     end
 
@@ -193,6 +195,20 @@ RSpec.describe "What a call says before it ends", type: :request do
 
       telnyx_post("call.gather.ended", call, digits: "1")
 
+      expect(call.reload.completed_at).to eq(completed)
+    end
+
+    # Telnyx does not serialise deliveries. A late call.gather.ended arriving
+    # after call.hangup used to overwrite the terminal status, so the farewell
+    # would speak to a call that had gone and re-claim a number that was free.
+    it "does not speak to, or re-claim, a call that has already hung up" do
+      telnyx_post("call.hangup", call)
+      completed = call.reload.completed_at
+
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(TelnyxVoiceService).not_to have_received(:speak)
+      expect(call.reload.status).to eq("hangup")
       expect(call.reload.completed_at).to eq(completed)
     end
 

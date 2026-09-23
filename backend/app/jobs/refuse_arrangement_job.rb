@@ -32,35 +32,39 @@ class RefuseArrangementJob < ApplicationJob
     # telephoning me", not "delete my account".
     return unless senior.senior_links.where(state: :provisional).exists?
 
-    # Checked again with the row held, because the check above and the delete
-    # below are otherwise two decisions about a state that can change between
-    # them: the thirty-second wait is thirty seconds in which a caregiver can
-    # activate the link, and deleting an account that has just started being
-    # used is the one mistake this job must not make.
+    # Three steps, in this order, because two earlier orderings were each wrong
+    # in a different direction.
     #
-    # Not a claim of perfect atomicity -- the activation path does not take this
-    # lock, and SQLite has no row locks to take. It closes the window to a
-    # single statement under the database's own write serialisation, which is
-    # the difference between a race that needs thirty seconds of bad luck and
-    # one that needs microseconds of it.
-    # Nothing is hung up until the deletion has been authorised, because an
-    # account that became active in the meantime may well be on a call, and
-    # ending somebody's reminder is not a side effect this job is entitled to.
+    # Hanging up first was wrong: an account activated during the wait could
+    # have a perfectly legitimate reminder call terminated on its way to a
+    # deletion that then did not happen. Hanging up last was wrong too: the
+    # destroy cascades the call rows away, so a crash between the two statements
+    # left a live handset with no durable record from which anything could close
+    # it.
     #
-    # The ids are collected rather than the rows kept, so the hangups can happen
-    # after the transaction: a call-control id is all the provider needs, the
-    # rows go with the user, and a five-second network timeout has no business
-    # inside a transaction holding a write lock.
-    open_calls = []
+    # So the deletion is authorised first, the line is closed while the rows
+    # still exist, and the destroy runs last in a transaction of its own that
+    # re-reads the state. A crash anywhere in between leaves the account
+    # standing, which SweepRefusedAccountsJob picks up -- the one outcome that
+    # is recoverable, unlike a line nothing can reach.
+    #
+    # The lock is not a claim of perfect atomicity: the activation path does not
+    # take it, and SQLite has no row lock to take. It narrows a window that was
+    # thirty seconds wide to one statement under the database's own write
+    # serialisation.
+    open_calls = senior.with_lock do
+      next [] unless senior.reload.senior_links.where(state: :provisional).exists?
 
-    senior.with_lock do
-      return unless senior.reload.senior_links.where(state: :provisional).exists?
-
-      open_calls = calls_that_may_still_be_up(senior).pluck(:call_control_id).compact
-      senior.destroy!
+      calls_that_may_still_be_up(senior).pluck(:call_control_id).compact
     end
 
     close(open_calls)
+
+    senior.with_lock do
+      next unless senior.reload.senior_links.where(state: :provisional).exists?
+
+      senior.destroy!
+    end
   rescue StandardError => e
     # Same swallow as the inline version this replaces. A failure here must not
     # retry forever against a row that cannot be destroyed, and the refusal

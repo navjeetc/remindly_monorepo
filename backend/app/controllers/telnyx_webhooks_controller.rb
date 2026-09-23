@@ -29,7 +29,16 @@ class TelnyxWebhooksController < ApplicationController
       return head :ok
     end
 
-    call.update!(last_payload: event.to_json, status: status_from_event(event_type))
+    # A hangup is terminal, and the column has to remember it.
+    #
+    # Telnyx does not serialise deliveries, so a late call.gather.ended can
+    # arrive after call.hangup and used to overwrite "hangup" with "gathering" --
+    # which made every later check for "has this call ended" answer no. The
+    # farewell's re-claim of the line reads exactly that, so a settled call could
+    # be un-completed, and speech queued, after it had already gone.
+    attributes = { last_payload: event.to_json }
+    attributes[:status] = status_from_event(event_type) unless call.status == "hangup"
+    call.update!(attributes)
 
     case event_type
     when "call.answered"
@@ -275,7 +284,12 @@ class TelnyxWebhooksController < ApplicationController
     # longer ends the call in the same instant -- which is what it did every day
     # on every reminder, and read as a dropped call.
     unless payload["status"] == "call_hangup" || say_farewell(call, event_id)
-      TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+      # Raising, because at this point nothing else will end the call: the
+      # keypress is handled, no farewell is playing, and a swallowed failure
+      # would answer 200 and stop the redelivery. Speaking again on that
+      # redelivery is safe -- the farewell carries a command_id derived from the
+      # event id, which Telnyx refuses to run twice.
+      TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
     end
   end
 
@@ -410,7 +424,9 @@ class TelnyxWebhooksController < ApplicationController
     return hang_up_unless_already_gone(call, payload, event_id) if payload["status"] == "call_hangup"
     return if say_farewell(call, event_id)
 
-    hang_up_unless_already_gone(call, payload, event_id)
+    # Raising here for the same reason as the reminder path: with no farewell
+    # playing, this is the only thing left to close the line.
+    TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
   end
 
   # The only thing in the application that can set call_reminders_enabled *true*.
@@ -604,6 +620,12 @@ class TelnyxWebhooksController < ApplicationController
   def say_farewell(call, event_id)
     key = FAREWELLS[call.outcome]
     return false if key.nil?
+
+    # Nothing is said to a call that has already gone. The status is sticky on a
+    # hangup now, so this catches the late delivery that arrives after the call
+    # has ended -- where speaking achieves nothing and re-claiming the line
+    # would hold a number that is free.
+    return false if call.status == "hangup"
 
     message = I18n.t("voice.confirmation.#{key}",
                      minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
