@@ -49,6 +49,19 @@ RSpec.describe FarewellFallbackJob, type: :job do
     expect(call.reload.completed_at).to be_nil
   end
 
+  # A crash between the farewell being accepted and the line being held leaves
+  # the row stamped complete on a connected call. The number must read as taken
+  # for as long as this job is still trying to end that call.
+  it "re-claims the number before trying, so it stays taken while the hangup is retried" do
+    allow(TelnyxVoiceService).to receive(:hangup!).and_raise(RuntimeError, "Telnyx hangup failed")
+    call = farewell_call(completed_at: 1.minute.ago)
+
+    described_class.perform_now(call.id)
+
+    expect(call.reload.completed_at).to be_nil
+    expect(TelnyxCall.call_in_flight?(senior, Time.current)).to be(true)
+  end
+
   # A dropped connection is as unconfirmed as a refusal, and has to be retried
   # the same way rather than ending the job after one attempt.
   it "retries a network failure, not only a refusal" do

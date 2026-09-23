@@ -54,6 +54,13 @@ class FarewellFallbackJob < ApplicationJob
     # into it. hangup! succeeds when the provider ends the call or confirms it
     # has already ended, and raises when it can tell neither -- which is the case
     # that has to be retried rather than assumed.
+    # The claim goes back on before anything is tried, not only after success.
+    # A process can die between the farewell being accepted and the line being
+    # held, leaving the row stamped complete on a call still connected; if this
+    # job then retried an uncertain hangup with the number reading as free, a
+    # second call could be placed into that handset in the meantime.
+    call.reclaim_line!
+
     if call.call_control_id.present?
       begin
         TelnyxVoiceService.hangup!(call_control_id: call.call_control_id)

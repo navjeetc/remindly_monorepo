@@ -717,14 +717,7 @@ class TelnyxWebhooksController < ApplicationController
   # unconditional write would un-complete a call the hangup handler had just
   # finished, with nothing further coming to stamp it again.
   def hold_line(call)
-    begin
-      TelnyxCall.where(id: call.id).where.not(status: "hangup")
-                .update_all(completed_at: nil, updated_at: Time.current)
-    rescue ActiveRecord::RecordNotUnique => e
-      # Another row already holds the live claim for this number. Nothing to do
-      # about it here, and it must not fail the webhook: the outcome is recorded.
-      Rails.logger.warn "Could not re-claim the line for call #{call.id}: #{e.message}"
-    end
+    call.reclaim_line!
   end
 
   # Hang up where nothing else will, keeping the number claimed until it lands.
