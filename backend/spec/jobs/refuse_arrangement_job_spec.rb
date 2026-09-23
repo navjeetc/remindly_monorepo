@@ -115,6 +115,26 @@ RSpec.describe RefuseArrangementJob, type: :job do
 
     expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:refusal"))
     expect(TelnyxVoiceService).not_to have_received(:hangup).with(hash_including(call_control_id: "v3:newer"))
+
+    # And not deleted while that call is up: the cascade would take its row, and
+    # with it the only thing that could ever close the line. The sweep returns.
+    expect(User.exists?(senior.id)).to be(true)
+    expect(TelnyxCall.exists?(call_control_id: "v3:newer")).to be(true)
+  end
+
+  it "deletes the account once the newer call has ended" do
+    provisional_link
+    TelnyxCall.create!(call_control_id: "v3:refusal", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "hangup", outcome: "opted_out")
+    TelnyxCall.create!(call_control_id: "v3:newer", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "hangup", outcome: "declined",
+                       completed_at: Time.current)
+
+    allow(TelnyxVoiceService).to receive(:hangup)
+
+    described_class.perform_now(senior.id)
+
+    expect(User.exists?(senior.id)).to be(false)
   end
 
   # The daily sweep reaches a refusal an hour or more after it happened. A time

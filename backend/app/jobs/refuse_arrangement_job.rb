@@ -57,16 +57,27 @@ class RefuseArrangementJob < ApplicationJob
     # take it, and SQLite has no row lock to take. It narrows a window that was
     # thirty seconds wide to one statement under the database's own write
     # serialisation.
-    open_calls = senior.with_lock do
+    refusal_calls = senior.with_lock do
       next [] unless senior.reload.refusable_by_telephone?
 
-      calls_that_may_still_be_up(senior).pluck(:call_control_id).compact
+      calls_that_may_still_be_up(senior).pluck(:id, :call_control_id)
     end
 
-    close(open_calls)
+    close(refusal_calls.map(&:last).compact)
 
     senior.with_lock do
       next unless senior.reload.refusable_by_telephone?
+
+      # Not while another call on this account may still be connected.
+      #
+      # The destroy cascades every telnyx_calls row, and only the refusal calls
+      # have been closed. A caregiver may ask again after an opt-out, so a newer
+      # verification call can be live right now -- and deleting its row would
+      # leave that handset connected with nothing left that could ever close it.
+      # Deferred rather than forced: SweepRefusedAccountsJob comes back, and by
+      # then the call has either ended or been answered with a 1, which takes
+      # the account out of refusable_by_telephone? altogether.
+      next if other_calls_still_up?(senior, refusal_calls.map(&:first))
 
       senior.destroy!
     end
@@ -103,6 +114,11 @@ class RefuseArrangementJob < ApplicationJob
   # hangup status says which of these calls are certainly over.
   def calls_that_may_still_be_up(senior)
     senior.telnyx_calls.where(outcome: "opted_out").where.not(status: "hangup")
+  end
+
+  def other_calls_still_up?(senior, refusal_call_ids)
+    senior.telnyx_calls.where.not(id: refusal_call_ids).where.not(status: "hangup")
+          .where(completed_at: nil).exists?
   end
 
   # Nothing may be left ringing on a number whose account has just vanished.
