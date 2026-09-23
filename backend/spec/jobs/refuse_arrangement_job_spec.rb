@@ -54,6 +54,22 @@ RSpec.describe RefuseArrangementJob, type: :job do
     expect(TelnyxCall.exists?(call.id)).to be(false)
   end
 
+  # Ending somebody's reminder is not a side effect this job is entitled to. An
+  # account that became active in the meantime may well be on a call, so nothing
+  # is hung up until the deletion itself has been authorised.
+  it "hangs up nothing when it decides to leave the account alone" do
+    CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage, state: :active)
+    TelnyxCall.create!(call_control_id: "v3:a-real-reminder", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "answered", outcome: "pending")
+
+    allow(TelnyxVoiceService).to receive(:hangup)
+
+    described_class.perform_now(senior.id)
+
+    expect(TelnyxVoiceService).not_to have_received(:hangup)
+    expect(User.exists?(senior.id)).to be(true)
+  end
+
   # A failure closing the line must not stop the refusal being honoured: the
   # calls are already off, and the account is what the keypress was about.
   it "deletes the account even when the hangup fails" do

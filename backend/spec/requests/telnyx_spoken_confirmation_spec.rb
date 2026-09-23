@@ -120,6 +120,17 @@ RSpec.describe "What a call says before it ends", type: :request do
       expect(TelnyxVoiceService).to have_received(:hangup!)
     end
 
+    # Two deliveries of speak.started could both find the column empty, and the
+    # loser overwriting the winner would leave the farewell that is actually
+    # playing unrecognised -- so nothing would hang up.
+    it "keeps the first farewell speech it was told about" do
+      telnyx_post("call.gather.ended", call, digits: "1")
+      telnyx_post("call.speak.started", call, speak_id: "first")
+      telnyx_post("call.speak.started", call, speak_id: "second")
+
+      expect(call.reload.farewell_speak_id).to eq("first")
+    end
+
     # A speech we never saw start is not ours, and holding the line for it would
     # leave somebody connected to silence.
     it "still ends a call whose farewell speech was never seen to start" do

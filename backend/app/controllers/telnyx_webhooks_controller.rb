@@ -645,14 +645,20 @@ class TelnyxWebhooksController < ApplicationController
   # Only one is ever recorded per call: once claimed, a later speech cannot take
   # the name. Nothing else speaks after a settled outcome today, and if
   # something ever does, it must not be able to end the call by finishing.
+  # The WHERE clause decides, not a read followed by a write. Two deliveries of
+  # this event -- a redelivery, or two speeches racing -- could both find the
+  # column empty, and the loser's id would overwrite the winner's: the farewell
+  # that is actually playing would then end unrecognised, and nothing would hang
+  # up until reconciliation noticed. The first write wins and later ones affect
+  # no rows.
   def remember_farewell_speech(call, payload)
     return unless FAREWELLS.key?(call.outcome)
-    return if call.farewell_speak_id.present?
 
     speak_id = payload["speak_id"].presence
     return if speak_id.nil?
 
-    call.update_columns(farewell_speak_id: speak_id, updated_at: Time.current)
+    TelnyxCall.where(id: call.id, farewell_speak_id: nil)
+              .update_all(farewell_speak_id: speak_id, updated_at: Time.current)
   end
 
   # The raising hangup, not the tolerant one.

@@ -32,8 +32,6 @@ class RefuseArrangementJob < ApplicationJob
     # telephoning me", not "delete my account".
     return unless senior.senior_links.where(state: :provisional).exists?
 
-    close_any_call_still_open(senior)
-
     # Checked again with the row held, because the check above and the delete
     # below are otherwise two decisions about a state that can change between
     # them: the thirty-second wait is thirty seconds in which a caregiver can
@@ -45,11 +43,24 @@ class RefuseArrangementJob < ApplicationJob
     # single statement under the database's own write serialisation, which is
     # the difference between a race that needs thirty seconds of bad luck and
     # one that needs microseconds of it.
+    # Nothing is hung up until the deletion has been authorised, because an
+    # account that became active in the meantime may well be on a call, and
+    # ending somebody's reminder is not a side effect this job is entitled to.
+    #
+    # The ids are collected rather than the rows kept, so the hangups can happen
+    # after the transaction: a call-control id is all the provider needs, the
+    # rows go with the user, and a five-second network timeout has no business
+    # inside a transaction holding a write lock.
+    open_calls = []
+
     senior.with_lock do
       return unless senior.reload.senior_links.where(state: :provisional).exists?
 
+      open_calls = senior.telnyx_calls.where(completed_at: nil).pluck(:call_control_id).compact
       senior.destroy!
     end
+
+    close(open_calls)
   rescue StandardError => e
     # Same swallow as the inline version this replaces. A failure here must not
     # retry forever against a row that cannot be destroyed, and the refusal
@@ -62,22 +73,19 @@ class RefuseArrangementJob < ApplicationJob
 
   private
 
-    # Nothing may be left ringing on a number whose account is about to vanish.
+    # Nothing may be left ringing on a number whose account has just vanished.
     #
     # The farewell is normally ended by call.speak.ended, which hangs up and
     # stamps the row. If that event is lost, or its hangup fails, the call can
     # still be live when this timer fires -- and destroying the user cascades to
-    # its telnyx_calls, so the row that could have closed the line goes with it
-    # and later events arrive for a call nobody can find.
+    # its telnyx_calls, so nothing would be left to close the line with.
     #
-    # So the line is closed here first, from the row, while the row still
-    # exists. The tolerant hangup is right for this one: it is tidying up after
-    # a call that has almost certainly ended already, and a failure must not
-    # stop the refusal being honoured.
-    def close_any_call_still_open(senior)
-      senior.telnyx_calls.where(completed_at: nil).find_each do |call|
-        TelnyxVoiceService.hangup(call_control_id: call.call_control_id) if call.call_control_id.present?
-        call.update_columns(completed_at: Time.current, updated_at: Time.current)
+    # The tolerant hangup is right here: it is tidying up after a call that has
+    # almost certainly ended already, the rows are gone either way, and a
+    # provider refusing one of these must not take the whole job down.
+    def close(call_control_ids)
+      call_control_ids.each do |id|
+        TelnyxVoiceService.hangup(call_control_id: id)
       end
     end
 end
