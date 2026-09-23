@@ -57,8 +57,12 @@ class FarewellFallbackJob < ApplicationJob
     if call.call_control_id.present?
       begin
         TelnyxVoiceService.hangup!(call_control_id: call.call_control_id)
-      rescue RuntimeError => e
-        raise HangupUnconfirmed, e.message
+      rescue StandardError => e
+        # Every provider failure, not only the RuntimeError hangup! raises for a
+        # refusal. A dropped connection or a failed DNS lookup is just as
+        # unconfirmed, and caught narrowly they bypassed retry_on and ended the
+        # job after one attempt.
+        raise HangupUnconfirmed, "#{e.class}: #{e.message}"
       end
     end
 

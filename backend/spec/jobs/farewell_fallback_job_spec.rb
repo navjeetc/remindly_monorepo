@@ -49,6 +49,18 @@ RSpec.describe FarewellFallbackJob, type: :job do
     expect(call.reload.completed_at).to be_nil
   end
 
+  # A dropped connection is as unconfirmed as a refusal, and has to be retried
+  # the same way rather than ending the job after one attempt.
+  it "retries a network failure, not only a refusal" do
+    allow(TelnyxVoiceService).to receive(:hangup!).and_raise(Errno::ECONNRESET)
+    call = farewell_call
+
+    expect { described_class.perform_now(call.id) }
+      .to have_enqueued_job(described_class).with(call.id)
+
+    expect(call.reload.completed_at).to be_nil
+  end
+
   # completed_at is not evidence the call ended. When another row already held
   # the number's live claim, the farewell could not clear it, so a goodbye could
   # be playing on a row that still reads as complete.
