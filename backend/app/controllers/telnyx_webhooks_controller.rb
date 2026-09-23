@@ -238,7 +238,7 @@ class TelnyxWebhooksController < ApplicationController
     digits = payload["digits"]
 
     if call.outcome == "pending"
-      call.update!(dtmf: digits, status: "completed")
+      record_keypress(call, digits)
 
       case digits
       when "1"
@@ -412,7 +412,7 @@ class TelnyxWebhooksController < ApplicationController
   def handle_verification_gather_ended(call, payload, event_id)
     if call.outcome == "pending"
       digits = payload["digits"]
-      call.update!(dtmf: digits, status: "completed")
+      record_keypress(call, digits)
 
       case digits
       when "1" then consent!(call)
@@ -662,9 +662,14 @@ class TelnyxWebhooksController < ApplicationController
     # redelivery would read as "already handled" and nothing that would ever end
     # the call. An extra fallback for a delivery that loses the claim is
     # harmless -- it finds the call ended and does nothing.
-    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
+    schedule_fallback(call)
 
-    claimed = TelnyxCall.where(id: call.id, farewell_requested_at: nil)
+    # The terminal status is part of the claim, not only the stale check above.
+    # A hangup can commit between reading this row and writing here, and a
+    # claim that won regardless would send speech to a call that has ended.
+    # Zero rows means either somebody else claimed the farewell or the call is
+    # over; both mean there is nothing for this delivery to do.
+    claimed = TelnyxCall.where(id: call.id, farewell_requested_at: nil).where.not(status: "hangup")
                         .update_all(farewell_requested_at: Time.current, updated_at: Time.current)
     return true if claimed.zero?
 
@@ -730,9 +735,45 @@ class TelnyxWebhooksController < ApplicationController
   # free and a second call could be placed to a handset still connected to the
   # first. The line is held until call.hangup confirms it, or the fallback does.
   def end_call(call, event_id)
-    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
+    schedule_fallback(call)
     hold_line(call)
     TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
+  end
+
+  # The digit is always recorded; the status only if the call has not already
+  # ended.
+  #
+  # This used to write status: "completed" unconditionally, which could land
+  # after a concurrent call.hangup had committed and overwrite it -- the same
+  # resurrection the conditional write in receive exists to prevent, reached
+  # from inside the handler instead.
+  #
+  # The keypress itself is kept either way, deliberately. Somebody who presses 1
+  # and puts the phone straight down has answered: the dose was taken, or the
+  # calls were agreed to. Discarding that because the hangup event happened to
+  # arrive first would record a real answer as silence. What the lost race
+  # changes is only what is said afterwards, and say_farewell reads the reloaded
+  # status and says nothing to a call that has gone.
+  def record_keypress(call, digits)
+    TelnyxCall.where(id: call.id).update_all(dtmf: digits, updated_at: Time.current)
+    TelnyxCall.where(id: call.id).where.not(status: "hangup")
+              .update_all(status: "completed", updated_at: Time.current)
+    call.reload
+  end
+
+  # The fallback's own enqueue can fail -- Solid Queue unavailable, the database
+  # busy -- and it must not take the call down with it. It runs first in the
+  # farewell, so a raise here used to leave the handler before the claim, the
+  # speech and the line hold: the outcome had already stamped completed_at, so
+  # the number read as free while the handset was still connected.
+  #
+  # Losing the backstop is the better failure. The primary path -- speak, then
+  # hang up on speak.ended, or hang up at once -- still runs, and the reason the
+  # backstop is missing is in the log.
+  def schedule_fallback(call)
+    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
+  rescue StandardError => e
+    Rails.logger.error "Could not schedule the farewell fallback for call #{call.id}: #{e.class}: #{e.message}"
   end
 
   # The farewell has finished, so the call can end.

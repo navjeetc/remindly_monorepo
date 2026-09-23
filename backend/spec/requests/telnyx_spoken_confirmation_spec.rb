@@ -253,6 +253,31 @@ RSpec.describe "What a call says before it ends", type: :request do
       expect(call.reload.status).to eq("hangup")
     end
 
+    # Pressing 1 and putting the phone straight down is an answer. The hangup
+    # event arriving first must not turn it into silence -- but nothing should
+    # be said to a call that has gone, and the terminal status must survive.
+    it "records a keypress that raced its own hangup, and says nothing" do
+      TelnyxCall.where(id: call.id).update_all(status: "hangup")
+
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(senior.reload).to be_callable_by_phone
+      expect(call.reload.status).to eq("hangup")
+      expect(call.dtmf).to eq("1")
+      expect(TelnyxVoiceService).not_to have_received(:speak)
+    end
+
+    # The fallback's enqueue runs before anything else in the farewell. A queue
+    # that cannot be written must cost the backstop, not the call.
+    it "still says goodbye when the fallback cannot be scheduled" do
+      allow(FarewellFallbackJob).to receive(:set).and_raise(ActiveRecord::StatementInvalid, "database is locked")
+
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(response).to have_http_status(:ok)
+      expect(TelnyxVoiceService).to have_received(:speak)
+    end
+
     it "records the consent either way" do
       telnyx_post("call.gather.ended", call, digits: "1")
 
