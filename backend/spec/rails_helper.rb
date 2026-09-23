@@ -30,6 +30,28 @@ rescue ActiveRecord::PendingMigrationError => e
   abort e.to_s.strip
 end
 RSpec.configure do |config|
+  # No example may reach Telnyx.
+  #
+  # Nothing in this suite blocks outbound HTTP, so every provider command a spec
+  # forgot to stub went out for real -- and failed slowly against a missing key,
+  # or worse, could have succeeded against a real one. Review found it twice, a
+  # spec file at a time, when a settled call began saying goodbye: 4.0s for 59
+  # examples before stubbing, 0.97s after. Stubbing file by file is the approach
+  # that had already missed three of them.
+  #
+  # So the two methods every command goes through refuse outright. A spec that
+  # needs a provider response stubs post or get itself, which overrides this;
+  # anything that forgets fails with a message naming the call instead of
+  # quietly telephoning somebody's API.
+  config.before do
+    allow(TelnyxVoiceService).to receive(:post) do |path, *|
+      raise "Unstubbed Telnyx request in a spec: POST #{path}. Stub the command or the service."
+    end
+    allow(TelnyxVoiceService).to receive(:get) do |path|
+      raise "Unstubbed Telnyx request in a spec: GET #{path}. Stub the command or the service."
+    end
+  end
+
   # The test cache is a memory store so rate limits are real here (see
   # config/environments/test.rb). Cleared between examples so one spec's
   # requests never spend another's allowance, which would fail whichever

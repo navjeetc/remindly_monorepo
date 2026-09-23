@@ -36,6 +36,17 @@ production:
     queue: default
     schedule: "0 12 * * *"
 
+  # The backstop for a refusal that did not finish. Pressing 9 on a setup call
+  # deletes a provisional account, and every step that carries that out can fail
+  # -- a busy queue, a worker dying, a destroy that raises -- each swallowed
+  # rather than retried forever, which is right inside a telephone call and
+  # wrong as the last word. Daily is often enough: nothing is ringing the person
+  # in the meantime, the calls are already off.
+  sweep_refused_accounts:
+    class: SweepRefusedAccountsJob
+    queue: default
+    schedule: "20 12 * * *"
+
   # Hourly, and what matters is that it runs *before* the times it is creating.
   #
   # Recurrence.expand back-fills the most recent past slot of the day, and both

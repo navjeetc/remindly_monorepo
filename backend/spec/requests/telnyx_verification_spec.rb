@@ -46,6 +46,11 @@ RSpec.describe "Telnyx verification calls", type: :request do
     CaregiverLink.create!(senior: senior, caregiver: caregiver)
     allow(TelnyxVoiceService).to receive(:gather_digit)
     allow(TelnyxVoiceService).to receive(:hangup)
+    # A settled call now says goodbye, so these examples reach speak and its
+    # raising sibling. Unstubbed they left the suite making real HTTP requests to
+    # Telnyx -- which is slow when it fails and worse when it does not.
+    allow(TelnyxVoiceService).to receive(:speak).and_return({ "data" => { "result" => "ok" } })
+    allow(TelnyxVoiceService).to receive(:hangup!)
     allow(Rails.application.credentials).to receive(:dig).and_call_original
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_token).and_return("test-token")
     allow(Rails.application.credentials).to receive(:dig).with(:telnyx, :webhook_public_key).and_return(nil)
@@ -221,8 +226,13 @@ RSpec.describe "Telnyx verification calls", type: :request do
       expect(call.reload.outcome).to eq("declined")
     end
 
+    # Free once the call has actually ended. Until the hangup lands the handset
+    # is still connected, and a second call must not be dialled into it.
     it "leaves the caregiver free to try again" do
       telnyx_post("call.gather.ended", digits: "")
+      expect(TelnyxCall.reserve_verification(senior)).to be_nil
+
+      telnyx_post("call.hangup")
 
       expect(TelnyxCall.reserve_verification(senior)).to be_present
     end

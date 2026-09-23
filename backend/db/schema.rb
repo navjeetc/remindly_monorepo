@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_021641) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_23_033702) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -255,6 +255,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_021641) do
     t.datetime "created_at", null: false
     t.integer "daily_sequence"
     t.string "dtmf"
+    t.datetime "farewell_requested_at"
+    t.string "farewell_speak_id"
     t.text "last_payload"
     t.integer "occurrence_id"
     t.string "outcome", default: "pending", null: false

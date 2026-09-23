@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-23
+
+### Fixed
+- **A call no longer hangs up the instant a key is pressed.** Pressing 1 on the
+  setup call recorded the agreement and the line went dead, which from the other
+  end is what a dropped call sounds like — at the exact moment somebody had done
+  the one thing the call asked of them. Reported from a live setup call as
+  *"after pressing 1, system just hangs up"*.
+
+  The daily reminder did the same, on every call, and that had gone unreported
+  because the person it happens to is not the person who files reports.
+
+  Each of the four settled endings now says something before the line closes:
+  agreeing to the calls, stopping them, marking a dose done, and asking to be
+  called back later. The line is held open until the sentence has actually been
+  spoken — `call.speak.ended` ends the call, because a hangup issued alongside a
+  speak command cuts the audio off mid-word.
+
+  Two endings stay silent on purpose: a call where nothing was pressed has
+  nobody to thank, and a refused verification is somebody who listened and said
+  nothing. Farewells are spoken in the language the rest of the call used.
+
+- **Five seconds of dead air after every keypress.** The gather sent `digits: 1`,
+  which Telnyx does not accept and ignores, so `maximum_digits` kept its default
+  of 128 and the provider waited out the inter-digit timeout for a second digit
+  nobody was going to press. Measured at exactly 5.000s on live calls.
+
+  It was not only silence: the acknowledgement, the caregiver's notification and
+  the farewell all wait on `call.gather.ended`, so pressing 1 to say a dose was
+  taken did nothing observable for five seconds — long enough to assume the press
+  had not registered and press again. A reply now begins about 0.6s after the
+  key.
+
 ## [0.10.0] - 2026-09-22
 
 ### Added

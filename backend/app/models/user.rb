@@ -344,6 +344,29 @@ class User < ApplicationRecord
     @awaiting_first_use = senior_links.where(state: :provisional).exists?
   end
 
+  # Whether pressing 9 on a setup call may delete this account.
+  #
+  # Provisional is necessary and not sufficient. Links are rows, not one state
+  # per person, and an account can carry a provisional link alongside an active
+  # one -- so "some link is provisional" would let a keypress delete somebody
+  # already using Remindly with another caregiver, calls and history and all.
+  # The account may go only when something is still awaiting their answer and
+  # nothing is already running on their behalf.
+  #
+  # Never memoised, unlike awaiting_first_use?: this is read immediately before
+  # a destroy, and a cached answer is exactly the stale read that must not
+  # authorise one.
+  def refusable_by_telephone?
+    senior_links.where(state: :provisional).exists? &&
+      !senior_links.where(state: :active).exists?
+  end
+
+  # The same test as a query, for the sweep that has to find these accounts.
+  def self.refusable_by_telephone
+    where(id: CaregiverLink.where(state: :provisional).select(:senior_id))
+      .where.not(id: CaregiverLink.where(state: :active).select(:senior_id))
+  end
+
   def display_name
     nickname.presence || name.presence || email.presence || "Someone"
   end

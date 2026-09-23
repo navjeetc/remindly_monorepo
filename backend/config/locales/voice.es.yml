@@ -25,6 +25,20 @@ es:
     screening: >-
       Le habla Remindly, con un recordatorio.
       Pulse 1 para escucharlo.
+    # Véase voice.en.yml: sin esto la llamada termina en seco justo cuando la
+    # persona ha hecho lo único que se le pedía.
+    confirmation:
+      consented: >-
+        Gracias. Ya está todo listo.
+        Le llamaremos cuando sea la hora de un recordatorio.
+        Puede pulsar 9 en cualquier llamada para dejar de recibirlas.
+      opted_out: >-
+        Gracias. No volveremos a llamarle.
+        No tiene que hacer nada más.
+      taken: >-
+        Gracias. Lo hemos marcado como hecho.
+      snoozed: >-
+        De acuerdo. Le llamaremos de nuevo en %{minutes} minutos.
     consent:
       asked_by: "%{arranger} nos ha pedido"
       asked_generic: "Se nos ha pedido"

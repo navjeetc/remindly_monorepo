@@ -457,9 +457,36 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       senior.senior_links.where(state: :provisional).exists?.tap { |p| expect(p).to be(true) }
       described = TelnyxWebhooksController.new
       described.send(:record_on, senior, call_opted_out_at: Time.current, call_reminders_enabled: false)
-      described.send(:refuse_arrangement!, senior)
+
+      # Deferred rather than immediate, since the call now says goodbye before
+      # it hangs up: destroying the user cascades to its telnyx_calls, and the
+      # farewell's speak.ended would then find no call to hang up. The refusal
+      # is recorded either way -- what waits is the deletion, on a clock rather
+      # than on a webhook that might not arrive.
+      expect { described.send(:refuse_arrangement!, senior) }
+        .to have_enqueued_job(RefuseArrangementJob).with(senior.id)
+
+      expect(User.exists?(senior.id)).to be(true)
+
+      perform_enqueued_jobs
 
       expect(User.exists?(senior.id)).to be(false)
+    end
+
+    # The wait is what makes the deletion safe to defer, so it must not be
+    # deferred onto a caregiver's ability to undo it. An account activated in
+    # between is no longer one a keypress may delete.
+    it "leaves the account alone if the link is activated before the job runs" do
+      sign_in(caregiver)
+      senior = create_care_receiver
+      senior.update!(phone: "+15557654323")
+
+      TelnyxWebhooksController.new.send(:refuse_arrangement!, senior)
+      senior.senior_links.update_all(state: CaregiverLink.states[:active])
+
+      perform_enqueued_jobs
+
+      expect(User.exists?(senior.id)).to be(true)
     end
 
     # Somebody already using Remindly who presses 9 is saying "stop telephoning

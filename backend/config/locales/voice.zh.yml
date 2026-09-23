@@ -42,6 +42,19 @@ zh:
     screening: >-
       这里是 Remindly，有一条提醒。
       请按 1 收听。
+    # 见 voice.en.yml：没有这几句，按键之后电话会立刻挂断。
+    confirmation:
+      consented: >-
+        谢谢。已经设置好了。
+        到了提醒时间，我们会打电话给您。
+        任何一通电话中按 9，都可以停止这些电话。
+      opted_out: >-
+        谢谢。我们不会再打给您。
+        您不需要再做任何事。
+      taken: >-
+        谢谢。我们已经记录为完成。
+      snoozed: >-
+        好的。我们会在 %{minutes} 分钟后再打给您。
     consent:
       # Naming the arranger is the anti-scam move — the one thing a stranger
       # ringing out of the blue could not know — so it stays at the front.

@@ -29,13 +29,35 @@ class TelnyxWebhooksController < ApplicationController
       return head :ok
     end
 
-    call.update!(last_payload: event.to_json, status: status_from_event(event_type))
+    # A hangup is terminal, and the column has to remember it.
+    #
+    # Telnyx does not serialise deliveries, so a late call.gather.ended can
+    # arrive after call.hangup and used to overwrite "hangup" with "gathering" --
+    # which made every later check for "has this call ended" answer no. The
+    # farewell's re-claim of the line reads exactly that, so a settled call could
+    # be un-completed, and speech queued, after it had already gone.
+    #
+    # Enforced by the database, not by the copy of the row this request loaded.
+    # A hangup and a late event can both read the row before either writes, and
+    # an in-memory check would let the late one commit second and resurrect a
+    # call that has ended. The WHERE clause is what makes the hangup win.
+    call.update!(last_payload: event.to_json)
+    unless event_type == "call.hangup"
+      TelnyxCall.where(id: call.id).where.not(status: "hangup")
+                .update_all(status: status_from_event(event_type), updated_at: Time.current)
+    end
+    TelnyxCall.where(id: call.id).update_all(status: "hangup", updated_at: Time.current) if event_type == "call.hangup"
+    call.reload
 
     case event_type
     when "call.answered"
       handle_answered(call, event_id)
     when "call.gather.ended"
       handle_gather_ended(call, payload, event_id)
+    when "call.speak.started"
+      remember_farewell_speech(call, payload)
+    when "call.speak.ended"
+      handle_speak_ended(call, payload, event_id)
     when "call.hangup"
       handle_hangup(call)
     end
@@ -216,7 +238,7 @@ class TelnyxWebhooksController < ApplicationController
     digits = payload["digits"]
 
     if call.outcome == "pending"
-      call.update!(dtmf: digits, status: "completed")
+      record_keypress(call, digits)
 
       case digits
       when "1"
@@ -265,8 +287,25 @@ class TelnyxWebhooksController < ApplicationController
     ReminderNotificationJob.perform_later(call.occurrence_id, "acknowledged") if call.outcome == "taken"
 
     # If the gather ended because the caller hung up, the call is already gone.
-    unless payload["status"] == "call_hangup"
-      TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+    #
+    # Otherwise say what was recorded before ending it. When there is a farewell
+    # to speak the line stays open until call.speak.ended, so pressing 1 no
+    # longer ends the call in the same instant -- which is what it did every day
+    # on every reminder, and read as a dropped call.
+    # A call already known to have ended needs no hangup, and must not get the
+    # raising one: a late gather.ended after the hangup would post to a dead
+    # call, and if alive? cannot answer, hangup! raises and the redelivery takes
+    # the same path again -- a loop over a call nobody is on. The status is
+    # sticky on a hangup, so this is the check that recognises that late event.
+    return if call.status == "hangup"
+
+    unless payload["status"] == "call_hangup" || say_farewell(call, event_id)
+      # Raising, because at this point nothing else will end the call: the
+      # keypress is handled, no farewell is playing, and a swallowed failure
+      # would answer 200 and stop the redelivery. Speaking again on that
+      # redelivery is safe -- the farewell carries a command_id derived from the
+      # event id, which Telnyx refuses to run twice.
+      end_call(call, event_id)
     end
   end
 
@@ -373,7 +412,7 @@ class TelnyxWebhooksController < ApplicationController
   def handle_verification_gather_ended(call, payload, event_id)
     if call.outcome == "pending"
       digits = payload["digits"]
-      call.update!(dtmf: digits, status: "completed")
+      record_keypress(call, digits)
 
       case digits
       when "1" then consent!(call)
@@ -387,7 +426,28 @@ class TelnyxWebhooksController < ApplicationController
       end
     end
 
-    hang_up_unless_already_gone(call, payload, event_id)
+    # The setup call is the one this was reported on: it recorded the agreement
+    # and went dead without a word, at the moment somebody had done the only
+    # thing it asked of them. A declined call still ends in silence, because
+    # there is nothing to thank somebody for and nothing they need to know.
+    #
+    # Nothing is spoken to a call that has already gone, which is why the status
+    # is read before the farewell rather than after it -- the reminder path has
+    # always had the checks this way round. Somebody who presses 1 and puts the
+    # phone down before this event is delivered would otherwise have a farewell
+    # posted to a dead call, and the claim on their number cleared for a call
+    # that can never produce the event that would restore it.
+    #
+    # Either signal is enough to stop here: the payload saying the caller hung up,
+    # or the row's sticky status saying a hangup has already been processed. The
+    # second is what catches a late delivery, and without it the raising hangup
+    # below would post to a dead call and could loop on redelivery.
+    return if payload["status"] == "call_hangup" || call.status == "hangup"
+    return if say_farewell(call, event_id)
+
+    # Raising here for the same reason as the reminder path: with no farewell
+    # playing, this is the only thing left to close the line.
+    end_call(call, event_id)
   end
 
   # The only thing in the application that can set call_reminders_enabled *true*.
@@ -481,13 +541,31 @@ class TelnyxWebhooksController < ApplicationController
   # Destroys an account nobody has agreed to. Safe for the same structural
   # reason the screen's "No thank you" is: a provisional account can only ever
   # hold reminders a caregiver typed into it.
+  # Deleted after the call, not during it.
+  #
+  # This used to destroy the user here, which was correct while this webhook
+  # also hung the call up. Now that the call says goodbye first, destroying the
+  # senior cascades to its telnyx_calls and takes the row out from under the
+  # farewell: call.speak.ended then cannot find or correlate the call, nothing
+  # issues the hangup, and somebody who has just refused is left connected to a
+  # line that nothing will close.
+  #
+  # The job waits on a clock rather than on the webhook, so a lost speak.ended
+  # cannot leave a refused account standing. It re-reads the provisional state
+  # before deleting anything.
   def refuse_arrangement!(senior)
-    return unless senior.senior_links.where(state: :provisional).exists?
+    return unless senior.refusable_by_telephone?
 
-    senior.destroy!
+    RefuseArrangementJob.set(wait: RefuseArrangementJob::DELAY).perform_later(senior.id)
   rescue StandardError => e
+    # The same swallow the inline destroy had, and for a sharper reason now that
+    # this is an enqueue. A raise here escapes opt_out! before the farewell is
+    # spoken and answers 500, and the redelivery cannot recover: outcome is
+    # already "opted_out", so the guard above skips opt_out! entirely and this
+    # is never reached again. The refusal itself is recorded either way -- the
+    # calls are off -- and this line is what makes the rest diagnosable.
     Rails.logger.error(
-      "Refusing the arrangement failed for user #{senior.id}: #{e.class}: #{e.message}\n" \
+      "Could not schedule the refusal for user #{senior.id}: #{e.class}: #{e.message}\n" \
       "#{Array(e.backtrace).first(5).join("\n")}"
     )
   end
@@ -533,6 +611,227 @@ class TelnyxWebhooksController < ApplicationController
     return if payload["status"] == "call_hangup"
 
     TelnyxVoiceService.hangup(call_control_id: call.call_control_id, command_id: event_id)
+  end
+
+  # Outcomes that end a call with something said rather than with silence.
+  #
+  # Listed rather than inferred from "the outcome is no longer pending", because
+  # the two that are missing matter: a call nobody pressed anything on has
+  # nobody to thank, and a declined verification is somebody who listened and
+  # said nothing -- talking at them further is not a courtesy.
+  FAREWELLS = {
+    "consented" => :consented,
+    "opted_out" => :opted_out,
+    "taken" => :taken,
+    "snooze" => :snoozed
+  }.freeze
+
+  # Say goodbye, and let the goodbye finish.
+  #
+  # Hanging up straight after the speak command would cut the audio off mid-word
+  # -- the hangup does not wait for the queued speech -- so the line is held and
+  # call.speak.ended ends it instead. That event is the only thing that knows the
+  # sentence has actually been heard.
+  #
+  # Returns false when nothing was said, and the caller hangs up as it always
+  # did. speak swallows its own errors and answers nil, so a provider refusing
+  # the command cannot leave a call open listening to silence: the worst case is
+  # the abrupt ending we have today, which is what this replaces rather than
+  # something it can make worse.
+  def say_farewell(call, event_id)
+    key = FAREWELLS[call.outcome]
+    return false if key.nil?
+
+    # Nothing is said to a call that has already gone. The status is sticky on a
+    # hangup now, so this catches the late delivery that arrives after the call
+    # has ended -- where speaking achieves nothing and re-claiming the line
+    # would hold a number that is free.
+    return false if call.status == "hangup"
+
+    # Claimed before anything is sent, and the claim is what answers a
+    # redelivery. Telnyx sends events more than once, and a second delivery of
+    # the keypress used to issue the same speak again: the provider refused the
+    # duplicate command_id, as it should, and that refusal read as a failed
+    # farewell -- so the handler hung up on the goodbye that was already
+    # playing. A delivery that finds the farewell already claimed has nothing to
+    # do: the first one is speaking it, and will end the call when it finishes.
+    #
+    # The fallback is scheduled first, before the claim and before the speak.
+    # Scheduling it last left a gap: a worker dying after the claim, or an
+    # enqueue failing after the speech was accepted, left a claim that every
+    # redelivery would read as "already handled" and nothing that would ever end
+    # the call. An extra fallback for a delivery that loses the claim is
+    # harmless -- it finds the call ended and does nothing.
+    schedule_fallback(call)
+
+    # The terminal status is part of the claim, not only the stale check above.
+    # A hangup can commit between reading this row and writing here, and a
+    # claim that won regardless would send speech to a call that has ended.
+    # Zero rows means either somebody else claimed the farewell or the call is
+    # over; both mean there is nothing for this delivery to do.
+    claimed = TelnyxCall.where(id: call.id, farewell_requested_at: nil).where.not(status: "hangup")
+                        .update_all(farewell_requested_at: Time.current, updated_at: Time.current)
+    return true if claimed.zero?
+
+    message = I18n.t("voice.confirmation.#{key}",
+                     minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
+                     locale: call.user.spoken_locale)
+
+    spoken = TelnyxVoiceService.speak(
+      call_control_id: call.call_control_id,
+      message: message,
+      language: call.user.spoken_language,
+      # Distinct from the event's own id, which the hangup and the gather already
+      # use as their idempotency key: Telnyx refuses a command_id it has already
+      # run, so sharing one would silently drop whichever command came second.
+      command_id: "farewell-#{event_id}"
+    )
+
+    if spoken.blank?
+      # Released, so a redelivery can try again rather than finding a claim on a
+      # farewell that was never said. The caller hangs up either way.
+      TelnyxCall.where(id: call.id).update_all(farewell_requested_at: nil, updated_at: Time.current)
+      return false
+    end
+
+    hold_line(call)
+    true
+  end
+
+  # The line is still ours until the call has actually ended, so the row has to
+  # go on saying so.
+  #
+  # consent!, opt_out! and acknowledge! all stamp completed_at, and
+  # call_in_flight? -- with the unique index behind it -- reads exactly that
+  # column to decide whether this handset is free. Anything that keeps the call
+  # going after the outcome settles -- a farewell, or a hangup that has not been
+  # confirmed -- would otherwise leave the scheduler free to dial a second call
+  # to somebody still on the first.
+  #
+  # handle_hangup stamps it again when call.hangup arrives. FarewellFallbackJob
+  # stamps it if that never happens, so the claim cannot outlive the call by
+  # more than half a minute.
+  #
+  # Conditional, because the hangup may already have been processed: Telnyx does
+  # not serialise deliveries and Puma serves them concurrently, and an
+  # unconditional write would un-complete a call the hangup handler had just
+  # finished, with nothing further coming to stamp it again.
+  def hold_line(call)
+    call.reclaim_line!
+  end
+
+  # Hang up where nothing else will, keeping the number claimed until it lands.
+  #
+  # The raising hangup, because a swallowed failure would answer 200 and stop the
+  # redelivery. But a raise alone left a gap: the outcome had already stamped
+  # completed_at, so while Telnyx retried, call_in_flight? said the number was
+  # free and a second call could be placed to a handset still connected to the
+  # first. The line is held until call.hangup confirms it, or the fallback does.
+  def end_call(call, event_id)
+    schedule_fallback(call)
+    hold_line(call)
+    TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
+  end
+
+  # The digit is always recorded; the status only if the call has not already
+  # ended.
+  #
+  # This used to write status: "completed" unconditionally, which could land
+  # after a concurrent call.hangup had committed and overwrite it -- the same
+  # resurrection the conditional write in receive exists to prevent, reached
+  # from inside the handler instead.
+  #
+  # The keypress itself is kept either way, deliberately. Somebody who presses 1
+  # and puts the phone straight down has answered: the dose was taken, or the
+  # calls were agreed to. Discarding that because the hangup event happened to
+  # arrive first would record a real answer as silence. What the lost race
+  # changes is only what is said afterwards, and say_farewell reads the reloaded
+  # status and says nothing to a call that has gone.
+  def record_keypress(call, digits)
+    TelnyxCall.where(id: call.id).update_all(dtmf: digits, updated_at: Time.current)
+    TelnyxCall.where(id: call.id).where.not(status: "hangup")
+              .update_all(status: "completed", updated_at: Time.current)
+    call.reload
+  end
+
+  # The fallback's own enqueue can fail -- Solid Queue unavailable, the database
+  # busy -- and it must not take the call down with it. It runs first in the
+  # farewell, so a raise here used to leave the handler before the claim, the
+  # speech and the line hold: the outcome had already stamped completed_at, so
+  # the number read as free while the handset was still connected.
+  #
+  # Losing the backstop is the better failure. The primary path -- speak, then
+  # hang up on speak.ended, or hang up at once -- still runs, and the reason the
+  # backstop is missing is in the log.
+  def schedule_fallback(call)
+    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
+  rescue StandardError => e
+    Rails.logger.error "Could not schedule the farewell fallback for call #{call.id}: #{e.class}: #{e.message}"
+  end
+
+  # The farewell has finished, so the call can end.
+  #
+  # Guarded on the outcome rather than on anything about the event, because the
+  # opening prompt and the reminder itself are also speech: a bare "speech ended,
+  # hang up" would end the call in the pause where somebody is deciding which key
+  # to press. Only a call whose business is settled is ended here, and FAREWELLS
+  # is exactly that set.
+  # Which speech this is.
+  #
+  # The provider names each one with a speak_id, and the only place it appears
+  # is on the events -- the speak command itself answers a bare result. So the
+  # first speech to start after the outcome settles is taken as the farewell and
+  # its id recorded, which is enough to tell its ending apart from anything
+  # else's.
+  #
+  # Only one is ever recorded per call: once claimed, a later speech cannot take
+  # the name. Nothing else speaks after a settled outcome today, and if
+  # something ever does, it must not be able to end the call by finishing.
+  # The WHERE clause decides, not a read followed by a write. Two deliveries of
+  # this event -- a redelivery, or two speeches racing -- could both find the
+  # column empty, and the loser's id would overwrite the winner's: the farewell
+  # that is actually playing would then end unrecognised, and nothing would hang
+  # up until reconciliation noticed. The first write wins and later ones affect
+  # no rows.
+  def remember_farewell_speech(call, payload)
+    return unless FAREWELLS.key?(call.outcome)
+
+    speak_id = payload["speak_id"].presence
+    return if speak_id.nil?
+
+    TelnyxCall.where(id: call.id, farewell_speak_id: nil)
+              .update_all(farewell_speak_id: speak_id, updated_at: Time.current)
+  end
+
+  # The raising hangup, not the tolerant one.
+  #
+  # This event is now the only thing that will end the call: the keypress
+  # handler deliberately did not. A swallowed failure here answers 200, Telnyx
+  # never redelivers, and the senior is left connected in silence -- which is
+  # the exact failure hangup! was written for. hangup! is still safe on a call
+  # that has already ended, because it checks before raising.
+  #
+  # Matched on the speech rather than on the outcome alone. The outcome is
+  # already settled before a word is spoken, so every speak.ended after it
+  # looked like the farewell's -- and a prompt whose speech was still playing
+  # when somebody pressed a key would end its own call, cutting off the goodbye
+  # this exists to deliver. Today's prompts go out through gather_using_speak,
+  # which emits no speak events at all (confirmed on two live calls), so the
+  # case is latent rather than active. It stops being latent the first time
+  # anything speaks with `speak`.
+  #
+  # An unrecognised speech is not a reason to hold the line, though: if no
+  # farewell id was ever recorded, nothing of ours is playing, and the call
+  # still has to end.
+  def handle_speak_ended(call, payload, event_id)
+    return unless FAREWELLS.key?(call.outcome)
+    return if payload["status"] == "call_hangup"
+
+    speak_id = payload["speak_id"].presence
+    claimed = call.farewell_speak_id.presence
+    return if claimed.present? && speak_id.present? && claimed != speak_id
+
+    TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
   end
 
   # Snoozing writes the acknowledgement AND schedules the next occurrence, which
@@ -644,6 +943,11 @@ class TelnyxWebhooksController < ApplicationController
     when "call.initiated" then "initiated"
     when "call.answered" then "answered"
     when "call.gather.ended" then "gathering"
+    # The farewell holds the line open deliberately, so its events must not
+    # describe the call as finished. They fell through to "completed" before,
+    # which read wrong for the whole of the goodbye -- and the status column is
+    # now what decides whether a farewell may speak at all.
+    when "call.speak.started", "call.speak.ended" then "speaking"
     when "call.hangup" then "hangup"
     else "completed"
     end

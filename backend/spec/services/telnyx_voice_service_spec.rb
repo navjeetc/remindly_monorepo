@@ -98,6 +98,20 @@ RSpec.describe TelnyxVoiceService do
     end
   end
 
+  describe ".speak" do
+    # It used to end on Rails.logger.error, which answers true -- so a timed-out
+    # command reported a speech that never left the process. The farewell path
+    # reads this value to decide whether to hold the line open for a
+    # call.speak.ended that was never going to arrive.
+    it "answers nil when the command never reaches the provider" do
+      allow(described_class).to receive(:post).and_raise(Net::ReadTimeout)
+
+      result = described_class.speak(call_control_id: "v3:abc", message: "thank you")
+
+      expect(result).to be_nil
+    end
+  end
+
   describe ".gather_digit" do
     it "gives somebody long enough to press, and says it again if they do not" do
       sent = nil
@@ -110,6 +124,26 @@ RSpec.describe TelnyxVoiceService do
       # it ends the moment a key is pressed.
       expect(sent[:timeout_millis]).to be >= 20_000
       expect(sent[:maximum_tries]).to eq(2)
+    end
+
+    # One digit is the whole vocabulary of these calls, and the gather has to end
+    # on it. This was sent as `digits: 1`, which Telnyx does not accept and
+    # ignores -- so maximum_digits kept its default of 128 and every keypress was
+    # followed by the provider waiting out inter_digit_timeout_millis for a
+    # second digit nobody was going to press. Measured at exactly 5.000s between
+    # call.dtmf.received and call.gather.ended on two live calls.
+    #
+    # Asserting on the name the provider actually reads, because the bug was that
+    # the old name looked right and did nothing.
+    it "ends the gather on the first key rather than waiting for a second" do
+      sent = nil
+      allow(described_class).to receive(:post) { |_path, body, **| sent = body; { "data" => {} } }
+
+      described_class.gather_digit(call_control_id: "v3:abc", prompt: "time for your tablet")
+
+      expect(sent[:maximum_digits]).to eq(1)
+      expect(sent[:minimum_digits]).to eq(1)
+      expect(sent).not_to have_key(:digits)
     end
 
     it "still raises when the provider refuses, so the event stays redeliverable" do

@@ -320,6 +320,25 @@ class TelnyxCall < ApplicationRecord
   # from the one-call-at-a-time rule they most need.
   # Asked of the telephone rather than the account. Two user records can hold
   # the same number, and it is the handset that can only take one call at a time.
+  # Claim this call's number again, for as long as the call is still connected.
+  #
+  # The outcome handlers stamp completed_at the moment a key is pressed, and
+  # call_in_flight? -- with the unique index behind it -- reads that column to
+  # decide whether the number is free. Anything that keeps a call going after
+  # that -- a farewell, a hangup still being retried -- has to put the claim
+  # back, or a second call can be dialled into a handset still on the first.
+  #
+  # Conditional on the call not having ended, so a hangup that has already been
+  # processed is never undone. Another row already holding the number's claim
+  # is logged rather than raised: whoever calls this is in the middle of ending
+  # a call, and failing them helps nobody.
+  def reclaim_line!
+    TelnyxCall.where(id: id).where.not(status: "hangup")
+              .update_all(completed_at: nil, updated_at: Time.current)
+  rescue ActiveRecord::RecordNotUnique => e
+    Rails.logger.warn "Could not re-claim the line for call #{id}: #{e.message}"
+  end
+
   def self.call_in_flight?(user, now)
     return false if user.phone.blank?
 

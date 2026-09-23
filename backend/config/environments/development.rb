@@ -102,4 +102,14 @@ Rails.application.configure do
   # ngrok plans use the same apex, so the label pattern stays permissive.
   config.hosts << /\A[a-z0-9-]+\.ngrok-free\.dev(:\d+)?\z/i
   config.hosts << /\A[a-z0-9-]+\.ngrok\.app(:\d+)?\z/i
+
+  # cloudflared, which does the same job and needs no account. Its quick tunnels
+  # are handed out as several hyphenated words on this apex.
+  #
+  # Worth having both: a blocked host answers 403 before the request reaches the
+  # application, which from the provider's side is indistinguishable from a
+  # webhook that was never sent -- the call connects and then sits in silence,
+  # and the tunnel looks broken rather than disallowed. That cost an evening
+  # once already.
+  config.hosts << /\A[a-z0-9-]+\.trycloudflare\.com(:\d+)?\z/i
 end
