@@ -124,4 +124,21 @@ module ApplicationHelper
 
     "#{care_receiver.display_name} doesn't have reminder calls set up"
   end
+
+  # +15715170980 -> +1 571-517-0980.
+  #
+  # For a number somebody is being asked to copy onto a handset, digit by digit,
+  # often reading it down a telephone to the person who owns the handset. E.164
+  # is the right thing to store and the wrong thing to read aloud.
+  #
+  # Only North American numbers are grouped, because only their grouping is
+  # unambiguous from the digits alone. Anything else is returned untouched --
+  # wrong spacing on a foreign number is worse than none, since it invites
+  # somebody to type the spaces.
+  def formatted_phone_number(number)
+    digits = number.to_s.delete("^0-9")
+    return number.to_s unless number.to_s.start_with?("+1") && digits.length == 11
+
+    "+1 #{digits[1..3]}-#{digits[4..6]}-#{digits[7..10]}"
+  end
 end

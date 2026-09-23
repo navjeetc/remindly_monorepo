@@ -1,0 +1,65 @@
+<%#
+  Save our number before we ring.
+
+  The panel has told caregivers to do this since the feature shipped, in a grey
+  line under the number field, and never said which number -- the value lived in
+  credentials and was printed nowhere. Our first caregiver's two consent calls
+  were answered and dropped inside four seconds with no key pressed, which is
+  what a screening handset does to an unknown number, and she reported that
+  Remindly had never called her at all.
+
+  So this is not a hint. It is the first step, it carries the digits, and it
+  carries a message the caregiver can send on -- because the person who has to
+  save the number is usually not the person reading this screen, and "ask them
+  to add a contact" is exactly the kind of instruction that gets relayed as
+  "something about a phone call".
+%>
+<% number = TelnyxVoiceService.caller_id_number %>
+<% if number.present? %>
+  <div class="rounded-md border border-blue-200 bg-blue-50 p-4">
+    <p class="text-sm font-medium text-gray-900">
+      First, get our number saved in <%= senior.display_name %>'s phone as <strong>Remindly</strong>.
+    </p>
+
+    <p class="mt-2 text-2xl font-semibold tracking-wide text-gray-900">
+      <%= formatted_phone_number(number) %>
+    </p>
+
+    <p class="mt-2 text-sm text-gray-700">
+      A saved number shows our name instead of an unknown caller, and phones set
+      to silence unknown callers will ring for it rather than sending us to
+      voicemail. This matters most for the very first call, the one that asks
+      <%= senior.display_name %> to agree — a voicemail cannot press 1.
+    </p>
+
+    <p class="mt-3">
+      <%= link_to "Download contact card",
+            caller_id_card_path,
+            class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <span class="ml-2 text-xs text-gray-600">
+        A file you can send to <%= senior.display_name %>. Opening it saves the contact.
+      </span>
+    </p>
+
+    <%#
+      A message written for them to send, not a summary of one.
+
+      Plain text in a field they can select, the same device the reminder-link
+      panel uses for the address it hands out: this layout loads Tailwind from a
+      CDN and no JavaScript of our own, and a copy button that silently does
+      nothing is worse than a field somebody can select. Tapping selects the lot.
+    %>
+    <div class="mt-4">
+      <label for="caller_id_message" class="block text-xs font-medium text-gray-700">
+        Something to send <%= senior.display_name %> — tap to select, then copy
+      </label>
+      <textarea id="caller_id_message" readonly rows="4" onclick="this.select()"
+                class="mt-1 w-full text-sm border border-gray-300 rounded-md bg-white p-2 font-mono"><%=
+        "Hi #{senior.display_name}, I've set up Remindly to ring you with reminders. " \
+        "Please save this number in your contacts as Remindly: #{formatted_phone_number(number)}. " \
+        "It will call you once to check you're happy with that — answer and press 1. " \
+        "Press 9 at any time and the calls stop. #{current_user.friendly_name}"
+      %></textarea>
+    </div>
+  </div>
+<% end %>

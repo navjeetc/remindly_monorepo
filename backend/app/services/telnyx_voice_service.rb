@@ -369,6 +369,22 @@ class TelnyxVoiceService
     }
   end
 
+  # The number Remindly dials from, for the one screen that has to name it.
+  #
+  # Public deliberately, unlike the rest of credentials. The phone panel tells a
+  # caregiver to save "this number" as a contact before the consent call -- the
+  # strongest defence there is against a handset screening it, and the only one
+  # that works on a phone with Silence Unknown Callers switched on. It gave that
+  # instruction without ever printing a number, because the value lived in
+  # credentials and appeared nowhere a human could read it: advice nobody could
+  # follow, on the step the whole feature depends on.
+  #
+  # nil when the integration is unconfigured. Callers must handle that rather
+  # than print an empty string into a sentence about what to save.
+  def self.caller_id_number
+    credentials[:from_number].presence
+  end
+
   # Telnyx wants every one of these as a JSON string. connection_id is all
   # digits, so an unquoted value in credentials.yml decodes as an Integer and
   # to_json emits a bare number, which the API rejects as an invalid

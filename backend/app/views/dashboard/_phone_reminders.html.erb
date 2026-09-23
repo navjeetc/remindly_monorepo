@@ -39,21 +39,33 @@
       <p class="text-sm text-gray-700">
         <%= senior.display_name %> agreed to phone reminders on
         <%= (senior.local_time(at: senior.call_consent_at) || senior.call_consent_at).strftime("%B %-d") %>.
-        We'll call <strong><%= senior.phone %></strong> when a reminder is due, between
+        We'll call <strong><%= formatted_phone_number(senior.phone) %></strong> when a reminder is due, between
         <%= User::CALLING_HOURS.first %>am and <%= User::CALLING_HOURS.max + 1 - 12 %>pm their time.
         They can stop the calls at any point by pressing 9.
       </p>
+      <%# Still worth naming once the calls are running. A number saved during
+          setup can be lost with a handset, and a caregiver whose mother has
+          started missing calls has no other way to find out what to look for in
+          her contacts. %>
+      <% calling_number = TelnyxVoiceService.caller_id_number %>
+      <% if calling_number.present? %>
+        <p class="text-sm text-gray-500">
+          Our calls come from <strong><%= formatted_phone_number(calling_number) %></strong>.
+          It should be saved in their phone as <strong>Remindly</strong>.
+        </p>
+      <% end %>
 
     <% elsif senior.phone.present? %>
       <p class="text-sm text-gray-700">
-        We have <strong><%= senior.phone %></strong> but haven't been told it's alright to use it.
-        We'll ring once and ask <%= senior.display_name %> to press 1. Nothing is scheduled until they do.
+        We have <strong><%= formatted_phone_number(senior.phone) %></strong> but haven't been told it's
+        alright to use it. We'll ring once and ask <%= senior.display_name %> to press 1.
+        Nothing is scheduled until they do.
       </p>
-      <p class="text-sm text-gray-500">
-        Save this number in <%= senior.display_name %>'s phone first, as
-        <strong>Remindly</strong> — otherwise the call shows up as an unknown
-        number, and many phones send those straight to voicemail.
-      </p>
+
+      <%# The advice this replaces was a grey line saying "save this number"
+          without one. It now leads, because it is the step the consent call
+          depends on rather than a tip about it. %>
+      <%= render "dashboard/caller_id_contact", senior: senior %>
 
     <% else %>
       <p class="text-sm text-gray-700">
@@ -84,12 +96,21 @@
       <%= form_with url: senior_phone_path(senior_id: senior.id), method: :patch do |f| %>
         <label for="user_phone" class="block text-sm font-medium text-gray-700">Their phone number</label>
         <div class="mt-1 flex items-center gap-3">
-          <%= f.telephone_field :phone, value: senior.phone, name: "user[phone]", id: "user_phone",
-                placeholder: "+15551234567",
+          <%# The placeholder shows the shape most people will type, not the
+              shape the column stores. It said +15551234567 for as long as the
+              field has existed, which reads as an instruction — and one that
+              made a caregiver in Ohio look up what E.164 was before Remindly
+              would take their mother's number. Ten digits now arrive as +1. %>
+          <%= f.telephone_field :phone, value: formatted_phone_number(senior.phone), name: "user[phone]", id: "user_phone",
+                placeholder: "555-123-4567",
                 class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
           <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
         </div>
-        <p class="mt-1 text-xs text-gray-500">Include the country code. Changing it means asking again.</p>
+        <p class="mt-1 text-xs text-gray-500">
+          US and Canada numbers can be typed plain — we'll add the +1.
+          Anywhere else, start with + and the country code.
+          Changing the number means asking again.
+        </p>
       <% end %>
 
       <%#
@@ -249,6 +270,11 @@
               <%= pluralize([ TelnyxCall::MAX_VERIFICATIONS_PER_DAY - attempts.size, 0 ].max, "attempt") %> left.
             <% elsif senior.call_opted_out_at.blank? %>
               We'll ring once. If nobody answers, or they'd rather not, nothing changes.
+              <%# Said here as well as above the number, because this is the
+                  moment somebody acts. A call placed before the contact is
+                  saved is the one most likely to be screened, and it spends one
+                  of five attempts either way. %>
+              Best done after our number is saved in their phone.
             <% end %>
           </p>
         </div>

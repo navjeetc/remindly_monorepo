@@ -224,6 +224,26 @@ class User < ApplicationRecord
   # able to undo that by editing a field. Lifting it takes a fresh keypress.
   before_save :forget_consent_when_the_number_changes
 
+  # A number may be typed the way it is written on a fridge door.
+  #
+  # E.164 is what the provider dials and what this column holds; it is not how
+  # anybody in the United States or Canada writes a telephone number, and the
+  # field used to reject every form they would naturally use. A caregiver
+  # setting up a parent had to know what E.164 was before Remindly would keep
+  # their mother's number.
+  #
+  # Ten digits are assumed to be +1. That is a guess, and it is the right one
+  # while every care receiver is in North America -- the country code stays
+  # typeable, so somebody in London writes +44 20 7123 4567 and is normalised on
+  # their own terms rather than being told the field is wrong. If that ever
+  # stops being a safe assumption the remedy is a country to choose from, not a
+  # stricter field.
+  #
+  # before_validation rather than before_save, so phone_is_e164 judges what will
+  # actually be stored -- and so retyping a saved number in a different shape
+  # does not read as a change and quietly discard the consent given for it.
+  before_validation :normalize_phone
+
   # Addresses a mail provider has permanently refused — a hard bounce, meaning
   # the mailbox does not exist. Postmark marks such an address inactive and
   # rejects every later send, so continuing to try achieves nothing and actively
@@ -455,6 +475,39 @@ class User < ApplicationRecord
     return if tz.blank?
 
     errors.add(:tz, "is not a valid timezone") unless ActiveSupport::TimeZone[tz]
+  end
+
+  # Anything already in E.164 keeps its own country code; a bare North American
+  # number gets +1. Anything else is left exactly as typed for phone_is_e164 to
+  # refuse -- guessing twice about a number nobody can read is how a wrong
+  # number gets saved looking right, and a wrong number here telephones a
+  # stranger.
+  def normalize_phone
+    return if phone.blank?
+
+    typed = phone.to_s.strip
+
+    # Only the characters people group digits with are removed. Deleting every
+    # non-digit instead would read "+1 (414) 212-9092 ext 123" as the fifteen
+    # digits +14142129092123 -- long enough to satisfy phone_is_e164, so the
+    # refusal this field promises would be replaced by a saved number that
+    # telephones somebody else. Anything left over is not formatting, so the
+    # value is left exactly as typed for the validation to refuse.
+    stripped = typed.gsub(/[\s().\- ‐-―]/, "")
+    return unless /\A\+?\d+\z/.match?(stripped)
+
+    digits = stripped.delete("^0-9")
+
+    self.phone =
+      if stripped.start_with?("+")
+        "+#{digits}"
+      elsif digits.length == 10
+        "+1#{digits}"
+      elsif digits.length == 11 && digits.start_with?("1")
+        "+#{digits}"
+      else
+        typed
+      end
   end
 
   def forget_consent_when_the_number_changes

@@ -479,6 +479,30 @@ class DashboardController < WebController
 
   # Asks the number whether it agrees. This is the only thing a caregiver can do
   # towards enabling calls, and it can only ask.
+  # The contact card for Remindly's own calling number.
+  #
+  # No senior in the route and no permission check beyond being signed in: the
+  # file holds one number, ours, and it is the same number for everybody. There
+  # is nothing here belonging to a care receiver to leak, and a view-only
+  # caregiver reading out the number over the telephone is helping.
+  #
+  # Behind the feature flag all the same. With calls switched off nothing dials
+  # from this number, and handing out a card for a number that will never ring
+  # teaches somebody to expect a call that is not coming.
+  def caller_id_card
+    return head :forbidden unless FeatureFlag.enabled?(:phone_call_reminders)
+
+    number = TelnyxVoiceService.caller_id_number
+    return head :not_found if number.blank?
+
+    card = CallerIdCard.new(number)
+
+    send_data card.to_vcf,
+              type: "text/vcard; charset=utf-8",
+              disposition: "attachment",
+              filename: card.filename
+  end
+
   def verify_phone
     # The kill switch has to cover the one endpoint that makes a telephone ring.
     #
