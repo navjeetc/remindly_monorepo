@@ -86,6 +86,24 @@ RSpec.describe RefuseArrangementJob, type: :job do
     expect(TelnyxVoiceService).not_to have_received(:hangup)
   end
 
+  # Any other open call on the account was placed after the refusal. The likeliest
+  # is somebody on a fresh setup call pressing 1 to agree -- the one call this
+  # job must never end.
+  it "leaves a newer call alone even while it deletes the account" do
+    provisional_link
+    TelnyxCall.create!(call_control_id: "v3:refusal", user: senior, purpose: "verification",
+                       to_number: senior.phone, status: "gathering", outcome: "opted_out")
+    TelnyxCall.create!(call_control_id: "v3:newer", user: senior, purpose: "verification",
+                       to_number: "+15559990000", status: "answered", outcome: "pending")
+
+    allow(TelnyxVoiceService).to receive(:hangup)
+
+    described_class.perform_now(senior.id)
+
+    expect(TelnyxVoiceService).to have_received(:hangup).with(hash_including(call_control_id: "v3:refusal"))
+    expect(TelnyxVoiceService).not_to have_received(:hangup).with(hash_including(call_control_id: "v3:newer"))
+  end
+
   # Ending somebody's reminder is not a side effect this job is entitled to. An
   # account that became active in the meantime may well be on a call, so nothing
   # is hung up until the deletion itself has been authorised.

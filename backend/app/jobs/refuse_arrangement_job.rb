@@ -48,6 +48,11 @@ class RefuseArrangementJob < ApplicationJob
     # standing, which SweepRefusedAccountsJob picks up -- the one outcome that
     # is recoverable, unlike a line nothing can reach.
     #
+    # Closing between the two locks is safe even if the account is activated in
+    # that gap, because the only call closed is the one that carried the refusal
+    # (see calls_that_may_still_be_up) -- a call whose business is over whatever
+    # happens to the account next. Nothing a later call is doing can be cut off.
+    #
     # The lock is not a claim of perfect atomicity: the activation path does not
     # take it, and SQLite has no row lock to take. It narrows a window that was
     # thirty seconds wide to one statement under the database's own write
@@ -81,38 +86,36 @@ class RefuseArrangementJob < ApplicationJob
 
   private
 
-    # completed_at alone is not enough to say a call has ended.
-    #
-    # opt_out! stamps completed_at and say_farewell clears it again for the
-    # length of the goodbye. Between those two writes the row claims to be
-    # finished while the line is still up -- and if the process dies in that gap,
-    # or the redelivery never comes, nothing clears it again. Filtering on
-    # completed_at: nil would then skip the one call that matters, delete the row
-    # with the user, and leave the handset connected with nothing left to close
-    # it.
-    #
-    # So a recent opted-out call is included whatever its stamp says. Hanging up
-    # a call that has already ended costs one refused request; the other way
-    # round costs somebody an open line.
-    def calls_that_may_still_be_up(senior)
-      senior.telnyx_calls
-            .where(completed_at: nil)
-            .or(senior.telnyx_calls.where(outcome: "opted_out", created_at: FAREWELL_WINDOW.ago..))
-    end
+  # Only the call that carried the refusal, and never anything newer.
+  #
+  # completed_at alone cannot find it: opt_out! stamps it and say_farewell
+  # clears it again for the length of the goodbye, so a process dying between
+  # those writes leaves a row claiming to be finished while the line is up.
+  # The outcome can find it, and the outcome says exactly which call this is.
+  #
+  # Any other open call is by definition one placed after the refusal, and
+  # hanging it up is not this job's business. The account has to be
+  # provisional to reach here, and the ways out of provisional are consent! on
+  # a later verification call and the device's own start screen -- so the one
+  # call that might still be live besides the refusal is somebody pressing 1
+  # to agree, and ending that one would be the worst thing this job could do.
+  def calls_that_may_still_be_up(senior)
+    senior.telnyx_calls.where(outcome: "opted_out", created_at: FAREWELL_WINDOW.ago..)
+  end
 
-    # Nothing may be left ringing on a number whose account has just vanished.
-    #
-    # The farewell is normally ended by call.speak.ended, which hangs up and
-    # stamps the row. If that event is lost, or its hangup fails, the call can
-    # still be live when this timer fires -- and destroying the user cascades to
-    # its telnyx_calls, so nothing would be left to close the line with.
-    #
-    # The tolerant hangup is right here: it is tidying up after a call that has
-    # almost certainly ended already, the rows are gone either way, and a
-    # provider refusing one of these must not take the whole job down.
-    def close(call_control_ids)
-      call_control_ids.each do |id|
-        TelnyxVoiceService.hangup(call_control_id: id)
-      end
+  # Nothing may be left ringing on a number whose account has just vanished.
+  #
+  # The farewell is normally ended by call.speak.ended, which hangs up and
+  # stamps the row. If that event is lost, or its hangup fails, the call can
+  # still be live when this timer fires -- and destroying the user cascades to
+  # its telnyx_calls, so nothing would be left to close the line with.
+  #
+  # The tolerant hangup is right here: it is tidying up after a call that has
+  # almost certainly ended already, the rows are gone either way, and a
+  # provider refusing one of these must not take the whole job down.
+  def close(call_control_ids)
+    call_control_ids.each do |id|
+      TelnyxVoiceService.hangup(call_control_id: id)
     end
+  end
 end

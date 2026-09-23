@@ -212,6 +212,13 @@ RSpec.describe "What a call says before it ends", type: :request do
       expect(call.reload.completed_at).to eq(completed)
     end
 
+    # call.speak.ended is the only thing that ends the call once a farewell is
+    # playing, so it must not be the only thing that can.
+    it "schedules a fallback in case the farewell never reports finishing" do
+      expect { telnyx_post("call.gather.ended", call, digits: "1") }
+        .to have_enqueued_job(FarewellFallbackJob).with(call.id)
+    end
+
     it "records the consent either way" do
       telnyx_post("call.gather.ended", call, digits: "1")
 

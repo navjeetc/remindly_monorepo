@@ -283,6 +283,13 @@ class TelnyxWebhooksController < ApplicationController
     # to speak the line stays open until call.speak.ended, so pressing 1 no
     # longer ends the call in the same instant -- which is what it did every day
     # on every reminder, and read as a dropped call.
+    # A call already known to have ended needs no hangup, and must not get the
+    # raising one: a late gather.ended after the hangup would post to a dead
+    # call, and if alive? cannot answer, hangup! raises and the redelivery takes
+    # the same path again -- a loop over a call nobody is on. The status is
+    # sticky on a hangup, so this is the check that recognises that late event.
+    return if call.status == "hangup"
+
     unless payload["status"] == "call_hangup" || say_farewell(call, event_id)
       # Raising, because at this point nothing else will end the call: the
       # keypress is handled, no farewell is playing, and a swallowed failure
@@ -421,7 +428,12 @@ class TelnyxWebhooksController < ApplicationController
     # phone down before this event is delivered would otherwise have a farewell
     # posted to a dead call, and the claim on their number cleared for a call
     # that can never produce the event that would restore it.
-    return hang_up_unless_already_gone(call, payload, event_id) if payload["status"] == "call_hangup"
+    #
+    # Either signal is enough to stop here: the payload saying the caller hung up,
+    # or the row's sticky status saying a hangup has already been processed. The
+    # second is what catches a late delivery, and without it the raising hangup
+    # below would post to a dead call and could loop on redelivery.
+    return if payload["status"] == "call_hangup" || call.status == "hangup"
     return if say_farewell(call, event_id)
 
     # Raising here for the same reason as the reminder path: with no farewell
@@ -673,6 +685,10 @@ class TelnyxWebhooksController < ApplicationController
       Rails.logger.warn "Could not re-claim the line for call #{call.id} during its farewell: #{e.message}"
     end
 
+    # call.speak.ended is now the only thing that ends this call, so it must not
+    # be the only thing that can. See FarewellFallbackJob.
+    FarewellFallbackJob.set(wait: FarewellFallbackJob::WAIT).perform_later(call.id)
+
     true
   end
 
@@ -850,6 +866,11 @@ class TelnyxWebhooksController < ApplicationController
     when "call.initiated" then "initiated"
     when "call.answered" then "answered"
     when "call.gather.ended" then "gathering"
+    # The farewell holds the line open deliberately, so its events must not
+    # describe the call as finished. They fell through to "completed" before,
+    # which read wrong for the whole of the goodbye -- and the status column is
+    # now what decides whether a farewell may speak at all.
+    when "call.speak.started", "call.speak.ended" then "speaking"
     when "call.hangup" then "hangup"
     else "completed"
     end
