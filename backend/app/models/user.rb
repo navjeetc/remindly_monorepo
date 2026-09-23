@@ -486,10 +486,20 @@ class User < ApplicationRecord
     return if phone.blank?
 
     typed = phone.to_s.strip
-    digits = typed.delete("^0-9")
+
+    # Only the characters people group digits with are removed. Deleting every
+    # non-digit instead would read "+1 (414) 212-9092 ext 123" as the fifteen
+    # digits +14142129092123 -- long enough to satisfy phone_is_e164, so the
+    # refusal this field promises would be replaced by a saved number that
+    # telephones somebody else. Anything left over is not formatting, so the
+    # value is left exactly as typed for the validation to refuse.
+    stripped = typed.gsub(/[\s().\- ‐-―]/, "")
+    return unless /\A\+?\d+\z/.match?(stripped)
+
+    digits = stripped.delete("^0-9")
 
     self.phone =
-      if typed.start_with?("+")
+      if stripped.start_with?("+")
         "+#{digits}"
       elsif digits.length == 10
         "+1#{digits}"

@@ -58,4 +58,20 @@ RSpec.describe "Typing a phone number the way it is written", type: :model do
 
     expect(senior.reload).to be_callable_by_phone
   end
+
+  # Deleting every non-digit would read this as the fifteen digits
+  # +14142129092123 -- long enough to pass phone_is_e164, so a number that
+  # telephones somebody else would be saved where a refusal was promised.
+  it "refuses an extension rather than folding it into the number" do
+    senior.phone = "+1 (414) 212-9092 ext 123"
+
+    expect(senior).not_to be_valid
+    expect(senior.errors[:phone].join).to match(/E\.164/)
+  end
+
+  it "refuses letters in a number that is otherwise well shaped" do
+    senior.phone = "414-212-WXYZ"
+
+    expect(senior).not_to be_valid
+  end
 end
