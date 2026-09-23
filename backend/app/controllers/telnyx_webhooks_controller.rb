@@ -494,15 +494,22 @@ class TelnyxWebhooksController < ApplicationController
   # Destroys an account nobody has agreed to. Safe for the same structural
   # reason the screen's "No thank you" is: a provisional account can only ever
   # hold reminders a caregiver typed into it.
+  # Deleted after the call, not during it.
+  #
+  # This used to destroy the user here, which was correct while this webhook
+  # also hung the call up. Now that the call says goodbye first, destroying the
+  # senior cascades to its telnyx_calls and takes the row out from under the
+  # farewell: call.speak.ended then cannot find or correlate the call, nothing
+  # issues the hangup, and somebody who has just refused is left connected to a
+  # line that nothing will close.
+  #
+  # The job waits on a clock rather than on the webhook, so a lost speak.ended
+  # cannot leave a refused account standing. It re-reads the provisional state
+  # before deleting anything.
   def refuse_arrangement!(senior)
     return unless senior.senior_links.where(state: :provisional).exists?
 
-    senior.destroy!
-  rescue StandardError => e
-    Rails.logger.error(
-      "Refusing the arrangement failed for user #{senior.id}: #{e.class}: #{e.message}\n" \
-      "#{Array(e.backtrace).first(5).join("\n")}"
-    )
+    RefuseArrangementJob.set(wait: RefuseArrangementJob::DELAY).perform_later(senior.id)
   end
 
   # Writes what happened on a call, bypassing validation deliberately.
@@ -591,7 +598,31 @@ class TelnyxWebhooksController < ApplicationController
       command_id: "farewell-#{event_id}"
     )
 
-    spoken.present?
+    return false if spoken.blank?
+
+    # The line is still ours, so the row has to go on saying so.
+    #
+    # consent!, opt_out! and acknowledge! all stamp completed_at, and
+    # call_in_flight? -- with the unique index behind it -- reads exactly that
+    # column to decide whether this handset is free. Holding the call open for a
+    # farewell while the row claims to be finished would let the scheduler dial
+    # a second reminder to somebody who is still listening to the first one.
+    #
+    # Clearing it restores the claim for the length of the farewell, and
+    # handle_hangup stamps it again when the call actually ends. A lost
+    # speak.ended leaves the claim standing, which is what the stale-call
+    # reconciliation exists to close -- the same path that already covers a
+    # worker dying mid-call.
+    begin
+      call.update_columns(completed_at: nil, updated_at: Time.current)
+    rescue ActiveRecord::RecordNotUnique => e
+      # Another row already holds the live claim for this number. Nothing to do
+      # about it here, and it must not fail the webhook: the farewell is already
+      # playing, and the outcome is already recorded.
+      Rails.logger.warn "Could not re-claim the line for call #{call.id} during its farewell: #{e.message}"
+    end
+
+    true
   end
 
   # The farewell has finished, so the call can end.
@@ -601,10 +632,18 @@ class TelnyxWebhooksController < ApplicationController
   # hang up" would end the call in the pause where somebody is deciding which key
   # to press. Only a call whose business is settled is ended here, and FAREWELLS
   # is exactly that set.
+  # The raising hangup, not the tolerant one.
+  #
+  # This event is now the only thing that will end the call: the keypress
+  # handler deliberately did not. A swallowed failure here answers 200, Telnyx
+  # never redelivers, and the senior is left connected in silence -- which is
+  # the exact failure hangup! was written for. hangup! is still safe on a call
+  # that has already ended, because it checks before raising.
   def handle_speak_ended(call, payload, event_id)
     return unless FAREWELLS.key?(call.outcome)
+    return if payload["status"] == "call_hangup"
 
-    hang_up_unless_already_gone(call, payload, event_id)
+    TelnyxVoiceService.hangup!(call_control_id: call.call_control_id, command_id: event_id)
   end
 
   # Snoozing writes the acknowledgement AND schedules the next occurrence, which

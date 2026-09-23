@@ -32,6 +32,10 @@ RSpec.describe "What a call says before it ends", type: :request do
   before do
     allow(TelnyxVoiceService).to receive(:gather_digit)
     allow(TelnyxVoiceService).to receive(:hangup)
+    # The farewell's own hangup is the raising one: this event is the only thing
+    # that will end the call, so a swallowed failure would answer 200, stop the
+    # redelivery and leave somebody connected in silence.
+    allow(TelnyxVoiceService).to receive(:hangup!)
     # A real command id comes back when the provider accepts the speak. Nil is
     # the refusal case, and it has its own example below.
     allow(TelnyxVoiceService).to receive(:speak).and_return({ "data" => { "result" => "ok" } })
@@ -70,10 +74,11 @@ RSpec.describe "What a call says before it ends", type: :request do
       telnyx_post("call.gather.ended", call, digits: "1")
 
       expect(TelnyxVoiceService).not_to have_received(:hangup)
+      expect(TelnyxVoiceService).not_to have_received(:hangup!)
 
       telnyx_post("call.speak.ended", call)
 
-      expect(TelnyxVoiceService).to have_received(:hangup)
+      expect(TelnyxVoiceService).to have_received(:hangup!)
     end
 
     # Silence is not a refusal and not an agreement. There is nothing to thank
@@ -95,6 +100,21 @@ RSpec.describe "What a call says before it ends", type: :request do
       telnyx_post("call.gather.ended", call, digits: "1")
 
       expect(TelnyxVoiceService).to have_received(:hangup)
+    end
+
+    # completed_at is the live-call claim: call_in_flight? and the unique index
+    # both read it. Stamping it before the farewell has played would free the
+    # handset while somebody is still listening, and the scheduler could dial a
+    # second reminder into the same call.
+    it "keeps holding the line while the farewell plays" do
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(call.reload.completed_at).to be_nil
+      expect(TelnyxCall.call_in_flight?(senior.reload, Time.current)).to be(true)
+
+      telnyx_post("call.hangup", call)
+
+      expect(call.reload.completed_at).to be_present
     end
 
     it "records the consent either way" do
