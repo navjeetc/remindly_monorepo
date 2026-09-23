@@ -226,8 +226,13 @@ RSpec.describe "Telnyx verification calls", type: :request do
       expect(call.reload.outcome).to eq("declined")
     end
 
+    # Free once the call has actually ended. Until the hangup lands the handset
+    # is still connected, and a second call must not be dialled into it.
     it "leaves the caregiver free to try again" do
       telnyx_post("call.gather.ended", digits: "")
+      expect(TelnyxCall.reserve_verification(senior)).to be_nil
+
+      telnyx_post("call.hangup")
 
       expect(TelnyxCall.reserve_verification(senior)).to be_present
     end

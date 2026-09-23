@@ -339,12 +339,20 @@ RSpec.describe "Telnyx webhooks", type: :request do
   # senior may be called again. An attempt that has ended but never recorded it
   # blocks their next reminder for the whole in-flight window.
   describe "finishing a call" do
+    # Completion is recorded when the call has actually ended, not when the
+    # outcome settles. Between the two the handset is still connected, and the
+    # number stays claimed so nothing else can be dialled into that call -- the
+    # hangup that follows within a fraction of a second is what releases it.
     it "records completion when nobody pressed anything" do
       answer_as_human
       telnyx_post("call.gather.ended", digits: "")
 
       expect(telnyx_call.reload.outcome).to eq("no_response")
-      expect(telnyx_call.completed_at).to be_present
+      expect(telnyx_call.completed_at).to be_nil
+
+      telnyx_post("call.hangup")
+
+      expect(telnyx_call.reload.completed_at).to be_present
     end
 
     it "records completion on hangup even when a keypress already resolved it" do

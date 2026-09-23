@@ -170,6 +170,14 @@ RSpec.describe "What a call says before it ends", type: :request do
       telnyx_post("call.gather.ended", call, digits: "1")
 
       expect(TelnyxVoiceService).to have_received(:hangup!)
+
+      # Still claimed while that hangup is unconfirmed: a raise would be retried,
+      # and in between nothing else may be dialled into a handset still connected.
+      expect(call.reload.completed_at).to be_nil
+      expect(FarewellFallbackJob).to have_been_enqueued.with(call.id)
+
+      telnyx_post("call.hangup", call)
+
       expect(call.reload.completed_at).to be_present
     end
 
@@ -217,6 +225,17 @@ RSpec.describe "What a call says before it ends", type: :request do
     it "schedules a fallback in case the farewell never reports finishing" do
       expect { telnyx_post("call.gather.ended", call, digits: "1") }
         .to have_enqueued_job(FarewellFallbackJob).with(call.id)
+    end
+
+    # Telnyx redelivers events. The second delivery of the keypress used to issue
+    # the same speak again; the provider refused the duplicate, that refusal read
+    # as a failed farewell, and the handler hung up on the goodbye already playing.
+    it "treats a redelivered keypress as handled rather than cutting off the farewell" do
+      telnyx_post("call.gather.ended", call, digits: "1")
+      telnyx_post("call.gather.ended", call, digits: "1")
+
+      expect(TelnyxVoiceService).to have_received(:speak).once
+      expect(TelnyxVoiceService).not_to have_received(:hangup!)
     end
 
     it "records the consent either way" do
