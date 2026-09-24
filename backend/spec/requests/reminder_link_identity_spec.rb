@@ -132,6 +132,26 @@ RSpec.describe "Which person a reminder link shows", type: :request do
     end
   end
 
+  # A device page lives at its own address. Reached at plain /voice_reminders on
+  # the cookie alone, it had no token to send, so its refreshes and buttons
+  # answered with whichever link the browser opened last.
+  it "sends a link-only visit to plain /voice_reminders to the link's own address" do
+    get "/r/#{first_link.token}"
+
+    get "/voice_reminders"
+
+    expect(response).to redirect_to("/r/#{first_link.token}")
+  end
+
+  # Somebody signed in is looking at their own page and has no link to go to.
+  it "leaves a signed-in visit to /voice_reminders where it is" do
+    post "/magic/verify", params: { token: first.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
+
+    get "/voice_reminders"
+
+    expect(response).to have_http_status(:ok)
+  end
+
   # A page that asked for one person is never answered with whoever the cookie
   # happens to hold.
   it "does not fall back to the cookie when the page's own link has been revoked" do

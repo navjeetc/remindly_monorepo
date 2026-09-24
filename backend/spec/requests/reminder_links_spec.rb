@@ -207,6 +207,7 @@ RSpec.describe "A reminder link", type: :request do
     it "stops the device on its next request" do
       redeem
       get "/voice_reminders"
+      follow_redirect!
       expect(response).to have_http_status(:ok)
 
       link.revoke!
@@ -376,6 +377,7 @@ RSpec.describe "A reminder link", type: :request do
       care_receiver.update!(text_size: :largest)
 
       get "/voice_reminders"
+      follow_redirect!
 
       expect(Nokogiri::HTML(response.body).at_css("html")["style"])
         .to include(User::TEXT_SCALES.fetch("largest").to_s)
@@ -398,6 +400,7 @@ RSpec.describe "A reminder link", type: :request do
 
       travel(31.days) do
         get "/voice_reminders"
+        follow_redirect!
 
         expect(response).to have_http_status(:ok)
         expect(Nokogiri::HTML(response.body).text).not_to include("Back to Remindly")

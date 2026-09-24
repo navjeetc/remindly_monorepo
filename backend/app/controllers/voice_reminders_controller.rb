@@ -36,6 +36,18 @@ class VoiceRemindersController < WebController
   helper_method :voice_script_version
 
   def show
+    # A device page lives at its own address.
+    #
+    # Reached at plain /voice_reminders on a link cookie alone -- an old
+    # bookmark, a redirect -- the page had no token to send, so its refreshes
+    # and its buttons answered with the browser-wide cookie: whichever link was
+    # opened last, in any window. Sent to /r/<token> instead, every window names
+    # its own person. Only when no session answered: somebody signed in is
+    # looking at their own page, and has no link to be sent to.
+    if params[:token].blank? && link_mode?
+      return redirect_to reminder_link_path(token: link_mode_link.token)
+    end
+
     # Consent moved from before setup to first use; this is that moment.
     #
     # An account a caregiver created is provisional until the person it is about
