@@ -19,13 +19,16 @@ module ReminderLinkMode
 
   COOKIE = :reminder_link
   HEADER = "X-Reminder-Link"
+  # The same thing for a plain form post, which cannot set a header. Named with
+  # "token" so filter_parameters keeps it out of the logs.
+  PARAM = :reminder_link_token
   COOKIE_LIFETIME = 1.year
 
   included do
     # The layout asks this to decide whether to offer a way back into the rest
     # of the app. Defined here so every controller that may honour a link can
     # answer it, rather than each one growing its own.
-    helper_method :link_mode? if respond_to?(:helper_method)
+    helper_method :link_mode?, :reminder_link_form_params if respond_to?(:helper_method)
   end
 
   private
@@ -49,7 +52,7 @@ module ReminderLinkMode
   def link_mode_link
     return @link_mode_link if defined?(@link_mode_link)
 
-    presented = request.headers[HEADER].presence
+    presented = request.headers[HEADER].presence || params[PARAM].presence
     @link_presented_in_header = presented.present?
     return @link_mode_link = ReminderLink.live_by_token(presented) if presented
 
@@ -57,6 +60,17 @@ module ReminderLinkMode
   end
 
   def link_presented_in_header? = @link_presented_in_header == true
+
+  # For the device page's buttons: an empty field the page fills in from its
+  # own address as it loads (see the script at the foot of the voice layout).
+  #
+  # Empty on purpose. The token is already in the address bar, where it has to
+  # be for the bookmark to work, and it is deliberately never printed into the
+  # page itself -- a screenshot or a saved page must not carry the credential.
+  # Filling it from the address keeps both promises.
+  def reminder_link_form_params
+    { PARAM => "" }
+  end
 
   def link_mode_user = link_mode_link&.user
 

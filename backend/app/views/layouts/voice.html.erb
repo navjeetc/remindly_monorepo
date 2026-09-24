@@ -286,5 +286,20 @@
 
     <%# The script tag lives in the view, cache-busted, and stays there. %>
     <%= yield %>
+    <%# Gives the page's buttons this page's own link, taken from the address
+        bar. The forms otherwise post with the browser-wide cookie, which holds
+        whichever link was opened last in any window -- and "No thank you"
+        deletes an account. Read from the address rather than printed into the
+        page, so the credential never appears in the HTML. Without JavaScript
+        the field stays empty and the cookie answers, as it always did. %>
+    <script>
+      (function () {
+        var match = window.location.pathname.match(/^\/r\/([^/?#]+)/);
+        if (!match) return;
+        document.querySelectorAll('input[name="reminder_link_token"]').forEach(function (input) {
+          input.value = match[1];
+        });
+      })();
+    </script>
   </body>
 </html>

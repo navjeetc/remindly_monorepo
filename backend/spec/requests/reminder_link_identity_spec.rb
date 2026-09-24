@@ -62,6 +62,35 @@ RSpec.describe "Which person a reminder link shows", type: :request do
     end
   end
 
+  # The page's buttons are plain forms, and they relied on the shared cookie too.
+  # "No" on a provisional account deletes it, so window one's No answering for
+  # window two's person destroyed the wrong account.
+  describe "the buttons on a provisional person's page" do
+    before do
+      [ first, second ].each { |s| s.senior_links.update_all(state: CaregiverLink.states[:provisional]) }
+      get "/r/#{first_link.token}"   # window one: First's consent question
+      get "/r/#{second_link.token}"  # window two: Second's -- the cookie now says Second
+    end
+
+    # A field for the page to fill from its own address -- empty in the HTML,
+    # because the token is never printed into the page.
+    it "gives each button a field for the page's own link, without printing the token" do
+      get "/r/#{first_link.token}"
+
+      field = Nokogiri::HTML(response.body)
+                      .at_css("form[action='/voice_reminders/decline'] input[name='reminder_link_token']")
+      expect(field).to be_present
+      expect(response.body).not_to include(first_link.token)
+    end
+
+    it "answers No for the window's own person, never the other one" do
+      post "/voice_reminders/decline", params: { reminder_link_token: first_link.token }
+
+      expect(User.exists?(first.id)).to be(false)
+      expect(User.exists?(second.id)).to be(true)
+    end
+  end
+
   # A page that asked for one person is never answered with whoever the cookie
   # happens to hold.
   it "does not fall back to the cookie when the page's own link has been revoked" do
