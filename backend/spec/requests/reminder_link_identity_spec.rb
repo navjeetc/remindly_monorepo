@@ -89,6 +89,37 @@ RSpec.describe "Which person a reminder link shows", type: :request do
       expect(User.exists?(first.id)).to be(false)
       expect(User.exists?(second.id)).to be(true)
     end
+
+    # Yes starts somebody's reminders and tells their caregiver it is running,
+    # so it must be the window's own person who agreed.
+    it "answers Yes for the window's own person, never the other one" do
+      post "/voice_reminders/start", params: { reminder_link_token: first_link.token }
+
+      expect(first.senior_links.pluck(:state)).to all(eq("active"))
+      expect(second.senior_links.pluck(:state)).to all(eq("provisional"))
+    end
+  end
+
+  # Stop revokes a device's link. Pressed in one window, it must end that
+  # window's link and leave the other person's device working.
+  describe "the Stop button" do
+    before do
+      get "/r/#{first_link.token}"   # window one
+      get "/r/#{second_link.token}"  # window two -- the cookie now says Second
+    end
+
+    it "revokes the window's own link, not the other one" do
+      post "/voice_reminders/stop", params: { reminder_link_token: first_link.token }
+
+      expect(first_link.reload.revoked_at).to be_present
+      expect(second_link.reload.revoked_at).to be_nil
+    end
+
+    it "leaves the other window's page working" do
+      post "/voice_reminders/stop", params: { reminder_link_token: first_link.token }
+
+      expect(coming_up(as: second_link)).to eq([ "Second's appointment" ])
+    end
   end
 
   # A page that asked for one person is never answered with whoever the cookie
