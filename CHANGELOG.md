@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-09-24
+
+### Fixed
+- **Clicking a day on the availability calendar opened the form on today.** The
+  calendar passed the day it was clicked on, and the form ignored it: choosing
+  the 26th and pressing save added availability for the 24th, with nothing on
+  the screen to say so. The form now opens on the day that was clicked, falling
+  back to today for a past day or one it cannot read.
+
+  The same hardcoded date also discarded the day somebody had just entered
+  whenever a save was refused and the form came back. It now keeps it.
+
 ## [0.11.0] - 2026-09-23
 
 ### Fixed

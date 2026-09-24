@@ -15,8 +15,13 @@ class CaregiverAvailabilitiesController < WebController
   end
 
   # GET /caregiver_availabilities/new
+  #
+  # Clicking a day on the calendar lands here with ?date=YYYY-MM-DD, and the
+  # form opens on that day. It used to be ignored -- the form always showed
+  # today, so choosing the 26th and saving quietly added availability for the
+  # 24th instead.
   def new
-    @availability = current_user.caregiver_availabilities.build
+    @availability = current_user.caregiver_availabilities.build(date: requested_date)
   end
 
   # GET /caregiver_availabilities/bulk_new
@@ -91,6 +96,18 @@ class CaregiverAvailabilitiesController < WebController
   end
 
   private
+
+  # The day asked for, if it is a real date that has not passed; otherwise
+  # today. Parsed rather than trusted, because it arrives in the query string.
+  # A past day falls back to today instead of being refused, since the form
+  # does not accept one anyway (its min is today) and a clicked-past cell
+  # should still open something usable.
+  def requested_date
+    date = Date.iso8601(params[:date].to_s)
+    date < Date.current ? Date.current : date
+  rescue Date::Error
+    Date.current
+  end
 
   def check_feature_enabled!
     unless FeatureFlag.enabled?(:native_scheduling)
