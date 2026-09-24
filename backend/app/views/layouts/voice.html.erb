@@ -299,6 +299,12 @@
         document.querySelectorAll('input[name="reminder_link_token"]').forEach(function (input) {
           input.value = match[1];
         });
+        // Enabled only now that they carry this page's own link. They are
+        // rendered disabled, so without this script they stay inert rather
+        // than posting with whichever link the browser last opened.
+        document.querySelectorAll('[data-needs-reminder-link="true"]').forEach(function (button) {
+          button.disabled = false;
+        });
       })();
     </script>
   </body>

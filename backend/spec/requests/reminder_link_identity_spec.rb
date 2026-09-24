@@ -83,6 +83,16 @@ RSpec.describe "Which person a reminder link shows", type: :request do
       expect(response.body).not_to include(first_link.token)
     end
 
+    # Without JavaScript the field stays empty and a post would answer with the
+    # shared cookie. Rendered disabled, the buttons do nothing instead.
+    it "renders the buttons disabled until the page has filled in its link" do
+      get "/r/#{first_link.token}"
+
+      buttons = Nokogiri::HTML(response.body).css("button[data-needs-reminder-link='true']")
+      expect(buttons.size).to eq(2)
+      expect(buttons.map { |b| b["disabled"] }).to all(be_present)
+    end
+
     it "answers No for the window's own person, never the other one" do
       post "/voice_reminders/decline", params: { reminder_link_token: first_link.token }
 
@@ -192,6 +202,15 @@ RSpec.describe "Which person a reminder link shows", type: :request do
         expect(Acknowledgement.where(occurrence_id: seconds.id, kind: "snooze")).to exist
         expect(Acknowledgement.where(occurrence_id: firsts.id)).not_to exist
       end
+    end
+
+    # Only a link this request names outranks a session. A cookie left over from
+    # opening somebody's link earlier must not take over the signed-in person's
+    # own page.
+    it "does not let a leftover link cookie outrank the session" do
+      get "/r/#{second_link.token}"  # sets the browser-wide cookie to Second
+
+      expect(coming_up).to eq([ "First's appointment" ])
     end
 
     it "still shows the signed-in person where no link is involved" do

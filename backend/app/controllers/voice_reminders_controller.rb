@@ -335,6 +335,8 @@ class VoiceRemindersController < WebController
     return render :unavailable, status: :not_found unless link
 
     remember_reminder_link(link)
+    # Named in the address, so it may outrank a session. See explicit_link?.
+    @link_from_address = true
     link.record_use_if_stale!
   end
 

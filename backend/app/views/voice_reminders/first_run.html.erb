@@ -35,6 +35,7 @@
           "No" deletes an account. %>
       <%= button_to "Yes, start my reminders", start_voice_reminders_path,
             params: reminder_link_form_params,
+            **reminder_link_button_options,
             class: "btn-primary text-2xl px-8 py-6" %>
 
       <%# Asked before it happens. This press deletes the account and everything
@@ -48,6 +49,7 @@
           own destructive buttons use onclick. %>
       <%= button_to "No thank you", decline_voice_reminders_path,
             params: reminder_link_form_params,
+            **reminder_link_button_options,
             onclick: "return confirm('#{j 'This deletes the reminders that were set up for you. Are you sure?'}')",
             class: "btn-secondary text-2xl px-8 py-6" %>
     </div>

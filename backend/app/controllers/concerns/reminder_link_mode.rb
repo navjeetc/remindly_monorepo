@@ -28,7 +28,7 @@ module ReminderLinkMode
     # The layout asks this to decide whether to offer a way back into the rest
     # of the app. Defined here so every controller that may honour a link can
     # answer it, rather than each one growing its own.
-    helper_method :link_mode?, :reminder_link_form_params if respond_to?(:helper_method)
+    helper_method :link_mode?, :reminder_link_form_params, :reminder_link_button_options if respond_to?(:helper_method)
   end
 
   private
@@ -104,8 +104,34 @@ module ReminderLinkMode
     return session_user || link_user if link_user.nil? || session_user.nil?
     return session_user if link_user.id == session_user.id
 
+    # Only a link this request names outranks a session: the header, the form
+    # field, or /r/<token> in the address. A cookie left over from opening
+    # somebody's link earlier does not. Letting it would make plain
+    # /voice_reminders, visited by a signed-in person, show whichever link this
+    # browser last opened -- the same mix-up, from the other side.
+    return session_user unless explicit_link?
+
     @link_overrides_session = true
     link_user
+  end
+
+  # Whether the link in play was named by this request rather than remembered by
+  # the browser. The page opened at /r/<token> sets @link_from_address.
+  def explicit_link? = link_presented_in_header? || @link_from_address == true
+
+  # For the device page's buttons on a page opened from a link: disabled until
+  # the page has filled in its own link.
+  #
+  # Without JavaScript the field would stay empty and the post would answer with
+  # the browser-wide cookie -- whichever link was opened last, in any window --
+  # and "No thank you" deletes an account. Disabled is the safe failure: the
+  # buttons do nothing rather than act for somebody else. The consent question
+  # can still be answered by telephone. A page reached without a link has no
+  # link to fill in, and its buttons are left alone.
+  def reminder_link_button_options
+    return {} if params[:token].blank?
+
+    { disabled: true, data: { needs_reminder_link: true } }
   end
 
   def link_overrides_session? = @link_overrides_session == true

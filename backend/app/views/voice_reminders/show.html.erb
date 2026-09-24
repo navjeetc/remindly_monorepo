@@ -63,6 +63,7 @@
                         <% if link_mode? %>
                           <%= button_to "Stop these reminders", stop_voice_reminders_path,
                                 params: reminder_link_form_params,
+                                **reminder_link_button_options,
                                 onclick: "return confirm('#{j 'This device will stop showing your reminders. Are you sure?'}')",
                                 class: "btn-secondary" %>
                         <% end %>
