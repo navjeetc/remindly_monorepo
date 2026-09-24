@@ -56,7 +56,6 @@ Rails.application.configure do
   # Raise email delivery errors so we can see what's wrong
   config.action_mailer.raise_delivery_errors = true
 
-<<<<<<< Updated upstream
   # Configure Postmark for email delivery
   config.action_mailer.delivery_method = :postmark
   config.action_mailer.postmark_settings = {
@@ -82,24 +81,6 @@ Rails.application.configure do
   # `deliver_later` raise `NoMethodError: undefined method 'set' for nil` — i.e.
   # no queued mail is ever sent. Leaving these at their defaults
   # (delivery_job = ActionMailer::MailDeliveryJob) is what makes deliver_later work.
-=======
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "remindly.care" }
-  
-  # Configure email sender
-  config.action_mailer.default_options = { 
-    from: "notifications@remindly.care" 
-  }
-
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
->>>>>>> Stashed changes
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
