@@ -52,7 +52,10 @@ module ReminderLinkMode
   def link_mode_link
     return @link_mode_link if defined?(@link_mode_link)
 
-    presented = request.headers[HEADER].presence || params[PARAM].presence
+    # The form field is read from the request body only. `params` would also take
+    # it from the query string, and ?reminder_link_token=... would put the token
+    # into URLs and access logs -- the leak a header was chosen to avoid.
+    presented = request.headers[HEADER].presence || request.request_parameters[PARAM.to_s].presence
     @link_presented_in_header = presented.present?
     return @link_mode_link = ReminderLink.live_by_token(presented) if presented
 

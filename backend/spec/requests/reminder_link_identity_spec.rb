@@ -152,6 +152,17 @@ RSpec.describe "Which person a reminder link shows", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
+  # Only a form body may carry the token. From the query string it would end up in
+  # URLs and access logs, which is what the header exists to avoid -- so a query
+  # parameter is ignored and the request falls to whatever else it carries.
+  it "ignores a link token in the query string" do
+    get "/r/#{second_link.token}"  # the cookie says Second
+
+    get "/voice_reminders/coming_up", params: { reminder_link_token: first_link.token }
+
+    expect(JSON.parse(response.body).map { |t| t["title"] }).to eq([ "Second's appointment" ])
+  end
+
   # A page that asked for one person is never answered with whoever the cookie
   # happens to hold.
   it "does not fall back to the cookie when the page's own link has been revoked" do
