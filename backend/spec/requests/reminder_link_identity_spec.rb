@@ -125,6 +125,44 @@ RSpec.describe "Which person a reminder link shows", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    # The write side. The page shows the link's person, so Done and Snooze must
+    # act for that person too -- a regression here would show Second while
+    # marking First's dose taken.
+    describe "Done and Snooze" do
+      def occurrence_for(senior)
+        reminder = Reminder.create!(user: senior, title: "#{senior.name}'s tablet", category: :medication,
+                                    rrule: "FREQ=DAILY", tz: senior.tz)
+        Occurrence.create!(reminder: reminder, scheduled_at: Time.current, status: :pending)
+      end
+
+      let!(:firsts)  { occurrence_for(first) }
+      let!(:seconds) { occurrence_for(second) }
+      let(:as_second) { { "X-Reminder-Link" => second_link.token } }
+
+      it "marks the link's person's dose taken, not the signed-in person's" do
+        post "/acknowledgements", params: { occurrence_id: seconds.id, kind: "taken" }, headers: as_second
+
+        expect(response).to have_http_status(:created)
+        expect(seconds.reload.status).to eq("acknowledged")
+        expect(firsts.reload.status).to eq("pending")
+      end
+
+      # One credential, one person: the link cannot reach the session's reminders.
+      it "cannot mark the signed-in person's dose from the other person's page" do
+        post "/acknowledgements", params: { occurrence_id: firsts.id, kind: "taken" }, headers: as_second
+
+        expect(firsts.reload.status).to eq("pending")
+      end
+
+      it "snoozes the link's person's reminder, not the signed-in person's" do
+        post "/acknowledgements/snooze", params: { occurrence_id: seconds.id }, headers: as_second
+
+        expect(response).to have_http_status(:created)
+        expect(Acknowledgement.where(occurrence_id: seconds.id, kind: "snooze")).to exist
+        expect(Acknowledgement.where(occurrence_id: firsts.id)).not_to exist
+      end
+    end
+
     it "still shows the signed-in person where no link is involved" do
       expect(coming_up).to eq([ "First's appointment" ])
     end
