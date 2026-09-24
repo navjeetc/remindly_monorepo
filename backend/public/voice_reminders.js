@@ -1,4 +1,19 @@
 // Voice Reminders - Session-based authentication version
+
+// The reminder link this page was opened with, if it was opened with one.
+//
+// Every request below sends it, and the server prefers it over any cookie.
+// Without this, the page was identified by its address but its data by a single
+// browser-wide cookie holding whichever link was opened most recently -- and
+// windows in one browser share that cookie, incognito ones included. Two windows
+// opened on two people's links therefore showed the same person, the one opened
+// last, each under its own address.
+const REMINDER_LINK_TOKEN = (window.location.pathname.match(/^\/r\/([^/?#]+)/) || [])[1] || null;
+
+function withReminderLink(headers = {}) {
+    return REMINDER_LINK_TOKEN ? { ...headers, 'X-Reminder-Link': REMINDER_LINK_TOKEN } : headers;
+}
+
 class VoiceRemindersApp {
     constructor() {
         this.reminders = [];
@@ -156,7 +171,7 @@ class VoiceRemindersApp {
         if (!section || !list) return;
 
         try {
-            const response = await fetch('/voice_reminders/coming_up', { credentials: 'include' });
+            const response = await fetch('/voice_reminders/coming_up', { credentials: 'include', headers: withReminderLink() });
             if (!response.ok) return;
 
             const tasks = await response.json();
@@ -201,7 +216,8 @@ class VoiceRemindersApp {
         try {
             this.updateStatus('loading');
             const response = await fetch('/voice_reminders/today', {
-                credentials: 'include' // Important for session cookies
+                credentials: 'include', // Important for session cookies
+                headers: withReminderLink()
             });
             
             // The credential stopped working, or has not started working yet:
@@ -423,10 +439,10 @@ class VoiceRemindersApp {
             console.log('Acknowledging reminder:', reminderId);
             const response = await fetch('/acknowledgements', {
                 method: 'POST',
-                headers: {
+                headers: withReminderLink({
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-                },
+                }),
                 credentials: 'include',
                 body: JSON.stringify({
                     occurrence_id: reminderId,
@@ -451,10 +467,10 @@ class VoiceRemindersApp {
         try {
             const response = await fetch('/acknowledgements/snooze', {
                 method: 'POST',
-                headers: {
+                headers: withReminderLink({
                     'Content-Type': 'application/json',
                     'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-                },
+                }),
                 credentials: 'include',
                 body: JSON.stringify({
                     occurrence_id: reminderId,

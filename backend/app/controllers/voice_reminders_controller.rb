@@ -36,6 +36,18 @@ class VoiceRemindersController < WebController
   helper_method :voice_script_version
 
   def show
+    # A device page lives at its own address.
+    #
+    # Reached at plain /voice_reminders on a link cookie alone -- an old
+    # bookmark, a redirect -- the page had no token to send, so its refreshes
+    # and its buttons answered with the browser-wide cookie: whichever link was
+    # opened last, in any window. Sent to /r/<token> instead, every window names
+    # its own person. Only when no session answered: somebody signed in is
+    # looking at their own page, and has no link to be sent to.
+    if params[:token].blank? && link_mode?
+      return redirect_to reminder_link_path(token: link_mode_link.token)
+    end
+
     # Consent moved from before setup to first use; this is that moment.
     #
     # An account a caregiver created is provisional until the person it is about
@@ -335,6 +347,8 @@ class VoiceRemindersController < WebController
     return render :unavailable, status: :not_found unless link
 
     remember_reminder_link(link)
+    # Named in the address, so it may outrank a session. See explicit_link?.
+    @link_from_address = true
     link.record_use_if_stale!
   end
 
@@ -352,7 +366,7 @@ class VoiceRemindersController < WebController
   # carrying a stale JWT would have been treated as signed in, and shown Done
   # and Snooze buttons that its credential can no longer honour.
   def current_user
-    @current_user ||= (@session_user = super) || link_mode_user
+    @current_user ||= resolve_person(@session_user = super)
   end
 
   # The link is re-read from the database on every request rather than trusted
@@ -372,9 +386,14 @@ class VoiceRemindersController < WebController
   #
   # Renewed on the same throttle as the timestamp, so a device polling every few
   # seconds writes one cookie every ten minutes rather than one per request.
+  #
+  # Not when the link came in the header, though. That request is one window
+  # speaking for its own page, and rewriting the browser-wide cookie from it
+  # would have windows on different links overwriting each other's cookie every
+  # ten minutes. The cookie is set where a link is opened, by redeem_token.
   def link_mode_link
     link = super
-    remember_reminder_link(link) if link&.record_use_if_stale!
+    remember_reminder_link(link) if link&.record_use_if_stale! && !link_presented_in_header?
     link
   end
 
@@ -388,6 +407,10 @@ class VoiceRemindersController < WebController
   # than one that happens to hold today.
   def link_mode?
     current_user
+
+    # A link that overrode a session is link mode too: the page belongs to the
+    # link's person, and offering Sign Out or Profile would act on somebody else.
+    return true if link_overrides_session?
 
     @session_user.nil? && current_user.present? && link_mode_link.present?
   end
