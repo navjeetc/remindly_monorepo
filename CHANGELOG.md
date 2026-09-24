@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-09-24
+
+### Fixed
+- **A reminder link could show another person's day.** The device page is
+  identified by the link in its address, but its reminders and appointments were
+  fetched with a single browser-wide cookie holding whichever link was opened
+  last. Windows in one browser share that cookie, incognito ones included, so two
+  windows on two people's links showed the same person. The page now sends its
+  own link with every request and the server prefers it.
+
+  The same mix-up happened when the browser was also signed in as somebody else:
+  the session answered instead of the link, and a new account's consent question
+  never appeared. Where a link and a session name different people, the link
+  now wins, on the page and on Done and Snooze alike.
+
 ## [0.11.1] - 2026-09-24
 
 ### Fixed

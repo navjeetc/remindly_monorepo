@@ -352,7 +352,7 @@ class VoiceRemindersController < WebController
   # carrying a stale JWT would have been treated as signed in, and shown Done
   # and Snooze buttons that its credential can no longer honour.
   def current_user
-    @current_user ||= (@session_user = super) || link_mode_user
+    @current_user ||= resolve_person(@session_user = super)
   end
 
   # The link is re-read from the database on every request rather than trusted
@@ -372,9 +372,14 @@ class VoiceRemindersController < WebController
   #
   # Renewed on the same throttle as the timestamp, so a device polling every few
   # seconds writes one cookie every ten minutes rather than one per request.
+  #
+  # Not when the link came in the header, though. That request is one window
+  # speaking for its own page, and rewriting the browser-wide cookie from it
+  # would have windows on different links overwriting each other's cookie every
+  # ten minutes. The cookie is set where a link is opened, by redeem_token.
   def link_mode_link
     link = super
-    remember_reminder_link(link) if link&.record_use_if_stale!
+    remember_reminder_link(link) if link&.record_use_if_stale! && !link_presented_in_header?
     link
   end
 
@@ -388,6 +393,10 @@ class VoiceRemindersController < WebController
   # than one that happens to hold today.
   def link_mode?
     current_user
+
+    # A link that overrode a session is link mode too: the page belongs to the
+    # link's person, and offering Sign Out or Profile would act on somebody else.
+    return true if link_overrides_session?
 
     @session_user.nil? && current_user.present? && link_mode_link.present?
   end

@@ -117,7 +117,10 @@ class AcknowledgementsController < WebController
   def current_user
     return @current_user if defined?(@current_user)
 
-    @current_user = bearer_scheme? ? bearer_user : (super || link_mode_user)
+    # The same precedence as the page that sends these, via resolve_person: a link
+    # naming somebody other than the session wins. Deciding it differently here
+    # would let the page show one person while Done acted for another.
+    @current_user = bearer_scheme? ? bearer_user : resolve_person(super)
   end
 
   # RFC 7235 makes auth scheme names case-insensitive, so "bearer <token>" is as
