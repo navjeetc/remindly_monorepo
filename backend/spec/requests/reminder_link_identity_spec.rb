@@ -84,6 +84,18 @@ RSpec.describe "Which person a reminder link shows", type: :request do
       expect(coming_up(as: second_link)).to eq([ "Second's appointment" ])
     end
 
+    # The revoked-link rule has to hold in a signed-in browser too. Falling back
+    # to the session would show -- and let Done act for -- the signed-in person
+    # under the revoked link's address.
+    it "refuses a revoked link rather than answering as the signed-in person" do
+      get "/r/#{second_link.token}"
+      second_link.update!(revoked_at: Time.current)
+
+      get "/voice_reminders/coming_up", headers: { "X-Reminder-Link" => second_link.token }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
     it "still shows the signed-in person where no link is involved" do
       expect(coming_up).to eq([ "First's appointment" ])
     end

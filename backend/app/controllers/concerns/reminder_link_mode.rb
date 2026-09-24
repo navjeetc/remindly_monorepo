@@ -80,6 +80,13 @@ module ReminderLinkMode
   # When they agree, or only one is present, nothing changes.
   def resolve_person(session_user)
     link_user = link_mode_user
+
+    # A page that named its link and was refused is answered by nobody. Without
+    # this a revoked link in a signed-in browser fell through to the session,
+    # and the page showed -- and Done acted for -- the signed-in person under an
+    # address that names somebody else.
+    return nil if link_presented_in_header? && link_user.nil?
+
     return session_user || link_user if link_user.nil? || session_user.nil?
     return session_user if link_user.id == session_user.id
 
