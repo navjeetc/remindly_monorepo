@@ -19,8 +19,9 @@
 </p>
 
 <p>
-  That is all — one note a month, nothing else. Reply to this email any time
-  to stop.
+  That is all — one note a month, nothing else.
+  <a href="<%= "#{ApplicationHelper::CANONICAL_HOST}/subscribers/unsubscribe/#{@subscriber.signed_id(purpose: :unsubscribe)}" %>">Unsubscribe</a>
+  any time, or just reply to this email to stop.
 </p>
 
 <p>

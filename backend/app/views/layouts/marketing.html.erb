@@ -8,14 +8,42 @@
     <title><%= yield(:title).presence || "Remindly — spoken reminders for seniors, set up by the people who care for them" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="description" content="<%= yield(:description).presence || "Remindly speaks reminders aloud at the right time, so a senior does not have to read a screen or open an app. Caregivers set them up from anywhere." %>">
-    <link rel="canonical" href="<%= canonical_url %>">
+    <%#
+      Two pages render through this layout with a bearer credential in their
+      own address — the unsubscribe confirm and terminal pages — and they say
+      so with content_for :credential_page, the same content_for(?) idiom
+      :structured_data already uses below to opt in rather than have this
+      layout hardcode which paths those are.
+
+      canonical_url and og:url are simply skipped for them: publishing a live
+      token as this page's own canonical address, or in the Open Graph tag a
+      chat client fetches when the link is pasted anywhere, is the same leak
+      the request-log and Ahoy redaction already exist to close, arriving by
+      a third door. A page with a credential in its address has no canonical
+      address worth declaring.
+
+      noindex keeps a search index from caching or displaying the URL at all.
+      strict-origin is the voice layout's own choice, for the same reason
+      given there: the browser default sends the *full* URL as Referer on
+      same-origin navigation, which every link on this page's own site chrome
+      (nav, footer) would otherwise leak the token through.
+    %>
+    <% if content_for?(:credential_page) %>
+      <meta name="robots" content="noindex, nofollow">
+      <meta name="referrer" content="strict-origin">
+    <% else %>
+      <link rel="canonical" href="<%= canonical_url %>">
+    <% end %>
     <%= csp_meta_tag %>
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Remindly">
     <meta property="og:title" content="<%= yield(:title).presence || "Remindly — spoken reminders for seniors" %>">
     <meta property="og:description" content="<%= yield(:description).presence || "Spoken reminders for seniors, set up by the people who care for them." %>">
-    <meta property="og:url" content="<%= canonical_url %>">
+    <%# Skipped for the same reason canonical is above — see that comment. %>
+    <% unless content_for?(:credential_page) %>
+      <meta property="og:url" content="<%= canonical_url %>">
+    <% end %>
 
     <%#
       Shared links to this site are how most people will first hear of it, and a

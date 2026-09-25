@@ -12,7 +12,10 @@ code. You write the reminders, and their device — or a phone call — asks the
 to say yes. Remindly can also call and read a reminder aloud, for someone who
 does not use a phone the way you do.
 
-That is all — one note a month, nothing else. Reply to this email any time to
-stop.
+That is all — one note a month, nothing else. Unsubscribe any time:
+
+<%= "#{ApplicationHelper::CANONICAL_HOST}/subscribers/unsubscribe/#{@subscriber.signed_id(purpose: :unsubscribe)}" %>
+
+Or just reply to this email to stop.
 
 Remindly: <%= ApplicationHelper::CANONICAL_HOST %>

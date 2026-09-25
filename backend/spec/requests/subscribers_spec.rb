@@ -62,9 +62,9 @@ RSpec.describe "Subscribers", type: :request do
       end
     end
 
-    # The email tells people to reply in order to stop, and there is no
-    # unsubscribe link. If replies go to the default noreply@ sender, the only
-    # opt-out on offer goes nowhere.
+    # The email offers replying as well as the unsubscribe link — not
+    # everybody clicks links in mail, and this one still has to work. If
+    # replies go to the default noreply@ sender, that opt-out goes nowhere.
     it "points replies at a mailbox a person actually reads" do
       perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
 
