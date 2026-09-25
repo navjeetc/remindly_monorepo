@@ -55,12 +55,13 @@ RSpec.describe "area_codes:refresh", type: :task do
     geographic = (200..699).map { |npa| [ npa.to_s, "G", "MA" ] }
     respond_with(report(geographic + [ [ "800", "N", "NANP AREA" ] ]))
 
-    written = nil
-    allow_any_instance_of(Pathname).to receive(:write) { |_path, content| written = content }
+    # Captured rather than written, so the spec never touches the real table.
+    written = StringIO.new
+    allow(File).to receive(:atomic_write).with(table).and_yield(written)
 
     expect { refresh }.to output(/Wrote 500 area codes/).to_stdout
 
-    regions = YAML.safe_load(written)
+    regions = YAML.safe_load(written.string)
     expect(regions["413"]).to eq("Massachusetts")
     expect(regions).not_to have_key("800")
   end

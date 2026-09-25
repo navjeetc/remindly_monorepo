@@ -47,7 +47,11 @@ namespace :area_codes do
       # (NANPA file date #{file_date}). Do not edit by hand; rerun the task.
     YAML
 
-    Rails.root.join("config/area_codes.yml").write(header + regions.to_yaml.delete_prefix("---\n"))
+    # Written to a temporary file and renamed over the table, so an interrupted
+    # run leaves the old table whole rather than a truncated one.
+    File.atomic_write(Rails.root.join("config/area_codes.yml")) do |file|
+      file.write(header + regions.to_yaml.delete_prefix("---\n"))
+    end
     puts "Wrote #{regions.size} area codes (NANPA file date #{file_date})."
   end
 end
