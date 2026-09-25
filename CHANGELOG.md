@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-25
+
+### Added
+- **The phone panel says where a saved number's area code is.** "Area code
+  413 · Massachusetts" appears under the number field. A caregiver typed 414
+  for 413 and three consent calls rang a stranger in Wisconsin while her mother
+  waited in Massachusetts (#173); the digits were on screen the whole time and
+  said nothing about where they pointed. It is information, not a warning,
+  since people keep their numbers when they move. State or province only, from
+  NANPA's own list in `config/area_codes.yml`; nothing is shown for numbers
+  outside +1 or for toll-free codes. `bin/rails area_codes:refresh` regenerates
+  the table when NANPA adds codes.
+
 ## [0.14.0] - 2026-09-25
 
 ### Added
