@@ -114,7 +114,7 @@ class VoiceReminderJob < ApplicationJob
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} suppressed: " \
         "#{local_time_for(senior)} is outside " \
-        "#{User::CALLING_HOURS.first}:00-#{User::CALLING_HOURS.max + 1}:00 for user #{senior.id}"
+        "#{senior.calling_hours_start}:00-#{senior.calling_hours_end}:00 for user #{senior.id}"
       )
       return
     end

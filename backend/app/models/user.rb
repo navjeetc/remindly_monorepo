@@ -436,15 +436,41 @@ class User < ApplicationRecord
     true
   end
 
-  # Outbound reminder calls are restricted to 8am-9pm in the *called party's*
-  # own local time. That is a legal limit, not a preference, and it is what makes
-  # tz load-bearing for phone reminders rather than a display convenience: the
-  # profile bug that silently moved savers to UTC-12 would, under this feature,
-  # have telephoned them in the middle of the night.
+  # Outbound reminder calls are restricted to a window in the *called party's*
+  # own local time. That is what makes tz load-bearing for phone reminders
+  # rather than a display convenience: the profile bug that silently moved
+  # savers to UTC-12 would, under this feature, have telephoned them in the
+  # middle of the night.
   #
-  # 8...21 covers the hours 8 through 20, so 20:59 is inside the window and 21:00
-  # is not.
-  CALLING_HOURS = (8...21)
+  # The window used to be this one range for everybody, and it was wrong for
+  # the households that start early: a caregiver setting up her mother at 6am
+  # was refused twice, two days apart, and from her side the feature simply did
+  # not work (#174). So each care receiver now has their own, in
+  # calling_hours_start and calling_hours_end, set by a caregiver on the phone
+  # panel. The column defaults, 8am-9pm, are the old window, so nobody's calls
+  # moved when the columns arrived.
+  #
+  # 8am-9pm is the hours the TCPA sets for telephone solicitations. These calls
+  # are not solicitations -- nobody is rung without agreeing on a verification
+  # call first -- which is why a caregiver may move the window at all. It stays
+  # the default because it is the norm people already expect a machine to keep.
+  #
+  # End is exclusive: 8...21 covers the hours 8 through 20, so 20:59 is inside
+  # the window and 21:00 is not.
+  #
+  # How far a caregiver may move the window: Wide enough for an early riser or a
+  # late evening dose, and never the small hours: a call placed at 3am cannot be
+  # taken back, and no household needs a reminder there badly enough to risk it.
+  EARLIEST_CALLING_HOUR = 6
+  LATEST_CALLING_HOUR = 22
+
+  validates :calling_hours_start, numericality: {
+    only_integer: true, greater_than_or_equal_to: EARLIEST_CALLING_HOUR, less_than: LATEST_CALLING_HOUR
+  }
+  validates :calling_hours_end, numericality: {
+    only_integer: true, greater_than: EARLIEST_CALLING_HOUR, less_than_or_equal_to: LATEST_CALLING_HOUR
+  }
+  validate :calling_hours_end_after_start
 
   # Whether Remindly may telephone this person at all.
   #
@@ -489,10 +515,31 @@ class User < ApplicationRecord
     # safe default -- a call placed at 3am cannot be taken back.
     return false if local.nil?
 
-    CALLING_HOURS.cover?(local.hour)
+    calling_hours.cover?(local.hour)
   end
 
+  def calling_hours = (calling_hours_start...calling_hours_end)
+
+  # "8am and 9pm", for copy that states the window. The end is exclusive in the
+  # range and inclusive in speech: a window closing at 21 is "until 9pm".
+  def calling_hours_label
+    "#{self.class.hour_label(calling_hours_start)} and #{self.class.hour_label(calling_hours_end)}"
+  end
+
+  def self.hour_label(hour) = Time.utc(2000, 1, 1, hour).strftime("%-l%P")
+
   private
+
+  # A window that closes before it opens would never ring, and would look to
+  # the caregiver exactly like the feature being broken -- the thing this
+  # setting exists to fix.
+  def calling_hours_end_after_start
+    return if calling_hours_start.nil? || calling_hours_end.nil?
+
+    return if calling_hours_end > calling_hours_start
+
+    errors.add(:base, "The latest call time has to be later than the earliest")
+  end
 
   def tz_resolves_to_a_real_zone
     return if tz.blank?

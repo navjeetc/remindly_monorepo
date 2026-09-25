@@ -293,6 +293,27 @@ class DashboardController < WebController
     end
   end
 
+  # Gated exactly like update_spoken_language: the panel is hidden with the
+  # feature, and only a caregiver who may manage the senior may change when
+  # their telephone rings. The bounds are the model's, not the form's -- the
+  # select offers only allowed hours, but a hand-made PATCH is refused by the
+  # same validation.
+  def update_calling_hours
+    return head :forbidden unless FeatureFlag.enabled?(:phone_call_reminders)
+
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+
+    if senior.update(params.require(:user).permit(:calling_hours_start, :calling_hours_end))
+      redirect_to senior_dashboard_path(senior),
+        notice: "We'll call #{senior.display_name} between #{senior.calling_hours_label} their time."
+    else
+      redirect_to senior_dashboard_path(senior), alert: senior.errors.full_messages.to_sentence
+    end
+  end
+
   def new_care_receiver
     @senior = User.new(tz: current_user.tz)
   end
@@ -1046,8 +1067,7 @@ class DashboardController < WebController
     local = senior.local_time(at: at)
     where = local ? "It's #{local.strftime('%-l:%M%P')} where #{senior.display_name} is. " : ""
 
-    "#{where}We only call between #{User::CALLING_HOURS.first}am and " \
-      "#{User::CALLING_HOURS.max + 1 - 12}pm #{senior.display_name}'s time."
+    "#{where}We only call between #{senior.calling_hours_label} #{senior.display_name}'s time."
   end
 
   def check_role!

@@ -237,8 +237,9 @@ RSpec.describe User do
     end
   end
 
-  # Outbound reminder calls are legally restricted to 8am-9pm where the person
-  # answering actually is, which makes tz the thing this rule stands on.
+  # Outbound reminder calls are restricted to a window (8am-9pm unless a
+  # caregiver moves it) where the person answering actually is, which makes tz
+  # the thing this rule stands on.
   describe "#within_calling_hours?" do
     def at(hour, zone: "America/New_York", minute: 0)
       ActiveSupport::TimeZone[zone].local(2026, 6, 15, hour, minute)
@@ -246,11 +247,11 @@ RSpec.describe User do
 
     let(:senior) { build(:user, tz: "America/New_York") }
 
-    it "allows a call at 8am, the first legal minute" do
+    it "allows a call at 8am, the first minute of the default window" do
       expect(senior.within_calling_hours?(at: at(8))).to be true
     end
 
-    it "allows a call at 20:59, the last legal minute" do
+    it "allows a call at 20:59, the last minute of the default window" do
       expect(senior.within_calling_hours?(at: at(20, minute: 59))).to be true
     end
 
@@ -280,6 +281,71 @@ RSpec.describe User do
       senior.tz = "Neverwhere/Nowhere"
 
       expect(senior.within_calling_hours?(at: at(12))).to be false
+    end
+
+    # #174: a caregiver setting up at 6am was refused twice. The window is now
+    # the care receiver's own; the specs above pin the default it starts at.
+    context "with hours a caregiver has moved" do
+      before { senior.assign_attributes(calling_hours_start: 6, calling_hours_end: 22) }
+
+      it "allows a call at 6am" do
+        expect(senior.within_calling_hours?(at: at(6))).to be true
+      end
+
+      it "allows a call at 21:59 and refuses one at 22:00" do
+        expect(senior.within_calling_hours?(at: at(21, minute: 59))).to be true
+        expect(senior.within_calling_hours?(at: at(22))).to be false
+      end
+
+      it "still refuses the small hours" do
+        expect(senior.within_calling_hours?(at: at(5, minute: 59))).to be false
+      end
+    end
+
+    it "can be narrowed as well as widened" do
+      senior.assign_attributes(calling_hours_start: 10, calling_hours_end: 18)
+
+      expect(senior.within_calling_hours?(at: at(9, minute: 59))).to be false
+      expect(senior.within_calling_hours?(at: at(10))).to be true
+      expect(senior.within_calling_hours?(at: at(18))).to be false
+    end
+  end
+
+  describe "calling hours" do
+    let(:senior) { build(:user, tz: "America/New_York") }
+
+    it "defaults to 8am-9pm, the window everybody had before it could be moved" do
+      expect(senior.calling_hours).to eq(8...21)
+      expect(senior.calling_hours_label).to eq("8am and 9pm")
+    end
+
+    it "names noon and the evening hours the way people say them" do
+      senior.assign_attributes(calling_hours_start: 12, calling_hours_end: 22)
+
+      expect(senior.calling_hours_label).to eq("12pm and 10pm")
+    end
+
+    it "cannot start before 6am" do
+      senior.calling_hours_start = 5
+
+      expect(senior).not_to be_valid
+      expect(senior.errors[:calling_hours_start]).to be_present
+    end
+
+    it "cannot run past 10pm" do
+      senior.calling_hours_end = 23
+
+      expect(senior).not_to be_valid
+      expect(senior.errors[:calling_hours_end]).to be_present
+    end
+
+    # A window that closes before it opens never rings, which looks exactly
+    # like the feature being broken -- the complaint this setting answers.
+    it "must close after it opens" do
+      senior.assign_attributes(calling_hours_start: 12, calling_hours_end: 12)
+
+      expect(senior).not_to be_valid
+      expect(senior.errors[:base]).to include("The latest call time has to be later than the earliest")
     end
   end
 
