@@ -22,6 +22,9 @@ Disallow: /logout
 # would land on a care receiver's reminders, and a link in a search index is a
 # link everywhere.
 Disallow: /r/
+# An unsubscribe link is also a credential in an address, and a single-use one:
+# a crawler that fetches it unsubscribes the person who received the email.
+Disallow: /subscribers/unsubscribe/
 # The six-digit exchange. A crawler cannot guess a code, but it can spend the
 # rate limit that stops somebody else guessing.
 Disallow: /start

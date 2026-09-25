@@ -51,10 +51,26 @@ Rails.application.routes.draw do
   get  "blog",               to: "posts#index", as: :blog
   get  "blog/:slug",         to: "posts#show", as: :post
 
-  # Mailing list. Create only: unsubscribing is a reply to the email, which for
-  # a list this size is a person reading it rather than a link that has to stay
-  # working forever.
+  # Mailing list.
+  #
+  # Unsubscribing was reply-only until 2026-09 — a person reading the reply and
+  # deleting the row by hand, on the reasoning that a list this size did not
+  # need a link that has to keep working forever. What that reasoning missed:
+  # the emails promised "reply to stop" as if it worked on its own, and nothing
+  # in the app ever read a reply. It only worked on the days someone happened
+  # to notice one — no unsubscribe was actually guaranteed, on a promise made
+  # in writing to real people.
+  #
+  # Two verbs, not one link. The email link is a bare GET, and a bare GET that
+  # deletes on the spot is exactly what a corporate mail scanner or a link
+  # prefetcher fetches automatically before anyone reads the message — the
+  # documented way a mailing list unsubscribes people who never clicked
+  # anything. GET only ever shows a confirm page; DELETE, reachable only from a
+  # button on that page, is what removes the row. The same shape every other
+  # destructive control in this app already uses.
   resources :subscribers, only: [ :create ]
+  get    "subscribers/unsubscribe/:token", to: "subscribers#unsubscribe", as: :unsubscribe
+  delete "subscribers/unsubscribe/:token", to: "subscribers#confirm_unsubscribe"
 
   # Matches /sitemap.xml — the trailing ".xml" is parsed as the format segment,
   # which is the path robots.txt points crawlers at.

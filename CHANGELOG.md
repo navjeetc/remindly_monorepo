@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-09-25
+
+### Added
+- **A real unsubscribe link, on both subscriber emails.** "Reply to stop" was
+  the only opt-out since the mailing list existed, and nothing in the app ever
+  read a reply — it only worked on the days someone happened to notice one in
+  the inbox. `welcome` and `monthly_note` now carry a signed, single-use link
+  as well as the reply fallback.
+
+  Two requests, not one, because a bare link that unsubscribes on the first GET
+  is exactly what a corporate mail scanner or link-prefetcher fetches
+  automatically before anyone reads the message — a documented way mailing
+  lists lose subscribers who never clicked anything. The link only ever shows
+  a confirm page; removing the address takes a real button press, the same
+  shape every other destructive control in this app already uses.
+
 ## [0.12.0] - 2026-09-24
 
 ### Added

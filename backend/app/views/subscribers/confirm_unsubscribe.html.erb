@@ -1,0 +1,26 @@
+<%#
+  Only reachable when the token was still live — the controller renders
+  unsubscribed directly otherwise. This page itself does nothing: it is safe
+  for a mail scanner to fetch, because fetching it cannot remove anyone. Only
+  the button below, a real form POST rather than the GET that got here, does.
+
+  A plain hand-written <form>, not button_to or form_with — same reason as
+  _subscribe_form.html.erb: either helper embeds an authenticity token, which
+  has to live in the session, which would issue this anonymous visitor a
+  session cookie. Forgery protection is already skipped on the action this
+  posts to (SubscribersController explains why), so there is nothing here for
+  a token to protect.
+%>
+<% content_for :title, "Unsubscribe — Remindly" %>
+
+<h1>Unsubscribe <%= @subscriber.email %>?</h1>
+
+<p class="lead">
+  You will stop hearing from Remindly — the monthly note and anything else on
+  this list.
+</p>
+
+<form action="<%= unsubscribe_path(token: params[:token]) %>" method="post">
+  <input type="hidden" name="_method" value="delete">
+  <button type="submit" class="btn btn-primary">Yes, unsubscribe me</button>
+</form>
