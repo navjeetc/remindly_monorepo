@@ -5,12 +5,17 @@ alongside the link to https://www.remindly.care. Each entry is written to be
 copied as it stands: plain language, one or two sentences, no jargon.
 
 **Keep it true.** Only features that are live in production belong here. When
-a pull request ships something a new user would notice, update this file in
-the same PR — add an entry, or correct one the change made wrong. Anything
-here that is not on the site is a promise the product then breaks in the
-first email someone reads.
+a pull request ships something worth telling a prospective user about, add an
+entry in the same PR; when a change makes an entry wrong, correct it in the
+same PR. Anything here that is not on the site is a promise the product then
+breaks in the first email someone reads.
 
-Last checked against the live site: 2026-09-25 (version 0.14.0).
+**Keep it short.** This is a pitch, not a changelog. A change a user would
+notice once they are set up (the area code shown beside a saved number, say)
+does not belong unless it would help persuade someone to try Remindly. When a
+PR leaves the list alone on purpose, say so in the PR.
+
+Last checked: 2026-09-25, accurate for version 0.15.0.
 
 ---
 
