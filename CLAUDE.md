@@ -82,6 +82,8 @@ Post bodies are rendered with `html_safe` — sound only because posts are repo 
 
 `docs/MARKETING_PLAN.md` sets out what this is all for.
 
+`docs/ONBOARDING_FEATURES.md` is the feature list pasted into invitation emails for new users. A PR that ships something a new user would notice updates it in the same PR, and it lists only what is live in production.
+
 ### Clients
 - **Voice client for seniors** is `/voice_reminders` — a Rails page whose announcements are driven by `backend/public/voice_reminders.js`. It authenticates with the Rails **session**, not a Bearer token, and is linked from the dashboard nav. A standalone JS client at `clients/web/` (served at `/client/`) was superseded by this page and removed; `/client/` redirects to it.
 - **macOS client** configures `APIClient.base` in Xcode; uses `AVSpeechSynthesizer` for TTS
