@@ -114,7 +114,7 @@ class VoiceReminderJob < ApplicationJob
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} suppressed: " \
         "#{local_time_for(senior)} is outside " \
-        "#{User::CALLING_HOURS.first}:00-#{User::CALLING_HOURS.max + 1}:00 for user #{senior.id}"
+        "#{senior.calling_hours_start}:00-#{senior.calling_hours_end}:00 for user #{senior.id}"
       )
       return
     end
@@ -147,6 +147,19 @@ class VoiceReminderJob < ApplicationJob
     unless senior.reload.callable_by_phone?
       attempt.release_slot!(status: "cancelled", outcome: "no_response")
       Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: consent withdrawn while the attempt was being claimed"
+      return
+    end
+
+    # The hours again, on the row just reloaded. The check at the top ran before
+    # reserving, and the window is a caregiver's to edit now (#174): narrowing
+    # it from 9pm to 6pm while an 8pm attempt is being claimed must stop that
+    # call, not let it through on the hours as they stood a moment ago.
+    # Suppressed as well as released, so the missed email says we did not call
+    # rather than that she did not answer.
+    unless senior.within_calling_hours?
+      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      occurrence.suppress_call!(:outside_calling_hours)
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: calling hours closed while the attempt was being claimed"
       return
     end
 

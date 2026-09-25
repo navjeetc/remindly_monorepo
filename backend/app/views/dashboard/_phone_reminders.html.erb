@@ -40,7 +40,7 @@
         <%= senior.display_name %> agreed to phone reminders on
         <%= (senior.local_time(at: senior.call_consent_at) || senior.call_consent_at).strftime("%B %-d") %>.
         We'll call <strong><%= formatted_phone_number(senior.phone) %></strong> when a reminder is due, between
-        <%= User::CALLING_HOURS.first %>am and <%= User::CALLING_HOURS.max + 1 - 12 %>pm their time.
+        <%= senior.calling_hours_label %> their time.
         They can stop the calls at any point by pressing 9.
       </p>
       <%# Still worth naming once the calls are running. A number saved during
@@ -183,6 +183,37 @@
       <% end %>
 
       <%#
+        When the telephone may ring, per care receiver (#174). Shown in every
+        state, including before they have agreed: the consent call obeys this
+        window too, and the caregiver this was built for was refused at 6am
+        while setting up -- before there was anything to agree to.
+
+        Their clock, not the caregiver's, is named beside the fields, because
+        that is the clock the window is read on and it is often hours away.
+      %>
+      <%= form_with url: senior_calling_hours_path(senior_id: senior.id), method: :patch do |f| %>
+        <span class="block text-sm font-medium text-gray-700">When we may call</span>
+        <div class="mt-1 flex flex-wrap items-center gap-3">
+          <label for="user_calling_hours_start" class="sr-only">Earliest call</label>
+          <%= f.select :calling_hours_start,
+                options_for_select((User::EARLIEST_CALLING_HOUR...User::LATEST_CALLING_HOUR).map { |h| [ User.hour_label(h), h ] }, senior.calling_hours_start),
+                {}, name: "user[calling_hours_start]", id: "user_calling_hours_start",
+                class: "border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+          <span class="text-sm text-gray-700">to</span>
+          <label for="user_calling_hours_end" class="sr-only">Latest call</label>
+          <%= f.select :calling_hours_end,
+                options_for_select(((User::EARLIEST_CALLING_HOUR + 1)..User::LATEST_CALLING_HOUR).map { |h| [ User.hour_label(h), h ] }, senior.calling_hours_end),
+                {}, name: "user[calling_hours_end]", id: "user_calling_hours_end",
+                class: "border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+          <%= f.submit "Save hours", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+        </div>
+        <p class="mt-1 text-xs text-gray-500">
+          In <%= senior.display_name %>'s time<% if (local_clock = senior.local_time) %> — it's <%= local_clock.strftime("%-l:%M%P") %> there now<% end %>.
+          A reminder due outside these hours isn't telephoned; it still shows on their screen.
+        </p>
+      <% end %>
+
+      <%#
         Only while there is something to ask. Once they have agreed, this button
         would ring them to ask again — and the script it plays ends "press 9 and
         we won't call again", so its best outcome is a no-op and its worst is a
@@ -219,8 +250,7 @@
               It's <strong><%= local_now.strftime("%-l:%M%P") %> (<%= local_now.strftime("%Z") %>)</strong>
               for <%= senior.display_name %>.
               <% unless may_call %>
-                We only call between <%= User::CALLING_HOURS.first %>am and
-                <%= User::CALLING_HOURS.max + 1 - 12 %>pm, so this won't ring yet.
+                We only call between <%= senior.calling_hours_label %>, so this won't ring yet.
               <% end %>
             </p>
           <% elsif !may_call %>

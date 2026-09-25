@@ -125,6 +125,21 @@ RSpec.describe VoiceReminderJob do
     expect(occurrence.telnyx_calls.last.status).to eq("cancelled")
   end
 
+  # Calling hours are a caregiver's to edit (#174), so they can close between
+  # the check at the top of the job and the dial. The reload after reserving
+  # has to be asked about the hours as well as consent.
+  it "does not dial when the calling hours are narrowed after the attempt is claimed" do
+    allow(TelnyxCall).to receive(:reserve).and_wrap_original do |original, *args, **kwargs|
+      original.call(*args, **kwargs).tap { senior.update!(calling_hours_start: 8, calling_hours_end: 18) }
+    end
+
+    travel_to(at(20)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+    expect(occurrence.telnyx_calls.last.status).to eq("cancelled")
+    expect(occurrence.reload.phone_failure_reason).to eq(:outside_calling_hours)
+  end
+
   it "records why a call was withheld, rather than leaving it to be inferred later" do
     travel_to(at(3)) { described_class.new.perform(occurrence.id) }
 

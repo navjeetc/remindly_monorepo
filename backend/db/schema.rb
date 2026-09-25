@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_002853) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -299,6 +299,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_002853) do
     t.datetime "call_consent_at"
     t.datetime "call_opted_out_at"
     t.boolean "call_reminders_enabled", default: false, null: false
+    t.integer "calling_hours_end", default: 21, null: false
+    t.integer "calling_hours_start", default: 8, null: false
     t.datetime "created_at", null: false
     t.string "email"
     t.datetime "email_undeliverable_at"

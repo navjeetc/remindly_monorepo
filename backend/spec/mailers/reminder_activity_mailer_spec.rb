@@ -53,6 +53,14 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(readable(mail)).not_to include("pressed Done on their device")
     end
 
+    # The window is the care receiver's own now (#174), so the email has to
+    # quote theirs; the old constant would name hours nobody set for them.
+    it "names the care receiver's own calling hours" do
+      senior.update!(calling_hours_start: 7, calling_hours_end: 20)
+
+      expect(readable(mail_for(:missed)).squish).to include("between 7am and 8pm")
+    end
+
     it "falls back to the ordinary wording once a call has actually gone out" do
       TelnyxCall.create!(call_control_id: "call-xyz", occurrence: occurrence, user: senior,
                          status: "hangup", outcome: "no_response")

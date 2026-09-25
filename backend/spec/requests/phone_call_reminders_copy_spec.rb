@@ -91,8 +91,8 @@ RSpec.describe "What the public pages say about reminder phone calls", type: :re
       expect(text).not_to match(/for good|never (call|telephone|ring)|permanently/i)
     end
 
-    # User::CALLING_HOURS = (8...21). VoiceReminderJob suppresses anything
-    # outside it, so a dose due at 6am or 10pm is never telephoned.
+    # 8am-9pm is the default window (users.calling_hours_start/end). A caregiver
+    # can move it, but these pages describe what happens unless they do.
     it "states the hours calls are made within" do
       expect(text).to match(/8\s*am.{0,12}9\s*pm/i)
     end

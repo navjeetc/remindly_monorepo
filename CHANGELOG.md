@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-25
+
+### Added
+- **Calling hours per care receiver.** Every household shared one window,
+  8am–9pm, and it was wrong for the ones that start early: a caregiver setting
+  up her mother at 6am was refused twice, two days apart, and from her side
+  phone reminders simply did not work (#174). The phone panel now has a "When
+  we may call" setting, anywhere from 6am to 10pm in the care receiver's own
+  time. It defaults to the old window, so nobody's calls moved. The consent
+  call, the reminder calls, the panel copy and the missed-reminder email all
+  read the person's own hours.
+
 ## [0.13.0] - 2026-09-25
 
 ### Added
