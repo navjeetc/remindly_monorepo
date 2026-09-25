@@ -141,4 +141,14 @@ module ApplicationHelper
 
     "+1 #{digits[1..3]}-#{digits[4..6]}-#{digits[7..10]}"
   end
+
+  # "Area code 413 · Massachusetts", or nil when there is nothing true to say:
+  # a number outside +1, or a code NANPA does not list as a place. Information
+  # beside the number, not a verdict on it -- see AreaCode.
+  def area_code_note(number)
+    region = AreaCode.region_for(number)
+    return if region.nil?
+
+    "Area code #{AreaCode.for(number)} · #{region}"
+  end
 end

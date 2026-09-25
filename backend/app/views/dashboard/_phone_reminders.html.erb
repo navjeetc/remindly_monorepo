@@ -106,6 +106,15 @@
                 class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
           <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
         </div>
+        <%# Where the saved number's area code is, as plain information (#173).
+            One wrong digit sent three consent calls to a stranger in Wisconsin
+            while the caregiver expected Massachusetts; the digits were on
+            screen and said nothing about where they pointed. Not styled as a
+            warning: an area code is where a number was issued, and people keep
+            their numbers when they move. %>
+        <% if (note = area_code_note(senior.phone)) %>
+          <p class="mt-1 text-sm text-gray-600"><%= note %></p>
+        <% end %>
         <p class="mt-1 text-xs text-gray-500">
           US and Canada numbers can be typed plain — we'll add the +1.
           Anywhere else, start with + and the country code.
