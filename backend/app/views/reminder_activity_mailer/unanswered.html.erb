@@ -7,7 +7,7 @@
     <div style="border-left: 4px solid #f59e0b; background: #fffbeb; padding: 16px; margin-bottom: 16px;">
       <p style="margin: 0; font-size: 16px;">
         <strong><%= @senior.display_name %> didn't answer</strong> when Remindly called about
-        <strong><%= @reminder.title %></strong><% if @scheduled_at %>, due at <%= @scheduled_at.strftime("%-l:%M %p") %><% end %>.
+        <strong><%= @reminder.title %></strong><% if @scheduled_at %>, due at <%= @due_time_label %><% end %>.
       </p>
     </div>
 

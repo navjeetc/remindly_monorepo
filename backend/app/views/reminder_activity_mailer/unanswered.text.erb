@@ -1,4 +1,4 @@
-<%= @senior.display_name %> didn't answer when Remindly called about <%= @reminder.title %><% if @scheduled_at %>, due at <%= @scheduled_at.strftime("%-l:%M %p") %><% end %>.
+<%= @senior.display_name %> didn't answer when Remindly called about <%= @reminder.title %><% if @scheduled_at %>, due at <%= @due_time_label %><% end %>.
 
 This one is marked as time-critical, which is why you're hearing now rather than after the last attempt.
 

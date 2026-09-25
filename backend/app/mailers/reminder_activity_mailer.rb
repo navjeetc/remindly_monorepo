@@ -44,7 +44,12 @@ class ReminderActivityMailer < ApplicationMailer
     # on that word. Appending a marker to every subject to defend against an
     # unusual title would make every ordinary one read worse, and the sentence no
     # longer asserts doneness anywhere — it opens by denying it.
-    subject = case @phone_failure
+    subject = case @phone_failure || @phone_calls
+    when :no_answer
+      # Rung, and nobody pressed 1 to hear it. Said as what it is rather than
+      # folded into "no confirmation", which reads as her having heard and not
+      # confirmed -- a milder thing than a telephone nobody answered (#92).
+      "No answer from #{@senior.display_name}: #{@reminder.title}"
     when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
     # "didn't", not "couldn't": the others are Remindly unable to place a call,
@@ -117,5 +122,53 @@ class ReminderActivityMailer < ApplicationMailer
     @phone_failure = @occurrence.phone_failure_reason
     @attempts = @occurrence.telnyx_calls.count
     @calling_hours = @senior.calling_hours_label
+    @due_label = due_label
+    @due_time_label = due_label(with_date: false)
+    @phone_calls = phone_calls
+  end
+
+  # What the telephone can say about a reminder it did ring for (#92), when
+  # phone_failure_reason has nothing to report because calls did go out:
+  #
+  #   :no_answer  every call rang out without anybody pressing 1 to hear the
+  #               reminder -- nobody picked up, or a machine did; a mailbox
+  #               cannot press a key, which is what the opening line is for
+  #   :heard      somebody pressed 1 and heard it, and did not confirm
+  #
+  # nil when no call was placed at all, which leaves the screen wording. Only
+  # calls with a provider receipt count, as in phone_failure_reason.
+  def phone_calls
+    return if @phone_failure
+
+    placed = @occurrence.telnyx_calls.where.not(call_control_id: nil)
+    @calls_placed = placed.count
+    return if @calls_placed.zero?
+
+    @heard_at = placed.where.not(answered_at: nil).minimum(:answered_at)&.in_time_zone(@reminder.tz)
+    @heard_at ? :heard : :no_answer
+  end
+
+  # "Monday, September 21 at 8:15 AM, Mom's time (EDT)" -- and, when the
+  # caregiver's clock reads differently, "— 5:15 AM your time" (#171).
+  #
+  # The senior's zone stays first because it is the one the reminder was set
+  # in. Naming it matters because the product's premise is a caregiver hours
+  # away: an unlabelled "1:42 PM" read on a coast three hours behind is a
+  # missed email about their own future.
+  def due_label(with_date: true)
+    return if @scheduled_at.nil?
+
+    theirs = @scheduled_at.strftime(with_date ? "%A, %B %-d at %-l:%M %p" : "%-l:%M %p")
+    label = "#{theirs}, #{@senior.display_name}'s time (#{@scheduled_at.strftime('%Z')})"
+
+    caregiver_zone = ActiveSupport::TimeZone[@caregiver.tz.to_s]
+    return label if caregiver_zone.nil?
+
+    yours = @scheduled_at.in_time_zone(caregiver_zone)
+    return label if yours.utc_offset == @scheduled_at.utc_offset
+
+    # The day as well, when it differs: 11pm theirs can be tomorrow yours.
+    format = yours.to_date == @scheduled_at.to_date ? "%-l:%M %p" : "%A %-l:%M %p"
+    "#{label} — #{yours.strftime(format)} your time"
   end
 end

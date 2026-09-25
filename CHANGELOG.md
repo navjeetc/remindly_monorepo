@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-25
+
+### Changed
+- **The missed-reminder email says what the telephone saw (#92).** When
+  reminder calls rang and nobody pressed 1, the email said "nobody pressed Done
+  on their device" and suggested they may have done it without marking it: a
+  screen the person may not have, and reassurance where unanswered calls are
+  the more urgent signal. It now says "Remindly called Mom 3 times about
+  Metformin, and nobody answered", suggests checking in if that is unusual, and
+  its subject reads "No answer from Mom". When somebody did press 1 and hear
+  the reminder but never confirmed it, the email says the call was answered and
+  when.
+- **Reminder emails name whose clock a time is on (#171).** Due times were
+  printed in the care receiver's zone with no label, so a caregiver a few hours
+  away could get a "missed" email about a time still in their own future. They
+  now read "1:42 PM, Mom's time (ADT) — 9:42 AM your time", with the day added
+  when the caregiver's clock has crossed midnight, on the missed, completed and
+  unanswered emails.
+
 ## [0.15.0] - 2026-09-25
 
 ### Added
