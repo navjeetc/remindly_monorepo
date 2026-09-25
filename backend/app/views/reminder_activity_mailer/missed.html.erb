@@ -31,7 +31,7 @@
         <% elsif @phone_failure %>
           <strong>Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.</strong>
         <% elsif @phone_calls == :no_answer %>
-          <strong>Remindly called <%= @senior.display_name %> <%= pluralize(@calls_placed, "time") %> about <%= @reminder.title %>, and nobody answered.</strong>
+          <strong>Remindly called <%= @senior.display_name %> <%= pluralize(@calls_placed, "time") %> about <%= @reminder.title %>, and the reminder was never heard.</strong>
         <% elsif @phone_calls == :heard %>
           <strong>Remindly's call to <%= @senior.display_name %> about <%= @reminder.title %> was answered, but nobody confirmed it.</strong>
         <% else %>
@@ -78,12 +78,12 @@
           </p>
         <% elsif @phone_calls == :no_answer %>
           <p>
-            It was due <%= @due_label %>. Nobody pressed 1 to hear the reminder,
-            so it was never spoken: the phone rang out, or a voicemail picked up.
+            It was due <%= @due_label %>. Nobody pressed a key to hear it: the
+            phone rang out, went to voicemail, or was picked up and put down again.
           </p>
         <% elsif @phone_calls == :heard %>
           <p>
-            It was due <%= @due_label %>. Somebody answered and pressed 1 to hear it
+            It was due <%= @due_label %>. Somebody answered and pressed a key to hear it
             at <%= @heard_at.strftime("%-l:%M %p") %>, and nobody pressed 1 afterwards
             to say it was done.
           </p>
@@ -115,8 +115,8 @@
             telephone nobody answered, which for somebody living alone is the
             more urgent signal -- the old wording talked caregivers out of it. %>
         <p style="color: #6b7280; font-size: 14px;">
-          This does not tell you whether they did it, only that nobody answered
-          the phone. If that is unusual for <%= @senior.display_name %>, it may
+          This does not tell you whether they did it, only that the call did not
+          reach them. If that is unusual for <%= @senior.display_name %>, it may
           be worth checking in.
         </p>
       <% elsif @phone_calls == :heard %>

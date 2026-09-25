@@ -444,8 +444,11 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
 
       let(:body) { readable(mail_for(:missed)).squish }
 
-      it "says how many times Remindly called and that nobody answered" do
-        expect(body).to include("Remindly called Mom 3 times about Metformin, and nobody answered")
+      # "never heard", not "nobody answered": somebody can pick up and put the
+      # phone down without a key, and that looks the same as a ring-out.
+      it "says how many times Remindly called and that the reminder was never heard" do
+        expect(body).to include("Remindly called Mom 3 times about Metformin, and the reminder was never heard")
+        expect(body).not_to include("nobody answered")
       end
 
       it "does not describe a screen button, or suggest it was done without marking" do
@@ -474,11 +477,12 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       it "says it was heard, and when, in their time" do
         # "was answered", not "Mom heard": a keypress proves a person, not which one.
         expect(body).to include("Remindly's call to Mom about Metformin was answered, but nobody confirmed it")
-        expect(body).to include("pressed 1 to hear it at 8:06 AM")
+        # Any key starts the reminder, so the email cannot say which one.
+        expect(body).to include("pressed a key to hear it at 8:06 AM")
       end
 
-      it "does not claim nobody answered" do
-        expect(body).not_to include("nobody answered")
+      it "does not claim the reminder went unheard" do
+        expect(body).not_to include("never heard")
       end
     end
   end
@@ -512,6 +516,31 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
 
       expect(body).to include("1:42 PM, Mom's time (ADT)")
       expect(body).not_to include("your time")
+    end
+
+    # A reminder keeps the zone it was saved in until it is next written, so a
+    # senior who has moved can have reminders stamped with their old clock. The
+    # email calls the time "Mom's time", so it has to read it on her clock now.
+    it "reads the time on the senior's current clock, not the reminder's old stamp" do
+      reminder.update_columns(tz: "America/New_York")
+
+      body = readable(mail_for(:missed)).squish
+
+      expect(body).to include("1:42 PM, Mom's time (ADT)")
+      expect(body).not_to include("EDT")
+    end
+
+    # The no-answer alert shows times without a date; when the clocks are on
+    # different days, two bare times cannot say which day either one is.
+    it "names both days in the short label when the clocks are on different days" do
+      senior.update!(tz: "Asia/Tokyo")
+      reminder.update!(tz: "Asia/Tokyo")
+
+      unanswered = described_class
+        .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence, attempts_remaining: 2)
+        .unanswered
+
+      expect(readable(unanswered).squish).to include("Wednesday 1:42 AM, Mom's time (JST) — Tuesday 9:42 AM your time")
     end
 
     it "names the day as well when the caregiver's clock has crossed midnight" do

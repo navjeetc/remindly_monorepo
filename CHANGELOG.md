@@ -15,10 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on their device" and suggested they may have done it without marking it: a
   screen the person may not have, and reassurance where unanswered calls are
   the more urgent signal. It now says "Remindly called Mom 3 times about
-  Metformin, and nobody answered", suggests checking in if that is unusual, and
-  its subject reads "No answer from Mom". When somebody did press 1 and hear
-  the reminder but never confirmed it, the email says the call was answered and
-  when.
+  Metformin, and the reminder was never heard", suggests checking in if that is
+  unusual, and its subject reads "No answer from Mom". When somebody did press
+  a key and hear the reminder but never confirmed it, the email says the call
+  was answered and when. Times are read on the care receiver's current clock,
+  even for a reminder still stamped with a zone they have since left.
 - **Reminder emails name whose clock a time is on (#171).** Due times were
   printed in the care receiver's zone with no label, so a caregiver a few hours
   away could get a "missed" email about a time still in their own future. They

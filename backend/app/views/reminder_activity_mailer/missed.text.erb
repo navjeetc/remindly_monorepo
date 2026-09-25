@@ -38,17 +38,17 @@ Remindly is allowed to place reminder calls — between <%= @calling_hours %> in
 Remindly did not reach <%= @senior.display_name %> by phone, so this says nothing
 about whether they did it.
 <% elsif @phone_calls == :no_answer -%>
-Remindly called <%= @senior.display_name %> <%= pluralize(@calls_placed, "time") %> about <%= @reminder.title %>, and nobody answered.
+Remindly called <%= @senior.display_name %> <%= pluralize(@calls_placed, "time") %> about <%= @reminder.title %>, and the reminder was never heard.
 <% if @scheduled_at -%>
-It was due <%= @due_label %>. Nobody pressed 1 to hear the reminder,
-so it was never spoken: the phone rang out, or a voicemail picked up.
+It was due <%= @due_label %>. Nobody pressed a key to hear it:
+the phone rang out, went to voicemail, or was picked up and put down again.
 <% end -%>
-This does not tell you whether they did it, only that nobody answered the
-phone. If that is unusual for <%= @senior.display_name %>, it may be worth checking in.
+This does not tell you whether they did it, only that the call did not reach
+them. If that is unusual for <%= @senior.display_name %>, it may be worth checking in.
 <% elsif @phone_calls == :heard -%>
 Remindly's call to <%= @senior.display_name %> about <%= @reminder.title %> was answered, but nobody confirmed it.
 <% if @scheduled_at -%>
-It was due <%= @due_label %>. Somebody answered and pressed 1 to hear it at
+It was due <%= @due_label %>. Somebody answered and pressed a key to hear it at
 <%= @heard_at.strftime("%-l:%M %p") %>, and nobody pressed 1 afterwards to say it was done.
 <% end -%>
 They may have done it without pressing the key, or not at all.
