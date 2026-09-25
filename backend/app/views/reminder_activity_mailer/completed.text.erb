@@ -2,7 +2,7 @@ Hi <%= @caregiver.display_name %>,
 
 <%= @senior.display_name %> marked <%= @reminder.title %> as done.
 <% if @scheduled_at %>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>.
+It was due <%= @due_label %>.
 <% end %>
 Remindly records that Done was pressed on their device. It cannot confirm what
 was actually done.

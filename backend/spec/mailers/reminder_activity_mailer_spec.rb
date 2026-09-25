@@ -61,9 +61,18 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
       expect(readable(mail_for(:missed)).squish).to include("between 7am and 8pm")
     end
 
-    it "falls back to the ordinary wording once a call has actually gone out" do
+    # Once a call has gone out the story is the telephone's, not the calling
+    # hours' (#92): rung and unanswered reads as no answer, not as a lapse.
+    it "says nobody answered once a call has rung out" do
       TelnyxCall.create!(call_control_id: "call-xyz", occurrence: occurrence, user: senior,
                          status: "hangup", outcome: "no_response")
+
+      expect(mail_for(:missed).subject).to eq("No answer from Mom: Metformin")
+    end
+
+    it "says there was no confirmation once somebody heard it and did not confirm" do
+      TelnyxCall.create!(call_control_id: "call-xyz", occurrence: occurrence, user: senior,
+                         status: "hangup", outcome: "no_response", answered_at: Time.current)
 
       expect(mail_for(:missed).subject).to eq("No confirmation from Mom: Metformin")
     end
@@ -84,7 +93,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     # the moment a caregiver most needs to read it.
     it "keeps the subject to one line, whatever was typed into the title" do
       TelnyxCall.create!(call_control_id: "call-newline", occurrence: occurrence, user: senior,
-                         status: "hangup", outcome: "no_response")
+                         status: "hangup", outcome: "no_response", answered_at: Time.current)
       reminder.update!(title: "Pills\nBcc: someone@example.com")
 
       subject = mail_for(:missed).subject
@@ -100,7 +109,7 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     # defend against an unusual title would make every ordinary one read worse.
     it "opens by denying confirmation, even when the title itself ends in done" do
       TelnyxCall.create!(call_control_id: "call-laundry", occurrence: occurrence, user: senior,
-                         status: "hangup", outcome: "no_response")
+                         status: "hangup", outcome: "no_response", answered_at: Time.current)
       reminder.update!(title: "Check the laundry is done")
 
       subject = mail_for(:missed).subject
@@ -242,12 +251,12 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     end
 
     # The provider's receipt. Without a call_control_id nothing was dialled,
-    # whatever the attempt row says — and with one, a call really did ring and
-    # went unanswered, which is an ordinary miss.
-    it "reverts to the ordinary wording once one attempt actually reached the provider" do
+    # whatever the attempt row says — and with one, a call really did ring, so
+    # the email is about a telephone nobody answered, not a call we failed to make.
+    it "says nobody answered once one attempt actually reached the provider" do
       occurrence.telnyx_calls.first.update!(call_control_id: "v3:real-call", status: "hangup", outcome: "no_response")
 
-      expect(mail_for(:missed).subject).to eq("No confirmation from Mom: Metformin")
+      expect(mail_for(:missed).subject).to eq("No answer from Mom: Metformin")
     end
   end
 
@@ -293,8 +302,8 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
     # scheduled_at is 9:00 UTC; the reminder's zone is Eastern, so the caregiver
     # should read the local morning time, not the UTC afternoon.
     it "shows the due time in the reminder's zone, not UTC" do
-      expect(mail.body.encoded).to include("05:00 AM")
-      expect(mail.body.encoded).not_to include("09:00 AM")
+      expect(readable(mail)).to include("5:00 AM")
+      expect(readable(mail)).not_to include("9:00 AM")
     end
 
     # Gmail overrides <a> link colors set only in a <style> block, so the dashboard
@@ -409,6 +418,139 @@ RSpec.describe ReminderActivityMailer, type: :mailer do
 
         expect(bodies.uniq.size).to eq(Occurrence::PHONE_FAILURE_REASONS.size)
       end
+    end
+  end
+
+  # #92: calls went out, and the email has to say what the telephone saw rather
+  # than describe a screen button the person may not have.
+  describe "#missed after reminder calls rang" do
+    let(:senior) do
+      create(:user, :senior, name: "Mom", tz: "America/New_York",
+                             phone: "+15551234567", call_reminders_enabled: true)
+    end
+    let(:occurrence) do
+      Occurrence.create!(reminder: reminder, status: :missed,
+                         scheduled_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 8, 0))
+    end
+
+    def ring(id, answered_at: nil)
+      TelnyxCall.create!(call_control_id: id, occurrence: occurrence, user: senior,
+                         attempt_number: occurrence.telnyx_calls.count + 1,
+                         status: "hangup", outcome: "no_response", answered_at: answered_at)
+    end
+
+    context "when nobody pressed 1 on any of them" do
+      before { 3.times { |i| ring("call-#{i}") } }
+
+      let(:body) { readable(mail_for(:missed)).squish }
+
+      # "never heard", not "nobody answered": somebody can pick up and put the
+      # phone down without a key, and that looks the same as a ring-out.
+      it "says how many times Remindly called and that the reminder was never heard" do
+        expect(body).to include("Remindly called Mom 3 times about Metformin, and the reminder was never heard")
+        expect(body).not_to include("nobody answered")
+      end
+
+      it "does not describe a screen button, or suggest it was done without marking" do
+        expect(body).not_to include("pressed Done on their device")
+        expect(body).not_to include("may have done it without marking it")
+      end
+
+      it "suggests checking in rather than reassuring" do
+        expect(body).to include("it may be worth checking in")
+      end
+
+      it "heads the email as no answer" do
+        heading = Nokogiri::HTML(mail_for(:missed).html_part.decoded).at_css("h1").text
+        expect(heading).to include("No answer")
+      end
+    end
+
+    context "when somebody pressed 1, heard it, and did not confirm" do
+      before do
+        ring("call-0")
+        ring("call-1", answered_at: ActiveSupport::TimeZone["America/New_York"].local(2026, 7, 21, 8, 6))
+      end
+
+      let(:body) { readable(mail_for(:missed)).squish }
+
+      it "says it was heard, and when, in their time" do
+        # "was answered", not "Mom heard": a keypress proves a person, not which one.
+        expect(body).to include("Remindly's call to Mom about Metformin was answered, but nobody confirmed it")
+        # Any key starts the reminder, so the email cannot say which one.
+        expect(body).to include("pressed a key to hear it at 8:06 AM")
+      end
+
+      it "does not claim the reminder went unheard" do
+        expect(body).not_to include("never heard")
+      end
+    end
+  end
+
+  # #171: the due time was printed in the senior's zone with nothing to say so,
+  # which a caregiver hours away reads on their own clock.
+  describe "the due time" do
+    let(:senior) { create(:user, :senior, name: "Mom", tz: "America/Halifax") }
+    let(:caregiver) { create(:user, :caregiver, email: "kid@example.com", name: "Jane", tz: "America/Los_Angeles") }
+    let(:occurrence) { Occurrence.create!(reminder: reminder, scheduled_at: Time.utc(2026, 7, 21, 16, 42), status: :missed) }
+
+    it "names whose time it is, and the caregiver's own, when they differ" do
+      body = readable(mail_for(:missed)).squish
+
+      expect(body).to include("Tuesday, July 21 at 1:42 PM, Mom's time (ADT) — 9:42 AM your time")
+    end
+
+    it "labels the time on the completed and unanswered emails too" do
+      expect(readable(mail_for(:completed)).squish).to include("Mom's time (ADT)")
+
+      unanswered = described_class
+        .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence, attempts_remaining: 2)
+        .unanswered
+      expect(readable(unanswered).squish).to include("1:42 PM, Mom's time (ADT) — 9:42 AM your time")
+    end
+
+    it "leaves out the caregiver's time when both clocks read the same" do
+      caregiver.update!(tz: "America/Halifax")
+
+      body = readable(mail_for(:missed)).squish
+
+      expect(body).to include("1:42 PM, Mom's time (ADT)")
+      expect(body).not_to include("your time")
+    end
+
+    # A reminder keeps the zone it was saved in until it is next written, so a
+    # senior who has moved can have reminders stamped with their old clock. The
+    # email calls the time "Mom's time", so it has to read it on her clock now.
+    it "reads the time on the senior's current clock, not the reminder's old stamp" do
+      reminder.update_columns(tz: "America/New_York")
+
+      body = readable(mail_for(:missed)).squish
+
+      expect(body).to include("1:42 PM, Mom's time (ADT)")
+      expect(body).not_to include("EDT")
+    end
+
+    # The no-answer alert shows times without a date; when the clocks are on
+    # different days, two bare times cannot say which day either one is.
+    it "names both days in the short label when the clocks are on different days" do
+      senior.update!(tz: "Asia/Tokyo")
+      reminder.update!(tz: "Asia/Tokyo")
+
+      unanswered = described_class
+        .with(caregiver: caregiver, senior: senior, reminder: reminder, occurrence: occurrence, attempts_remaining: 2)
+        .unanswered
+
+      expect(readable(unanswered).squish).to include("Wednesday 1:42 AM, Mom's time (JST) — Tuesday 9:42 AM your time")
+    end
+
+    it "names the day as well when the caregiver's clock has crossed midnight" do
+      senior.update!(tz: "Asia/Tokyo")
+      reminder.update!(tz: "Asia/Tokyo")
+
+      body = readable(mail_for(:missed)).squish
+
+      # 16:42 UTC is 1:42 AM Wednesday in Tokyo and 9:42 AM Tuesday in Los Angeles.
+      expect(body).to include("Wednesday, July 22 at 1:42 AM, Mom's time (JST) — Tuesday 9:42 AM your time")
     end
   end
 end

@@ -44,7 +44,13 @@ class ReminderActivityMailer < ApplicationMailer
     # on that word. Appending a marker to every subject to defend against an
     # unusual title would make every ordinary one read worse, and the sentence no
     # longer asserts doneness anywhere — it opens by denying it.
-    subject = case @phone_failure
+    subject = case @phone_failure || @phone_calls
+    when :no_answer
+      # Rung, and nobody pressed a key to hear it. "No answer" in the sense the
+      # unanswered alert already uses -- no response to the call -- rather than
+      # folded into "no confirmation", which reads as her having heard and not
+      # confirmed, a milder thing than a reminder that never reached her (#92).
+      "No answer from #{@senior.display_name}: #{@reminder.title}"
     when :outside_calling_hours, :not_attempted_in_time
       "Remindly couldn't call #{@senior.display_name} about #{@reminder.title}"
     # "didn't", not "couldn't": the others are Remindly unable to place a call,
@@ -110,12 +116,74 @@ class ReminderActivityMailer < ApplicationMailer
     @senior = params[:senior]
     @reminder = params[:reminder]
     @occurrence = params[:occurrence]
-    # Present the due time in the senior's zone; the raw timestamp is UTC and the
+    # Present the due time on the senior's clock; the raw timestamp is UTC and the
     # templates strftime it, so an Eastern 9:00 AM dose would otherwise read 1:00 PM.
-    @scheduled_at = @occurrence.scheduled_at&.in_time_zone(@reminder.tz)
+    #
+    # The senior's current zone, not the reminder's stamp. The stamp follows the
+    # senior only when the reminder is next written, so after a senior moves it
+    # can still name the old zone -- and the label below calls this "Mom's time",
+    # which would then be false. The instant is the same either way; only the
+    # clock it is read on changes, and that has to be hers.
+    @display_zone = ActiveSupport::TimeZone[@senior.tz.to_s] || ActiveSupport::TimeZone[@reminder.tz.to_s] || Time.zone
+    @scheduled_at = @occurrence.scheduled_at&.in_time_zone(@display_zone)
     @dashboard_url = senior_dashboard_url(@senior)
     @phone_failure = @occurrence.phone_failure_reason
     @attempts = @occurrence.telnyx_calls.count
     @calling_hours = @senior.calling_hours_label
+    @due_label = due_label
+    @due_time_label = due_label(with_date: false)
+    @phone_calls = phone_calls
+  end
+
+  # What the telephone can say about a reminder it did ring for (#92), when
+  # phone_failure_reason has nothing to report because calls did go out:
+  #
+  #   :no_answer  on every call, nobody pressed a key to hear the reminder --
+  #               it rang out, a mailbox picked up (it cannot press a key, which
+  #               is what the opening line is for), or somebody answered and
+  #               put the phone down. So the email says the reminder was not
+  #               heard, not that nobody answered: it cannot tell those apart.
+  #   :heard      somebody pressed a key and heard it, and did not confirm.
+  #               Any key starts the reminder, not only 1.
+  #
+  # nil when no call was placed at all, which leaves the screen wording. Only
+  # calls with a provider receipt count, as in phone_failure_reason.
+  def phone_calls
+    return if @phone_failure
+
+    placed = @occurrence.telnyx_calls.where.not(call_control_id: nil)
+    @calls_placed = placed.count
+    return if @calls_placed.zero?
+
+    @heard_at = placed.where.not(answered_at: nil).minimum(:answered_at)&.in_time_zone(@display_zone)
+    @heard_at ? :heard : :no_answer
+  end
+
+  # "Monday, September 21 at 8:15 AM, Mom's time (EDT)" -- and, when the
+  # caregiver's clock reads differently, "— 5:15 AM your time" (#171).
+  #
+  # The senior's zone stays first because it is the one the reminder was set
+  # in. Naming it matters because the product's premise is a caregiver hours
+  # away: an unlabelled "1:42 PM" read on a coast three hours behind is a
+  # missed email about their own future.
+  def due_label(with_date: true)
+    return if @scheduled_at.nil?
+
+    caregiver_zone = ActiveSupport::TimeZone[@caregiver.tz.to_s]
+    yours = @scheduled_at.in_time_zone(caregiver_zone) if caregiver_zone
+    yours = nil if yours && yours.utc_offset == @scheduled_at.utc_offset
+
+    # Both days, when the two clocks disagree about the date: 11pm theirs can
+    # be tomorrow yours, and two bare times cannot say which day either is on.
+    days_differ = yours && yours.to_date != @scheduled_at.to_date
+
+    theirs_format = if with_date then "%A, %B %-d at %-l:%M %p"
+    elsif days_differ then "%A %-l:%M %p"
+    else "%-l:%M %p"
+    end
+    label = "#{@scheduled_at.strftime(theirs_format)}, #{@senior.display_name}'s time (#{@scheduled_at.strftime('%Z')})"
+    return label if yours.nil?
+
+    "#{label} — #{yours.strftime(days_differ ? '%A %-l:%M %p' : '%-l:%M %p')} your time"
   end
 end

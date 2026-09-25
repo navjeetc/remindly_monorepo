@@ -26,7 +26,7 @@
       </div>
 
       <% if @scheduled_at %>
-        <p>It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>.</p>
+        <p>It was due <%= @due_label %>.</p>
       <% end %>
 
       <p style="color: #6b7280; font-size: 14px;">

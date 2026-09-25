@@ -10,19 +10,19 @@ Hi <%= @caregiver.display_name %>,
 <% if @phone_failure == :could_not_place -%>
 Remindly tried to call <%= @senior.display_name %> about <%= @reminder.title %> and could not get through.
 <% if @scheduled_at -%>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>. <%= pluralize(@attempts, "attempt") %> made,
+It was due <%= @due_label %>. <%= pluralize(@attempts, "attempt") %> made,
 and not one of them reached the phone network. That is a fault at our end.
 <% end -%>
 <% elsif @phone_failure == :not_attempted_in_time -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, and was closed as missed
+It was due <%= @due_label %>, and was closed as missed
 before Remindly managed to place the call. That is a fault at our end.
 <% end -%>
 <% elsif @phone_failure == :added_after_its_time -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, but it was added to
+It was due <%= @due_label %>, but it was added to
 the schedule after that time had already passed — usually because the
 reminder was added or edited today. Remindly does not call about a time
 that has gone by, so no call was placed for this one.
@@ -30,17 +30,32 @@ that has gone by, so no call was placed for this one.
 <% else -%>
 Remindly did not call <%= @senior.display_name %> about <%= @reminder.title %>.
 <% if @scheduled_at -%>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %>, which is outside the hours
+It was due <%= @due_label %>, which is outside the hours
 Remindly is allowed to place reminder calls — between <%= @calling_hours %> in
 <%= @senior.display_name %>'s own time.
 <% end -%>
 <% end -%>
 Remindly did not reach <%= @senior.display_name %> by phone, so this says nothing
 about whether they did it.
+<% elsif @phone_calls == :no_answer -%>
+Remindly called <%= @senior.display_name %> <%= pluralize(@calls_placed, "time") %> about <%= @reminder.title %>, and the reminder was never heard.
+<% if @scheduled_at -%>
+It was due <%= @due_label %>. Nobody pressed a key to hear it:
+the phone rang out, went to voicemail, or was picked up and put down again.
+<% end -%>
+This does not tell you whether they did it, only that the call did not reach
+them. If that is unusual for <%= @senior.display_name %>, it may be worth checking in.
+<% elsif @phone_calls == :heard -%>
+Remindly's call to <%= @senior.display_name %> about <%= @reminder.title %> was answered, but nobody confirmed it.
+<% if @scheduled_at -%>
+It was due <%= @due_label %>. Somebody answered and pressed a key to hear it at
+<%= @heard_at.strftime("%-l:%M %p") %>, and nobody pressed 1 afterwards to say it was done.
+<% end -%>
+They may have done it without pressing the key, or not at all.
 <% else -%>
 <%= @senior.display_name %> has not marked <%= @reminder.title %> as done.
 <% if @scheduled_at -%>
-It was due <%= @scheduled_at.strftime('%A, %B %d at %I:%M %p') %> and has not been marked done since.
+It was due <%= @due_label %> and has not been marked done since.
 <% end -%>
 This means nobody pressed Done on their device. It does not necessarily mean it
 was not done — they may have done it without marking it.
