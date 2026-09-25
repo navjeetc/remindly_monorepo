@@ -19,12 +19,27 @@ namespace :area_codes do
     file_date = body.lines.first.to_s[/File Date,(.+)/, 1]&.strip
     rows = CSV.parse(body.lines.drop(1).join, headers: true)
 
+    # Refuse anything that does not look like NANPA's report before touching
+    # the table: an error page served as 200, an empty body or a renamed column
+    # would otherwise produce an empty map and overwrite the good one, and the
+    # panel would quietly stop saying anything for everybody.
+    missing = %w[NPA_ID USE IN_SERVICE LOCATION] - rows.headers.compact
+    abort "NANPA's report is missing #{missing.join(', ')}; config/area_codes.yml left as it was." if missing.any?
+    abort "NANPA's report has no file date; config/area_codes.yml left as it was." if file_date.blank?
+
     # Geographic codes in service only. Toll-free, premium and the other
     # non-geographic codes have no place to name.
     regions = rows
       .select { |row| row["USE"] == "G" && row["IN_SERVICE"] == "Y" && row["LOCATION"].present? }
       .to_h { |row| [ row["NPA_ID"], AreaCode.region_name(row["LOCATION"]) ] }
       .sort.to_h
+
+    # There are about 450; a count far below that is a partial or broken file.
+    minimum = 400
+    if regions.size < minimum
+      abort "Only #{regions.size} area codes in NANPA's report, expected #{minimum}+; " \
+            "config/area_codes.yml left as it was."
+    end
 
     header = <<~YAML
       # Area code -> the state, province or country it belongs to.
