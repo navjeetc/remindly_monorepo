@@ -74,4 +74,32 @@ RSpec.describe Subscriber do
       end
     end
   end
+
+  # Mirrors User's own spec for the identical method, since the two share no
+  # ancestor and the logic is duplicated rather than shared.
+  describe "#mark_email_undeliverable!" do
+    let(:subscriber) { described_class.create!(email: "ann@example.com") }
+
+    it "records when, and is reflected in .deliverable" do
+      expect { subscriber.mark_email_undeliverable! }
+        .to change { subscriber.email_undeliverable_at }.from(nil)
+
+      expect(subscriber).not_to be_email_deliverable
+      expect(described_class.deliverable).not_to include(subscriber)
+    end
+
+    # The database decides the winner, not whichever write happens to run
+    # last — the same race MailDeliveryJob can produce for a User, reproduced
+    # the same way: another write already landed, and this instance's
+    # in-memory copy is still stale.
+    it "does not let a later call move an already-recorded date" do
+      first = 2.days.ago.change(usec: 0)
+      described_class.where(id: subscriber.id).update_all(email_undeliverable_at: first)
+      expect(subscriber.email_undeliverable_at).to be_nil, "the in-memory copy should still be stale"
+
+      subscriber.mark_email_undeliverable!(at: Time.current)
+
+      expect(subscriber.reload.email_undeliverable_at).to be_within(1.second).of(first)
+    end
+  end
 end

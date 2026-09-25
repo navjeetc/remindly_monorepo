@@ -25,13 +25,23 @@ class MailDeliveryJob < ActionMailer::MailDeliveryJob
       user.email
     end
 
+    # A refused address can belong to either list, and checking both costs
+    # nothing on the rare path where Postmark has actually said no. Subscriber
+    # was the one missing this until a bounced address turned up re-enqueued by
+    # subscribers:send_monthly_note on every future run, discarded again each
+    # time with nothing remembering the first refusal.
+    marked += Subscriber.where(email: addresses).map do |subscriber|
+      subscriber.mark_email_undeliverable!
+      subscriber.email
+    end
+
     unmatched = addresses - marked
 
     Rails.logger.warn(
       "MailDeliveryJob: #{job.arguments.first}##{job.arguments.second} discarded — " \
       "Postmark has permanently refused #{addresses.join(", ").presence || "the recipient"}. " \
       "Marked undeliverable: #{marked.presence&.join(", ") || "none"}. " \
-      "No matching user: #{unmatched.presence&.join(", ") || "none"}."
+      "No matching user or subscriber: #{unmatched.presence&.join(", ") || "none"}."
     )
   end
 end
