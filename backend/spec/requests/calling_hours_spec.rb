@@ -85,6 +85,15 @@ RSpec.describe "Calling hours", type: :request do
 
     def panel = Nokogiri::HTML(response.body)
 
+    it "is not offered to a view-only caregiver" do
+      link.update!(permission: :view)
+
+      get "/dashboard/senior/#{senior.id}"
+
+      expect(panel.at_css("#user_calling_hours_start")).to be_nil
+      expect(panel.at_css("form[action$='/calling_hours']")).to be_nil
+    end
+
     it "shows the window as it stands" do
       senior.update!(calling_hours_start: 7, calling_hours_end: 20)
 

@@ -150,6 +150,19 @@ class VoiceReminderJob < ApplicationJob
       return
     end
 
+    # The hours again, on the row just reloaded. The check at the top ran before
+    # reserving, and the window is a caregiver's to edit now (#174): narrowing
+    # it from 9pm to 6pm while an 8pm attempt is being claimed must stop that
+    # call, not let it through on the hours as they stood a moment ago.
+    # Suppressed as well as released, so the missed email says we did not call
+    # rather than that she did not answer.
+    unless senior.within_calling_hours?
+      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      occurrence.suppress_call!(:outside_calling_hours)
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: calling hours closed while the attempt was being claimed"
+      return
+    end
+
     unless occurrence.reload.status_pending?
       # One transaction, because these two writes have to be true together. If
       # the process exits between them the row is cancelled with no reason
