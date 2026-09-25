@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Keeps a reminder-link token out of Rails' own request log.
+# Keeps a credential-bearing token out of Rails' own request log.
 #
 # `config.filter_parameters` does not reach path segments. It filters the query
 # string and the parsed parameters, and `Rails::Rack::Logger` writes its
@@ -25,16 +25,21 @@
 # indefinitely, and rendered on the admin audit screen, which is a worse place
 # for a credential than a log that rotates. `Ahoy::Store#credential_in_the_path?`
 # closes that. The lesson generalises: a credential in a URL comes to rest
-# wherever URLs are recorded, and each of those places has to be found.
+# wherever URLs are recorded, and each of those places has to be found —
+# `/subscribers/unsubscribe/<token>` is the second one found this way, and it
+# shares Ahoy's own list of prefixes rather than keeping a second one here that
+# could quietly drift out of step with it.
 module FilterReminderLinkPath
-  REDACTED = "/r/[FILTERED]"
+  REDACTED_PREFIX_SUFFIX = "[FILTERED]"
 
-  # Anchored, and stops at the next / or ? so it cannot swallow a longer path
-  # that merely begins with /r/.
-  TOKEN_IN_PATH = %r{\A/r/[^/?]+}
+  # Anchored, and stops at the next / or ? so a match cannot swallow a longer
+  # path that merely begins with a credential prefix.
+  TOKEN_IN_PATH = Regexp.union(
+    Ahoy::Store::CREDENTIAL_PATH_PREFIXES.map { |prefix| %r{\A#{Regexp.escape(prefix)}[^/?]+} }
+  )
 
   def filtered_path
-    super.sub(TOKEN_IN_PATH, REDACTED)
+    super.sub(TOKEN_IN_PATH) { |match| match.sub(%r{[^/?]+\z}, REDACTED_PREFIX_SUFFIX) }
   end
 end
 

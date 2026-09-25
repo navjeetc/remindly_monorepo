@@ -35,10 +35,19 @@ class Ahoy::Store < Ahoy::DatabaseStore
   # place for it than the request log this project already redacts, because a
   # log rotates and a table does not.
   #
-  # Not folded into public_page?: /r/ is the opposite of a public page. It is
-  # excluded because of what the path carries, not because of who may read it.
+  # /subscribers/unsubscribe/ joined it for the same reason, found the same
+  # way: a signed, no-expiry token in the address, and nothing about Ahoy's own
+  # recording cares whether that token still resolves to anyone -- an unknown
+  # or already-used one lands here exactly like a live one.
+  #
+  # Not folded into public_page?: a credential path is the opposite of a public
+  # page. It is excluded because of what the path carries, not because of who
+  # may read it.
+  CREDENTIAL_PATH_PREFIXES = %w[/r/ /subscribers/unsubscribe/].freeze
+
   def credential_in_the_path?
-    request&.path.to_s.start_with?("/r/")
+    path = request&.path.to_s
+    CREDENTIAL_PATH_PREFIXES.any? { |prefix| path.start_with?(prefix) }
   end
 
   def public_page?

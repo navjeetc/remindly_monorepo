@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # The unsubscribe link every subscriber email carries. Two requests, on
@@ -114,5 +116,121 @@ RSpec.describe "Unsubscribing", type: :request do
     expect {
       post "/subscribers", params: { email: subscriber.email }
     }.to change(Subscriber, :count).by(1)
+  end
+end
+
+# The token in this address is exactly the case reminder_link_privacy_spec.rb
+# already covers for /r/ — a credential in the URL comes to rest wherever URLs
+# are recorded, and each of those places has to be found. This route adds one
+# reminder_link_privacy_spec.rb never had to answer: it renders through
+# PublicPage and the marketing layout, both built for pages with nothing to
+# hide, so the page-view counter and the layout's own canonical/og:url tags
+# needed the same treatment the request log and Ahoy already had.
+RSpec.describe "Where the unsubscribe token comes to rest", type: :request do
+  def browser
+    { "HTTP_USER_AGENT" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+                           "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36" }
+  end
+
+  let!(:subscriber) { Subscriber.create!(email: "ann@example.com") }
+  let(:token) { subscriber.signed_id(purpose: :unsubscribe) }
+
+  describe "analytics" do
+    it "records no visit for the confirm page" do
+      expect { get "/subscribers/unsubscribe/#{token}", headers: browser }
+        .not_to change { Ahoy::Visit.count }
+    end
+
+    it "records no visit for the removal itself" do
+      expect { delete "/subscribers/unsubscribe/#{token}", headers: browser }
+        .not_to change { Ahoy::Visit.count }
+    end
+
+    it "appears in no landing page anywhere" do
+      get "/subscribers/unsubscribe/#{token}", headers: browser
+
+      expect(Ahoy::Visit.pluck(:landing_page).join(" ")).not_to include(token)
+    end
+
+    # The control: without excluding this path specifically, the two examples
+    # above would pass by accident if credential_in_the_path? excluded nothing
+    # and public_page? happened to catch it instead. /login rather than /faq —
+    # /faq is itself excluded as a public page, which is a different rule for a
+    # different reason and would prove nothing about credential_in_the_path?.
+    it "still records a visit to a page that is not a credential" do
+      expect { get "/login", headers: browser }.to change { Ahoy::Visit.count }.by(1)
+    end
+  end
+
+  describe "the page-view counter" do
+    it "does not count the confirm page" do
+      expect { get "/subscribers/unsubscribe/#{token}", headers: browser }
+        .not_to change { PageCount.sum(:count) }
+    end
+
+    it "does not count the removal itself" do
+      expect { delete "/subscribers/unsubscribe/#{token}", headers: browser }
+        .not_to change { PageCount.sum(:count) }
+    end
+
+    # Same reasoning as the Ahoy control above: proves the skip is scoped to
+    # these two actions rather than to PublicPage generally.
+    it "still counts an ordinary public page" do
+      expect { get "/faq", headers: browser }.to change { PageCount.sum(:count) }.by(1)
+    end
+  end
+
+  it "keeps the token out of the Rails request log" do
+    expect(ActionDispatch::Request.new(Rack::MockRequest.env_for("/subscribers/unsubscribe/#{token}")).filtered_path)
+      .to eq("/subscribers/unsubscribe/[FILTERED]")
+  end
+
+  describe "page metadata" do
+    # Both pages carry the live token in their own address, so neither may
+    # declare it as a canonical URL, publish it in Open Graph, or leak it
+    # through a Referer header when a nav or footer link is followed.
+    shared_examples "a page with nothing to declare about its own address" do
+      it "sets noindex" do
+        expect(doc.at_css("meta[name='robots']")&.[]("content")).to eq("noindex, nofollow")
+      end
+
+      it "restricts the referrer" do
+        expect(doc.at_css("meta[name='referrer']")&.[]("content")).to eq("strict-origin")
+      end
+
+      it "declares no canonical URL" do
+        expect(doc.at_css("link[rel='canonical']")).to be_nil
+      end
+
+      it "publishes no og:url" do
+        expect(doc.at_css("meta[property='og:url']")).to be_nil
+      end
+    end
+
+    def doc = Nokogiri::HTML(response.body)
+
+    context "on the confirm page" do
+      before { get "/subscribers/unsubscribe/#{token}" }
+
+      include_examples "a page with nothing to declare about its own address"
+    end
+
+    context "on the terminal page" do
+      before { delete "/subscribers/unsubscribe/#{token}" }
+
+      include_examples "a page with nothing to declare about its own address"
+    end
+
+    # The control every example above needs: proves the layout still declares
+    # a canonical URL for a page that has nothing to hide, so the credential
+    # pages are opting out of something that is normally on, not something
+    # that was already off.
+    it "still declares a canonical URL and og:url on an ordinary page" do
+      get "/faq"
+
+      expect(doc.at_css("link[rel='canonical']")&.[]("href")).to eq("https://www.remindly.care/faq")
+      expect(doc.at_css("meta[property='og:url']")&.[]("content")).to eq("https://www.remindly.care/faq")
+      expect(doc.at_css("meta[name='robots']")).to be_nil
+    end
   end
 end

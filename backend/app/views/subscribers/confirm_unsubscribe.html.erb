@@ -11,6 +11,8 @@
   posts to (SubscribersController explains why), so there is nothing here for
   a token to protect.
 %>
+<%# Own address carries a bearer token — see marketing.html.erb's use of this flag. %>
+<% content_for :credential_page, true %>
 <% content_for :title, "Unsubscribe — Remindly" %>
 
 <h1>Unsubscribe <%= @subscriber.email %>?</h1>

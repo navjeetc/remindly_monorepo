@@ -22,6 +22,15 @@ class SubscribersController < WebController
   # — nothing an attacker could not do by sending the person the link directly.
   skip_forgery_protection only: %i[create confirm_unsubscribe]
 
+  # PublicPage's page-count is a page-view tally for pages someone might read
+  # twice, keyed on request.path -- and a signed token is not a page, it is a
+  # bearer credential. Recording it would write the live token into
+  # page_counts, kept indefinitely and readable on the admin traffic screen,
+  # for every fetch including one from a token that never resolved to anyone --
+  # so an unauthenticated caller could also grow that table without limit by
+  # requesting nonsense tokens. Neither action gets a page view.
+  skip_after_action :count_this_page_view, only: %i[unsubscribe confirm_unsubscribe]
+
   rate_limit to: 5, within: 1.minute, only: :create
 
   def create

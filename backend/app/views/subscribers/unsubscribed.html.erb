@@ -3,6 +3,8 @@
   the controller comment on why. Nobody reading this can tell the difference,
   and nobody should need to.
 %>
+<%# Own address carries a bearer token — see marketing.html.erb's use of this flag. %>
+<% content_for :credential_page, true %>
 <% content_for :title, "You're off the list — Remindly" %>
 
 <h1>You're off the list</h1>
