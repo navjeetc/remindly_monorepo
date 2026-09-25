@@ -28,6 +28,32 @@ class Subscriber < ApplicationRecord
   # the way in is what makes the unique index mean anything.
   normalizes :email, with: ->(email) { email.to_s.strip.downcase }
 
+  # The same fact User tracks, for the same reason: an address a mail provider
+  # has permanently refused stays refused, and subscribers:send_monthly_note
+  # must stop re-enqueuing it every month rather than rediscovering the same
+  # bounce forever. See db/migrate/*_add_email_undeliverable_at_to_subscribers.
+  scope :deliverable, -> { where(email_undeliverable_at: nil) }
+
+  def email_deliverable? = email_undeliverable_at.nil?
+
+  # Idempotent for the same reason as User#mark_email_undeliverable!: a
+  # conditional UPDATE rather than check-then-write, so two jobs discarding the
+  # same address at once cannot have the second quietly move the first's
+  # timestamp forward. Kept in step with that method rather than shared with it
+  # -- the two models have no common ancestor, and duplicating fifteen lines
+  # cost less than a concern would, here, for two callers.
+  def mark_email_undeliverable!(at: Time.current)
+    claimed = self.class.where(id: id, email_undeliverable_at: nil)
+      .update_all(email_undeliverable_at: at)
+
+    recorded = claimed.positive? ? at : self.class.where(id: id).pick(:email_undeliverable_at)
+
+    write_attribute(:email_undeliverable_at, recorded)
+    clear_attribute_changes([ :email_undeliverable_at ])
+
+    self
+  end
+
   # Signing up twice is a normal thing to do — people forget. It should be
   # indistinguishable from signing up once, rather than an error page telling a
   # stranger that their address is already on a list.

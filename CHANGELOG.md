@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-24
+
+### Added
+- **A way to actually send the "about once a month" note the welcome email
+  promises.** There was none: `subscribers` had a create route and nothing
+  else, and the promise had gone unfulfilled since the first real subscriber
+  (2026-07-27). `SubscriberMailer#monthly_note` plus `bin/rails
+  subscribers:send_monthly_note` sends it — content is edited by hand in the
+  view before each send, and the task prints who it would reach and does
+  nothing until run again with `CONFIRM=yes`, so a month never goes out by
+  accident and never fails to go out silently either.
+
 ## [0.11.2] - 2026-09-24
 
 ### Fixed

@@ -37,4 +37,26 @@ class SubscriberMailer < ApplicationMailer
       subject: "New Remindly subscriber: #{subscriber.email}"
     )
   end
+
+  # The "about once a month" note the welcome email promises — the one thing
+  # kept from that promise, and for a while the only thing that wasn't: it was
+  # promised on 2026-07-27 and nothing had gone out by 2026-09-24.
+  #
+  # Content lives in the view and is edited by hand before each send — no
+  # admin UI, no stored copy, nothing scheduled to fire on its own. Right for a
+  # list this size, and it stays that way only for as long as somebody notices
+  # when a month has passed; see lib/tasks/subscribers.rake for the send.
+  #
+  # reply_to matches welcome, for the same reason: there is still no
+  # unsubscribe link, so replying is still the only way out, and it has to
+  # reach a mailbox someone reads every time, not just the first time.
+  def monthly_note(subscriber)
+    @subscriber = subscriber
+
+    mail(
+      to: subscriber.email,
+      reply_to: UNSUBSCRIBE_INBOX,
+      subject: "One thing for this month, from Remindly"
+    )
+  end
 end

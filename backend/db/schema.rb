@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_033702) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_002853) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -186,6 +186,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_033702) do
   create_table "subscribers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
+    t.datetime "email_undeliverable_at"
     t.string "source"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_subscribers_on_email", unique: true

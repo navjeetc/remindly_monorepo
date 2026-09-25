@@ -63,6 +63,25 @@ RSpec.describe MailDeliveryJob do
       expect(other.reload.email_undeliverable_at).to be_present
     end
 
+    # A refused address can belong to the mailing list instead of a User —
+    # subscribers:send_monthly_note is the one place that keeps re-enqueuing
+    # the same address every month if this does not mark it too.
+    it "marks a subscriber's address undeliverable the same as a user's" do
+      expect { job_raising(inactive_error(subscriber.email)).perform_now }
+        .to change { subscriber.reload.email_undeliverable_at }.from(nil)
+
+      expect(subscriber.reload).not_to be_email_deliverable
+    end
+
+    # Both lists can appear in one refusal — nothing about Postmark's error
+    # says which kind of address it is naming.
+    it "marks a user and a subscriber named in the same error" do
+      job_raising(inactive_error(user.email, subscriber.email)).perform_now
+
+      expect(user.reload.email_undeliverable_at).to be_present
+      expect(subscriber.reload.email_undeliverable_at).to be_present
+    end
+
     # An address Postmark refuses need not belong to a user — a subscriber, or
     # an account since deleted. Discarding must still work.
     it "survives an address with no matching user" do
