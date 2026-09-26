@@ -12,9 +12,17 @@
 
 <div class="space-y-6">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <h2 class="text-3xl font-bold text-gray-900">
-      <%= current_user.role_senior? ? "My Dashboard" : "Caregiver Dashboard" %>
-    </h2>
+    <%# Whose screen this is, said in words as well as colour (#176): a care
+        receiver's own page is named for them, a caregiver's says so above the
+        heading in the same place senior.html.erb says who is being cared for. %>
+    <div>
+      <% unless current_user.role_senior? %>
+        <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Caregiver view</p>
+      <% end %>
+      <h2 class="text-3xl font-bold text-gray-900">
+        <%= current_user.role_senior? ? "#{possessive(current_user.display_name)} reminders" : "Caregiver Dashboard" %>
+      </h2>
+    </div>
     <div class="flex flex-wrap gap-3">
       <% if current_user.role_senior? && !showing_empty_state %>
         <%= link_to "Generate Pairing Token", generate_token_dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>

@@ -125,6 +125,19 @@ module ApplicationHelper
     "#{care_receiver.display_name} doesn't have reminder calls set up"
   end
 
+  # "Mom's", for headings that name whose screen this is (#176). Always 's,
+  # including after an s ("James's"), which is the modern style and never
+  # wrong.
+  def possessive(name) = "#{name}'s"
+
+  # The care receiver's screens have their own background, so a caregiver who
+  # opens one can tell at a glance they are not on their own (#176): the warm
+  # paper tone the public site uses, against the dashboard's grey. It backs up
+  # the headings rather than carrying the difference alone -- some readers
+  # cannot see the colour -- and it is neither red nor yellow, which read as an
+  # error and a warning.
+  CARE_RECEIVER_BACKGROUND = "#f7f3ee"
+
   # +15715170980 -> +1 571-517-0980.
   #
   # For a number somebody is being asked to copy onto a handset, digit by digit,

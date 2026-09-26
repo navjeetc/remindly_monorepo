@@ -32,7 +32,7 @@ RSpec.describe "The voice reminders page", type: :request do
       get "/voice_reminders"
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("My Reminders")
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Mom's reminders")
     end
 
     # A caregiver here has made a navigation mistake, not an authorisation
