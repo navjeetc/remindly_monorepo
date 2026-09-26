@@ -15,10 +15,7 @@
           this page now. %>
       <%# Said above the name, and in the layout's band, because the name alone
           can read as this being their own screen -- one care receiver is
-          called "Me" (#176). The band names them only when they have a name:
-          display_name falls back to the email address, and the address is
-          allowed on this page once, as the heading, and nowhere else. %>
-      <% content_for :caring_for, @senior.display_name unless @senior.display_name == @senior.email %>
+          called "Me" (#176). %>
       <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">You're caring for</p>
       <h2 class="text-3xl font-bold text-gray-900"><%= @senior.display_name %></h2>
       <%# Says what the permission means rather than printing the stored word. The

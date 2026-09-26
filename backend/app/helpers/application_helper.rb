@@ -130,6 +130,24 @@ module ApplicationHelper
   # wrong.
   def possessive(name) = "#{name}'s"
 
+  # A person's name for the screen band (#176), or nil when they have none:
+  # display_name falls back to the email address, and a band reading
+  # "mom@example.com's own screen" is worse than one naming nobody.
+  def band_name(user)
+    name = user&.display_name
+    name unless name.blank? || name == user.email
+  end
+
+  # The care receiver a caregiver's page is about, on whichever page it is.
+  # Every senior-scoped action -- the senior's page, a new or edited reminder,
+  # tasks, time blocks, coverage -- sets @senior, so the band reads it here
+  # rather than each page remembering to pass it along. An unsaved one is the
+  # "set up someone new" form, which is not about anybody yet.
+  def band_care_receiver
+    senior = @senior
+    senior if senior.is_a?(User) && senior.persisted? && senior != current_user
+  end
+
   # The care receiver's screens have their own colours, so a caregiver who
   # opens one can tell at a glance they are not on their own (#176): a warm
   # cream page under a brown band, against the caregiver's grey page under a

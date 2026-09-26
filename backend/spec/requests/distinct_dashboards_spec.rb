@@ -44,6 +44,25 @@ RSpec.describe "Whose screen this is", type: :request do
     end
   end
 
+  # Every page about one care receiver acts on them, not only their main
+  # page, so the band has to name them everywhere.
+  it "names the care receiver on their other pages too" do
+    sign_in(caregiver)
+
+    get "/dashboard/senior/#{senior.id}/reminder/new"
+
+    expect(doc.text.squish).to include("Caregiver view · Caring for Mom")
+  end
+
+  it "does not name anybody on the form that sets someone new up" do
+    sign_in(caregiver)
+
+    get "/dashboard/care_receiver/new"
+
+    expect(doc.text.squish).to include("Caregiver view")
+    expect(doc.text).not_to include("Caring for")
+  end
+
   describe "the care receiver's screens" do
     it "names the device screen for its person, on the warm background" do
       get "/r/#{ReminderLink.mint(user: senior).token}"
@@ -67,6 +86,19 @@ RSpec.describe "Whose screen this is", type: :request do
       expect(doc.at_css("title").text).to eq("Mom's reminders - Remindly")
       expect(warm?).to be(true)
     end
+  end
+
+  # display_name falls back to the email address; the band says "Your own
+  # screen" rather than "mom@example.com's own screen".
+  it "does not put a care receiver's email address in their band" do
+    senior.update!(email: "mom@example.com")
+    senior.update_columns(name: nil, nickname: nil)
+    sign_in(senior)
+
+    get "/dashboard"
+
+    expect(doc.text.squish).to include("Your own screen")
+    expect(doc.text).not_to include("mom@example.com's own screen")
   end
 
   it "asks for the care receiver's name, not the caregiver's, when setting someone up" do
