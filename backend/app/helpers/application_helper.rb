@@ -130,21 +130,23 @@ module ApplicationHelper
   # wrong.
   def possessive(name) = "#{name}'s"
 
-  # A person's name for the screen band (#176), or nil when they have none:
-  # display_name falls back to the email address, and a band reading
-  # "mom@example.com's own screen" is worse than one naming nobody.
+  # A person's name for the screen band (#176), or nil when they have none.
+  # Read from the fields themselves, not display_name, whose fallbacks -- the
+  # email address, then "Someone" -- would put "mom@example.com's own screen"
+  # or "Caring for Someone" in the band. Naming nobody is better than either.
   def band_name(user)
-    name = user&.display_name
-    name unless name.blank? || name == user.email
+    user && (user.nickname.presence || user.name.presence)
   end
 
   # The care receiver a caregiver's page is about, on whichever page it is.
   # Every senior-scoped action -- the senior's page, a new or edited reminder,
   # tasks, time blocks, coverage -- sets @senior, so the band reads it here
-  # rather than each page remembering to pass it along. An unsaved one is the
-  # "set up someone new" form, which is not about anybody yet.
+  # rather than each page remembering to pass it along. The scheduling
+  # integration pages set @integration instead, whose senior is the one they
+  # act on. An unsaved @senior is the "set up someone new" form, which is not
+  # about anybody yet.
   def band_care_receiver
-    senior = @senior
+    senior = @senior || @integration&.senior
     senior if senior.is_a?(User) && senior.persisted? && senior != current_user
   end
 
