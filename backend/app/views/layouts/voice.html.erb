@@ -29,7 +29,9 @@
 %>
 <html style="font-size: <%= current_user&.text_scale || 100 %>%">
   <head>
-    <title>My Reminders</title>
+    <%# Named for the person, like the heading (#176), so the tab or bookmark
+        says whose screen it is. %>
+    <title><%= current_user ? "#{possessive(current_user.display_name)} reminders" : "My Reminders" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%# A reminder link is a credential. Nothing here belongs in an index. %>
     <meta name="robots" content="noindex, nofollow">

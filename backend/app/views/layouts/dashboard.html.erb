@@ -3,7 +3,9 @@
     interface. See User::TEXT_SCALES. %>
 <html style="font-size: <%= current_user&.text_scale || 100 %>%">
   <head>
-    <title>Remindly - Caregiver Dashboard</title>
+    <%# The tab says whose screen this is too (#176): it is what a caregiver
+        switching tabs reads, and what a screen reader announces first. %>
+    <title><%= current_user&.role_senior? ? "#{possessive(current_user.display_name)} reminders - Remindly" : "Remindly - Caregiver Dashboard" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="canonical" href="<%= canonical_url %>">
     <%= csrf_meta_tags %>

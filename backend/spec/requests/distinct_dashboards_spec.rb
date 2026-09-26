@@ -27,6 +27,7 @@ RSpec.describe "Whose screen this is", type: :request do
 
       expect(doc.text.squish).to include("Caregiver view")
       expect(doc.text).not_to include("own screen")
+      expect(doc.at_css("title").text).to eq("Remindly - Caregiver Dashboard")
       expect(warm?).to be(false)
     end
 
@@ -50,6 +51,7 @@ RSpec.describe "Whose screen this is", type: :request do
 
       expect(doc.at_css("h1").text).to include("Mom's reminders")
       expect(doc.at_css("h1").text).not_to include("My Reminders")
+      expect(doc.at_css("title").text).to eq("Mom's reminders")
       expect(warm?).to be(true)
     end
 
@@ -62,6 +64,7 @@ RSpec.describe "Whose screen this is", type: :request do
       expect(doc.text.squish).to include("Mom's own screen")
       expect(doc.text.squish).to include("Mom's reminders")
       expect(doc.text).not_to include("Caregiver view")
+      expect(doc.at_css("title").text).to eq("Mom's reminders - Remindly")
       expect(warm?).to be(true)
     end
   end
