@@ -25,7 +25,8 @@ RSpec.describe "Whose screen this is", type: :request do
     it "labels the caregiver's home as the caregiver view" do
       get "/dashboard"
 
-      expect(doc.text.squish).to include("Caregiver view Caregiver Dashboard")
+      expect(doc.text.squish).to include("Caregiver view")
+      expect(doc.text).not_to include("own screen")
       expect(warm?).to be(false)
     end
 
@@ -37,6 +38,7 @@ RSpec.describe "Whose screen this is", type: :request do
       get "/dashboard/senior/#{senior.id}"
 
       expect(doc.text.squish).to include("You're caring for Me")
+      expect(doc.text.squish).to include("Caregiver view · Caring for Me")
       expect(warm?).to be(false)
     end
   end
@@ -57,6 +59,7 @@ RSpec.describe "Whose screen this is", type: :request do
 
       get "/dashboard"
 
+      expect(doc.text.squish).to include("Mom's own screen")
       expect(doc.text.squish).to include("Mom's reminders")
       expect(doc.text).not_to include("Caregiver view")
       expect(warm?).to be(true)

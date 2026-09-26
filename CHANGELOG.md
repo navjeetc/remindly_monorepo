@@ -13,11 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Every screen says whose it is (#176).** A caregiver could not tell her own
   page about her mother from her mother's screen: her mother is named "Me", so
   the caregiver page was headed "Me" and the device screen "My Reminders", in
-  the same colours. Caregiver pages now say "Caregiver view" or "You're caring
-  for" above the heading. The care receiver's screens are headed with their
-  name ("Mom's reminders") and have a warm background of their own, the paper
-  tone the public site uses, so the difference shows before anything is read.
-  The colour backs up the words rather than carrying the difference alone.
+  the same colours. Every dashboard page now has a full-width band under the
+  nav saying whose screen it is: blue "Caregiver view" (with "Caring for Mom"
+  on a care receiver's page) on a grey page, or brown "Mom's own screen" on a
+  cream page. The care receiver's screens are also headed with their name
+  ("Mom's reminders") instead of "My". The difference shows before anything is
+  read, and the band's words carry it for anyone who cannot see the colour.
 - **Setting someone up asks for their name, not yours.** The name field now
   says "Their name, not yours: the person who will get the reminders."
 

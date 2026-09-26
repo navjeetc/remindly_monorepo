@@ -102,6 +102,24 @@
       </div>
     </nav>
 
+    <%#
+      Whose screen this is, full width under the nav on every page (#176). The
+      nav is identical for both roles, and the page headings sit lower down in
+      varying places; a band in the same spot every time is what makes the two
+      views tell apart before anything else is read.
+    %>
+    <% if current_user&.role_senior? %>
+      <div class="text-white" style="background-color: <%= ApplicationHelper::CARE_RECEIVER_BAND %>">
+        <p class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-sm font-semibold"><%= possessive(current_user.display_name) %> own screen</p>
+      </div>
+    <% elsif current_user&.role_caregiver? %>
+      <div class="bg-blue-700 text-white">
+        <p class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-sm font-semibold">
+          Caregiver view<% if content_for?(:caring_for) %> · Caring for <%= yield(:caring_for) %><% end %>
+        </p>
+      </div>
+    <% end %>
+
     <% if notice %>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
         <div class="bg-green-50 border-l-4 border-green-400 p-4">

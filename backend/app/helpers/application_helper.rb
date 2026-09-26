@@ -130,13 +130,17 @@ module ApplicationHelper
   # wrong.
   def possessive(name) = "#{name}'s"
 
-  # The care receiver's screens have their own background, so a caregiver who
-  # opens one can tell at a glance they are not on their own (#176): the warm
-  # paper tone the public site uses, against the dashboard's grey. It backs up
-  # the headings rather than carrying the difference alone -- some readers
-  # cannot see the colour -- and it is neither red nor yellow, which read as an
-  # error and a warning.
-  CARE_RECEIVER_BACKGROUND = "#f7f3ee"
+  # The care receiver's screens have their own colours, so a caregiver who
+  # opens one can tell at a glance they are not on their own (#176): a warm
+  # cream page under a brown band, against the caregiver's grey page under a
+  # blue one. Blue against warm brown stays apart for the common kinds of
+  # colour blindness, and neither is red or yellow, which read as an error and
+  # a warning. The band's words carry the difference; the colour backs them up.
+  #
+  # The first attempt used the public site's paper tone, #f7f3ee, which sits so
+  # close to the dashboard's #f9fafb that side by side nobody could see it.
+  CARE_RECEIVER_BACKGROUND = "#f8ecd6"
+  CARE_RECEIVER_BAND = "#92400e"
 
   # +15715170980 -> +1 571-517-0980.
   #
