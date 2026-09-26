@@ -3,7 +3,9 @@
     interface. See User::TEXT_SCALES. %>
 <html style="font-size: <%= current_user&.text_scale || 100 %>%">
   <head>
-    <title>Remindly - Caregiver Dashboard</title>
+    <%# The tab says whose screen this is too (#176): it is what a caregiver
+        switching tabs reads, and what a screen reader announces first. %>
+    <title><%= current_user&.role_senior? ? "#{possessive(current_user.display_name)} reminders - Remindly" : "Remindly - Caregiver Dashboard" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="canonical" href="<%= canonical_url %>">
     <%= csrf_meta_tags %>
@@ -11,7 +13,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
 
-  <body class="bg-gray-50">
+  <%# The care receiver's own screens are warm, the caregiver's grey (#176). %>
+  <body class="bg-gray-50"<% if current_user&.role_senior? %> style="background-color: <%= ApplicationHelper::CARE_RECEIVER_BACKGROUND %>"<% end %>>
     <nav class="bg-white shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-wrap items-center justify-between gap-y-2 py-2 sm:min-h-[4rem] sm:flex-nowrap sm:py-0">
@@ -100,6 +103,26 @@
         </div>
       </div>
     </nav>
+
+    <%#
+      Whose screen this is, full width under the nav on every page (#176). The
+      nav is identical for both roles, and the page headings sit lower down in
+      varying places; a band in the same spot every time is what makes the two
+      views tell apart before anything else is read.
+    %>
+    <% if current_user&.role_senior? %>
+      <% own_name = band_name(current_user) %>
+      <div class="text-white" style="background-color: <%= ApplicationHelper::CARE_RECEIVER_BAND %>">
+        <p class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-sm font-semibold"><%= own_name ? "#{possessive(own_name)} own screen" : "Your own screen" %></p>
+      </div>
+    <% elsif current_user&.role_caregiver? %>
+      <% caring_for = band_name(band_care_receiver) %>
+      <div class="bg-blue-700 text-white">
+        <p class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-sm font-semibold">
+          Caregiver view<% if caring_for %> · Caring for <%= caring_for %><% end %>
+        </p>
+      </div>
+    <% end %>
 
     <% if notice %>
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">

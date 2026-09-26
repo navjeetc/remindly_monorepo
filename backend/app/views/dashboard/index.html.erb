@@ -12,8 +12,10 @@
 
 <div class="space-y-6">
   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <%# A care receiver's own page is named for them (#176); the band in the
+        layout says whose screen it is for both roles. %>
     <h2 class="text-3xl font-bold text-gray-900">
-      <%= current_user.role_senior? ? "My Dashboard" : "Caregiver Dashboard" %>
+      <%= current_user.role_senior? ? "#{possessive(current_user.display_name)} reminders" : "Caregiver Dashboard" %>
     </h2>
     <div class="flex flex-wrap gap-3">
       <% if current_user.role_senior? && !showing_empty_state %>

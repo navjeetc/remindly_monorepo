@@ -598,7 +598,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       follow_redirect!
 
       expect(response.body).not_to include("set this up for you")
-      expect(response.body).to include("My Reminders")
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Mum's reminders")
     end
 
     it "starts announcing rather than staying suppressed" do
@@ -1063,7 +1063,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
       get "/r/#{link.token}"
 
       expect(response.body).not_to include("set this up for you")
-      expect(response.body).to include("My Reminders")
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Mom's reminders")
     end
   end
 end

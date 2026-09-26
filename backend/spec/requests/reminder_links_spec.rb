@@ -36,7 +36,7 @@ RSpec.describe "A reminder link", type: :request do
       redeem
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("My Reminders")
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Mom's reminders")
     end
 
     # The credential is in the address, deliberately. It should still not be
@@ -58,7 +58,7 @@ RSpec.describe "A reminder link", type: :request do
 
       redeem
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("My Reminders")
+      expect(Nokogiri::HTML(response.body).at_css("h1").text).to include("Mom's reminders")
     end
 
     # The cookie is what lets the page poll: the JSON lives at another path,

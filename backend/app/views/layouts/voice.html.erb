@@ -29,7 +29,9 @@
 %>
 <html style="font-size: <%= current_user&.text_scale || 100 %>%">
   <head>
-    <title>My Reminders</title>
+    <%# Named for the person, like the heading (#176), so the tab or bookmark
+        says whose screen it is. %>
+    <title><%= current_user ? "#{possessive(current_user.display_name)} reminders" : "My Reminders" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%# A reminder link is a credential. Nothing here belongs in an index. %>
     <meta name="robots" content="noindex, nofollow">
@@ -62,7 +64,8 @@
       *, *::before, *::after { box-sizing: border-box; }
       body {
         margin: 0;
-        background: #f9fafb;
+        /* The care receiver's colour, not the dashboard's grey (#176). */
+        background: <%= ApplicationHelper::CARE_RECEIVER_BACKGROUND %>;
         color: #111827;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         line-height: 1.5;

@@ -13,6 +13,10 @@
           back to the address for a senior with no name or nickname yet, which
           beats a blank heading. That is the only route by which one shows on
           this page now. %>
+      <%# Said above the name, and in the layout's band, because the name alone
+          can read as this being their own screen -- one care receiver is
+          called "Me" (#176). %>
+      <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">You're caring for</p>
       <h2 class="text-3xl font-bold text-gray-900"><%= @senior.display_name %></h2>
       <%# Says what the permission means rather than printing the stored word. The
           care receiver's own dashboard has said "Can make changes" since #117;

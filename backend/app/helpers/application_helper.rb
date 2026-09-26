@@ -125,6 +125,43 @@ module ApplicationHelper
     "#{care_receiver.display_name} doesn't have reminder calls set up"
   end
 
+  # "Mom's", for headings that name whose screen this is (#176). Always 's,
+  # including after an s ("James's"), which is the modern style and never
+  # wrong.
+  def possessive(name) = "#{name}'s"
+
+  # A person's name for the screen band (#176), or nil when they have none.
+  # Read from the fields themselves, not display_name, whose fallbacks -- the
+  # email address, then "Someone" -- would put "mom@example.com's own screen"
+  # or "Caring for Someone" in the band. Naming nobody is better than either.
+  def band_name(user)
+    user && (user.nickname.presence || user.name.presence)
+  end
+
+  # The care receiver a caregiver's page is about, on whichever page it is.
+  # Every senior-scoped action -- the senior's page, a new or edited reminder,
+  # tasks, time blocks, coverage -- sets @senior, so the band reads it here
+  # rather than each page remembering to pass it along. The scheduling
+  # integration pages set @integration instead, whose senior is the one they
+  # act on. An unsaved @senior is the "set up someone new" form, which is not
+  # about anybody yet.
+  def band_care_receiver
+    senior = @senior || @integration&.senior
+    senior if senior.is_a?(User) && senior.persisted? && senior != current_user
+  end
+
+  # The care receiver's screens have their own colours, so a caregiver who
+  # opens one can tell at a glance they are not on their own (#176): a warm
+  # cream page under a brown band, against the caregiver's grey page under a
+  # blue one. Blue against warm brown stays apart for the common kinds of
+  # colour blindness, and neither is red or yellow, which read as an error and
+  # a warning. The band's words carry the difference; the colour backs them up.
+  #
+  # The first attempt used the public site's paper tone, #f7f3ee, which sits so
+  # close to the dashboard's #f9fafb that side by side nobody could see it.
+  CARE_RECEIVER_BACKGROUND = "#f8ecd6"
+  CARE_RECEIVER_BAND = "#92400e"
+
   # +15715170980 -> +1 571-517-0980.
   #
   # For a number somebody is being asked to copy onto a handset, digit by digit,
