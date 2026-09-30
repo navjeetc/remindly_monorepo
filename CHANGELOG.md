@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The reminder title is the field you can't miss (#187).** A caregiver
+  skipped the title and typed straight into the notes: the title input had the
+  same thin grey border and no padding as every other field, so its faint
+  placeholder blended into the label above it. The title is the one required
+  field and the words spoken on reminder calls, so it now has a heavier border,
+  padding and larger text on both the new and edit forms. On a new reminder the
+  cursor starts in it. Editing leaves the cursor alone, because opening an
+  existing reminder is as often about the time.
+
 ## [0.17.0] - 2026-09-26
 
 ### Changed
