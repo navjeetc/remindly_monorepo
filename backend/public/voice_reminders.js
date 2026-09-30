@@ -343,7 +343,7 @@ class VoiceRemindersApp {
                             ✓ Done
                         </button>
                         ${isDue ? `
-                        <button id="snooze-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-gray-400 shadow-lg text-xl font-bold rounded-xl text-gray-800 bg-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-300" title="Snooze for 10 minutes">
+                        <button id="snooze-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-gray-400 shadow-lg text-xl font-bold rounded-xl text-gray-800 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:ring-gray-300" title="Snooze for 10 minutes">
                             ⏰ Snooze
                         </button>
                         ` : ''}

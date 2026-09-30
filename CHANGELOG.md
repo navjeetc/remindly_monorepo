@@ -48,9 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   border, which is what a field looks like, and were taken for form fields.
   Every button in the app (about 100 across 35 pages) now uses one shared,
   filled style: blue for the main action, grey for the others, light red for
-  ones that remove or switch something off. A spec fails if a button is drawn
-  as a white box again, and the four device-link buttons explain themselves
-  on hover.
+  ones that remove or switch something off. That includes the voice page:
+  its settings dialog, first-run screen and the Snooze button on the care
+  receiver's reminder card, which was white beside the green Done. A spec
+  fails if a button leaves the shared style, and the four device-link buttons
+  explain themselves on hover.
 - **New Task starts in the title,** as New Reminder already did. So do
   a new blocked time (in the reason, since start and end arrive filled in),
   inviting a caregiver, pairing, the contact form and connecting Acuity.

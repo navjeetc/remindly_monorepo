@@ -95,7 +95,8 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
       "onclick=\"clear" => "small quick-pick chip that clears the dates"
     },
     "dashboard/choose_role.html.erb" => {
-      "select_role_path" => "two large cards, a heading over a sentence"
+      "select_role_path" => "two large cards, a heading over a sentence",
+      "\"Sign out\"" => "a text link inside the sentence \"Signed in as … · Sign out\""
     },
     "dashboard/how_to.html.erb" => {
       "bg-green-600" => "coloured to match the care receiver section it sits in",
@@ -103,6 +104,9 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
     },
     "dashboard/index.html.erb" => {
       "Check Coverage Gaps" => "development-only trigger, never in production"
+    },
+    "voice_reminders/show.html.erb" => {
+      "close-btn" => "the × that closes the settings dialog"
     },
     "tasks/show.html.erb" => {
       "Mark Complete" => "green for the good outcome, beside Start Task, which is the blue primary"
@@ -129,7 +133,10 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
       source.scan(pattern) do
         element = Regexp.last_match
         classes = element[0][/class(?::\s*|=)["']([^"']*)["']/, 1].to_s.split
-        next unless styled_as_button?(classes)
+        # A real button is held to the contract whatever it currently looks
+        # like; a link only when it is dressed as a button.
+        real_button = element[0].match?(/\A<%=\s*(?:\w+\.)?(?:button_to|submit|submit_tag|button_tag)\b|\A<button\b/)
+        next unless real_button || styled_as_button?(classes)
         next if custom.keys.any? { |marker| element[0].include?(marker) }
         next if classes.include?("button") && (classes & BUTTON_VARIANTS).one? && classes.none? { |c| c.start_with?("btn") }
 
@@ -137,6 +144,20 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
       end
       found
     end
+  end
+
+  # The care receiver's reminder card is built in script, not a view, so the
+  # contract above never sees it. Its Done and Snooze buttons are deliberately
+  # oversized and custom, but Snooze was a white box with a grey border beside
+  # the green Done, the look this whole spec exists to rule out.
+  it "draws no white outlined button in the voice page's script" do
+    script = Rails.public_path.join("voice_reminders.js").read
+    outlined = script.scan(/<button\b[^>]*class="([^"]*)"/).flatten.select do |classes|
+      list = classes.split
+      list.include?("bg-white") && list.any? { |c| c.start_with?("border-gray-") }
+    end
+
+    expect(outlined).to be_empty, "white outlined buttons in voice_reminders.js:\n#{outlined.join("\n")}"
   end
 
   it "styles every button with button and one variant" do
@@ -148,11 +169,13 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
   # acted on one click while looking as if they would ask. Destructive
   # buttons confirm with a plain onclick instead (docs/UI_STYLE_GUIDE.md).
   it "asks for confirmation in a way the page can actually run" do
+    # Whole files, not lines, so `data: {` with `confirm:` on the next line
+    # is caught too.
     inert = Dir[VIEWS.join("**/*.erb")].sort.flat_map do |path|
-      File.readlines(path).each_with_index.filter_map do |line, index|
-        next unless line.match?(/data-(turbo-)?confirm=|data:\s*\{[^}]*\b(turbo_)?confirm:/)
-
-        "#{Pathname(path).relative_path_from(VIEWS)}:#{index + 1}  #{line.strip.truncate(90)}"
+      source = File.read(path)
+      source.to_enum(:scan, /data-(turbo-)?confirm=|data:\s*\{[^}]*\b(turbo_)?confirm:/m).map do
+        at = Regexp.last_match.begin(0)
+        "#{Pathname(path).relative_path_from(VIEWS)}:#{source[0...at].count("\n") + 1}  #{source[at, 90].squish}"
       end
     end
 

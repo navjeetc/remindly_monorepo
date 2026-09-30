@@ -46,8 +46,9 @@ a reminder's title into the notes box, and drop-downs read as plain text.
 ## Buttons
 
 Every button, and every link styled as one, uses `button` plus exactly one
-variant. The spec treats anything with padding, a fill or border and rounded
-corners as a button, and fails if it doesn't follow this:
+variant. The spec holds every real button (`button_to`, a submit, a
+`<button>`) to this whatever it looks like, and any link dressed as a button
+(padding, a fill or border, rounded corners):
 
 | Variant | Looks like | Use it for |
 |---|---|---|
@@ -88,8 +89,14 @@ A few controls are deliberately not ordinary buttons. Each is listed in the
 spec's `CUSTOM_CONTROLS`, matched by a piece of its source and given a reason:
 the quick-pick date chips on bulk availability, the green and purple role
 links on How-To (coloured to match their sections), the List/Calendar switch,
-the role cards on the welcome page, the green Mark Complete beside the blue
-Start Task, and a development-only trigger. Don't add new colours without a
+the role cards and the inline "Sign out" text link on the welcome page, the ×
+that closes the voice settings dialog, the green Mark Complete beside the
+blue Start Task, and a development-only trigger.
+
+The care receiver's reminder card is built in `public/voice_reminders.js`,
+which the view scan can't see. Its Done and Snooze buttons are deliberately
+oversized, but the spec still fails if a button there is white with a grey
+border. Don't add new colours without a
 reason that goes in that list.
 
 ## Tooltips
