@@ -142,7 +142,7 @@
           <% end %>
           
           <% if @task.assigned_to == current_user && (@task.status == "assigned" || @task.status == "in_progress") %>
-            <%= button_to "Unassign Me", unassign_senior_task_path(@senior, @task), method: :post, class: "button button-secondary", onclick: "return confirm('#{j "Are you sure you want to unassign yourself? This task will become available for other caregivers."}')" %>
+            <%= button_to "Unassign Me", unassign_senior_task_path(@senior, @task), method: :post, class: "button button-danger", onclick: "return confirm('#{j "Are you sure you want to unassign yourself? This task will become available for other caregivers."}')" %>
           <% end %>
           
           <%= button_to "Cancel Task", senior_task_path(@senior, @task), method: :patch, params: { task: { status: :cancelled } }, class: "button button-danger", onclick: "return confirm('#{j "Are you sure you want to cancel this task?"}')" %>

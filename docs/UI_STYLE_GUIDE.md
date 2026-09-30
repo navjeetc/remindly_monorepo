@@ -165,8 +165,8 @@ Follow the same intent there, but in that layout's own CSS; don't include
 The spec lists every exemption with its reason. Current ones:
 
 - the mailing-list box on public pages (marketing layout, own CSS);
-- the six-digit code box on `/start`, which is deliberately far larger than
-  any field;
+- the six-digit code box on `/start` (that field only), which is
+  deliberately far larger than any field;
 - the development-only user switcher in the nav (that one control, not the
   rest of the layout);
 - the custom controls listed under Buttons above.

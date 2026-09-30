@@ -87,13 +87,7 @@ class VoiceRemindersApp {
         // Clear Announced button
         const clearAnnouncedBtn = document.getElementById('clearAnnouncedBtn');
         if (clearAnnouncedBtn) {
-            clearAnnouncedBtn.addEventListener('click', () => {
-                this.announcedReminders.clear();
-                this.saveAnnouncedList();
-                console.log('✅ Cleared announced reminders list');
-                alert('Announced reminders list cleared! Reminders will now announce again.');
-                this.loadReminders();
-            });
+            clearAnnouncedBtn.addEventListener('click', () => this.clearAnnouncedList());
         }
         
         // Settings (optional - only if elements exist)
@@ -1054,10 +1048,14 @@ class VoiceRemindersApp {
         }
     }
 
+    // Both Clear buttons (toolbar and settings) come here. Clearing makes every
+    // current reminder speak again, out loud, on the care receiver's device,
+    // so it asks first (docs/UI_STYLE_GUIDE.md).
     clearAnnouncedList() {
+        if (!confirm('Clear the list of reminders already announced? Reminders that are due now will be spoken again.')) return;
         this.announcedReminders.clear();
         this.saveAnnouncedList();
-        alert('Announced reminders list cleared!');
+        this.loadReminders();
     }
 
     loadAnnouncedList() {

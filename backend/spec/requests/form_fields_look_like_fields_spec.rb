@@ -28,8 +28,9 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
     # the mailing-list box has its own 2px border and padding in that layout.
     "shared/_subscribe_form.html.erb" => "marketing layout styles its own inputs",
     # The six-digit code a care receiver types, alone on the page and already
-    # far larger than any field.
-    "start/show.html.erb" => "deliberately oversized single field",
+    # far larger than any field. Only that field: anything else added to
+    # /start is checked.
+    "start/show.html.erb" => { "text_field_tag :code" => "deliberately oversized single field" },
     # The development-only user switcher in the nav, never seen in production.
     # Only that one control: any other field added to the layout is checked.
     "layouts/dashboard.html.erb" => { "dev/switch_user" => "dev-only control" }
