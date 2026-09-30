@@ -19,8 +19,10 @@ require "rails_helper"
 RSpec.describe "The fields a person types into, and the buttons beside them" do
   VIEWS = Rails.root.join("app/views")
 
-  # Each exemption says why it is not a `field`. Add to this only with a reason
-  # that would satisfy the person who has to find the box.
+  # Each exemption says why it is not a `field`: a reason string exempts the
+  # whole file, a { marker => reason } hash only the control containing the
+  # marker. Add to this only with a reason that would satisfy the person who
+  # has to find the box.
   EXEMPT = {
     # Public marketing pages load no dashboard CSS by design (see PublicPage);
     # the mailing-list box has its own 2px border and padding in that layout.
@@ -29,7 +31,8 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
     # far larger than any field.
     "start/show.html.erb" => "deliberately oversized single field",
     # The development-only user switcher in the nav, never seen in production.
-    "layouts/dashboard.html.erb" => "dev-only control"
+    # Only that one control: any other field added to the layout is checked.
+    "layouts/dashboard.html.erb" => { "dev/switch_user" => "dev-only control" }
   }.freeze
 
   HELPERS = %w[
@@ -44,13 +47,17 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
   def unstyled_fields
     Dir[VIEWS.join("**/*.erb")].sort.flat_map do |path|
       relative = Pathname(path).relative_path_from(VIEWS).to_s
-      next [] if EXEMPT.key?(relative)
+      exemption = EXEMPT[relative]
+      next [] if exemption.is_a?(String)
 
       source = File.read(path)
       found = []
+      exempt = ->(text) { exemption.is_a?(Hash) && exemption.keys.any? { |marker| text.include?(marker) } }
 
       source.scan(/<%=\s*(?:\w+\.)?(?:#{HELPERS})\b.*?%>/m) do
         call = Regexp.last_match
+        next if exempt.call(call[0])
+
         found << [ relative, call.begin(0), call[0] ] unless call[0] =~ /class:\s*["'](?:[^"']*\s)?field[\s"']/
       end
 
@@ -58,7 +65,7 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
       source.scan(/<(?:input|select|textarea)\b(?:<%.*?%>|[^>])*>/m) do
         tag = Regexp.last_match
         type = tag[0][/\stype="(\w+)"/, 1]
-        next if NOT_TYPED_INTO.include?(type)
+        next if NOT_TYPED_INTO.include?(type) || exempt.call(tag[0])
 
         found << [ relative, tag.begin(0), tag[0] ] unless tag[0] =~ /class="(?:[^"]*\s)?field[\s"]/
       end

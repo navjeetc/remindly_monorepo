@@ -27,15 +27,15 @@
           withhold. What they can see is whether the device is alive, which is
           a fact about the care, not a key to it. %>
       <% if permission == "manage" %>
-        <p class="text-sm text-gray-700">
+        <label for="device_link_url" class="block text-sm text-gray-700">
           Open this on their tablet or computer once, then bookmark it.
-        </p>
+        </label>
 
         <%# Shown in full because it has to be typed or copied by hand, and
             selectable in one gesture on a touch screen. It is a credential: the
             copy beneath says so plainly rather than leaving a caregiver to guess
             how carefully to treat it. %>
-        <input type="text" readonly value="<%= reminder_link_url(token: reminder_link.token) %>"
+        <input type="text" id="device_link_url" readonly value="<%= reminder_link_url(token: reminder_link.token) %>"
                onclick="this.select()"
                class="field mt-2 w-full text-sm font-mono">
 

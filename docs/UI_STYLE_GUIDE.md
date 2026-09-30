@@ -102,14 +102,18 @@ reason that goes in that list.
 ## Tooltips
 
 A button gets a `title` tooltip when its label alone doesn't tell you what
-will happen, and always when it can't be undone:
+will happen. "Replace this link" doesn't say that the bookmark on their
+device stops working; the tooltip does:
 
 ```erb
 title: "Switch this link off. Their device stops showing reminders until you create a new link."
 ```
 
 Say what happens and to whom, in one or two plain sentences. Don't restate
-the label. `title` tooltips only appear on hover, after about a second, and
+the label. A button whose label is already plain ("Delete Task") doesn't need
+one. What every irreversible button does need is the confirmation described
+under Buttons, and the spec enforces that. A tooltip is not a substitute for
+it. `title` tooltips only appear on hover, after about a second, and
 never on touch screens, so anything a person must know before pressing
 belongs in the text beside the button, not only in the tooltip.
 
@@ -163,7 +167,8 @@ The spec lists every exemption with its reason. Current ones:
 - the mailing-list box on public pages (marketing layout, own CSS);
 - the six-digit code box on `/start`, which is deliberately far larger than
   any field;
-- the development-only user switcher in the nav;
+- the development-only user switcher in the nav (that one control, not the
+  rest of the layout);
 - the custom controls listed under Buttons above.
 
 Public pages and emails are skipped entirely: they have their own inline CSS,

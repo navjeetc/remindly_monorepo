@@ -1013,6 +1013,9 @@ class VoiceRemindersApp {
     }
 
     resetSettings() {
+        // It discards saved choices in one press, so it asks first, like every
+        // other button that replaces something (docs/UI_STYLE_GUIDE.md).
+        if (!confirm('Put every setting back to how it started? Voice speed, volume, notifications and quiet hours will all be reset.')) return;
         localStorage.removeItem('voiceRemindersSettings');
         this.settings = this.getDefaultSettings();
         this.loadSettingsToUI();
