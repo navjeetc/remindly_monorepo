@@ -1,0 +1,73 @@
+<%# The shared look for form controls, described in docs/UI_STYLE_GUIDE.md:
+    `field` for every box a person types into or picks from (text, email,
+    number, date and time inputs, text areas, drop-downs), and `button` with
+    a `button-primary`, `button-secondary` or `button-danger` variant.
+
+    Bare CSS rules, no <style> tag, so a layout can put them inside the style
+    block it already has. The voice layout writes its CSS by hand and its specs
+    read that one block.
+
+    A .css template, rendered with `formats: :css`, not an .html one: in
+    development Rails wraps every HTML partial in <!-- BEGIN … --> comments,
+    which CSS does not read as comments. The file name ended up in the first
+    selector and the whole .field rule was silently dropped.
+
+    Why it exists: fields had drifted into a dozen variants of a 1px
+    light-grey border with no padding, and caregivers typed into the wrong box
+    or read a drop-down as plain text. A field has to be findable at a glance,
+    for people who are not looking closely.
+
+    Buttons are filled, never white with an outline, because a white box with
+    a border is what a field looks like. "Replace this link" and "Stop this
+    link" were read as form fields until they were given a fill.
+
+    The rules set only how a control looks, never where it sits. Width and
+    margin stay as utilities on the element, and a utility written beside
+    `field` (say text-sm on a compact drop-down) still overrides it, because
+    the Tailwind CDN injects its styles after this block. %>
+.field {
+  border: 2px solid #9ca3af;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  color: #111827;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+/* Chrome ignores line-height on a select; without a height it sits 4px
+   shorter than the text box beside it. */
+select.field { padding-right: 2rem; height: 2.75rem; }
+.field::placeholder { color: #6b7280; opacity: 1; }
+.field:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.35);
+}
+.field[readonly], .field:disabled { background-color: #f3f4f6; }
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  /* The height of a field, so a button beside one lines up with it (the
+     task list's Filter sat 4px short of the drop-downs). It is also the
+     smallest comfortable tap target. */
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+}
+.button:focus-visible { outline: 3px solid rgb(59 130 246 / 0.5); outline-offset: 2px; }
+.button-primary { background-color: #2563eb; color: #fff; }
+.button-primary:hover { background-color: #1d4ed8; }
+.button-secondary { background-color: #e5e7eb; color: #1f2937; border-color: #d1d5db; }
+.button-secondary:hover { background-color: #d1d5db; }
+.button-danger { background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.button-danger:hover { background-color: #fecaca; }

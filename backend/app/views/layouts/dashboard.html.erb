@@ -10,6 +10,7 @@
     <link rel="canonical" href="<%= canonical_url %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <style><%= render partial: "shared/ui_styles", formats: :css %></style>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
 
@@ -95,9 +96,9 @@
               
               <span class="text-sm text-gray-700"><%= current_user.display_name %></span>
               <%= link_to "Profile", profile_path, class: "text-sm text-gray-700 hover:text-gray-900" %>
-              <%= button_to "Sign Out", logout_path, method: :delete, class: "inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+              <%= button_to "Sign Out", logout_path, method: :delete, class: "button button-secondary px-3 leading-4" %>
             <% else %>
-              <%= link_to "Sign In", login_path, class: "inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+              <%= link_to "Sign In", login_path, class: "button button-primary px-3 leading-4" %>
             <% end %>
           </div>
         </div>

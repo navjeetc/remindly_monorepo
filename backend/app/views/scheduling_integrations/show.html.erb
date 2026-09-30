@@ -17,10 +17,10 @@
       <div class="flex gap-2">
         <%= button_to 'Sync Now', sync_scheduling_integration_path(@integration), 
             method: :post,
-            class: 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700',
+            class: 'button button-primary',
             data: { turbo: false } %>
         <%= link_to 'Settings', edit_scheduling_integration_path(@integration), 
-            class: 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+            class: 'button button-secondary' %>
       </div>
     </div>
   </div>
@@ -137,7 +137,7 @@
                       class: 'px-3 py-1 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100' %>
                 <% end %>
                 <%= link_to 'View Task', senior_task_path(task.senior, task), 
-                    class: 'px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50' %>
+                    class: 'button button-secondary px-3 py-1' %>
               </div>
             </div>
           </div>
@@ -166,6 +166,6 @@
     <%= button_to 'Disconnect Integration', scheduling_integration_path(@integration), 
         method: :delete,
         data: { turbo_confirm: 'Are you sure? Synced tasks will remain but won\'t update automatically.' },
-        class: 'px-4 py-2 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50' %>
+        class: 'button button-danger' %>
   </div>
 </div>

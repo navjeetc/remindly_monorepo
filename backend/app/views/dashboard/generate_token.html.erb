@@ -11,7 +11,7 @@
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div class="flex items-center justify-between">
             <code class="text-lg font-mono text-gray-900 break-all"><%= @pairing_token %></code>
-            <button onclick="copyToken()" class="ml-4 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button onclick="copyToken()" class="button button-secondary ml-4 px-3 leading-4">
               Copy
             </button>
           </div>
@@ -21,7 +21,7 @@
         </p>
       </div>
       <div class="mt-6">
-        <%= link_to "Back to Dashboard", dashboard_path, class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        <%= link_to "Back to Dashboard", dashboard_path, class: "button button-primary" %>
       </div>
     </div>
   </div>

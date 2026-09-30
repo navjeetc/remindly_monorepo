@@ -103,8 +103,8 @@
               would take their mother's number. Ten digits now arrive as +1. %>
           <%= f.telephone_field :phone, value: formatted_phone_number(senior.phone), name: "user[phone]", id: "user_phone",
                 placeholder: "555-123-4567",
-                class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
-          <%= f.submit "Save number", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+                class: "field w-56" %>
+          <%= f.submit "Save number", class: "button button-secondary" %>
         </div>
         <%# Where the saved number's area code is, as plain information (#173).
             One wrong digit sent three consent calls to a stranger in Wisconsin
@@ -170,8 +170,8 @@
                 options_for_select(choices, selected: current, disabled: (withheld ? current : nil)),
                 {},
                 name: "user[spoken_language]", id: "user_spoken_language",
-                class: "w-56 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
-          <%= f.submit "Save language", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+                class: "field w-56" %>
+          <%= f.submit "Save language", class: "button button-secondary" %>
         </div>
         <p class="mt-1 text-xs text-gray-500">
           What <%= senior.display_name %> hears on the phone. Remindly's screens stay in English.
@@ -207,14 +207,14 @@
           <%= f.select :calling_hours_start,
                 options_for_select((User::EARLIEST_CALLING_HOUR...User::LATEST_CALLING_HOUR).map { |h| [ User.hour_label(h), h ] }, senior.calling_hours_start),
                 {}, name: "user[calling_hours_start]", id: "user_calling_hours_start",
-                class: "border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
+                class: "field" %>
           <span class="text-sm text-gray-700">to</span>
           <label for="user_calling_hours_end" class="sr-only">Latest call</label>
           <%= f.select :calling_hours_end,
                 options_for_select(((User::EARLIEST_CALLING_HOUR + 1)..User::LATEST_CALLING_HOUR).map { |h| [ User.hour_label(h), h ] }, senior.calling_hours_end),
                 {}, name: "user[calling_hours_end]", id: "user_calling_hours_end",
-                class: "border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500" %>
-          <%= f.submit "Save hours", class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer" %>
+                class: "field" %>
+          <%= f.submit "Save hours", class: "button button-secondary" %>
         </div>
         <p class="mt-1 text-xs text-gray-500">
           In <%= senior.display_name %>'s time<% if (local_clock = senior.local_time) %> — it's <%= local_clock.strftime("%-l:%M%P") %> there now<% end %>.

@@ -84,6 +84,9 @@ Post bodies are rendered with `html_safe` — sound only because posts are repo 
 
 `docs/ONBOARDING_FEATURES.md` is the feature list pasted into invitation emails for new users. It lists only what is live in production, and it is a pitch rather than a changelog: a PR that ships something worth telling a prospective user about adds it, a PR that makes an entry wrong corrects it, and a PR that deliberately leaves it alone says so.
 
+### UI conventions
+**Read `docs/UI_STYLE_GUIDE.md` before adding or changing any field, button or form on a web page.** Fields use the `field` class, buttons use `button` plus `button-primary`, `button-secondary` or `button-danger` (filled, never a white outlined box), new-record forms autofocus the first field a person types into, and labels carry no emoji. The styles live in `backend/app/views/shared/_ui_styles.css.erb`; `spec/requests/form_fields_look_like_fields_spec.rb` enforces the rules across every view, so a page that skips them fails CI.
+
 ### Clients
 - **Voice client for seniors** is `/voice_reminders` — a Rails page whose announcements are driven by `backend/public/voice_reminders.js`. It authenticates with the Rails **session**, not a Bearer token, and is linked from the dashboard nav. A standalone JS client at `clients/web/` (served at `/client/`) was superseded by this page and removed; `/client/` redirects to it.
 - **macOS client** configures `APIClient.base` in Xcode; uses `AVSpeechSynthesizer` for TTS

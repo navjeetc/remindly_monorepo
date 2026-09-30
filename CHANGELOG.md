@@ -28,6 +28,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   padding and larger text on both the new and edit forms. On a new reminder the
   cursor starts in it. Editing leaves the cursor alone, because opening an
   existing reminder is as often about the time.
+- **Every field looks like a field.** After the reminder title was made to
+  stand out, the notes, time and drop-downs beside it still had a thin
+  light-grey border and no padding, and read as plain text. Every text box,
+  text area, date and time picker and drop-down in the app now shares one
+  `field` style: a 2px dark border, padding, full-size text and a blue focus
+  ring. It is defined once and applied to about 70 fields across the
+  dashboard, tasks, availability, admin, sign-in and voice pages, and a spec
+  fails if a new form skips it.
+- **Buttons look like buttons, and the device-link ones say what they do.**
+  "Replace this link" and "Stop this link" were white boxes with a grey
+  border, which is what a field looks like, and were taken for form fields.
+  Every button in the app (about 100 across 35 pages) now uses one shared,
+  filled style: blue for the main action, grey for the others, light red for
+  ones that remove or switch something off. A spec fails if a button is drawn
+  as a white box again, and the four device-link buttons explain themselves
+  on hover.
+- **New Task starts in the title,** as New Reminder already did. So do
+  a new blocked time (in the reason, since start and end arrive filled in),
+  inviting a caregiver, pairing, the contact form and connecting Acuity.
+  Edit forms leave the cursor alone.
+- **No emoji in form labels.** "✅ Active" put a green tick beside a
+  checkbox: a second checkmark when ticked, and a contradiction when not.
+  It, "🔄 Mark as recurring" and "📋 Make this an open-ended task" are now
+  just words. The 🚫 is gone from the blocked-times pages too: it repeated
+  the heading on every row, and a "forbidden" sign read as an error.
 
 ## [0.17.0] - 2026-09-26
 
