@@ -122,7 +122,7 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
   }.freeze
 
   def styled_as_button?(classes)
-    return true if classes.include?("button") || classes.any? { |c| c.start_with?("btn") }
+    return true if classes.any? { |c| c.start_with?("button", "btn") }
 
     classes.any? { |c| c.start_with?("px-", "py-") } &&
       classes.any? { |c| c.start_with?("bg-", "border") } &&
