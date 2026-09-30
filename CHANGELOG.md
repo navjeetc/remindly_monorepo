@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-29
+
 ### Fixed
 - **Repeating tasks save again.** Since 2026-08-27, choosing a repeat
   pattern on the task form ("weekly on Sunday") made the save fail with
