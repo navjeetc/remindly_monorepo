@@ -42,6 +42,27 @@ RSpec.describe "Where the cursor starts", type: :request do
     expect(focused).to eq([ "time_block[reason]" ])
   end
 
+  it "is the pairing token when pairing" do
+    get "/dashboard/pair"
+
+    expect(focused).to eq([ "token" ])
+  end
+
+  it "is the name on the contact form" do
+    get "/contact"
+
+    expect(focused).to eq([ "name" ])
+  end
+
+  it "is the user ID when connecting Acuity" do
+    allow(FeatureFlag).to receive(:enabled?).and_call_original
+    allow(FeatureFlag).to receive(:enabled?).with(:external_scheduling).and_return(true)
+
+    get "/seniors/#{senior.id}/scheduling_integrations/new"
+
+    expect(focused).to eq([ "scheduling_integration[provider_user_id]" ])
+  end
+
   it "is the address when inviting a caregiver" do
     get "/dashboard/senior/#{senior.id}/invite_caregiver"
 

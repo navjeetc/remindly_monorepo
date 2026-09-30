@@ -54,7 +54,7 @@ variant. The spec holds every real button (`button_to`, a submit, a
 |---|---|---|
 | `button-primary` | solid blue, white text | The main action on the page or form: Create, Save, Send. One per form. |
 | `button-secondary` | solid grey | Everything else: Cancel, Edit, Back, Filter, View. |
-| `button-danger` | light red, red text | Anything that removes, revokes or switches something off: Delete, Remove Access, Stop this link, Unlink. |
+| `button-danger` | light red, red text | Anything that removes, cancels, revokes or switches something off: Delete, Cancel Task, Remove Access, Stop this link, Unlink. |
 
 ```erb
 <%= f.submit "Create Reminder", class: "button button-primary" %>

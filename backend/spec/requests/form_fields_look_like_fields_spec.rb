@@ -129,13 +129,14 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
       source = File.read(path)
       custom = CUSTOM_CONTROLS.fetch(relative, {})
       found = []
-      pattern = /<%=\s*(?:\w+\.)?(?:link_to|button_to|submit|submit_tag|button_tag)\b.*?%>|<(?:button|a)\b(?:<%.*?%>|[^>])*>/m
+      pattern = /<%=\s*(?:\w+\.)?(?:link_to|button_to|button|submit|submit_tag|button_tag)\b.*?%>|<(?:button|a)\b(?:<%.*?%>|[^>])*>/m
       source.scan(pattern) do
         element = Regexp.last_match
         classes = element[0][/class(?::\s*|=)["']([^"']*)["']/, 1].to_s.split
-        # A real button is held to the contract whatever it currently looks
-        # like; a link only when it is dressed as a button.
-        real_button = element[0].match?(/\A<%=\s*(?:\w+\.)?(?:button_to|submit|submit_tag|button_tag)\b|\A<button\b/)
+        # A real button (button_to, f.button, a submit, <button>) is held to the
+        # contract whatever it currently looks like; a link only when it is
+        # dressed as a button.
+        real_button = element[0].match?(/\A<%=\s*(?:\w+\.)?(?:button_to|button|submit|submit_tag|button_tag)\b|\A<button\b/)
         next unless real_button || styled_as_button?(classes)
         next if custom.keys.any? { |marker| element[0].include?(marker) }
         next if classes.include?("button") && (classes & BUTTON_VARIANTS).one? && classes.none? { |c| c.start_with?("btn") }
