@@ -52,7 +52,7 @@
                   <%= link_to "Edit", edit_senior_time_block_path(@senior, time_block), class: "button button-secondary px-3 py-1" %>
                   <% end %>
                   <% if may_change?(@senior) %>
-                  <%= button_to "Delete", senior_time_block_path(@senior, time_block), method: :delete, data: { confirm: "Are you sure?" }, class: "button button-danger px-3 py-1" %>
+                  <%= button_to "Delete", senior_time_block_path(@senior, time_block), method: :delete, onclick: "return confirm('#{j "Are you sure?"}')", class: "button button-danger px-3 py-1" %>
                   <% end %>
                 </div>
               </div>

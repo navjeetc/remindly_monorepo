@@ -64,7 +64,7 @@
                     class: 'button button-secondary' %>
                 <%= button_to 'Disconnect', scheduling_integration_path(integration), 
                     method: :delete,
-                    data: { turbo_confirm: 'Are you sure? Synced tasks will remain but won\'t update automatically.' },
+                    onclick: "return confirm('#{j "Are you sure? Synced tasks will remain but won't update automatically."}')",
                     class: 'button button-danger' %>
               </div>
             </div>
@@ -126,7 +126,7 @@
         </ul>
         
         <button disabled 
-            class="block w-full px-4 py-2 text-center text-sm font-medium text-gray-400 bg-gray-100 rounded-md cursor-not-allowed">
+            class="button button-secondary w-full">
           Coming Soon
         </button>
       </div>

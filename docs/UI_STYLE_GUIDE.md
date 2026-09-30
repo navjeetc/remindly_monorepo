@@ -46,7 +46,8 @@ a reminder's title into the notes box, and drop-downs read as plain text.
 ## Buttons
 
 Every button, and every link styled as one, uses `button` plus exactly one
-variant:
+variant. The spec treats anything with padding, a fill or border and rounded
+corners as a button, and fails if it doesn't follow this:
 
 | Variant | Looks like | Use it for |
 |---|---|---|
@@ -67,13 +68,29 @@ variant:
 - **A button is as tall as a field** (`min-height: 2.75rem`), so a button next
   to a field lines up with it. That is also the smallest comfortable tap
   target. Compact buttons in a table row may add `px-3`, but keep the height.
-- A button that destroys or replaces something asks first, with a plain
-  `onclick: "return confirm('…')"`. This layout loads no Turbo or UJS, so
-  `data-turbo-confirm` does nothing and the button would act on one click.
+- A **disabled** button (`disabled: true`) fades itself out; don't add grey
+  utilities for that.
+- On the **voice page** the same classes render with body-size text, because
+  the care receiver presses them. That override lives in the voice layout.
+- A button that destroys, cancels or replaces something asks first, with a
+  plain `onclick`:
 
-Buttons that are already filled and can't be mistaken for a field may keep
-their own colours: quick-pick chips, the coloured links on How-To, the green
-Mark Complete. Don't add new colours without a reason.
+  ```erb
+  onclick: "return confirm('#{j "Delete this reminder? This cannot be undone."}')"
+  ```
+
+  **Never `data: { confirm: }` or `data: { turbo_confirm: }`.** No layout
+  loads Turbo or Rails UJS, so those attributes are never read and the button
+  acts on one click while looking as if it would ask. Delete Reminder, Delete
+  Task, Unlink and Disconnect all did exactly that. The spec fails on either.
+
+A few controls are deliberately not ordinary buttons. Each is listed in the
+spec's `CUSTOM_CONTROLS`, matched by a piece of its source and given a reason:
+the quick-pick date chips on bulk availability, the green and purple role
+links on How-To (coloured to match their sections), the List/Calendar switch,
+the role cards on the welcome page, the green Mark Complete beside the blue
+Start Task, and a development-only trigger. Don't add new colours without a
+reason that goes in that list.
 
 ## Tooltips
 
@@ -140,9 +157,10 @@ The spec lists every exemption with its reason. Current ones:
 - the six-digit code box on `/start`, which is deliberately far larger than
   any field;
 - the development-only user switcher in the nav;
-- the List/Calendar toggle on availability, a two-part control whose halves
-  are recoloured by script;
-- the two large role-choice cards on the welcome page.
+- the custom controls listed under Buttons above.
+
+Public pages and emails are skipped entirely: they have their own inline CSS,
+and their `.btn` and `button` classes are theirs.
 
 Add one only with a reason that would satisfy the person trying to find the
 control.

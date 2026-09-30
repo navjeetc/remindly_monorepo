@@ -36,6 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ring. It is defined once and applied to about 70 fields across the
   dashboard, tasks, availability, admin, sign-in and voice pages, and a spec
   fails if a new form skips it.
+- **Delete and disconnect buttons ask before acting again.** Delete
+  Reminder, Delete Task, Cancel Task, Unassign Me, Unlink, Disconnect and the
+  delete buttons on blocked times, availability and comments all carried a
+  "Are you sure?" that never appeared: it was written as a data-confirm
+  attribute, which only Turbo or Rails UJS reads, and the dashboard loads
+  neither. Each acted on one click. They now confirm with a plain onclick, and
+  a spec fails if a data-confirm comes back.
 - **Buttons look like buttons, and the device-link ones say what they do.**
   "Replace this link" and "Stop this link" were white boxes with a grey
   border, which is what a field looks like, and were taken for form fields.

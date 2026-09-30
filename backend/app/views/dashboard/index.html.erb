@@ -204,7 +204,7 @@
                     <% if FeatureFlag.enabled?(:native_scheduling) %>
                       <%= link_to "Coverage", senior_coverage_path(link.senior), class: "button button-secondary px-3 leading-4" %>
                     <% end %>
-                    <%= button_to "Unlink", unlink_dashboard_path(link.id), method: :delete, data: { confirm: "Are you sure?" }, class: "button button-danger px-3 leading-4" %>
+                    <%= button_to "Unlink", unlink_dashboard_path(link.id), method: :delete, onclick: "return confirm('#{j "Are you sure?"}')", class: "button button-danger px-3 leading-4" %>
                   </div>
                 </div>
               </div>

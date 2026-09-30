@@ -27,11 +27,11 @@
             <label class="block text-sm font-medium text-gray-700">Select Dates</label>
             <div class="flex space-x-2">
               <%= link_to bulk_new_caregiver_availabilities_path(start_date: @start_date - 28.days), 
-                  class: "px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200" do %>
+                  class: "button button-secondary px-3" do %>
                 ← Previous 4 Weeks
               <% end %>
               <%= link_to bulk_new_caregiver_availabilities_path(start_date: @start_date + 28.days), 
-                  class: "px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200" do %>
+                  class: "button button-secondary px-3" do %>
                 Next 4 Weeks →
               <% end %>
             </div>

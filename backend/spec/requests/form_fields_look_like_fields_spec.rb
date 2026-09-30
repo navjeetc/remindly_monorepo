@@ -73,29 +73,65 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
 
   # The other half of the same confusion: buttons drawn as a white box with a
   # grey border are what a field looks like, and "Replace this link" and "Stop
-  # this link" were taken for form fields. Buttons use `button` with a filled
-  # variant instead.
-  BUTTON_EXEMPT = {
-    # The List/Calendar switch on availability swaps its halves' colours from
-    # script; it is one two-part control, not a pair of buttons.
-    "caregiver_availabilities/index.html.erb" => "segmented view toggle",
-    # Two large cards, each a bold heading over a sentence, on a page that asks
-    # one question. Nobody reads those as a place to type.
-    "dashboard/choose_role.html.erb" => "choice cards"
+  # this link" were taken for form fields. Anything styled as a button uses
+  # `button` plus exactly one filled variant, so there is one place that
+  # decides what a button looks like.
+  BUTTON_VARIANTS = %w[button-primary button-secondary button-danger].freeze
+
+  # The public pages have their own inline CSS and their own .btn classes
+  # (see PublicPage); the dashboard's styles never load there.
+  # Emails carry their own inline styles too, and their `button` class is
+  # theirs.
+  MARKETING = %r{\A(pages/|posts/|subscribers/|shared/_subscribe_form|layouts/marketing|layouts/mailer|[a-z_]+_mailer/)}
+
+  # Controls that are deliberately not ordinary buttons, matched by a piece
+  # of their source. Each is filled or oversized, so none can pass for a field.
+  CUSTOM_CONTROLS = {
+    "caregiver_availabilities/index.html.erb" => {
+      "showView(" => "List/Calendar switch whose halves are recoloured by script"
+    },
+    "caregiver_availabilities/bulk_new.html.erb" => {
+      "onclick=\"select" => "small quick-pick chips that tick groups of dates",
+      "onclick=\"clear" => "small quick-pick chip that clears the dates"
+    },
+    "dashboard/choose_role.html.erb" => {
+      "select_role_path" => "two large cards, a heading over a sentence"
+    },
+    "dashboard/how_to.html.erb" => {
+      "bg-green-600" => "coloured to match the care receiver section it sits in",
+      "bg-purple-600" => "coloured to match the caregiver section it sits in"
+    },
+    "dashboard/index.html.erb" => {
+      "Check Coverage Gaps" => "development-only trigger, never in production"
+    },
+    "tasks/show.html.erb" => {
+      "Mark Complete" => "green for the good outcome, beside Start Task, which is the blue primary"
+    }
   }.freeze
 
-  def buttons_drawn_as_fields
+  def styled_as_button?(classes)
+    return true if classes.include?("button") || classes.any? { |c| c.start_with?("btn") }
+
+    classes.any? { |c| c.start_with?("px-", "py-") } &&
+      classes.any? { |c| c.start_with?("bg-", "border") } &&
+      classes.any? { |c| c.start_with?("rounded") }
+  end
+
+  def buttons_off_contract
     Dir[VIEWS.join("**/*.erb")].sort.flat_map do |path|
       relative = Pathname(path).relative_path_from(VIEWS).to_s
-      next [] if BUTTON_EXEMPT.key?(relative)
+      next [] if relative.match?(MARKETING)
 
       source = File.read(path)
+      custom = CUSTOM_CONTROLS.fetch(relative, {})
       found = []
       pattern = /<%=\s*(?:\w+\.)?(?:link_to|button_to|submit|submit_tag|button_tag)\b.*?%>|<(?:button|a)\b(?:<%.*?%>|[^>])*>/m
       source.scan(pattern) do
         element = Regexp.last_match
         classes = element[0][/class(?::\s*|=)["']([^"']*)["']/, 1].to_s.split
-        next unless classes.include?("bg-white") && classes.any? { |c| c.start_with?("border-gray-") }
+        next unless styled_as_button?(classes)
+        next if custom.keys.any? { |marker| element[0].include?(marker) }
+        next if classes.include?("button") && (classes & BUTTON_VARIANTS).one? && classes.none? { |c| c.start_with?("btn") }
 
         found << "#{relative}:#{source[0...element.begin(0)].count("\n") + 1}  #{element[0].squish.truncate(90)}"
       end
@@ -103,8 +139,24 @@ RSpec.describe "The fields a person types into, and the buttons beside them" do
     end
   end
 
-  it "draws no button as a white box with a grey border" do
-    expect(buttons_drawn_as_fields).to be_empty, "buttons that look like fields:\n#{buttons_drawn_as_fields.join("\n")}"
+  it "styles every button with button and one variant" do
+    expect(buttons_off_contract).to be_empty, "buttons off the shared style:\n#{buttons_off_contract.join("\n")}"
+  end
+
+  # No layout loads Turbo or Rails UJS, so a data-confirm or data-turbo-confirm
+  # is never read: Delete Reminder, Delete Task, Unlink and Disconnect all
+  # acted on one click while looking as if they would ask. Destructive
+  # buttons confirm with a plain onclick instead (docs/UI_STYLE_GUIDE.md).
+  it "asks for confirmation in a way the page can actually run" do
+    inert = Dir[VIEWS.join("**/*.erb")].sort.flat_map do |path|
+      File.readlines(path).each_with_index.filter_map do |line, index|
+        next unless line.match?(/data-(turbo-)?confirm=|data:\s*\{[^}]*\b(turbo_)?confirm:/)
+
+        "#{Pathname(path).relative_path_from(VIEWS)}:#{index + 1}  #{line.strip.truncate(90)}"
+      end
+    end
+
+    expect(inert).to be_empty, "confirmations nothing will show:\n#{inert.join("\n")}"
   end
 
   # A label says what its control does, in words. "✅ Active" put a green tick

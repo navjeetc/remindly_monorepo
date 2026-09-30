@@ -288,7 +288,7 @@
                 verify_senior_phone_path(senior_id: senior.id),
                 method: :post,
                 disabled: !may_call,
-                class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white #{may_call ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-300 cursor-not-allowed"}" %>
+                class: "button button-primary" %>
           <p class="mt-2 text-xs text-gray-500">
             <%#
               "in the last day" is literal: verifications_in_window counts a
