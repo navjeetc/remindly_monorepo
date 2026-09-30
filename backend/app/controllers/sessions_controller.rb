@@ -2,6 +2,16 @@ class SessionsController < ActionController::Base
   layout false
   skip_before_action :verify_authenticity_token, only: [ :verify_magic_link ]
 
+  # The sign-in form answered an iPhone with a bare 422 error page. Safari
+  # restores a backgrounded tab from memory but may have dropped the
+  # browser-session cookie the page's authenticity token belonged to, so the
+  # token no longer matched and the one door into the app showed a Rails error
+  # with nowhere to go. The token check stays; what changes is the dead end.
+  # Sending them back to the form issues a fresh session and token, so the
+  # second try works.
+  rescue_from ActionController::InvalidAuthenticityToken, with: :sign_in_form_expired
+
+
   def new
     # Show login page
   end
@@ -132,6 +142,12 @@ class SessionsController < ActionController::Base
   end
 
   private
+
+  def sign_in_form_expired(error)
+    raise error unless action_name == "request_magic_link"
+
+    redirect_to login_path, alert: "That sign-in page had expired. Please enter your email again."
+  end
 
   def current_user
     @current_user ||= begin
