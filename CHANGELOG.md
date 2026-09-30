@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Repeating tasks save again.** Since 2026-08-27, choosing a repeat
+  pattern on the task form ("weekly on Sunday") made the save fail with
+  "Start time can't be blank". The form's two scripts shared a date constant
+  that only one of them could see, so the recurrence builder crashed after
+  writing the rule and before writing the start time. One-off tasks were
+  unaffected.
 - **A stale sign-in page no longer ends in a 422 error.** Tapping Sign in on an
   iPhone showed Rails' "Unprocessable Entity" page. Safari restores a
   backgrounded tab from memory but can drop the session cookie the form's

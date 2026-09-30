@@ -92,20 +92,26 @@
     </div>
 
     <script>
+      // The senior's own dates, rendered server-side. Everything the form
+      // submits is read back in the senior's clock, so anything anchored to
+      // `new Date()` — the caregiver's browser — lands on the wrong day
+      // whenever the two are in different zones or it is near midnight for
+      // either of them. There is no browser clock in this file for that
+      // reason.
+      //
+      // Declared here, outside the load handler, because the recurrence
+      // builder in the next <script> uses SENIOR_TODAY too. Declared inside
+      // the handler, it was invisible there: choosing a repeat pattern set the
+      // rule, then threw on this name before setting start_time, and every
+      // repeating task failed to save with "Start time can't be blank".
+      const SENIOR_TODAY = '<%= Time.current.in_time_zone(@task.zone).strftime("%Y-%m-%d") %>';
+      const SENIOR_TOMORROW = '<%= Time.current.in_time_zone(@task.zone).tomorrow.strftime("%Y-%m-%d") %>';
+
       document.addEventListener('DOMContentLoaded', function() {
         const openEndedToggle = document.getElementById('open_ended_toggle');
         const scheduledAtField = document.getElementById('scheduled_at_field');
         const scheduledAtInput = document.getElementById('task_scheduled_at_input');
         const scheduledAtHidden = document.getElementById('task_scheduled_at_hidden');
-
-        // The senior's own dates, rendered server-side. Everything the form
-        // submits is read back in the senior's clock, so anything anchored to
-        // `new Date()` — the caregiver's browser — lands on the wrong day
-        // whenever the two are in different zones or it is near midnight for
-        // either of them. There is no browser clock in this file for that
-        // reason.
-        const SENIOR_TODAY = '<%= Time.current.in_time_zone(@task.zone).strftime("%Y-%m-%d") %>';
-        const SENIOR_TOMORROW = '<%= Time.current.in_time_zone(@task.zone).tomorrow.strftime("%Y-%m-%d") %>';
 
         function getDefaultDateTime() {
           // Tomorrow at 9:00 AM where the senior is, matching the server-side
