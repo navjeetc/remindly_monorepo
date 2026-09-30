@@ -11,7 +11,6 @@ class SessionsController < ActionController::Base
   # second try works.
   rescue_from ActionController::InvalidAuthenticityToken, with: :sign_in_form_expired
 
-
   def new
     # Show login page
   end
