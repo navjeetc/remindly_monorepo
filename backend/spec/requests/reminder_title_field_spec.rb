@@ -2,12 +2,11 @@
 
 require "rails_helper"
 
-# A caregiver went straight past the title to the notes: the title input had
-# the same thin border and no padding as everything else on the form, and the
-# placeholder all but disappeared into it. The title is the one required field
-# and the words the call speaks aloud, so the new-reminder form puts the cursor
-# there. Editing does not — a caregiver opening an existing reminder is as
-# likely there to move the time.
+# A caregiver went straight past the title to the notes. The title is the one
+# required field and the words the call speaks aloud, so the new-reminder form
+# puts the cursor there. Editing does not: a caregiver opening an existing
+# reminder is as likely there to move the time. How every field looks is
+# guarded separately, in form_fields_look_like_fields_spec.rb.
 RSpec.describe "The reminder title field", type: :request do
   let(:senior) { create(:user, :senior, name: "Nora", tz: "America/New_York") }
   let(:caregiver) { create(:user, :caregiver, name: "Sam") }
@@ -23,32 +22,6 @@ RSpec.describe "The reminder title field", type: :request do
 
     expect(page.at_css("input[name='reminder[title]']")["autofocus"]).to be_present
     expect(page.css("[autofocus]").size).to eq(1)
-  end
-
-  # Asserted because the fix is invisible to every other spec: strip these
-  # classes and the form still renders, submits and passes. The title has to
-  # stand apart from the fields around it, so it is checked against them.
-  def title_stands_out
-    page = Nokogiri::HTML(response.body)
-    title = page.at_css("input[name='reminder[title]']")["class"].split
-    notes = page.at_css("textarea[name='reminder[notes]']")["class"].split
-
-    expect(title).to include("border-2", "border-gray-400", "px-3", "py-2", "text-base", "focus:ring-2")
-    expect(notes).not_to include("border-2")
-    expect(page.at_css("label[for='reminder_title']")["class"].split).to include("font-semibold", "text-base")
-  end
-
-  it "stands out from the other fields on a new reminder" do
-    get "/dashboard/senior/#{senior.id}/reminder/new"
-
-    title_stands_out
-  end
-
-  it "stands out from the other fields when editing" do
-    reminder = Reminder.create!(user: senior, title: "Morning pills", rrule: "FREQ=DAILY", tz: senior.tz, start_time: Time.current)
-    get "/dashboard/senior/#{senior.id}/reminder/#{reminder.id}/edit"
-
-    title_stands_out
   end
 
   it "does not take the cursor when editing" do

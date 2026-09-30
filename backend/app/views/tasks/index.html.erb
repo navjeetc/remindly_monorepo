@@ -6,9 +6,9 @@
       <p class="mt-1 text-sm text-gray-500">Manage appointments, errands, and activities</p>
     </div>
     <div class="flex flex-wrap gap-3">
-      <%= link_to "🚫 Blocked Times", senior_time_blocks_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <%= link_to "Blocked Times", senior_time_blocks_path(@senior), class: "button button-secondary" %>
       <% if may_change?(@senior) %>
-      <%= link_to "New Task", new_senior_task_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+      <%= link_to "New Task", new_senior_task_path(@senior), class: "button button-primary" %>
       <% end %>
       <%= link_to "← Back to Dashboard", senior_dashboard_path(@senior), class: "text-blue-600 hover:text-blue-800" %>
     </div>
@@ -50,7 +50,7 @@
             ["Open-Ended", "open_ended"]
           ], params[:view]),
           {}, 
-          class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "field mt-1 block w-full" %>
       </div>
 
       <div>
@@ -65,7 +65,7 @@
             ["Cancelled", "cancelled"]
           ], params[:status]),
           {}, 
-          class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "field mt-1 block w-full" %>
       </div>
 
       <div>
@@ -81,7 +81,7 @@
             ["Other", "other"]
           ], params[:task_type]),
           {}, 
-          class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "field mt-1 block w-full" %>
       </div>
 
       <div>
@@ -95,7 +95,7 @@
             ["Urgent", "urgent"]
           ], params[:priority]),
           {}, 
-          class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "field mt-1 block w-full" %>
       </div>
 
       <div>
@@ -108,11 +108,11 @@
             ["Calendly", "calendly"]
           ], params[:external_source]),
           {}, 
-          class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          class: "field mt-1 block w-full" %>
       </div>
 
       <div class="flex items-end">
-        <%= f.submit "Filter", class: "w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700" %>
+        <%= f.submit "Filter", class: "button button-secondary w-full" %>
       </div>
     <% end %>
   </div>
@@ -276,7 +276,7 @@
       </p>
       <div class="mt-6">
         <% if may_change?(@senior) %>
-        <%= link_to "New Task", new_senior_task_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+        <%= link_to "New Task", new_senior_task_path(@senior), class: "button button-primary" %>
         <% end %>
       </div>
     </div>

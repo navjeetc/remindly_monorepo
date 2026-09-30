@@ -87,13 +87,7 @@ class VoiceRemindersApp {
         // Clear Announced button
         const clearAnnouncedBtn = document.getElementById('clearAnnouncedBtn');
         if (clearAnnouncedBtn) {
-            clearAnnouncedBtn.addEventListener('click', () => {
-                this.announcedReminders.clear();
-                this.saveAnnouncedList();
-                console.log('✅ Cleared announced reminders list');
-                alert('Announced reminders list cleared! Reminders will now announce again.');
-                this.loadReminders();
-            });
+            clearAnnouncedBtn.addEventListener('click', () => this.clearAnnouncedList());
         }
         
         // Settings (optional - only if elements exist)
@@ -343,7 +337,7 @@ class VoiceRemindersApp {
                             ✓ Done
                         </button>
                         ${isDue ? `
-                        <button id="snooze-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-gray-400 shadow-lg text-xl font-bold rounded-xl text-gray-800 bg-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-300" title="Snooze for 10 minutes">
+                        <button id="snooze-${reminder.id}" class="flex-1 inline-flex items-center justify-center px-6 py-4 border-2 border-gray-400 shadow-lg text-xl font-bold rounded-xl text-gray-800 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:ring-gray-300" title="Snooze for 10 minutes">
                             ⏰ Snooze
                         </button>
                         ` : ''}
@@ -1013,6 +1007,9 @@ class VoiceRemindersApp {
     }
 
     resetSettings() {
+        // It discards saved choices in one press, so it asks first, like every
+        // other button that replaces something (docs/UI_STYLE_GUIDE.md).
+        if (!confirm('Put every setting back to how it started? Voice speed, volume, notifications and quiet hours will all be reset.')) return;
         localStorage.removeItem('voiceRemindersSettings');
         this.settings = this.getDefaultSettings();
         this.loadSettingsToUI();
@@ -1051,10 +1048,14 @@ class VoiceRemindersApp {
         }
     }
 
+    // Both Clear buttons (toolbar and settings) come here. Clearing makes every
+    // current reminder speak again, out loud, on the care receiver's device,
+    // so it asks first (docs/UI_STYLE_GUIDE.md).
     clearAnnouncedList() {
+        if (!confirm('Clear the list of reminders already announced? Reminders that are due now will be spoken again.')) return;
         this.announcedReminders.clear();
         this.saveAnnouncedList();
-        alert('Announced reminders list cleared!');
+        this.loadReminders();
     }
 
     loadAnnouncedList() {

@@ -23,18 +23,16 @@
         <div>
           <%= f.label :title, "Reminder Title", class: "block text-base font-semibold text-gray-900" %>
           <%# The title is what gets spoken on the call, and it is the one field a
-              reminder can't do without. The other inputs here are thin-bordered
-              with no padding, and a caregiver skipped straight past this one to
-              the notes because it blended in. So it gets a heavier border, real
-              padding and body-size text — and on a new reminder, the cursor. %>
-          <%= f.text_field :title, required: true, autofocus: true, placeholder: "e.g., Take morning medication", class: "mt-1 block w-full rounded-md border-2 border-gray-400 bg-white px-3 py-2 text-base text-gray-900 shadow-sm placeholder-gray-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+              reminder can't do without. A caregiver once skipped straight past
+              it to the notes, so on a new reminder the cursor starts here. %>
+          <%= f.text_field :title, required: true, autofocus: true, placeholder: "e.g., Take morning medication", class: "field mt-1 block w-full" %>
           <%= render "shared/sensitive_info_hint", spoken: true, subject: "reminder" %>
           <%= render "shared/spoken_title_note", senior: @senior %>
         </div>
 
         <div>
           <%= f.label :notes, "Notes (Optional)", class: "block text-sm font-medium text-gray-700" %>
-          <%= f.text_area :notes, rows: 3, placeholder: "Additional details...", class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+          <%= f.text_area :notes, rows: 3, placeholder: "Additional details...", class: "field mt-1 block w-full" %>
           <%= render "shared/sensitive_info_aside" %>
         </div>
 
@@ -44,13 +42,13 @@
             <%= f.select :category, 
                 options_for_select([['Medication', 'medication'], ['Hydration', 'hydration'], ['Routine', 'routine']], 'routine'),
                 {},
-                class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                class: "field mt-1 block w-full"
             %>
           </div>
 
           <div>
             <%= f.label :time, "Time", class: "block text-sm font-medium text-gray-700" %>
-            <%= f.time_field :time, value: Time.current.in_time_zone(@senior.tz).strftime("%H:%M"), required: true, class: "mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" %>
+            <%= f.time_field :time, value: Time.current.in_time_zone(@senior.tz).strftime("%H:%M"), required: true, class: "field mt-1 block w-full" %>
           </div>
 
         <%# Under the category, because the question it answers is "which kind of
@@ -86,13 +84,13 @@
           <%= f.select :frequency,
               options_for_select([['Daily', 'daily'], ['Weekly', 'weekly']], 'daily'),
               {},
-              class: "border mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              class: "field mt-1 block w-full"
           %>
         </div>
 
         <div class="flex justify-end space-x-3">
-          <%= link_to "Cancel", senior_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
-          <%= f.submit "Create Reminder", class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+          <%= link_to "Cancel", senior_dashboard_path(@senior), class: "button button-secondary" %>
+          <%= f.submit "Create Reminder", class: "button button-primary" %>
         </div>
       <% end %>
     </div>

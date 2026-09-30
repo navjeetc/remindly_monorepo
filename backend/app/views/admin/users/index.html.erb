@@ -23,16 +23,16 @@
             @role_filter
           ),
           {},
-          class: "border block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm",
+          class: "field block w-full",
           onchange: "this.form.submit()"
         %>
       </div>
       <div class="pt-6">
-        <%= f.submit "Apply Filter", class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+        <%= f.submit "Apply Filter", class: "button button-primary" %>
       </div>
       <% if @role_filter.present? %>
         <div class="pt-6">
-          <%= link_to "Clear Filter", admin_users_path, class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+          <%= link_to "Clear Filter", admin_users_path, class: "button button-secondary" %>
         </div>
       <% end %>
     <% end %>
@@ -102,9 +102,9 @@
                       user.role
                     ),
                     {},
-                    class: "block w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    class: "field block w-40 text-sm py-1"
                 %>
-                <%= f.submit "Update", class: "inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+                <%= f.submit "Update", class: "button button-primary px-3 leading-4" %>
               <% end %>
             </div>
           </div>

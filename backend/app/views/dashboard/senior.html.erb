@@ -39,14 +39,14 @@
         items wrap onto a second line. %>
     <div class="flex flex-wrap gap-3">
       <% if may_change?(@senior) %>
-      <%= link_to "Invite Caregiver", invite_caregiver_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <%= link_to "Invite Caregiver", invite_caregiver_dashboard_path(@senior), class: "button button-secondary" %>
       <% end %>
-      <%= link_to "View Tasks", senior_tasks_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+      <%= link_to "View Tasks", senior_tasks_path(@senior), class: "button button-secondary" %>
       <% if FeatureFlag.enabled?(:external_scheduling) %>
-        <%= link_to "Scheduling Integrations", senior_scheduling_integrations_path(@senior), class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+        <%= link_to "Scheduling Integrations", senior_scheduling_integrations_path(@senior), class: "button button-secondary" %>
       <% end %>
       <% if may_change?(@senior) %>
-      <%= link_to "Create Reminder", new_reminder_dashboard_path(@senior), class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700" %>
+      <%= link_to "Create Reminder", new_reminder_dashboard_path(@senior), class: "button button-primary" %>
       <% end %>
       <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
     </div>
