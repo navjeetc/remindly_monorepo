@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **A stale sign-in page no longer ends in a 422 error.** Tapping Sign in on an
+  iPhone showed Rails' "Unprocessable Entity" page. Safari restores a
+  backgrounded tab from memory but can drop the session cookie the form's
+  security token belonged to, so the token no longer matched. The check is
+  kept; a stale form now returns to the sign-in page with "That sign-in page
+  had expired. Please enter your email again.", and the second try works.
 - **The reminder title is the field you can't miss (#187).** A caregiver
   skipped the title and typed straight into the notes: the title input had the
   same thin grey border and no padding as every other field, so its faint
