@@ -75,6 +75,8 @@ Pages: `/` `/how_to` `/faq` `/routine_sheet` `/blog` `/privacy` `/terms`. `Pages
 
 `ApplicationHelper::CANONICAL_HOST` exists because the app answers on three hostnames (`remindly.anakhsoft.com`, `remindly.care`, `www.remindly.care`). Canonical tags, `og:image` and sitemap entries all pin to one of them.
 
+Mailing-list subscribers are mirrored into **GoHighLevel**, where campaigns are sent (off Postmark, which carries the sign-in links). `Subscriber` callbacks enqueue `SyncSubscriberToCrmJob`, which calls `GoHighLevel` (`app/services/go_high_level.rb`). The GHL sub-account is shared with other businesses and Remindly's contacts are told apart **only by their `remindly-*` tags**, so that class must never pass tags to upsert (they replace a contact's existing tags) or overwrite another business's fields. It is a no-op until `go_high_level.token` and `go_high_level.location_id` are in credentials.
+
 ### Blog
 Posts are Markdown files in `backend/content/posts`, parsed by `Post` (a plain model, no database table) — see the class comment for why files rather than a table. Publishing is adding a file with `title`, `description` and `published_on` front matter; the index, sitemap and Article structured data all pick it up with nothing else edited. **A `published_on` in the future is a draft** and stays out of both the index and the sitemap. Malformed front matter raises at load rather than rendering a post with a blank heading.
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The mailing list is mirrored into GoHighLevel.** Remindly could collect
+  subscribers but had no way to write to them, and sending campaigns from
+  Rails would have put bulk mail on Postmark, the same sender as the sign-in
+  links. Joining the list now tags the contact in GHL (`remindly-subscriber`,
+  the page they came from as `remindly-source-…`, and `remindly-unverified`
+  while sign-ups are single opt-in); unsubscribing swaps that tag for
+  `remindly-unsubscribed`. The GHL account is shared with other businesses, so
+  it only ever adds or removes its own tags and never overwrites another
+  business's fields. Does nothing until a GHL token and location are in
+  credentials.
+
 ## [0.18.0] - 2026-09-29
 
 ### Fixed

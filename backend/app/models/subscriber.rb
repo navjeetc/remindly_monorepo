@@ -28,6 +28,12 @@ class Subscriber < ApplicationRecord
   # the way in is what makes the unique index mean anything.
   normalizes :email, with: ->(email) { email.to_s.strip.downcase }
 
+  # Campaigns go out from GoHighLevel, so the list there follows this table:
+  # joining tags the contact, unsubscribing (which deletes the row) untags it.
+  # Does nothing until GHL credentials exist. See GoHighLevel.
+  after_create_commit -> { SyncSubscriberToCrmJob.perform_later(email: email, source: source, change: "subscribed") }
+  after_destroy_commit -> { SyncSubscriberToCrmJob.perform_later(email: email, change: "unsubscribed") }
+
   # The same fact User tracks, for the same reason: an address a mail provider
   # has permanently refused stays refused, and subscribers:send_monthly_note
   # must stop re-enqueuing it every month rather than rediscovering the same
