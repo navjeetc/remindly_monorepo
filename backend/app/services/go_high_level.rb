@@ -138,7 +138,21 @@ class GoHighLevel
     end
     raise Error, "#{label} answered #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
-    response.body.present? ? JSON.parse(response.body) : {}
+    parse(response.body, label)
+  end
+
+  # A 2xx with a body that is not a JSON object is GHL misbehaving, not a
+  # programming error, and it gets the same retries as any other failed call.
+  # Left as JSON::ParserError (or a NoMethodError from calling dig on an array)
+  # it fell outside GoHighLevel::Error and failed the job for good. The body is
+  # left out of the message, as everywhere else here.
+  def self.parse(body, label)
+    return {} if body.blank?
+
+    parsed = JSON.parse(body)
+    parsed.is_a?(Hash) ? parsed : raise(Error, "#{label} answered with a JSON #{parsed.class.name.downcase}, not an object")
+  rescue JSON::ParserError
+    raise Error, "#{label} answered with malformed JSON"
   end
 
   def self.location_id = credentials[:location_id]

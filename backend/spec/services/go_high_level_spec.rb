@@ -181,6 +181,24 @@ RSpec.describe GoHighLevel do
       end
     end
 
+    context "when GHL answers 200 with malformed JSON" do
+      let(:reply) { Net::HTTPOK.new("1.1", "200", "OK").tap { |r| allow(r).to receive(:body).and_return('{"contact": {"id": "c1", "email": "ann@exa') } }
+
+      it "raises GoHighLevel::Error, without the body, so the job retries" do
+        expect { described_class.request(Net::HTTP::Get, "/contacts/c1") }
+          .to raise_error(GoHighLevel::Error, "GHL GET /contacts/c1 answered with malformed JSON")
+      end
+    end
+
+    context "when GHL answers 200 with JSON that is not an object" do
+      let(:reply) { Net::HTTPOK.new("1.1", "200", "OK").tap { |r| allow(r).to receive(:body).and_return('["c1"]') } }
+
+      it "raises GoHighLevel::Error rather than failing later on dig" do
+        expect { described_class.request(Net::HTTP::Get, "/contacts/c1") }
+          .to raise_error(GoHighLevel::Error, "GHL GET /contacts/c1 answered with a JSON array, not an object")
+      end
+    end
+
     context "when GHL refuses" do
       let(:reply) { Net::HTTPUnauthorized.new("1.1", "401", "Unauthorized").tap { |r| allow(r).to receive(:body).and_return("{}") } }
 
