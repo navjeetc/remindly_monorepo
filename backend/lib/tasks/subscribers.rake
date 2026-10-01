@@ -61,4 +61,20 @@ namespace :subscribers do
 
     puts "Queued. Running CONFIRM=yes again before the next real month would resend to everyone above."
   end
+
+  # The GHL sync does nothing until its credentials exist, and a signup or
+  # unsubscribe in that time is not queued to happen later. Run this once after
+  # adding them: it makes GHL agree with the table for every current
+  # subscriber, the same way the per-signup job does.
+  desc "Make GoHighLevel agree with the subscribers table (run once after adding GHL credentials)"
+  task sync_to_crm: :environment do
+    abort "GoHighLevel credentials are not configured; nothing to sync." unless GoHighLevel.configured?
+
+    count = 0
+    Subscriber.find_each do |subscriber|
+      SyncSubscriberToCrmJob.perform_later(subscriber.email)
+      count += 1
+    end
+    puts "Queued #{count} subscriber#{'s' unless count == 1} for GoHighLevel."
+  end
 end

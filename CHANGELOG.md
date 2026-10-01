@@ -15,11 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Rails would have put bulk mail on Postmark, the same sender as the sign-in
   links. Joining the list now tags the contact in GHL (`remindly-subscriber`,
   the page they came from as `remindly-source-…`, and `remindly-unverified`
-  while sign-ups are single opt-in); unsubscribing swaps that tag for
-  `remindly-unsubscribed`. The GHL account is shared with other businesses, so
-  it only ever adds or removes its own tags and never overwrites another
-  business's fields. Does nothing until a GHL token and location are in
-  credentials.
+  while sign-ups are single opt-in). Unsubscribing deletes the contact from
+  GHL, as the privacy policy promises, unless another business also has that
+  person, in which case only Remindly's tags come off. The GHL account is
+  shared with other businesses, so it never overwrites or deletes another
+  business's data. The privacy policy now names GoHighLevel. Does nothing
+  until a GHL token and location are in credentials; then run
+  `bin/rails subscribers:sync_to_crm` once to catch up.
 
 ## [0.18.0] - 2026-09-29
 

@@ -42,4 +42,12 @@ RSpec.describe "Syncing the mailing list to GoHighLevel", type: :request do
 
     expect(sync_jobs).to eq([ [ "ann@example.com" ] ])
   end
+
+  # The policy used to say the address went to Postmark and nobody else. It
+  # has to name GoHighLevel before this sync is switched on.
+  it "is disclosed in the privacy policy" do
+    get "/privacy"
+
+    expect(response.body).to include("GoHighLevel")
+  end
 end

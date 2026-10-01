@@ -37,8 +37,8 @@ class GoHighLevel
   TIMEOUT = 10
 
   SOURCE = "Remindly website"
+  TAG_PREFIX = "remindly-"
   SUBSCRIBER_TAG = "remindly-subscriber"
-  UNSUBSCRIBED_TAG = "remindly-unsubscribed"
   # Sign-ups are single opt-in, and a run of them in September 2026 looked like
   # subscription bombing (real addresses entered by bots). Every new contact
   # carries this until someone has confirmed they are real, so a campaign can
@@ -71,22 +71,36 @@ class GoHighLevel
 
     contact_id = find_contact_id(email) || create_contact(email)
     request(Net::HTTP::Post, "/contacts/#{contact_id}/tags", tags: [ SUBSCRIBER_TAG, source_tag(source), UNVERIFIED_TAG ])
-    # Someone unsubscribing and coming back is subscribed again.
-    request(Net::HTTP::Delete, "/contacts/#{contact_id}/tags", tags: [ UNSUBSCRIBED_TAG ])
     contact_id
   end
 
-  # Looks the contact up rather than upserting: leaving the list must never
-  # create a contact. Email do-not-disturb is deliberately not set; in a shared
-  # account it would also stop every other business from emailing them.
+  # The privacy policy promises that a mailing-list address is deleted when
+  # its owner asks to stop, so leaving removes Remindly from GHL entirely:
+  #
+  # * A contact that is only Remindly's (we created it, and every tag on it is
+  #   ours) is deleted.
+  # * A contact another business also has is that business's record, not
+  #   Remindly's to delete. Only Remindly's tags come off it, which removes
+  #   everything Remindly put there.
+  #
+  # Looks the contact up rather than upserting: leaving must never create one.
+  # Email do-not-disturb is deliberately not set; in a shared account it would
+  # stop every other business from emailing them too.
   def self.unsubscribe(email:)
     return unless configured?
 
     contact_id = find_contact_id(email)
     return unless contact_id
 
-    request(Net::HTTP::Delete, "/contacts/#{contact_id}/tags", tags: [ SUBSCRIBER_TAG ])
-    request(Net::HTTP::Post, "/contacts/#{contact_id}/tags", tags: [ UNSUBSCRIBED_TAG ])
+    contact = request(Net::HTTP::Get, "/contacts/#{contact_id}").fetch("contact", {})
+    tags = Array(contact["tags"])
+    ours = tags.select { |tag| tag.start_with?(TAG_PREFIX) }
+
+    if contact["source"] == SOURCE && tags == ours
+      request(Net::HTTP::Delete, "/contacts/#{contact_id}")
+    elsif ours.any?
+      request(Net::HTTP::Delete, "/contacts/#{contact_id}/tags", tags: ours)
+    end
     contact_id
   end
 

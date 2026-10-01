@@ -29,8 +29,7 @@ RSpec.describe GoHighLevel do
         expect(calls).to eq([
           [ "GET", "/contacts/search/duplicate?locationId=loc1&email=ann%40example.com", nil ],
           [ "POST", "/contacts/upsert", { locationId: "loc1", email: "ann@example.com", source: "Remindly website" } ],
-          [ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home remindly-unverified] } ],
-          [ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-unsubscribed] } ]
+          [ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home remindly-unverified] } ]
         ])
       end
     end
@@ -46,8 +45,7 @@ RSpec.describe GoHighLevel do
 
         expect(calls.map { |verb, path, _| [ verb, path.split("?").first ] }).to eq([
           [ "GET", "/contacts/search/duplicate" ],
-          [ "POST", "/contacts/c9/tags" ],
-          [ "DELETE", "/contacts/c9/tags" ]
+          [ "POST", "/contacts/c9/tags" ]
         ])
         expect(calls).to include([ "POST", "/contacts/c9/tags", { tags: %w[remindly-subscriber remindly-source-post-daily-checks remindly-unverified] } ])
       end
@@ -64,18 +62,49 @@ RSpec.describe GoHighLevel do
     end
   end
 
+  # The privacy policy promises the address is deleted when someone asks to
+  # stop. In a shared account that means deleting what is Remindly's and
+  # nothing that belongs to another business.
   describe ".unsubscribe" do
-    context "when the contact exists" do
-      let(:responses) { { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "id" => "c1" } } } }
+    let(:found) { { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "id" => "c1" } } } }
 
-      it "swaps the subscriber tag for the unsubscribed one" do
+    context "when the contact is only Remindly's" do
+      let(:responses) do
+        found.merge([ "GET", "/contacts/c1" ] => { "contact" => { "id" => "c1", "source" => "Remindly website",
+          "tags" => %w[remindly-subscriber remindly-source-home remindly-unverified] } })
+      end
+
+      it "deletes it from GHL" do
         described_class.unsubscribe(email: "ann@example.com")
 
-        expect(calls).to eq([
-          [ "GET", "/contacts/search/duplicate?locationId=loc1&email=ann%40example.com", nil ],
-          [ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-subscriber] } ],
-          [ "POST", "/contacts/c1/tags", { tags: %w[remindly-unsubscribed] } ]
-        ])
+        expect(calls.last).to eq([ "DELETE", "/contacts/c1", nil ])
+      end
+    end
+
+    context "when another business also has the contact" do
+      let(:responses) do
+        found.merge([ "GET", "/contacts/c1" ] => { "contact" => { "id" => "c1", "source" => "Remindly website",
+          "tags" => %w[remindly-subscriber remindly-source-home lawn-care-lead] } })
+      end
+
+      it "removes only Remindly's tags and leaves their record alone" do
+        described_class.unsubscribe(email: "ann@example.com")
+
+        expect(calls.last).to eq([ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home] } ])
+        expect(calls).not_to include([ "DELETE", "/contacts/c1", nil ])
+      end
+    end
+
+    context "when another business created the contact, even with only Remindly's tags on it" do
+      let(:responses) do
+        found.merge([ "GET", "/contacts/c1" ] => { "contact" => { "id" => "c1", "source" => "Facebook ad",
+          "tags" => %w[remindly-subscriber] } })
+      end
+
+      it "does not delete their contact" do
+        described_class.unsubscribe(email: "ann@example.com")
+
+        expect(calls.last).to eq([ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-subscriber] } ])
       end
     end
 
