@@ -18,35 +18,45 @@ RSpec.describe GoHighLevel do
 
   describe ".subscribe" do
     context "for an address GHL has never seen" do
-      let(:responses) { { [ "POST", "/contacts/upsert" ] => { "new" => true, "contact" => { "id" => "c1" } } } }
+      let(:responses) do
+        { [ "GET", "/contacts/search/duplicate" ] => { "contact" => nil },
+          [ "POST", "/contacts/upsert" ] => { "new" => true, "contact" => { "id" => "c1" } } }
+      end
 
-      it "creates the contact, sets its source, and tags it" do
+      it "creates the contact with its source in one call, then tags it" do
         described_class.subscribe(email: "ann@example.com", source: "home")
 
         expect(calls).to eq([
-          [ "POST", "/contacts/upsert", { locationId: "loc1", email: "ann@example.com" } ],
-          [ "PUT", "/contacts/c1", { source: "Remindly website" } ],
+          [ "GET", "/contacts/search/duplicate?locationId=loc1&email=ann%40example.com", nil ],
+          [ "POST", "/contacts/upsert", { locationId: "loc1", email: "ann@example.com", source: "Remindly website" } ],
           [ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home remindly-unverified] } ],
           [ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-unsubscribed] } ]
         ])
       end
     end
 
-    context "for someone already in GHL as another business's lead" do
-      let(:responses) { { [ "POST", "/contacts/upsert" ] => { "new" => false, "contact" => { "id" => "c9" } } } }
+    # Covers both an address that is already another business's lead and a
+    # retry after the contact was created but tagging failed: either way the
+    # contact exists, and only the tags may change.
+    context "for a contact GHL already has" do
+      let(:responses) { { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "id" => "c9" } } } }
 
-      it "adds Remindly's tags without touching their source or passing tags to upsert" do
+      it "only adds Remindly's tags: no upsert, so no field and no tag of theirs is replaced" do
         described_class.subscribe(email: "lead@example.com", source: "post:daily-checks")
 
-        upsert = calls.find { |_, path, _| path == "/contacts/upsert" }
-        expect(upsert.last.keys).to contain_exactly(:locationId, :email)
-        expect(calls.map(&:first)).not_to include("PUT")
+        expect(calls.map { |verb, path, _| [ verb, path.split("?").first ] }).to eq([
+          [ "GET", "/contacts/search/duplicate" ],
+          [ "POST", "/contacts/c9/tags" ],
+          [ "DELETE", "/contacts/c9/tags" ]
+        ])
         expect(calls).to include([ "POST", "/contacts/c9/tags", { tags: %w[remindly-subscriber remindly-source-post-daily-checks remindly-unverified] } ])
       end
     end
 
-    context "when GHL answers without a contact id" do
-      let(:responses) { { [ "POST", "/contacts/upsert" ] => {} } }
+    context "when GHL creates the contact but returns no id" do
+      let(:responses) do
+        { [ "GET", "/contacts/search/duplicate" ] => { "contact" => nil }, [ "POST", "/contacts/upsert" ] => {} }
+      end
 
       it "raises, so the job retries instead of silently dropping the signup" do
         expect { described_class.subscribe(email: "ann@example.com", source: "home") }.to raise_error(GoHighLevel::Error)
@@ -126,6 +136,19 @@ RSpec.describe GoHighLevel do
         expect(sent.first["Authorization"]).to eq("Bearer tok")
         expect(sent.first["Version"]).to eq("2021-07-28")
         expect(JSON.parse(sent.first.body)).to eq("email" => "ann@example.com")
+      end
+    end
+
+    [ Net::WriteTimeout, Errno::ECONNRESET, Errno::ETIMEDOUT, EOFError, OpenSSL::SSL::SSLError ].each do |failure|
+      context "when the connection fails with #{failure}" do
+        let(:reply) { nil }
+
+        before { allow(Net::HTTP).to receive(:start).and_raise(failure) }
+
+        it "raises GoHighLevel::Error, the one class the job retries" do
+          expect { described_class.request(Net::HTTP::Post, "/contacts/upsert", email: "ann@example.com") }
+            .to raise_error(GoHighLevel::Error, "GHL POST /contacts/upsert failed: #{failure}")
+        end
       end
     end
 

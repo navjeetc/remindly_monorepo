@@ -31,8 +31,9 @@ class Subscriber < ApplicationRecord
   # Campaigns go out from GoHighLevel, so the list there follows this table:
   # joining tags the contact, unsubscribing (which deletes the row) untags it.
   # Does nothing until GHL credentials exist. See GoHighLevel.
-  after_create_commit -> { SyncSubscriberToCrmJob.perform_later(email: email, source: source, change: "subscribed") }
-  after_destroy_commit -> { SyncSubscriberToCrmJob.perform_later(email: email, change: "unsubscribed") }
+  # The job reads whether the address is on the list when it runs, so both
+  # only need to say which address changed.
+  after_commit -> { SyncSubscriberToCrmJob.perform_later(email) }, on: %i[create destroy]
 
   # The same fact User tracks, for the same reason: an address a mail provider
   # has permanently refused stays refused, and subscribers:send_monthly_note
