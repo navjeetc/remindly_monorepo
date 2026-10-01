@@ -31,12 +31,22 @@ class Subscriber < ApplicationRecord
   # Campaigns go out from GoHighLevel, so the list there follows this table:
   # joining tags the contact, unsubscribing (which deletes the row) untags it.
   # Does nothing until GHL credentials exist. See GoHighLevel.
-  # The job reads whether the address is on the list when it runs, so both
-  # only need to say which address changed. Leaving also records a pending CRM
-  # removal, so the promise to delete the address holds even while the sync
-  # has no credentials; the job clears it once the CRM no longer has them.
-  after_create_commit -> { CrmRemoval.clear(email) }
-  after_destroy_commit -> { CrmRemoval.record(email) }
+  # Leaving records a pending CRM removal, so the promise to delete the address
+  # holds even while the sync has no credentials; the job clears it once the
+  # CRM no longer has them. Rejoining forgets it.
+  #
+  # Inside the subscriber's own transaction, not after it commits: the row and
+  # its pending removal must change together. As after_commit callbacks, a
+  # quick unsubscribe-then-resubscribe could run them out of order, so a late
+  # clear erased a newer removal, or a late record kept an address that should
+  # have gone. Here the database's commit order decides, and a rolled-back
+  # unsubscribe leaves no removal behind.
+  after_create -> { CrmRemoval.clear(email) }
+  after_destroy -> { CrmRemoval.record(email) }
+
+  # Only the job waits for the commit, so it never runs against a change that
+  # did not happen. It reads whether the address is on the list when it runs,
+  # so it only needs to know which address changed.
   after_commit -> { SyncSubscriberToCrmJob.perform_later(email) }, on: %i[create destroy]
 
   # The same fact User tracks, for the same reason: an address a mail provider

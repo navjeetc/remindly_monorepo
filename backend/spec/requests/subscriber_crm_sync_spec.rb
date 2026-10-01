@@ -52,6 +52,35 @@ RSpec.describe "Syncing the mailing list to GoHighLevel", type: :request do
     expect(CrmRemoval.where(email: "ann@example.com")).to be_empty
   end
 
+  # Review found the pending removal was written after commit, so a quick
+  # leave-and-rejoin could apply the two writes out of order. They now ride in
+  # the subscriber's own transaction: if the change does not happen, neither
+  # does the bookkeeping.
+  it "writes the pending removal in the same transaction as the unsubscribe" do
+    subscriber = Subscriber.subscribe(email: "ann@example.com", source: "home")
+
+    Subscriber.transaction do
+      subscriber.destroy
+      expect(CrmRemoval.where(email: "ann@example.com")).to exist
+      raise ActiveRecord::Rollback
+    end
+
+    expect(Subscriber.where(email: "ann@example.com")).to exist
+    expect(CrmRemoval.where(email: "ann@example.com")).to be_empty
+  end
+
+  it "clears a pending removal in the same transaction as the rejoin" do
+    CrmRemoval.record("ann@example.com")
+
+    Subscriber.transaction do
+      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      expect(CrmRemoval.where(email: "ann@example.com")).to be_empty
+      raise ActiveRecord::Rollback
+    end
+
+    expect(CrmRemoval.where(email: "ann@example.com")).to exist
+  end
+
   # The policy used to say the address went to Postmark and nobody else. It
   # has to disclose the CRM before this sync is switched on. It says "our CRM"
   # rather than naming the vendor, by the owner's choice.
