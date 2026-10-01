@@ -39,7 +39,10 @@
 
   <!-- Filters -->
   <div class="bg-white shadow sm:rounded-lg p-4">
-    <%= form_with url: senior_tasks_path(@senior), method: :get, class: "grid grid-cols-1 gap-4 sm:grid-cols-6" do |f| %>
+    <%# One column per filter plus the button, so hiding Source does not leave
+        a gap where it was. %>
+    <%= form_with url: senior_tasks_path(@senior), method: :get,
+          class: "grid grid-cols-1 gap-4 #{FeatureFlag.enabled?(:external_scheduling) ? 'sm:grid-cols-6' : 'sm:grid-cols-5'}" do |f| %>
       <div>
         <%= f.label :view, "View", class: "block text-sm font-medium text-gray-700" %>
         <%= f.select :view, 
@@ -98,6 +101,11 @@
           class: "field mt-1 block w-full" %>
       </div>
 
+      <%# Only meaningful with an external calendar connected, which is behind
+          the external_scheduling flag and off: Acuity is not offered, and
+          production has never held a synced task. Offering "Acuity" and
+          "Calendly" as filters advertised a feature that does not exist. %>
+      <% if FeatureFlag.enabled?(:external_scheduling) %>
       <div>
         <%= f.label :external_source, "Source", class: "block text-sm font-medium text-gray-700" %>
         <%= f.select :external_source, 
@@ -110,6 +118,7 @@
           {}, 
           class: "field mt-1 block w-full" %>
       </div>
+      <% end %>
 
       <div class="flex items-end">
         <%= f.submit "Filter", class: "button button-secondary w-full" %>
@@ -199,7 +208,7 @@
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-2">
                         <p class="text-sm font-medium text-gray-900 truncate"><%= task.title %></p>
-                        <% if task.external_appointment? %>
+                        <% if task.external_appointment? && FeatureFlag.enabled?(:external_scheduling) %>
                           <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
                             🔗 <%= task.external_provider_name %>
                           </span>

@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   until a GHL token and location are in credentials; then run
   `bin/rails subscribers:sync_to_crm` once to catch up.
 
+### Changed
+- **The privacy policy names no vendors, and no longer describes calendar
+  sync.** Hosting, email and the mailing-list CRM are described as "our
+  hosting provider", "our email provider" and "our CRM". The Acuity calendar
+  connection is not offered (it has always been behind an off switch, and
+  production has never held one), so the policy no longer says it is, and the
+  task list no longer offers "Acuity" and "Calendly" as filters.
+
 ## [0.18.0] - 2026-09-29
 
 ### Fixed
