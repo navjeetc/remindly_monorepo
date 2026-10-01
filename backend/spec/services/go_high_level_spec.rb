@@ -20,7 +20,8 @@ RSpec.describe GoHighLevel do
     context "for an address GHL has never seen" do
       let(:responses) do
         { [ "GET", "/contacts/search/duplicate" ] => { "contact" => nil },
-          [ "POST", "/contacts/upsert" ] => { "new" => true, "contact" => { "id" => "c1" } } }
+          [ "POST", "/contacts/upsert" ] => { "new" => true, "contact" => { "id" => "c1" } },
+          [ "GET", "/contacts/c1" ] => { "contact" => { "id" => "c1", "tags" => [] } } }
       end
 
       it "creates the contact with its source in one call, then tags it" do
@@ -29,6 +30,7 @@ RSpec.describe GoHighLevel do
         expect(calls).to eq([
           [ "GET", "/contacts/search/duplicate?locationId=loc1&email=ann%40example.com", nil ],
           [ "POST", "/contacts/upsert", { locationId: "loc1", email: "ann@example.com", source: "Remindly website" } ],
+          [ "GET", "/contacts/c1", nil ],
           [ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home remindly-unverified] } ]
         ])
       end
@@ -38,16 +40,35 @@ RSpec.describe GoHighLevel do
     # retry after the contact was created but tagging failed: either way the
     # contact exists, and only the tags may change.
     context "for a contact GHL already has" do
-      let(:responses) { { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "id" => "c9" } } } }
+      let(:responses) do
+        { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "id" => "c9" } },
+          [ "GET", "/contacts/c9" ] => { "contact" => { "id" => "c9", "tags" => %w[lawn-care-lead] } } }
+      end
 
       it "only adds Remindly's tags: no upsert, so no field and no tag of theirs is replaced" do
         described_class.subscribe(email: "lead@example.com", source: "post:daily-checks")
 
         expect(calls.map { |verb, path, _| [ verb, path.split("?").first ] }).to eq([
           [ "GET", "/contacts/search/duplicate" ],
+          [ "GET", "/contacts/c9" ],
           [ "POST", "/contacts/c9/tags" ]
         ])
         expect(calls).to include([ "POST", "/contacts/c9/tags", { tags: %w[remindly-subscriber remindly-source-post-daily-checks remindly-unverified] } ])
+      end
+    end
+
+    context "for someone who rejoined from a different page" do
+      let(:responses) do
+        { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "id" => "c1" } },
+          [ "GET", "/contacts/c1" ] => { "contact" => { "id" => "c1",
+            "tags" => %w[remindly-subscriber remindly-source-home remindly-unverified lawn-care-lead] } } }
+      end
+
+      it "swaps the old page's source tag for the new one, touching nothing else" do
+        described_class.subscribe(email: "ann@example.com", source: "routine_sheet")
+
+        expect(calls).to include([ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-source-home] } ])
+        expect(calls.last).to eq([ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-routine-sheet remindly-unverified] } ])
       end
     end
 
@@ -58,6 +79,18 @@ RSpec.describe GoHighLevel do
 
       it "raises, so the job retries instead of silently dropping the signup" do
         expect { described_class.subscribe(email: "ann@example.com", source: "home") }.to raise_error(GoHighLevel::Error)
+      end
+    end
+
+    # A malformed lookup used to read as "not found", and subscribe then
+    # created a contact that may already exist.
+    context "when the lookup answers without a contact field" do
+      let(:responses) { { [ "GET", "/contacts/search/duplicate" ] => { "message" => "ok" } } }
+
+      it "raises instead of creating a contact" do
+        expect { described_class.subscribe(email: "ann@example.com", source: "home") }
+          .to raise_error(GoHighLevel::Error, "GHL contact lookup answered without a contact field")
+        expect(calls.map(&:second)).not_to include("/contacts/upsert")
       end
     end
   end
@@ -105,6 +138,15 @@ RSpec.describe GoHighLevel do
         described_class.unsubscribe(email: "ann@example.com")
 
         expect(calls.last).to eq([ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-subscriber] } ])
+      end
+    end
+
+    context "when the lookup answers a contact without an id" do
+      let(:responses) { { [ "GET", "/contacts/search/duplicate" ] => { "contact" => { "email" => "ann@example.com" } } } }
+
+      it "raises, so the removal is retried rather than skipped for good" do
+        expect { described_class.unsubscribe(email: "ann@example.com") }
+          .to raise_error(GoHighLevel::Error, "GHL contact lookup answered a contact without an id")
       end
     end
 
@@ -168,7 +210,7 @@ RSpec.describe GoHighLevel do
       end
     end
 
-    [ Net::WriteTimeout, Errno::ECONNRESET, Errno::ETIMEDOUT, EOFError, OpenSSL::SSL::SSLError ].each do |failure|
+    [ Net::OpenTimeout, Net::WriteTimeout, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ENETUNREACH, EOFError, OpenSSL::SSL::SSLError ].each do |failure|
       context "when the connection fails with #{failure}" do
         let(:reply) { nil }
 

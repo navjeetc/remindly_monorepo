@@ -4,6 +4,8 @@ require "rails_helper"
 
 # The job makes GHL match whether the address is on the list *when it runs*.
 RSpec.describe SyncSubscriberToCrmJob do
+  before { allow(GoHighLevel).to receive(:configured?).and_return(true) }
+
   it "subscribes an address that is on the list, with its source" do
     Subscriber.subscribe(email: "ann@example.com", source: "routine_sheet")
     expect(GoHighLevel).to receive(:subscribe).with(email: "ann@example.com", source: "routine_sheet")
@@ -39,5 +41,36 @@ RSpec.describe SyncSubscriberToCrmJob do
     allow(GoHighLevel).to receive(:unsubscribe).and_raise(GoHighLevel::Error, "GHL GET /contacts/search/duplicate failed: Errno::ECONNRESET")
 
     expect { described_class.perform_now("ann@example.com") }.to have_enqueued_job(described_class)
+  end
+
+  it "clears the pending removal once the CRM has dropped the address" do
+    CrmRemoval.record("ann@example.com")
+    allow(GoHighLevel).to receive(:unsubscribe)
+
+    described_class.perform_now("ann@example.com")
+
+    expect(CrmRemoval.where(email: "ann@example.com")).to be_empty
+  end
+
+  it "keeps the pending removal when the CRM call fails, so the retry still knows" do
+    CrmRemoval.record("ann@example.com")
+    allow(GoHighLevel).to receive(:unsubscribe).and_raise(GoHighLevel::Error, "GHL GET /contacts/search/duplicate answered 503")
+
+    described_class.perform_now("ann@example.com")
+
+    expect(CrmRemoval.where(email: "ann@example.com")).to exist
+  end
+
+  # The gap review found: an unsubscribe while there were no credentials was
+  # consumed as a no-op, and once the row was gone nothing remembered the
+  # address still had to come out of the CRM.
+  it "does nothing without credentials, leaving the pending removal for later" do
+    allow(GoHighLevel).to receive(:configured?).and_return(false)
+    CrmRemoval.record("ann@example.com")
+    expect(GoHighLevel).not_to receive(:unsubscribe)
+
+    described_class.perform_now("ann@example.com")
+
+    expect(CrmRemoval.where(email: "ann@example.com")).to exist
   end
 end

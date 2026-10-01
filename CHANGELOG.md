@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shared with other businesses, so it never overwrites or deletes another
   business's data. The privacy policy now discloses the CRM (as "our CRM", without naming the vendor). Does nothing
   until a GHL token and location are in credentials; then run
-  `bin/rails subscribers:sync_to_crm` once to catch up.
+  `bin/rails subscribers:sync_to_crm` once to catch up. Anyone who unsubscribes
+  before then is held as a pending removal (`crm_removals`, the address only)
+  until the CRM has dropped them, so the deletion promise still holds.
 
 ### Changed
 - **The privacy policy names no vendors, and no longer describes calendar

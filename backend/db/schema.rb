@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_01_200000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -86,6 +86,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_030000) do
     t.index ["pairing_token"], name: "index_caregiver_links_on_pairing_token", unique: true
     t.index ["senior_id", "caregiver_id"], name: "index_caregiver_links_on_senior_id_and_caregiver_id", unique: true
     t.index ["senior_id", "state"], name: "index_caregiver_links_on_senior_id_and_state"
+  end
+
+  create_table "crm_removals", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_crm_removals_on_email", unique: true
   end
 
   create_table "notifications", force: :cascade do |t|

@@ -25,10 +25,15 @@ class SyncSubscriberToCrmJob < ApplicationJob
   retry_on GoHighLevel::Error, wait: :polynomially_longer, attempts: 5
 
   def perform(email)
+    # Without credentials there is nothing to do yet. Any pending removal stays
+    # recorded, and subscribers:sync_to_crm replays both lists once they exist.
+    return unless GoHighLevel.configured?
+
     if (subscriber = Subscriber.find_by(email: email))
       GoHighLevel.subscribe(email: subscriber.email, source: subscriber.source)
     else
       GoHighLevel.unsubscribe(email: email)
+      CrmRemoval.clear(email)
     end
   end
 end

@@ -41,6 +41,15 @@ RSpec.describe "Syncing the mailing list to GoHighLevel", type: :request do
     delete unsubscribe_path(token: subscriber.signed_id(purpose: :unsubscribe))
 
     expect(sync_jobs).to eq([ [ "ann@example.com" ] ])
+    expect(CrmRemoval.where(email: "ann@example.com")).to exist
+  end
+
+  it "forgets a pending removal when the address joins again" do
+    Subscriber.subscribe(email: "ann@example.com", source: "home").destroy
+
+    post subscribers_path, params: { email: "ann@example.com", source: "routine_sheet" }
+
+    expect(CrmRemoval.where(email: "ann@example.com")).to be_empty
   end
 
   # The policy used to say the address went to Postmark and nobody else. It

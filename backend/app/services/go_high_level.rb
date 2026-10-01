@@ -50,13 +50,11 @@ class GoHighLevel
   class Error < StandardError; end
 
   # Everything Net::HTTP raises when the connection, not GHL, is the problem.
-  # Listing them in the job instead let Net::WriteTimeout, ECONNRESET and
-  # friends through, and each of those dropped a change for good.
-  TRANSPORT_ERRORS = [
-    Net::OpenTimeout, Net::ReadTimeout, Net::WriteTimeout, IOError, EOFError, SocketError,
-    Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::EHOSTUNREACH, Errno::EPIPE,
-    OpenSSL::SSL::SSLError
-  ].freeze
+  # Families rather than members: listing errno classes one by one let
+  # Errno::ENETUNREACH (and every other OS error not on the list) through, and
+  # each of those dropped a change for good. SystemCallError is every Errno;
+  # IOError covers EOFError; Timeout::Error covers Net's own timeouts.
+  TRANSPORT_ERRORS = [ Timeout::Error, IOError, SocketError, SystemCallError, OpenSSL::SSL::SSLError ].freeze
 
   def self.configured? = credentials[:token].present? && credentials[:location_id].present?
 
@@ -70,7 +68,14 @@ class GoHighLevel
     return unless configured?
 
     contact_id = find_contact_id(email) || create_contact(email)
-    request(Net::HTTP::Post, "/contacts/#{contact_id}/tags", tags: [ SUBSCRIBER_TAG, source_tag(source), UNVERIFIED_TAG ])
+    current_source = source_tag(source)
+
+    # One source tag, matching the row. Someone who leaves and rejoins from
+    # another page would otherwise carry both pages' tags.
+    stale = fetch_contact(contact_id)["tags"].to_a.select { |tag| tag.start_with?("#{TAG_PREFIX}source-") } - [ current_source ]
+    request(Net::HTTP::Delete, "/contacts/#{contact_id}/tags", tags: stale) if stale.any?
+
+    request(Net::HTTP::Post, "/contacts/#{contact_id}/tags", tags: [ SUBSCRIBER_TAG, current_source, UNVERIFIED_TAG ])
     contact_id
   end
 
@@ -92,7 +97,7 @@ class GoHighLevel
     contact_id = find_contact_id(email)
     return unless contact_id
 
-    contact = request(Net::HTTP::Get, "/contacts/#{contact_id}").fetch("contact", {})
+    contact = fetch_contact(contact_id)
     tags = Array(contact["tags"])
     ours = tags.select { |tag| tag.start_with?(TAG_PREFIX) }
 
@@ -104,9 +109,24 @@ class GoHighLevel
     contact_id
   end
 
+  # GHL answers a lookup with {"contact": {...}} or {"contact": null}. Anything
+  # else is a malformed answer, not "no such contact": reading it as absence
+  # would skip an unsubscribe's removal for good, or create a contact that
+  # already exists. So it raises, and the job retries.
   def self.find_contact_id(email)
     query = URI.encode_www_form(locationId: location_id, email: email)
-    request(Net::HTTP::Get, "/contacts/search/duplicate?#{query}").dig("contact", "id")
+    response = request(Net::HTTP::Get, "/contacts/search/duplicate?#{query}")
+    raise Error, "GHL contact lookup answered without a contact field" unless response.key?("contact")
+
+    contact = response["contact"]
+    return nil if contact.nil?
+
+    contact.is_a?(Hash) && contact["id"].present? ? contact["id"] : raise(Error, "GHL contact lookup answered a contact without an id")
+  end
+
+  def self.fetch_contact(contact_id)
+    contact = request(Net::HTTP::Get, "/contacts/#{contact_id}")["contact"]
+    contact.is_a?(Hash) ? contact : raise(Error, "GHL GET /contacts/#{contact_id} answered without a contact")
   end
 
   # Only for an address find_contact_id has just come back empty for, so

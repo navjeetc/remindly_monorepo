@@ -32,7 +32,11 @@ class Subscriber < ApplicationRecord
   # joining tags the contact, unsubscribing (which deletes the row) untags it.
   # Does nothing until GHL credentials exist. See GoHighLevel.
   # The job reads whether the address is on the list when it runs, so both
-  # only need to say which address changed.
+  # only need to say which address changed. Leaving also records a pending CRM
+  # removal, so the promise to delete the address holds even while the sync
+  # has no credentials; the job clears it once the CRM no longer has them.
+  after_create_commit -> { CrmRemoval.clear(email) }
+  after_destroy_commit -> { CrmRemoval.record(email) }
   after_commit -> { SyncSubscriberToCrmJob.perform_later(email) }, on: %i[create destroy]
 
   # The same fact User tracks, for the same reason: an address a mail provider
