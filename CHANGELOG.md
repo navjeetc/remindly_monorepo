@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-02
+
+### Added
+- **Unsubscribing in GoHighLevel reaches Remindly.** Mailing-list campaigns go
+  out from GoHighLevel, carrying its own unsubscribe link, and until now that
+  never came back: the person stayed a subscriber here, contrary to the privacy
+  policy, and the monthly note could still reach them. A GHL workflow now
+  calls `POST /crm/unsubscribes` with a shared secret when a contact
+  unsubscribes there, and Remindly removes them exactly as its own unsubscribe
+  link does. The endpoint refuses everything until the secret is configured,
+  and answers the same whether or not the address was on the list.
+
 ## [0.19.0] - 2026-10-01
 
 ### Added

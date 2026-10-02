@@ -39,6 +39,9 @@ Rails.application.routes.draw do
   # Telnyx Call Control webhooks (public, token-secured)
   post "telnyx/webhooks",    to: "telnyx_webhooks#receive"
 
+  # GoHighLevel reporting a mailing-list unsubscribe (secret-secured)
+  resources :crm_unsubscribes, only: :create, path: "crm/unsubscribes"
+
   # Hyphens, unlike every other path here, because this one exists to be landed
   # on from a search and the words in it are the search. The route helper keeps
   # the underscored Ruby name.

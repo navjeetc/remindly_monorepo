@@ -31,6 +31,7 @@ require "net/http"
 #   go_high_level:
 #     token: <Private Integration token, scopes contacts.write + contacts.readonly>
 #     location_id: <sub-account id>
+#     webhook_secret: <random string, also set in the GHL unsubscribe workflow>
 class GoHighLevel
   BASE_URL = "https://services.leadconnectorhq.com"
   API_VERSION = "2021-07-28"
@@ -184,6 +185,10 @@ class GoHighLevel
   end
 
   def self.location_id = credentials[:location_id]
+
+  # The shared secret GHL's unsubscribe workflow sends; see
+  # CrmUnsubscribesController.
+  def self.webhook_secret = credentials[:webhook_secret]
 
   def self.credentials = Rails.application.credentials.go_high_level || {}
 end
