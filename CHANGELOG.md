@@ -8,13 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **A walk-through video on the How to page**: a
-  caregiver signs up, sets up a care receiver, adds their phone number with
-  the press-1 agreement call, then creates reminders, one answered on the
-  phone and one announced on screen and marked done. It is a link that opens
-  Loom in a new tab, like the other videos, so the public page still loads
-  nothing third-party. The public page no longer says setting up someone new
-  "is not filmed yet".
+- **A walk-through video on the How to page**: a caregiver signs up, sets
+  up a care receiver, adds their phone number with the press-1 agreement
+  call, then creates reminders, one answered on the phone and one announced
+  on screen and marked done. It plays on the page, but only once the visitor
+  presses play: until then the page shows our own copy of the first frame
+  and loads nothing from Loom, so the public pages still make no third-party
+  request and set no cookie for someone who only reads them. The privacy
+  policy says that pressing play loads the video from Loom, which may set
+  its own cookies.
 
 ## [0.21.0] - 2026-10-02
 

@@ -315,6 +315,14 @@ RSpec.describe "Pages", type: :request do
       expect(canonical_href).to eq("https://www.remindly.care/privacy")
     end
 
+    # The How to page's video loads Loom only on play; the policy has to say so,
+    # since it otherwise promises anonymous visitors no cookie at all.
+    it "discloses that playing the video loads Loom, which may set cookies" do
+      get "/privacy"
+      text = Nokogiri::HTML(response.body).text.squish
+      expect(text).to include("Nothing from Loom loads until you press play")
+    end
+
     it "states the deletion-on-request commitment" do
       get "/privacy"
       expect(response.body).to match(/delete/i)
@@ -596,6 +604,32 @@ RSpec.describe "Pages", type: :request do
     it "issues no session cookie to an anonymous visitor" do
       get "/how_to"
       expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+    end
+
+    # The walk-through video plays on the page, but Loom's player (its scripts
+    # and cookies) is put there only when the visitor presses play. Until then
+    # the page carries our own poster and a link, nothing that fetches.
+    describe "the walk-through video" do
+      let(:video) { Nokogiri::HTML(response.body).at_css("figure.video") }
+
+      before { get "/how_to" }
+
+      it "loads nothing from Loom until play is pressed" do
+        expect(Nokogiri::HTML(response.body).css("iframe")).to be_empty
+        expect(video.at_css("img")["src"]).to eq("/video-setup-walkthrough.webp")
+        expect(Rails.public_path.join("video-setup-walkthrough.webp")).to exist
+      end
+
+      it "puts the Loom player in its place on play, and is a plain link without script" do
+        play = video.at_css("a.video-play")
+        expect(play["data-embed"]).to start_with("https://www.loom.com/embed/d689b02eb5b24b5c97a8f615a4370937")
+        expect(play["href"]).to eq("https://www.loom.com/share/d689b02eb5b24b5c97a8f615a4370937")
+        expect(response.body).to include('link.replaceWith(frame)')
+      end
+
+      it "tells the visitor before they press play that Loom may set cookies" do
+        expect(video.at_css("figcaption").text.squish).to include("Pressing play loads the video from Loom, which may set its own cookies")
+      end
     end
 
     # A signed-in user reaching the guide from their dashboard must not see the

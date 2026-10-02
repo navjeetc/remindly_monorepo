@@ -441,6 +441,51 @@
         .shot { margin-left: -2rem; margin-right: -2rem; padding: 1.5rem; }
       }
 
+      /* Click-to-play video (see pages/how_to). Sized like the recording, a
+         portrait browser window, so nothing jumps when the player replaces the
+         poster. Capped in width so a portrait frame does not fill a whole
+         laptop screen. */
+      .video { margin: 1.5rem 0 2.5rem; }
+      .video-play, .video iframe {
+        display: block;
+        position: relative;
+        width: 100%;
+        max-width: 30rem;
+        aspect-ratio: 800 / 948;
+        border: 1px solid var(--line);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        background: var(--bg-soft);
+        box-shadow: 0 8px 24px rgb(31 41 51 / 12%);
+      }
+      .video-play img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .video-button {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.9rem 1.4rem;
+        border-radius: 999px;
+        background: var(--brand);
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.1rem;
+        box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
+      }
+      .video-triangle {
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0.5rem 0 0.5rem 0.85rem;
+        border-color: transparent transparent transparent currentColor;
+      }
+      .video-play:hover .video-button, .video-play:focus-visible .video-button { background: var(--brand-dark); }
+      .video-play:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+      .video figcaption { margin-top: 0.75rem; color: var(--muted); font-size: 0.95rem; max-width: 30rem; }
+
       /* Blog */
       .post-list { list-style: none; padding: 0; }
       .post-list li { border-top: 1px solid var(--line); padding-top: 1.5rem; margin-bottom: 2rem; }
@@ -624,7 +669,7 @@
         }
         /* --brand lightens in dark mode, so white text on it fails contrast.
            Same reason, same fix, for the numbered step markers. */
-        .btn-primary { color: #14181e; }
+        .btn-primary, .video-button { color: #14181e; }
         .setup li::before { color: #14181e; }
       }
     </style>
