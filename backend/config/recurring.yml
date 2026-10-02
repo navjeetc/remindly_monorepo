@@ -18,6 +18,12 @@ production:
     class: PruneAnalyticsJob
     queue: default
     schedule: every day at 3am
+  # Keeps the promise in the confirmation email: an address nobody confirms is
+  # deleted after a week.
+  prune_unconfirmed_subscribers:
+    class: PruneUnconfirmedSubscribersJob
+    queue: default
+    schedule: every day at 3:30am
 
   # Every schedule in this file is UTC — config.time_zone is left at its default
   # in config/application.rb, so Time.zone is UTC in production. That is not

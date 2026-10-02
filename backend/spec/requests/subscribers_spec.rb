@@ -1,74 +1,41 @@
 require "rails_helper"
 
 RSpec.describe "Subscribers", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   def doc = Nokogiri::HTML(response.body)
 
   describe "POST /subscribers" do
-    it "adds the address to the list and says so" do
+    it "records the signup, unconfirmed, and asks them to check their inbox" do
       expect {
         post "/subscribers", params: { email: "ann@example.com", source: "home" }
       }.to change(Subscriber, :count).by(1)
 
       expect(response).to have_http_status(:ok)
-      expect(doc.at_css("h1").text).to include("You're on the list")
+      expect(doc.at_css("h1").text).to include("Check your inbox")
       expect(Subscriber.last.source).to eq("home")
+      expect(Subscriber.last).not_to be_confirmed
     end
 
-    # A signup sends two: the sheet to them, and the notification to us. These
-    # find the one they mean by subject rather than trusting delivery order,
-    # so adding a third never quietly re-points an assertion at the wrong mail.
-    def welcome_email = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.include?("routine sheet") }
+    def confirmation_email = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.start_with?("Confirm your") }
 
-    it "sends the routine sheet to a new subscriber" do
+    # Double opt-in: a signup sends exactly one email, the confirmation, and
+    # nothing to us. A bot typing in a stranger's address gets them one short
+    # email and no more.
+    it "sends only the confirmation email, and nothing to us" do
       expect {
         perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
-      }.to change { ActionMailer::Base.deliveries.count }.by(2)
+      }.to change { ActionMailer::Base.deliveries.count }.by(1)
 
-      expect(welcome_email.to).to eq([ "ann@example.com" ])
-    end
-
-    describe "the notification to us" do
-      def notification = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.start_with?("New Remindly subscriber") }
-
-      it "tells us who joined and which page earned them" do
-        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com", source: "post:some-slug" } }
-
-        expect(notification).to be_present
-        expect(notification.subject).to include("ann@example.com")
-        expect(notification.body.encoded).to include("post:some-slug")
+      expect(confirmation_email.to).to eq([ "ann@example.com" ])
+      expect(confirmation_email.reply_to).to eq([ "hello@remindly.care" ])
+      # A bot can ask again an hour later, so "you will not hear from us
+      # again" would be untrue.
+      expect(confirmation_email.body.encoded).not_to match(/not hear from us again/i)
+      [ confirmation_email.text_part, confirmation_email.html_part ].each do |part|
+        token = part.body.decoded[%r{/subscribers/confirm/([^"\s<]+)}, 1]
+        expect(Subscriber.find_by_confirmation_token(token)).to eq(Subscriber.last)
       end
-
-      # Replying to the notification should write to the person, not to us.
-      it "replies to the subscriber" do
-        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
-
-        expect(notification.reply_to).to eq([ "ann@example.com" ])
-      end
-
-      it "says nothing when an existing subscriber signs up again" do
-        Subscriber.create!(email: "ann@example.com")
-
-        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
-
-        expect(notification).to be_nil
-      end
-
-      it "says nothing when a bot fills the honeypot" do
-        perform_enqueued_jobs do
-          post "/subscribers", params: { email: "bot@example.com", website: "http://spam.example" }
-        end
-
-        expect(notification).to be_nil
-      end
-    end
-
-    # The email offers replying as well as the unsubscribe link — not
-    # everybody clicks links in mail, and this one still has to work. If
-    # replies go to the default noreply@ sender, that opt-out goes nowhere.
-    it "points replies at a mailbox a person actually reads" do
-      perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
-
-      expect(welcome_email.reply_to).to eq([ "hello@remindly.care" ])
     end
 
     # Normalising on the way in is what makes the unique index mean anything.
@@ -80,22 +47,57 @@ RSpec.describe "Subscribers", type: :request do
 
     # People forget they signed up. Signing up twice should look exactly like
     # signing up once — not an error telling a stranger who else is on the list.
-    context "when the address is already subscribed" do
-      before { Subscriber.create!(email: "ann@example.com") }
+    context "when the address is already on the list" do
+      before { Subscriber.create!(email: "ann@example.com", confirmed_at: 1.week.ago) }
 
-      it "shows the same success page without creating a duplicate" do
+      it "shows the same page without creating a duplicate" do
         expect {
           post "/subscribers", params: { email: "Ann@example.com" }
         }.not_to change(Subscriber, :count)
 
         expect(response).to have_http_status(:ok)
-        expect(doc.at_css("h1").text).to include("You're on the list")
+        expect(doc.at_css("h1").text).to include("Check your inbox")
       end
 
-      it "does not send the welcome email a second time" do
+      it "sends nothing at all" do
         expect {
           perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
         }.not_to change { ActionMailer::Base.deliveries.count }
+      end
+    end
+
+    # The form is the one way a stranger can make us email an address. Without
+    # a limit, double opt-in would turn it into a way to flood somebody's
+    # inbox with confirmation requests.
+    context "when the address signed up and has not confirmed" do
+      it "does not send another confirmation within the hour" do
+        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+
+        expect {
+          perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+        }.not_to change { ActionMailer::Base.deliveries.count }
+      end
+
+      # Simultaneous submissions each read the row before any had saved the
+      # send time, and each sent an email. A stale copy of the row stands in
+      # for the second request.
+      it "sends one email when two requests race for the same address" do
+        first = Subscriber.subscribe(email: "ann@example.com", source: "home")
+        second = Subscriber.find(first.id)
+
+        expect(first.request_confirmation).to be(true)
+        expect(second.request_confirmation).to be(false)
+        expect(enqueued_jobs.count { |job| job["arguments"].first == "SubscriberMailer" }).to eq(1)
+      end
+
+      it "sends a fresh one after an hour, for someone who lost the first" do
+        perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+
+        travel 61.minutes do
+          expect {
+            perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
+          }.to change { ActionMailer::Base.deliveries.count }.by(1)
+        end
       end
     end
 
@@ -116,14 +118,16 @@ RSpec.describe "Subscribers", type: :request do
       end
     end
 
-    # The page has to be true in all three cases below, and only the first sends
-    # an email. It used to say the sheet was "on its way to your inbox", which
-    # sent a returning subscriber hunting through their spam folder for a
-    # message that was never sent.
-    it "promises no email, because two of the three outcomes do not send one" do
+    # The page has to be true for a new signup, an unconfirmed one, someone
+    # already on the list and a bot, and only some of those are sent an email.
+    # It once promised the sheet was "on its way to your inbox", which sent a
+    # returning subscriber hunting for a message that was never sent. So the
+    # promise is conditional, and the sheet is linked right there.
+    it "makes no unconditional promise of an email" do
       post "/subscribers", params: { email: "ann@example.com" }
 
-      expect(response.body).not_to match(/on its way|check the spam/i)
+      expect(response.body).not_to match(/on its way/i)
+      expect(doc.text.squish).to include("If this address is not on the list yet")
       expect(doc.css("a").map { |a| a["href"] }).to include("/routine_sheet")
     end
 
@@ -136,7 +140,13 @@ RSpec.describe "Subscribers", type: :request do
         }.not_to change(Subscriber, :count)
 
         expect(response).to have_http_status(:ok)
-        expect(doc.at_css("h1").text).to include("You're on the list")
+        expect(doc.at_css("h1").text).to include("Check your inbox")
+      end
+
+      it "sends nothing" do
+        expect {
+          perform_enqueued_jobs { post "/subscribers", params: { email: "bot@example.com", website: "x" } }
+        }.not_to change { ActionMailer::Base.deliveries.count }
       end
     end
 
@@ -158,6 +168,143 @@ RSpec.describe "Subscribers", type: :request do
 
   # The form has to actually be on the pages people read, or none of the above
   # ever runs.
+  describe "confirming a signup" do
+    let!(:subscriber) { Subscriber.subscribe(email: "ann@example.com", source: "post:some-slug") }
+    let(:token) { subscriber.confirmation_token }
+
+    def welcome_email = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.include?("routine sheet") }
+    def notification = ActionMailer::Base.deliveries.find { |m| m.subject.to_s.start_with?("New Remindly subscriber") }
+
+    # A mail scanner fetches every link in a message before anyone reads it.
+    # If that fetch confirmed, anyone could still sign a stranger up.
+    it "only shows a button when the link is opened" do
+      get confirm_subscription_path(token: token)
+
+      expect(response).to have_http_status(:ok)
+      expect(doc.at_css("form[method='post'][action='/subscribers/confirm/#{token}'] button")).to be_present
+      expect(subscriber.reload).not_to be_confirmed
+    end
+
+    it "joins the list when the button is pressed" do
+      post confirm_subscription_path(token: token)
+
+      expect(response).to have_http_status(:ok)
+      expect(doc.at_css("h1").text).to include("You're on the list")
+      expect(doc.css("a").map { |a| a["href"] }).to include("/routine_sheet")
+      expect(subscriber.reload).to be_confirmed
+    end
+
+    it "sends the routine sheet to them, and tells us who joined and from which page" do
+      perform_enqueued_jobs { post confirm_subscription_path(token: token) }
+
+      expect(welcome_email.to).to eq([ "ann@example.com" ])
+      # The welcome offers replying as well as the unsubscribe link; replies to
+      # the default noreply@ sender would go nowhere.
+      expect(welcome_email.reply_to).to eq([ "hello@remindly.care" ])
+      expect(notification.subject).to include("ann@example.com")
+      expect(notification.body.encoded).to include("post:some-slug")
+      expect(notification.reply_to).to eq([ "ann@example.com" ])
+    end
+
+    it "sends them only once, however often the button is pressed" do
+      perform_enqueued_jobs { post confirm_subscription_path(token: token) }
+
+      expect {
+        perform_enqueued_jobs { post confirm_subscription_path(token: token) }
+      }.not_to change { ActionMailer::Base.deliveries.count }
+      expect(response).to have_http_status(:ok)
+      # So the page must not promise one either.
+      expect(response.body).not_to match(/on its way/i)
+    end
+
+    it "says so when an already-used link is opened again" do
+      subscriber.confirm!
+
+      get confirm_subscription_path(token: token)
+
+      expect(doc.at_css("h1").text).to include("You're on the list")
+    end
+
+    # The email says the link works for 7 days, and the address is deleted then.
+    it "refuses an expired link and offers the form again" do
+      token # minted now
+
+      travel 8.days do
+        post confirm_subscription_path(token: token)
+      end
+
+      expect(response).to have_http_status(:not_found)
+      expect(doc.at_css("h1").text).to include("expired")
+      expect(doc.at_css("form[action='/subscribers']")).to be_present
+      # The hourly limit, or already being on the list, may mean no email.
+      expect(response.body).not_to match(/on its way/i)
+      expect(subscriber.reload).not_to be_confirmed
+    end
+
+    it "refuses a tampered link" do
+      get confirm_subscription_path(token: "#{token}x")
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    # An unsubscribe token must not double as a confirmation token: they are
+    # signed for different purposes.
+    it "refuses an unsubscribe token" do
+      post confirm_subscription_path(token: subscriber.signed_id(purpose: :unsubscribe))
+
+      expect(response).to have_http_status(:not_found)
+      expect(subscriber.reload).not_to be_confirmed
+    end
+
+    # Same rules as every public page, and these carry a credential in their
+    # address, so they must not be indexed or leak it in a Referer.
+    it "issues no session cookie and keeps the token out of search and referrers" do
+      get confirm_subscription_path(token: token)
+      expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+      expect(doc.at_css("meta[name='robots']")["content"]).to include("noindex")
+      expect(doc.at_css("link[rel='canonical']")).to be_nil
+
+      post confirm_subscription_path(token: token)
+      expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
+      expect(doc.at_css("meta[name='robots']")["content"]).to include("noindex")
+    end
+
+    # Same treatment the unsubscribe token gets: a credential in a URL comes to
+    # rest wherever URLs are recorded. Browser headers, because Ahoy ignores
+    # requests it takes for bots.
+    describe "where the token comes to rest" do
+      let(:browser) do
+        { "HTTP_USER_AGENT" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+                               "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36" }
+      end
+
+      it "records no analytics visit for the confirm page or the confirmation" do
+        expect {
+          get confirm_subscription_path(token: token), headers: browser
+          post confirm_subscription_path(token: token), headers: browser
+        }.not_to change(Ahoy::Visit, :count)
+        expect(Ahoy::Visit.pluck(:landing_page).join(" ")).not_to include(token)
+      end
+
+      # The control: proves the exclusion is this path's, not Ahoy's in general.
+      it "still records a visit to a page that is not a credential" do
+        expect { get "/login", headers: browser }.to change(Ahoy::Visit, :count).by(1)
+      end
+
+      it "keeps the token out of the Rails request log" do
+        expect(ActionDispatch::Request.new(Rack::MockRequest.env_for("/subscribers/confirm/#{token}")).filtered_path)
+          .to eq("/subscribers/confirm/[FILTERED]")
+      end
+    end
+
+    it "does not record the token as a page view" do
+      expect {
+        get confirm_subscription_path(token: token)
+        post confirm_subscription_path(token: token)
+      }.not_to change(PageCount, :count)
+    end
+  end
+
   describe "the signup form" do
     it "appears on the homepage, the blog and the routine sheet" do
       [ "/", "/blog", "/routine_sheet" ].each do |path|

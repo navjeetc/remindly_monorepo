@@ -40,10 +40,15 @@ class Ahoy::Store < Ahoy::DatabaseStore
   # recording cares whether that token still resolves to anyone -- an unknown
   # or already-used one lands here exactly like a live one.
   #
+  # /subscribers/confirm/ is the third: the double opt-in link, a signed token
+  # that confirms an address for seven days. It was left off at first, so the
+  # raw token could land in ahoy_visits.landing_page and, since the request-log
+  # filter builds its pattern from this same list, in the log too.
+  #
   # Not folded into public_page?: a credential path is the opposite of a public
   # page. It is excluded because of what the path carries, not because of who
   # may read it.
-  CREDENTIAL_PATH_PREFIXES = %w[/r/ /subscribers/unsubscribe/].freeze
+  CREDENTIAL_PATH_PREFIXES = %w[/r/ /subscribers/unsubscribe/ /subscribers/confirm/].freeze
 
   def credential_in_the_path?
     path = request&.path.to_s

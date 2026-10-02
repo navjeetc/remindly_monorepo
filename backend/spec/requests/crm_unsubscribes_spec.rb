@@ -18,7 +18,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
 
   context "with the right secret" do
     it "removes the subscriber the same way Remindly's own unsubscribe does" do
-      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
       clear_enqueued_jobs
 
       notify(secret: secret, email: "Ann@Example.com ")
@@ -34,7 +34,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
     # call: contact fields at the top level, the workflow's custom data under
     # customData. The secret there was refused until this was read.
     it "accepts the secret where GHL puts it, under customData" do
-      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
 
       notify(
         contact_id: "c1", email: "ann@example.com", tags: "remindly-subscriber",
@@ -47,7 +47,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
     end
 
     it "accepts the email nested under contact" do
-      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
 
       notify(secret: secret, contact: { email: "ann@example.com" })
 
@@ -65,7 +65,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
     # Review found these raised (strip on a hash, dig on a string), and the 500
     # made GHL retry instead of getting the endpoint's one 200.
     it "answers 200 and changes nothing when email is not a string" do
-      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
 
       notify(secret: secret, email: { address: "ann@example.com" })
 
@@ -74,7 +74,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
     end
 
     it "answers 200 and changes nothing when contact is not an object" do
-      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
 
       notify(secret: secret, contact: "ann@example.com")
 
@@ -83,7 +83,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
     end
 
     it "does nothing when no email is sent" do
-      Subscriber.subscribe(email: "ann@example.com", source: "home")
+      Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
 
       notify(secret: secret)
 
@@ -93,7 +93,7 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
   end
 
   context "without the right secret" do
-    before { Subscriber.subscribe(email: "ann@example.com", source: "home") }
+    before { Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!) }
 
     it "refuses a wrong secret and deletes nothing" do
       notify(secret: "guess", email: "ann@example.com")

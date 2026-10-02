@@ -1,0 +1,29 @@
+<%#
+  Shown on the first confirmation and on every later visit to the same link,
+  and only the first sends the welcome email -- so nothing here promises one.
+%>
+<%# Own address carries a bearer token — see marketing.html.erb's use of this flag. %>
+<% content_for :credential_page, true %>
+<% content_for :title, "You're on the list — Remindly" %>
+
+<h1>You're on the list</h1>
+
+<p class="lead">
+  Here is the routine sheet —
+  <a href="<%= routine_sheet_path %>">open it and print it</a>. One page for
+  the fridge door.
+</p>
+
+<p>
+  The monthly note will arrive when there is one worth sending: one useful
+  thing about caring for a parent at a distance, and a line on what has
+  changed in Remindly. Every one of them has an unsubscribe link — or reply
+  to come off the list, or write to
+  <a href="mailto:hello@remindly.care">hello@remindly.care</a> if something
+  looks wrong.
+</p>
+
+<div class="actions">
+  <a class="btn btn-primary" href="<%= login_path %>">Try Remindly — it's free</a>
+  <a class="btn btn-secondary" href="<%= blog_path %>">Read something first</a>
+</div>

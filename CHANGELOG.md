@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-02
+
+### Changed
+- **The mailing list is double opt-in.** Signing up now sends one email, a
+  link to confirm the address, and nothing else: no routine sheet, no
+  notification to us, nothing to the CRM. The link opens a page with a
+  button, and pressing it joins the list; that is when the welcome email
+  and the notification go out and the contact syncs to the CRM. A run of
+  September signups looked like bots typing in real people's addresses, and
+  each of those people was sent the welcome email and synced. Now they get
+  one email they can ignore.
+- At most one confirmation email per address per hour, so the form cannot
+  be used to flood somebody's inbox. Links expire after 7 days, and a daily
+  job deletes signups nobody confirmed within 7 days of their latest link.
+- Everyone already on the list counts as confirmed. Their CRM contacts keep
+  the `remindly-unverified` tag; new contacts no longer get it.
+- The privacy policy and the signup form say an address is confirmed first.
+
+
 ## [0.20.1] - 2026-10-02
 
 ### Fixed

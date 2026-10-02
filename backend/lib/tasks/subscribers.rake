@@ -8,9 +8,11 @@ namespace :subscribers do
     # .deliverable, not .all: an address MailDeliveryJob has already discarded
     # once is going to be discarded again, forever, and re-enqueuing it every
     # month is a doomed send with no result other than noise in the log.
-    recipients = Subscriber.deliverable
+    #
+    # .confirmed: an unconfirmed signup has not joined the list (double opt-in).
+    recipients = Subscriber.confirmed.deliverable
     count = recipients.count
-    skipped = Subscriber.count - count
+    skipped = Subscriber.confirmed.count - count
 
     if count.zero?
       puts "No subscribers — nothing to send."
@@ -70,10 +72,34 @@ namespace :subscribers do
   task sync_to_crm: :environment do
     abort "GoHighLevel credentials are not configured; nothing to sync." unless GoHighLevel.configured?
 
-    subscribers = Subscriber.pluck(:email)
+    subscribers = Subscriber.confirmed.pluck(:email)
     removals = CrmRemoval.pluck(:email)
     (subscribers | removals).each { |email| SyncSubscriberToCrmJob.perform_later(email) }
     puts "Queued #{subscribers.size} subscriber#{'s' unless subscribers.size == 1} " \
          "and #{removals.size} removal#{'s' unless removals.size == 1} for GoHighLevel."
+  end
+
+  # Run once, right after the 0.21.0 deploy that made the list double opt-in.
+  #
+  # Kamal runs the migration that marks every existing subscriber confirmed
+  # while the old container is still serving. Anyone who signed up in those
+  # seconds went through the old single opt-in path -- welcome email, our
+  # notification, CRM sync -- but their row was written after the migration,
+  # so it is unconfirmed: they would never be asked to confirm, and the prune
+  # job would delete them a week later.
+  #
+  # The new code records confirmation_sent_at on every signup, so an
+  # unconfirmed row without one can only have come from the old code. The
+  # one-minute margin keeps clear of a new signup between its insert and the
+  # send that follows it. Confirming sends nothing (the welcome email is the
+  # controller's, not confirm!'s); the CRM sync it queues re-applies what the
+  # old code already did.
+  desc "Once, after the 0.21.0 deploy: confirm single opt-in signups written during the cutover"
+  task grandfather_cutover_signups: :environment do
+    stragglers = Subscriber.unconfirmed.where(confirmation_sent_at: nil).where(created_at: ...1.minute.ago)
+    emails = stragglers.pluck(:email)
+    stragglers.find_each(&:confirm!)
+    puts "Confirmed #{emails.size} signup#{'s' unless emails.size == 1} from the cutover" +
+         (emails.any? ? ": #{emails.join(', ')}" : ".")
   end
 end

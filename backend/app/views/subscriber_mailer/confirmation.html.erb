@@ -1,0 +1,18 @@
+<p>
+  Someone, hopefully you, asked to join the Remindly mailing list with this
+  address. To confirm:
+</p>
+
+<p>
+  <a href="<%= "#{ApplicationHelper::CANONICAL_HOST}/subscribers/confirm/#{@subscriber.confirmation_token}" %>">Confirm my subscription</a>
+</p>
+
+<p>
+  The link works for 7 days. If you did not ask, ignore this email: nothing
+  happens unless the link is used, and an address nobody confirms is deleted
+  after a week.
+</p>
+
+<p>
+  <a href="<%= ApplicationHelper::CANONICAL_HOST %>">Remindly</a>
+</p>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_01_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_053600) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -191,11 +191,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_01_190000) do
   end
 
   create_table "subscribers", force: :cascade do |t|
+    t.datetime "confirmation_sent_at"
+    t.datetime "confirmed_at"
     t.datetime "created_at", null: false
     t.string "email", null: false
     t.datetime "email_undeliverable_at"
     t.string "source"
     t.datetime "updated_at", null: false
+    t.index ["confirmed_at"], name: "index_subscribers_on_confirmed_at"
     t.index ["email"], name: "index_subscribers_on_email", unique: true
   end
 

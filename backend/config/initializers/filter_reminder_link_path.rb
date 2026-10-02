@@ -26,8 +26,9 @@
 # for a credential than a log that rotates. `Ahoy::Store#credential_in_the_path?`
 # closes that. The lesson generalises: a credential in a URL comes to rest
 # wherever URLs are recorded, and each of those places has to be found —
-# `/subscribers/unsubscribe/<token>` is the second one found this way, and it
-# shares Ahoy's own list of prefixes rather than keeping a second one here that
+# `/subscribers/unsubscribe/<token>` is the second one found this way and
+# `/subscribers/confirm/<token>` the third, and they
+# share Ahoy's own list of prefixes rather than keeping a second one here that
 # could quietly drift out of step with it.
 module FilterReminderLinkPath
   REDACTED_PREFIX_SUFFIX = "[FILTERED]"
