@@ -18,7 +18,26 @@
   straight in. You can change that choice later from your profile.
 </p>
 
-<h2>Reminders</h2>
+<%#
+  The guide runs to several screens. A list of its sections up front, and a
+  link back to it that stays in the corner, save scrolling to find one.
+  Plain anchors: no script, nothing that could load anything.
+%>
+<nav class="contents" id="contents" aria-labelledby="contents-heading">
+  <h2 id="contents-heading">On this page</h2>
+  <ol>
+    <li><a href="#reminders">Reminders</a></li>
+    <li><a href="#telephone">Reminders by telephone</a></li>
+    <li><a href="#caregivers-informed">Keeping caregivers informed</a></li>
+    <li><a href="#tasks">Tasks</a></li>
+    <li><a href="#connecting">Connecting — and ending a connection</a></li>
+    <li><a href="#videos">Video tutorials</a></li>
+  </ol>
+  <p><a href="#videos">Or watch the 11-minute walk-through</a> from sign-up to the first reminder answered.</p>
+</nav>
+<a class="to-contents" href="#contents">Back to contents</a>
+
+<h2 id="reminders">Reminders</h2>
 <p>
   Reminders help care receivers stay on track with their daily routines. Caregivers can
   set up recurring reminders for medication, hydration, and everyday routines.
@@ -32,7 +51,7 @@
   <li><strong>Acknowledgement</strong> — the care receiver marks a reminder done or snoozes it, and caregivers can see what was completed and what was missed.</li>
 </ul>
 
-<h2>Reminders by telephone</h2>
+<h2 id="telephone">Reminders by telephone</h2>
 <p>
   Not every house has a tablet in it, and not everybody wants one. Remindly can
   telephone the care receiver instead and say the reminder down the line. An
@@ -89,7 +108,7 @@
   </p>
 </div>
 
-<h2>Keeping caregivers informed</h2>
+<h2 id="caregivers-informed">Keeping caregivers informed</h2>
 <p>
   You don't have to open the app to know how things are going. When a reminder is
   completed — or missed — Remindly tells the caregivers linked to that care receiver,
@@ -101,7 +120,7 @@
   <li><strong>In the app and by email</strong> — alerts appear on your dashboard and arrive in your inbox.</li>
 </ul>
 
-<h2>Tasks</h2>
+<h2 id="tasks">Tasks</h2>
 <p>
   Tasks help caregivers coordinate care. Unlike reminders, which repeat, a task is
   a specific thing to be done once or on a schedule.
@@ -115,7 +134,7 @@
   <li><strong>Status</strong> — track pending, in progress, and completed.</li>
 </ul>
 
-<h2>Connecting — and ending a connection</h2>
+<h2 id="connecting">Connecting — and ending a connection</h2>
 <%#
   Two ways in, and the order is the whole point.
 
@@ -174,7 +193,7 @@
   <li><strong>From the device</strong> — someone using a bookmarked link can stop the reminders themselves from that page, at any time. It stops the reminders; it deletes nothing.</li>
 </ul>
 
-<h2>Video tutorials</h2>
+<h2 id="videos">Video tutorials</h2>
 
 <h3>From sign-up to the first reminder answered</h3>
 <p>

@@ -441,6 +441,41 @@
         .shot { margin-left: -2rem; margin-right: -2rem; padding: 1.5rem; }
       }
 
+      /* How to page: its list of sections, and a link back to it pinned to
+         the corner, so a long guide needs no scrolling back up. */
+      .contents {
+        margin: 2rem 0 2.5rem;
+        padding: 1.25rem 1.5rem;
+        background: var(--bg-soft);
+        border-radius: 0.9rem;
+      }
+      .contents h2 {
+        margin: 0 0 0.75rem;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-family: inherit;
+      }
+      .contents ol { margin: 0; padding-left: 1.4rem; display: grid; gap: 0.4rem; }
+      .contents p { margin: 1rem 0 0; color: var(--muted); }
+      h2[id], #contents { scroll-margin-top: 1rem; }
+      .to-contents {
+        position: fixed;
+        right: 1rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        padding: 0.6rem 1rem;
+        border-radius: 999px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        box-shadow: 0 4px 14px rgb(31 41 51 / 14%);
+        font-size: 0.95rem;
+        text-decoration: none;
+      }
+      .to-contents:hover { background: var(--bg-soft); }
+      .to-contents:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+      @media (prefers-reduced-motion: no-preference) { html:has(.contents) { scroll-behavior: smooth; } }
+
       /* Click-to-play video (see pages/how_to). Sized like the recording, a
          portrait browser window, so nothing jumps when the player replaces the
          poster. Capped in width so a portrait frame does not fill a whole

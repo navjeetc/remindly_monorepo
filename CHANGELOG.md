@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request and set no cookie for someone who only reads them. The privacy
   policy says that pressing play loads the video from Loom, which may set
   its own cookies.
+- **A contents list at the top of the How to page**, linking to each of its
+  six sections, and a "Back to contents" link pinned to the corner, so the
+  guide needs no scrolling up and down. Plain links: no script.
 
 ## [0.21.0] - 2026-10-02
 
