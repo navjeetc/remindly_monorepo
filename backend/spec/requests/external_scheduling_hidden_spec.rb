@@ -32,6 +32,37 @@ RSpec.describe "External scheduling, while it is switched off", type: :request d
     expect(Nokogiri::HTML(response.body).at_css("select[name='external_source']")).to be_present
   end
 
+  # Review caught that nothing exercised the badge: with no synced task in the
+  # list, removing its flag check left this spec green.
+  describe "the provider badge on a synced task" do
+    before do
+      senior.tasks_as_senior.create!(
+        title: "Dentist (synced)", task_type: "appointment", created_by: caregiver,
+        external_source: "acuity", scheduled_at: 2.days.from_now
+      )
+    end
+
+    def badge
+      Nokogiri::HTML(response.body).css("span").find { |span| span.text.include?("🔗") }
+    end
+
+    it "is hidden while the flag is off" do
+      get "/seniors/#{senior.id}/tasks"
+
+      expect(response.body).to include("Dentist (synced)")
+      expect(badge).to be_nil
+    end
+
+    it "shows again when the flag is on" do
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:external_scheduling).and_return(true)
+
+      get "/seniors/#{senior.id}/tasks"
+
+      expect(badge&.text).to include("Acuity")
+    end
+  end
+
   it "is not described in the privacy policy" do
     get "/privacy"
     text = Nokogiri::HTML(response.body).text
