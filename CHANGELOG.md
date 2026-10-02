@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **A walk-through video on the How to pages**, public and signed-in: a
+- **A walk-through video on the How to page**: a
   caregiver signs up, sets up a care receiver, adds their phone number with
   the press-1 agreement call, then creates reminders, one answered on the
   phone and one announced on screen and marked done. It is a link that opens
