@@ -46,6 +46,26 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
       expect(CrmRemoval.count).to eq(0)
     end
 
+    # Review found these raised (strip on a hash, dig on a string), and the 500
+    # made GHL retry instead of getting the endpoint's one 200.
+    it "answers 200 and changes nothing when email is not a string" do
+      Subscriber.subscribe(email: "ann@example.com", source: "home")
+
+      notify(secret: secret, email: { address: "ann@example.com" })
+
+      expect(response).to have_http_status(:ok)
+      expect(Subscriber.count).to eq(1)
+    end
+
+    it "answers 200 and changes nothing when contact is not an object" do
+      Subscriber.subscribe(email: "ann@example.com", source: "home")
+
+      notify(secret: secret, contact: "ann@example.com")
+
+      expect(response).to have_http_status(:ok)
+      expect(Subscriber.count).to eq(1)
+    end
+
     it "does nothing when no email is sent" do
       Subscriber.subscribe(email: "ann@example.com", source: "home")
 

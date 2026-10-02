@@ -22,7 +22,7 @@ class CrmUnsubscribesController < ApplicationController
 
   def create
     if (email = unsubscribed_email)
-      Subscriber.find_by(email: email.strip.downcase)&.destroy
+      Subscriber.find_by(email: email)&.destroy
     else
       Rails.logger.warn("CRM unsubscribe webhook arrived without an email")
     end
@@ -36,8 +36,16 @@ class CrmUnsubscribesController < ApplicationController
 
   # GHL's standard webhook puts the contact's fields at the top level; accept a
   # nested contact too, in case the workflow maps it that way.
+  #
+  # Only a non-blank string counts. A malformed payload (an object where the
+  # email should be, or a string where the contact should be) raised on strip or
+  # dig, and the 500 made GHL retry what this endpoint means to answer, once,
+  # with 200. Anything that is not a usable string is treated like no email.
   def unsubscribed_email
-    params[:email].presence || params.dig(:contact, :email).presence
+    contact = params[:contact]
+    candidates = [ params[:email], (contact[:email] if contact.respond_to?(:key?)) ]
+    email = candidates.find { |value| value.is_a?(String) && value.strip.present? }
+    email&.strip&.downcase
   end
 
   # Refuses everything until a secret is configured, so the endpoint cannot be
