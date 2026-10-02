@@ -175,11 +175,58 @@
 </ul>
 
 <h2>Video tutorials</h2>
+
+<h3>From sign-up to the first reminder answered</h3>
 <p>
-  Short guides to walk you through the basics. Each opens in a new tab. The two
-  about connecting show the second route above — the one where the care receiver
-  already has an account and generates the code. Setting somebody up who has
-  never used Remindly is newer than these recordings and is not filmed yet.
+  A caregiver signs up, sets up a care receiver and their phone number with the
+  press-1 agreement call, then creates reminders: one answered on the phone, and
+  one announced on screen and marked done. About 11 minutes.
+</p>
+<%#
+  Click to play, not an embed. A Loom iframe in the page would load Loom's
+  scripts and cookies for every visitor, and the public pages promise to load
+  nothing third-party (pages_spec) and to give anonymous visitors no cookie
+  (the privacy policy). So the page shows our own copy of the first frame, and
+  the Loom player is put in its place only when the visitor presses play.
+  Without script the same element is a plain link to the video on Loom.
+
+  The poster's browser tab bar is blurred: the recording shows the presenter's
+  email address there.
+%>
+<figure class="video">
+  <a class="video-play"
+     href="https://www.loom.com/share/d689b02eb5b24b5c97a8f615a4370937"
+     data-embed="https://www.loom.com/embed/d689b02eb5b24b5c97a8f615a4370937?autoplay=true"
+     target="_blank" rel="noopener noreferrer"
+     aria-label="Play the video: from sign-up to the first reminder answered, about 11 minutes">
+    <img src="/video-setup-walkthrough.webp" width="800" height="948" loading="lazy" decoding="async" alt="">
+    <span class="video-button" aria-hidden="true"><span class="video-triangle"></span>Play · 11 min</span>
+  </a>
+  <figcaption>
+    Pressing play loads the video from Loom, which may set its own cookies.
+    Nothing from Loom loads until you do.
+  </figcaption>
+</figure>
+<script>
+  document.querySelectorAll("a.video-play[data-embed]").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      var frame = document.createElement("iframe");
+      frame.src = link.dataset.embed;
+      frame.title = link.getAttribute("aria-label").replace(/^Play the video: /, "Video: ");
+      frame.allow = "autoplay; fullscreen; picture-in-picture";
+      frame.setAttribute("allowfullscreen", "");
+      link.replaceWith(frame);
+      frame.focus();
+    });
+  });
+</script>
+
+<h3>More short guides</h3>
+<p>
+  Each opens in a new tab. The two about connecting show the second route above
+  — the one where the care receiver already has an account and generates the
+  code.
 </p>
 <ul>
   <li>
