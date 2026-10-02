@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-10-02
+
+### Fixed
+- **The GoHighLevel unsubscribe webhook accepts GHL's real payload.** The
+  first live call from the unsubscribe workflow was refused: GHL's standard
+  Webhook action puts the workflow's custom data, including the shared
+  secret, under `customData`, and only a top-level `secret` was read. Both
+  are accepted now.
+
 ## [0.20.0] - 2026-10-02
 
 ### Added

@@ -11,8 +11,8 @@
 # to the remindly-subscriber tag; action: the standard Webhook, POST, with a
 # custom data field `secret`). The standard action cannot send custom headers
 # (that needs the paid Custom Webhook action), so the shared secret travels in
-# the body. `secret` and `email` are both in filter_parameters, so neither
-# reaches the logs.
+# the body, under `customData` (where that action puts custom data). `secret`
+# and `email` are both in filter_parameters, so neither reaches the logs.
 #
 # Leaving goes through Subscriber#destroy, the same path as Remindly's own
 # unsubscribe link: it records the pending CRM removal and queues the sync job,
@@ -48,11 +48,22 @@ class CrmUnsubscribesController < ApplicationController
     email&.strip&.downcase
   end
 
+  # GHL's standard Webhook action nests the workflow's custom data under
+  # `customData`, alongside the contact's fields at the top level. The first
+  # live call (2026-10-02) sent {"email": ..., "customData": {"secret": ...}}
+  # and was refused, because only a top-level `secret` was read. Both are
+  # accepted; only a string counts, like the email.
+  def given_secret
+    custom = params[:customData]
+    candidates = [ params[:secret], (custom[:secret] if custom.respond_to?(:key?)) ]
+    candidates.find { |value| value.is_a?(String) && value.present? }.to_s
+  end
+
   # Refuses everything until a secret is configured, so the endpoint cannot be
   # used to delete subscribers before it has been set up on purpose.
   def verify_secret
     expected = GoHighLevel.webhook_secret
-    given = params[:secret].to_s
+    given = given_secret
 
     return if expected.present? && ActiveSupport::SecurityUtils.secure_compare(given, expected)
 
