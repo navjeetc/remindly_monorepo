@@ -95,7 +95,14 @@ class Subscriber < ApplicationRecord
     end
   end
 
-  def confirmation_token = signed_id(purpose: :confirm_subscription, expires_in: CONFIRMATION_WINDOW)
+  # Expires a fixed time after the confirmation email was requested, the same
+  # moment PruneUnconfirmedSubscribersJob counts from, rather than a window
+  # from whenever this runs. It runs when the mail job renders the email, which
+  # a backed-up queue can delay; counted from then, the link outlived the row
+  # it names and failed before its promised seven days were up.
+  def confirmation_token
+    signed_id(purpose: :confirm_subscription, expires_at: (confirmation_sent_at || created_at) + CONFIRMATION_WINDOW)
+  end
 
   def self.find_by_confirmation_token(token)
     find_signed(token, purpose: :confirm_subscription)

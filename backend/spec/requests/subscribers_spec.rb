@@ -269,6 +269,34 @@ RSpec.describe "Subscribers", type: :request do
       expect(doc.at_css("meta[name='robots']")["content"]).to include("noindex")
     end
 
+    # Same treatment the unsubscribe token gets: a credential in a URL comes to
+    # rest wherever URLs are recorded. Browser headers, because Ahoy ignores
+    # requests it takes for bots.
+    describe "where the token comes to rest" do
+      let(:browser) do
+        { "HTTP_USER_AGENT" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " \
+                               "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36" }
+      end
+
+      it "records no analytics visit for the confirm page or the confirmation" do
+        expect {
+          get confirm_subscription_path(token: token), headers: browser
+          post confirm_subscription_path(token: token), headers: browser
+        }.not_to change(Ahoy::Visit, :count)
+        expect(Ahoy::Visit.pluck(:landing_page).join(" ")).not_to include(token)
+      end
+
+      # The control: proves the exclusion is this path's, not Ahoy's in general.
+      it "still records a visit to a page that is not a credential" do
+        expect { get "/login", headers: browser }.to change(Ahoy::Visit, :count).by(1)
+      end
+
+      it "keeps the token out of the Rails request log" do
+        expect(ActionDispatch::Request.new(Rack::MockRequest.env_for("/subscribers/confirm/#{token}")).filtered_path)
+          .to eq("/subscribers/confirm/[FILTERED]")
+      end
+    end
+
     it "does not record the token as a page view" do
       expect {
         get confirm_subscription_path(token: token)

@@ -37,6 +37,26 @@ RSpec.describe PruneUnconfirmedSubscribersJob do
     expect(Subscriber.exists?(old.id)).to be(false)
   end
 
+  # The link is minted when the mail job renders, which a backed-up queue can
+  # delay. Its expiry is pinned to the send time this job counts from, so the
+  # link never outlives the row it names.
+  it "expires a link rendered late at the same moment the row becomes prunable" do
+    subscriber = Subscriber.subscribe(email: "ann@example.com", source: "home")
+    subscriber.request_confirmation
+    sent_at = subscriber.reload.confirmation_sent_at
+
+    token = travel_to(sent_at + 3.days) { subscriber.confirmation_token }
+
+    travel_to(sent_at + 7.days - 1.minute) do
+      expect(Subscriber.find_by_confirmation_token(token)).to eq(subscriber)
+    end
+    travel_to(sent_at + 7.days + 1.minute) do
+      expect(Subscriber.find_by_confirmation_token(token)).to be_nil
+      described_class.perform_now
+      expect(Subscriber.exists?(subscriber.id)).to be(false)
+    end
+  end
+
   it "never deletes anyone who confirmed, however long ago they signed up" do
     member = travel_to(1.year.ago) { Subscriber.create!(email: "ann@example.com", confirmed_at: Time.current) }
 
