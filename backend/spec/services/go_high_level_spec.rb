@@ -31,7 +31,7 @@ RSpec.describe GoHighLevel do
           [ "GET", "/contacts/search/duplicate?locationId=loc1&email=ann%40example.com", nil ],
           [ "POST", "/contacts/upsert", { locationId: "loc1", email: "ann@example.com", source: "Remindly website" } ],
           [ "GET", "/contacts/c1", nil ],
-          [ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home remindly-unverified] } ]
+          [ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-home] } ]
         ])
       end
     end
@@ -53,7 +53,7 @@ RSpec.describe GoHighLevel do
           [ "GET", "/contacts/c9" ],
           [ "POST", "/contacts/c9/tags" ]
         ])
-        expect(calls).to include([ "POST", "/contacts/c9/tags", { tags: %w[remindly-subscriber remindly-source-post-daily-checks remindly-unverified] } ])
+        expect(calls).to include([ "POST", "/contacts/c9/tags", { tags: %w[remindly-subscriber remindly-source-post-daily-checks] } ])
       end
     end
 
@@ -67,8 +67,10 @@ RSpec.describe GoHighLevel do
       it "swaps the old page's source tag for the new one, touching nothing else" do
         described_class.subscribe(email: "ann@example.com", source: "routine_sheet")
 
+        # remindly-unverified (from before double opt-in) is neither added nor
+        # removed: a re-sync must not quietly mark old contacts as confirmed.
         expect(calls).to include([ "DELETE", "/contacts/c1/tags", { tags: %w[remindly-source-home] } ])
-        expect(calls.last).to eq([ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-routine-sheet remindly-unverified] } ])
+        expect(calls.last).to eq([ "POST", "/contacts/c1/tags", { tags: %w[remindly-subscriber remindly-source-routine-sheet] } ])
       end
     end
 

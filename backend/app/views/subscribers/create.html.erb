@@ -8,7 +8,7 @@
 %>
 <% failed = subscriber&.errors&.any? %>
 
-<% content_for :title, failed ? "That address didn't look right — Remindly" : "You're on the list — Remindly" %>
+<% content_for :title, failed ? "That address didn't look right — Remindly" : "Check your inbox — Remindly" %>
 
 <% if failed %>
   <h1>That address didn't look right</h1>
@@ -21,32 +21,29 @@
 
   <%= render "shared/subscribe_form", source: "retry" %>
 <% else %>
-  <h1>You're on the list</h1>
+  <h1>Check your inbox</h1>
 
   <%#
-    This page must be true in three different situations, only one of which
-    sends an email: a genuinely new subscriber, someone already on the list, and
-    a bot that filled the honeypot. It used to say the sheet was "on its way to
-    your inbox" and to go and check the spam folder — which sent the second
-    group hunting for a message that was never sent.
+    This page must be true in four situations: a new signup, someone who
+    signed up earlier and has not confirmed, someone already on the list, and
+    a bot that filled the honeypot. Only the first two are sent an email, and
+    the second not if one went out within the hour. So it says what happens
+    if the address is new to the list, and cannot tell anyone whether it was.
 
-    So it promises nothing about email and hands over the sheet directly, which
-    is the thing they actually came for and is public anyway. It also cannot
-    tell anyone whether their address was already on the list.
+    The routine sheet is linked directly: it is what they came for, and it
+    is public anyway, so nobody has to wait for a confirmation to get it.
   %>
   <p class="lead">
-    Here is the routine sheet —
-    <a href="<%= routine_sheet_path %>">open it and print it</a>. One page for
-    the fridge door, and you do not have to wait for an email to get hold of it.
+    If this address is not on the list yet, we have emailed it a link to
+    confirm. Nothing else is sent until you click it.
   </p>
 
   <p>
-    The monthly note will arrive when there is one worth sending: one useful
-    thing about caring for a parent at a distance, and a line on what has
-    changed in Remindly. Every one of them has an unsubscribe link — or reply
-    to come off the list, or write to
-    <a href="mailto:hello@remindly.care">hello@remindly.care</a> if something
-    looks wrong.
+    In the meantime, here is the routine sheet —
+    <a href="<%= routine_sheet_path %>">open it and print it</a>. One page for
+    the fridge door. No email? You may already be on the list, or it may be
+    in the spam folder; write to
+    <a href="mailto:hello@remindly.care">hello@remindly.care</a> if in doubt.
   </p>
 
   <div class="actions">

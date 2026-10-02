@@ -40,11 +40,6 @@ class GoHighLevel
   SOURCE = "Remindly website"
   TAG_PREFIX = "remindly-"
   SUBSCRIBER_TAG = "remindly-subscriber"
-  # Sign-ups are single opt-in, and a run of them in September 2026 looked like
-  # subscription bombing (real addresses entered by bots). Every new contact
-  # carries this until someone has confirmed they are real, so a campaign can
-  # exclude it.
-  UNVERIFIED_TAG = "remindly-unverified"
 
   # Raised for a response GHL refused or a request that never completed; the
   # job retries on this one class.
@@ -84,7 +79,10 @@ class GoHighLevel
     stale = fetch_contact(contact_id)["tags"].to_a.select { |tag| tag.start_with?("#{TAG_PREFIX}source-") } - [ current_source ]
     request(Net::HTTP::Delete, "/contacts/#{contact_id}/tags", tags: stale) if stale.any?
 
-    request(Net::HTTP::Post, "/contacts/#{contact_id}/tags", tags: [ SUBSCRIBER_TAG, current_source, UNVERIFIED_TAG ])
+    # Contacts synced before double opt-in (0.21.0) also carry
+    # remindly-unverified, so a campaign can leave them out. Nothing adds it
+    # now: a contact reaches GHL only once its owner has confirmed the address.
+    request(Net::HTTP::Post, "/contacts/#{contact_id}/tags", tags: [ SUBSCRIBER_TAG, current_source ])
     contact_id
   end
 

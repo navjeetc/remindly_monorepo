@@ -8,9 +8,11 @@ namespace :subscribers do
     # .deliverable, not .all: an address MailDeliveryJob has already discarded
     # once is going to be discarded again, forever, and re-enqueuing it every
     # month is a doomed send with no result other than noise in the log.
-    recipients = Subscriber.deliverable
+    #
+    # .confirmed: an unconfirmed signup has not joined the list (double opt-in).
+    recipients = Subscriber.confirmed.deliverable
     count = recipients.count
-    skipped = Subscriber.count - count
+    skipped = Subscriber.confirmed.count - count
 
     if count.zero?
       puts "No subscribers — nothing to send."
@@ -70,7 +72,7 @@ namespace :subscribers do
   task sync_to_crm: :environment do
     abort "GoHighLevel credentials are not configured; nothing to sync." unless GoHighLevel.configured?
 
-    subscribers = Subscriber.pluck(:email)
+    subscribers = Subscriber.confirmed.pluck(:email)
     removals = CrmRemoval.pluck(:email)
     (subscribers | removals).each { |email| SyncSubscriberToCrmJob.perform_later(email) }
     puts "Queued #{subscribers.size} subscriber#{'s' unless subscribers.size == 1} " \

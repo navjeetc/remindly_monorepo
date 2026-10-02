@@ -29,7 +29,10 @@ class SyncSubscriberToCrmJob < ApplicationJob
     # recorded, and subscribers:sync_to_crm replays both lists once they exist.
     return unless GoHighLevel.configured?
 
-    if (subscriber = Subscriber.find_by(email: email))
+    # Unconfirmed is not on the list: a signup nobody has confirmed must not
+    # reach the CRM, and someone who left and signed up again is off it until
+    # they confirm again.
+    if (subscriber = Subscriber.confirmed.find_by(email: email))
       GoHighLevel.subscribe(email: subscriber.email, source: subscriber.source)
     else
       GoHighLevel.unsubscribe(email: email)

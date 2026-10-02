@@ -1,8 +1,4 @@
 class SubscriberMailer < ApplicationMailer
-  # Sent once, when someone first joins the list. It exists to do the thing that
-  # was promised on the form — hand over the routine sheet — rather than to
-  # welcome anyone, so the link is the first thing in it.
-  #
   # reply_to matters more than it looks. There is no unsubscribe link: the
   # message tells people to reply to stop, so replies have to reach a mailbox
   # someone reads. Without this, the only opt-out we offer
@@ -10,6 +6,23 @@ class SubscriberMailer < ApplicationMailer
   # rules exist to prevent.
   UNSUBSCRIBE_INBOX = OFFICIAL_EMAIL
 
+  # Double opt-in: the only email a signup sends, and the only thing in it is
+  # the link that confirms the address. Nothing else goes to an address until
+  # its owner has clicked it -- so a bot typing in a stranger's address gets
+  # them one short email they can ignore, and nothing more.
+  def confirmation(subscriber)
+    @subscriber = subscriber
+
+    mail(
+      to: subscriber.email,
+      reply_to: UNSUBSCRIBE_INBOX,
+      subject: "Confirm your Remindly subscription"
+    )
+  end
+
+  # Sent once, when the address is confirmed and joins the list. It exists to
+  # do the thing that was promised on the form — hand over the routine sheet —
+  # rather than to welcome anyone, so the link is the first thing in it.
   def welcome(subscriber)
     @subscriber = subscriber
 
@@ -29,7 +42,7 @@ class SubscriberMailer < ApplicationMailer
   # directly. For a list this small that is a feature, not a slip.
   def new_subscriber(subscriber)
     @subscriber = subscriber
-    @total = Subscriber.count
+    @total = Subscriber.confirmed.count
 
     mail(
       to: self.class.admin_recipient,

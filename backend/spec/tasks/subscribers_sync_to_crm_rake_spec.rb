@@ -14,11 +14,13 @@ RSpec.describe "subscribers:sync_to_crm" do
 
   after { task.reenable }
 
-  it "queues every current subscriber once GHL is configured" do
+  it "queues every confirmed subscriber once GHL is configured" do
     allow(GoHighLevel).to receive(:configured?).and_return(true)
-    Subscriber.subscribe(email: "ann@example.com", source: "home")
-    Subscriber.subscribe(email: "bo@example.com", source: "blog_index")
+    Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
+    Subscriber.subscribe(email: "bo@example.com", source: "blog_index").tap(&:confirm!)
     clear_enqueued_jobs
+
+    Subscriber.subscribe(email: "unconfirmed@example.com", source: "home")
 
     expect { task.invoke }.to output(/Queued 2 subscribers and 0 removals/).to_stdout
 
@@ -30,7 +32,7 @@ RSpec.describe "subscribers:sync_to_crm" do
   # removal is what lets the catch-up find them.
   it "also queues everyone who unsubscribed while the sync was dark" do
     allow(GoHighLevel).to receive(:configured?).and_return(true)
-    Subscriber.subscribe(email: "gone@example.com", source: "home").destroy
+    Subscriber.subscribe(email: "gone@example.com", source: "home").tap(&:confirm!).destroy
     clear_enqueued_jobs
 
     expect { task.invoke }.to output(/Queued 0 subscribers and 1 removal\b/).to_stdout

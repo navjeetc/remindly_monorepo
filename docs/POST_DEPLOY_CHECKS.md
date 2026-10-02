@@ -45,7 +45,9 @@ The whole path — form, `Subscriber`, `deliver_later`, Solid Queue, Postmark �
 has never been exercised end to end under the current sender. Sign up at
 <https://www.remindly.care/> with an address you can read.
 
-Two emails should arrive:
+One email should arrive, "Confirm your Remindly subscription" — and nothing
+else, not even to the admin address (the list is double opt-in). Open its
+link, which only shows a button, and press it. Then two more:
 
 - **to you**, the routine sheet, from `hello@remindly.care`, replying to
   `hello@remindly.care`

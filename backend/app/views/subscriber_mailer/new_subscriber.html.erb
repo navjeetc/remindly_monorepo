@@ -9,7 +9,7 @@
   </tr>
   <tr>
     <td><strong>Joined</strong></td>
-    <td><%= @subscriber.created_at.strftime("%B %-d, %Y at %-I:%M %p %Z") %></td>
+    <td><%= (@subscriber.confirmed_at || @subscriber.created_at).strftime("%B %-d, %Y at %-I:%M %p %Z") %></td>
   </tr>
   <tr>
     <td><strong>Total</strong></td>

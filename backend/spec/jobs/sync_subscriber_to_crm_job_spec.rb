@@ -7,7 +7,7 @@ RSpec.describe SyncSubscriberToCrmJob do
   before { allow(GoHighLevel).to receive(:configured?).and_return(true) }
 
   it "subscribes an address that is on the list, with its source" do
-    Subscriber.subscribe(email: "ann@example.com", source: "routine_sheet")
+    Subscriber.subscribe(email: "ann@example.com", source: "routine_sheet").tap(&:confirm!)
     expect(GoHighLevel).to receive(:subscribe).with(email: "ann@example.com", source: "routine_sheet")
 
     described_class.perform_now("ann@example.com")
@@ -19,11 +19,23 @@ RSpec.describe SyncSubscriberToCrmJob do
     described_class.perform_now("ann@example.com")
   end
 
+  # Double opt-in: an unconfirmed signup is not on the list. If one is ever
+  # synced (someone left, then signed up again before the job ran), the job
+  # must take them off, not put them back.
+  it "unsubscribes an address that signed up but has not confirmed" do
+    Subscriber.subscribe(email: "ann@example.com", source: "home")
+
+    expect(GoHighLevel).not_to receive(:subscribe)
+    expect(GoHighLevel).to receive(:unsubscribe).with(email: "ann@example.com")
+
+    described_class.perform_now("ann@example.com")
+  end
+
   # The bug review found: with three worker threads and delayed retries, the
   # subscribe job for someone who had since unsubscribed could run last and put
   # them back on the campaign list.
   it "leaves someone unsubscribed when their subscribe job runs after they left" do
-    subscriber = Subscriber.subscribe(email: "ann@example.com", source: "home")
+    subscriber = Subscriber.subscribe(email: "ann@example.com", source: "home").tap(&:confirm!)
     subscriber.destroy
 
     expect(GoHighLevel).not_to receive(:subscribe)

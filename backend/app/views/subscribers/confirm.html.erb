@@ -1,0 +1,20 @@
+<%#
+  The confirmation link lands here, and this page itself confirms nothing: a
+  mail scanner fetching the link must not be able to sign anyone up. Only the
+  button below does. A plain hand-written <form> for the reason given in
+  confirm_unsubscribe.html.erb: no authenticity token, so no session cookie.
+%>
+<%# Own address carries a bearer token — see marketing.html.erb's use of this flag. %>
+<% content_for :credential_page, true %>
+<% content_for :title, "Confirm your subscription — Remindly" %>
+
+<h1>Join the list as <%= @subscriber.email %>?</h1>
+
+<p class="lead">
+  One useful note about once a month, about caring for a parent at a distance,
+  and the printable routine sheet straight away. Unsubscribe any time.
+</p>
+
+<form action="<%= confirm_subscription_path(token: params[:token]) %>" method="post">
+  <button type="submit" class="btn btn-primary">Yes, sign me up</button>
+</form>

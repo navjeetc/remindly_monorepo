@@ -28,12 +28,33 @@ class Subscriber < ApplicationRecord
   # the way in is what makes the unique index mean anything.
   normalizes :email, with: ->(email) { email.to_s.strip.downcase }
 
+  # Double opt-in: a signup is a request to join, and the address is on the
+  # list only once its owner has clicked the link emailed to it. Everything
+  # that treats someone as subscribed -- the welcome email, the notification to
+  # us, the CRM, the monthly note -- reads confirmed, never the bare row.
+  scope :confirmed, -> { where.not(confirmed_at: nil) }
+  scope :unconfirmed, -> { where(confirmed_at: nil) }
+
+  # How long a confirmation link works, and how long an unconfirmed signup is
+  # kept before PruneUnconfirmedSubscribersJob deletes it.
+  CONFIRMATION_WINDOW = 7.days
+
+  # At most one confirmation email per address per hour. The form can be
+  # submitted again and again with somebody else's address; without this, the
+  # double opt-in meant to stop inbox flooding would itself flood the inbox.
+  CONFIRMATION_RESEND_AFTER = 1.hour
+
   # Campaigns go out from GoHighLevel, so the list there follows this table:
-  # joining tags the contact, unsubscribing (which deletes the row) untags it.
+  # confirming tags the contact, unsubscribing (which deletes the row) untags it.
   # Does nothing until GHL credentials exist. See GoHighLevel.
+  #
   # Leaving records a pending CRM removal, so the promise to delete the address
   # holds even while the sync has no credentials; the job clears it once the
-  # CRM no longer has them. Rejoining forgets it.
+  # CRM no longer has them. Confirming forgets it -- not merely signing up
+  # again: an unconfirmed signup is not on the list, and if it erased the
+  # removal of someone who had just left, nothing would delete them from the
+  # CRM. An unconfirmed signup never reached the CRM, so leaving records
+  # nothing for it.
   #
   # Inside the subscriber's own transaction, not after it commits: the row and
   # its pending removal must change together. As after_commit callbacks, a
@@ -41,13 +62,45 @@ class Subscriber < ApplicationRecord
   # clear erased a newer removal, or a late record kept an address that should
   # have gone. Here the database's commit order decides, and a rolled-back
   # unsubscribe leaves no removal behind.
-  after_create -> { CrmRemoval.clear(email) }
-  after_destroy -> { CrmRemoval.record(email) }
+  after_save -> { CrmRemoval.clear(email) }, if: :just_confirmed?
+  after_destroy -> { CrmRemoval.record(email) }, if: :confirmed?
 
   # Only the job waits for the commit, so it never runs against a change that
   # did not happen. It reads whether the address is on the list when it runs,
-  # so it only needs to know which address changed.
-  after_commit -> { SyncSubscriberToCrmJob.perform_later(email) }, on: %i[create destroy]
+  # so it only needs to know which address changed: when it is confirmed, and
+  # when a confirmed subscriber leaves.
+  after_commit -> { SyncSubscriberToCrmJob.perform_later(email) }, on: %i[create update], if: :just_confirmed?
+  after_commit -> { SyncSubscriberToCrmJob.perform_later(email) }, on: :destroy, if: :confirmed?
+
+  def confirmed? = confirmed_at.present?
+
+  def just_confirmed? = saved_change_to_confirmed_at? && confirmed?
+
+  # Joins the list. Returns true only the first time, so the welcome email and
+  # the notification to us go out once however often the link is used.
+  def confirm!
+    return false if confirmed?
+
+    update!(confirmed_at: Time.current)
+    true
+  end
+
+  def confirmation_token = signed_id(purpose: :confirm_subscription, expires_in: CONFIRMATION_WINDOW)
+
+  def self.find_by_confirmation_token(token)
+    find_signed(token, purpose: :confirm_subscription)
+  end
+
+  # Emails the confirmation link, unless the address is already on the list or
+  # one was sent within the last hour. Returns whether it sent.
+  def request_confirmation
+    return false if confirmed?
+    return false if confirmation_sent_at && confirmation_sent_at > CONFIRMATION_RESEND_AFTER.ago
+
+    update!(confirmation_sent_at: Time.current)
+    SubscriberMailer.confirmation(self).deliver_later
+    true
+  end
 
   # The same fact User tracks, for the same reason: an address a mail provider
   # has permanently refused stays refused, and subscribers:send_monthly_note

@@ -13,14 +13,15 @@ class SubscribersController < WebController
   # What CSRF protects is a request that the server trusts because it arrived
   # with the victim's cookies. This endpoint has no authentication and does
   # nothing on behalf of whoever sends it: the worst a forged request achieves
-  # is adding an address to a list, which anyone can already do with curl. The
+  # is a confirmation email to an address, which anyone can already ask for
+  # with curl, and which goes out at most once an hour per address. The
   # real abuse here is volume and bots, so that is what is defended against
   # below instead.
-  # Same reasoning as :create, and it applies harder here: the token in the URL
-  # is the entire credential for this action, not the session, so a forged
+  # Same reasoning as :create, and it applies harder to the two token actions:
+  # the token in the URL is the entire credential, not the session, so a forged
   # cross-site request achieves exactly what holding the token already permits
   # — nothing an attacker could not do by sending the person the link directly.
-  skip_forgery_protection only: %i[create confirm_unsubscribe]
+  skip_forgery_protection only: %i[create confirm confirm_unsubscribe]
 
   # PublicPage's page-count is a page-view tally for pages someone might read
   # twice, keyed on request.path -- and a signed token is not a page, it is a
@@ -28,8 +29,8 @@ class SubscribersController < WebController
   # page_counts, kept indefinitely and readable on the admin traffic screen,
   # for every fetch including one from a token that never resolved to anyone --
   # so an unauthenticated caller could also grow that table without limit by
-  # requesting nonsense tokens. Neither action gets a page view.
-  skip_after_action :count_this_page_view, only: %i[unsubscribe confirm_unsubscribe]
+  # requesting nonsense tokens. None of the token actions gets a page view.
+  skip_after_action :count_this_page_view, only: %i[confirmation confirm unsubscribe confirm_unsubscribe]
 
   rate_limit to: 5, within: 1.minute, only: :create
 
@@ -41,15 +42,47 @@ class SubscribersController < WebController
       source: params[:source].presence
     )
 
-    # Both only for a genuinely new record — a repeat signup is silent, so
-    # neither the person nor we get a second copy of anything.
-    if subscriber.previously_new_record?
+    # Double opt-in: the form only asks. The address joins, and gets the
+    # welcome email, when its owner clicks the link this sends; until then
+    # nothing about it reaches us or the CRM. Someone already on the list is
+    # sent nothing, and request_confirmation sends at most one an hour, so
+    # this form cannot be used to flood somebody else's inbox.
+    subscriber.request_confirmation if subscriber.persisted?
+
+    render :create, locals: { subscriber: subscriber },
+      status: subscriber.persisted? ? :ok : :unprocessable_entity
+  end
+
+  # The link in the confirmation email. GET only ever looks, for the reason
+  # given on unsubscribe below, and it matters more here: a mail scanner that
+  # fetched the link and confirmed the address would let anyone sign a
+  # stranger up after all, which is the whole thing double opt-in prevents.
+  # An unknown, tampered or expired token gets the form again.
+  def confirmation
+    @subscriber = Subscriber.find_by_confirmation_token(params[:token])
+
+    if @subscriber.nil?
+      render :confirmation_expired, status: :not_found
+    elsif @subscriber.confirmed?
+      render :confirmed
+    else
+      render :confirm
+    end
+  end
+
+  # Reached only by the button on the confirm page. The welcome email and the
+  # notification to us go out on the first confirmation only, however often
+  # the button is pressed.
+  def confirm
+    subscriber = Subscriber.find_by_confirmation_token(params[:token])
+    return render :confirmation_expired, status: :not_found unless subscriber
+
+    if subscriber.confirm!
       SubscriberMailer.welcome(subscriber).deliver_later
       SubscriberMailer.new_subscriber(subscriber).deliver_later
     end
 
-    render :create, locals: { subscriber: subscriber },
-      status: subscriber.persisted? ? :ok : :unprocessable_entity
+    render :confirmed
   end
 
   # GET only ever looks. A bare GET that deleted on the spot is exactly what a

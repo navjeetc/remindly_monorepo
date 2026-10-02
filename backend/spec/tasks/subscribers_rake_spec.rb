@@ -49,8 +49,8 @@ RSpec.describe "subscribers:send_monthly_note", type: :task do
   end
 
   context "with subscribers" do
-    let!(:ann) { Subscriber.create!(email: "ann@example.com") }
-    let!(:bo)  { Subscriber.create!(email: "bo@example.com") }
+    let!(:ann) { Subscriber.create!(email: "ann@example.com", confirmed_at: Time.current) }
+    let!(:bo)  { Subscriber.create!(email: "bo@example.com", confirmed_at: Time.current) }
 
     it "sends nothing without CONFIRM=yes" do
       ENV.delete("CONFIRM")
@@ -77,6 +77,16 @@ RSpec.describe "subscribers:send_monthly_note", type: :task do
       expect { invoke }
         .to have_enqueued_mail(SubscriberMailer, :monthly_note).with(ann)
         .and have_enqueued_mail(SubscriberMailer, :monthly_note).with(bo)
+    end
+
+    # Double opt-in: a signup nobody confirmed has not joined the list.
+    it "leaves out anyone who has not confirmed" do
+      Subscriber.create!(email: "unconfirmed@example.com")
+
+      ENV["CONFIRM"] = "yes"
+
+      expect { output_of { invoke } }
+        .to have_enqueued_mail(SubscriberMailer, :monthly_note).exactly(2).times
     end
 
     # The bounce-suppression case the task exists to protect: a subscriber

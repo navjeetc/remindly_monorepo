@@ -72,6 +72,10 @@ Rails.application.routes.draw do
   # button on that page, is what removes the row. The same shape every other
   # destructive control in this app already uses.
   resources :subscribers, only: [ :create ]
+  # Double opt-in, built the same way and for the same reason: GET shows a
+  # button, only the POST it sends confirms.
+  get    "subscribers/confirm/:token", to: "subscribers#confirmation", as: :confirm_subscription
+  post   "subscribers/confirm/:token", to: "subscribers#confirm"
   get    "subscribers/unsubscribe/:token", to: "subscribers#unsubscribe", as: :unsubscribe
   delete "subscribers/unsubscribe/:token", to: "subscribers#confirm_unsubscribe"
 

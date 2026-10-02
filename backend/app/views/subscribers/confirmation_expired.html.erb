@@ -1,0 +1,17 @@
+<%#
+  An unknown, tampered or expired link, or one for a signup that was never
+  confirmed and has since been deleted. The same page for all of them, and
+  the way forward is the same too: ask again.
+%>
+<%# Own address carries a bearer token — see marketing.html.erb's use of this flag. %>
+<% content_for :credential_page, true %>
+<% content_for :title, "That link has expired — Remindly" %>
+
+<h1>That link has expired</h1>
+
+<p class="lead">
+  Confirmation links work for 7 days. Enter your address again and a fresh one
+  will be on its way.
+</p>
+
+<%= render "shared/subscribe_form", source: "reconfirm" %>
