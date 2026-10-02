@@ -29,6 +29,9 @@ RSpec.describe "Subscribers", type: :request do
 
       expect(confirmation_email.to).to eq([ "ann@example.com" ])
       expect(confirmation_email.reply_to).to eq([ "hello@remindly.care" ])
+      # A bot can ask again an hour later, so "you will not hear from us
+      # again" would be untrue.
+      expect(confirmation_email.body.encoded).not_to match(/not hear from us again/i)
       [ confirmation_email.text_part, confirmation_email.html_part ].each do |part|
         token = part.body.decoded[%r{/subscribers/confirm/([^"\s<]+)}, 1]
         expect(Subscriber.find_by_confirmation_token(token)).to eq(Subscriber.last)
@@ -73,6 +76,18 @@ RSpec.describe "Subscribers", type: :request do
         expect {
           perform_enqueued_jobs { post "/subscribers", params: { email: "ann@example.com" } }
         }.not_to change { ActionMailer::Base.deliveries.count }
+      end
+
+      # Simultaneous submissions each read the row before any had saved the
+      # send time, and each sent an email. A stale copy of the row stands in
+      # for the second request.
+      it "sends one email when two requests race for the same address" do
+        first = Subscriber.subscribe(email: "ann@example.com", source: "home")
+        second = Subscriber.find(first.id)
+
+        expect(first.request_confirmation).to be(true)
+        expect(second.request_confirmation).to be(false)
+        expect(enqueued_jobs.count { |job| job["arguments"].first == "SubscriberMailer" }).to eq(1)
       end
 
       it "sends a fresh one after an hour, for someone who lost the first" do
@@ -198,6 +213,8 @@ RSpec.describe "Subscribers", type: :request do
         perform_enqueued_jobs { post confirm_subscription_path(token: token) }
       }.not_to change { ActionMailer::Base.deliveries.count }
       expect(response).to have_http_status(:ok)
+      # So the page must not promise one either.
+      expect(response.body).not_to match(/on its way/i)
     end
 
     it "says so when an already-used link is opened again" do
@@ -219,6 +236,8 @@ RSpec.describe "Subscribers", type: :request do
       expect(response).to have_http_status(:not_found)
       expect(doc.at_css("h1").text).to include("expired")
       expect(doc.at_css("form[action='/subscribers']")).to be_present
+      # The hourly limit, or already being on the list, may mean no email.
+      expect(response.body).not_to match(/on its way/i)
       expect(subscriber.reload).not_to be_confirmed
     end
 

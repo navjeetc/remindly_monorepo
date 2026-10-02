@@ -18,6 +18,25 @@ RSpec.describe PruneUnconfirmedSubscribersJob do
     expect(Subscriber.exists?(fresh.id)).to be(true)
   end
 
+  # A resend mints a link good for another seven days. Counting from the
+  # signup deleted the row, and so killed that link, within hours.
+  it "counts from the latest confirmation email, not the signup" do
+    resent = travel_to(10.days.ago) { Subscriber.subscribe(email: "resent@example.com", source: "home") }
+    travel_to(1.day.ago) { resent.request_confirmation }
+
+    described_class.perform_now
+
+    expect(Subscriber.exists?(resent.id)).to be(true)
+  end
+
+  it "deletes a row whose latest confirmation email is older than the window" do
+    old = travel_to(10.days.ago) { Subscriber.subscribe(email: "old@example.com", source: "home").tap(&:request_confirmation) }
+
+    described_class.perform_now
+
+    expect(Subscriber.exists?(old.id)).to be(false)
+  end
+
   it "never deletes anyone who confirmed, however long ago they signed up" do
     member = travel_to(1.year.ago) { Subscriber.create!(email: "ann@example.com", confirmed_at: Time.current) }
 

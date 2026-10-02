@@ -85,6 +85,18 @@ RSpec.describe "Syncing the mailing list to GoHighLevel", type: :request do
     expect(CrmRemoval.where(email: "ann@example.com")).to exist
   end
 
+  # Two simultaneous presses of the button each loaded the row unconfirmed.
+  # Both confirmed, and both sent the welcome and the notification. A stale
+  # copy of the row stands in for the second request.
+  it "lets only one of two simultaneous confirmations do anything" do
+    first = Subscriber.subscribe(email: "ann@example.com", source: "home")
+    second = Subscriber.find(first.id)
+
+    expect(first.confirm!).to be(true)
+    expect(second.confirm!).to be(false)
+    expect(sync_jobs).to eq([ [ "ann@example.com" ] ])
+  end
+
   # Review found the pending removal was written after commit, so a quick
   # leave-and-rejoin could apply the two writes out of order. They now ride in
   # the subscriber's own transaction: if the change does not happen, neither

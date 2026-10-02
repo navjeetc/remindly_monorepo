@@ -36,7 +36,8 @@ class Subscriber < ApplicationRecord
   scope :unconfirmed, -> { where(confirmed_at: nil) }
 
   # How long a confirmation link works, and how long an unconfirmed signup is
-  # kept before PruneUnconfirmedSubscribersJob deletes it.
+  # kept after its latest link was sent before PruneUnconfirmedSubscribersJob
+  # deletes it.
   CONFIRMATION_WINDOW = 7.days
 
   # At most one confirmation email per address per hour. The form can be
@@ -76,13 +77,22 @@ class Subscriber < ApplicationRecord
 
   def just_confirmed? = saved_change_to_confirmed_at? && confirmed?
 
-  # Joins the list. Returns true only the first time, so the welcome email and
-  # the notification to us go out once however often the link is used.
+  # Joins the list. Returns true only for the request that actually made the
+  # change, so the welcome email and the notification to us go out once
+  # however often, or however simultaneously, the button is pressed.
+  #
+  # with_lock, not a plain check-then-write: two requests (a double-click is
+  # enough) each loaded the row unconfirmed, both passed the check, and both
+  # sent the emails. with_lock rereads the row inside a transaction SQLite
+  # opens IMMEDIATE, so the second waits for the first and then sees it
+  # confirmed. update! rather than update_all so the CRM callbacks still run.
   def confirm!
-    return false if confirmed?
+    with_lock do
+      next false if confirmed?
 
-    update!(confirmed_at: Time.current)
-    true
+      update!(confirmed_at: Time.current)
+      true
+    end
   end
 
   def confirmation_token = signed_id(purpose: :confirm_subscription, expires_in: CONFIRMATION_WINDOW)
@@ -92,14 +102,21 @@ class Subscriber < ApplicationRecord
   end
 
   # Emails the confirmation link, unless the address is already on the list or
-  # one was sent within the last hour. Returns whether it sent.
+  # one was sent within the last hour. Returns whether it sent. Locked for the
+  # same reason as confirm!: simultaneous signups for one address each passed
+  # the hourly check before any had saved, and each sent an email -- the very
+  # flood the limit exists to stop.
   def request_confirmation
-    return false if confirmed?
-    return false if confirmation_sent_at && confirmation_sent_at > CONFIRMATION_RESEND_AFTER.ago
+    sent = with_lock do
+      next false if confirmed?
+      next false if confirmation_sent_at && confirmation_sent_at > CONFIRMATION_RESEND_AFTER.ago
 
-    update!(confirmation_sent_at: Time.current)
-    SubscriberMailer.confirmation(self).deliver_later
-    true
+      update!(confirmation_sent_at: Time.current)
+      true
+    end
+
+    SubscriberMailer.confirmation(self).deliver_later if sent
+    sent
   end
 
   # The same fact User tracks, for the same reason: an address a mail provider

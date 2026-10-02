@@ -5,6 +5,8 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [0.21.0] - 2026-10-02
 
 ### Changed
@@ -18,13 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one email they can ignore.
 - At most one confirmation email per address per hour, so the form cannot
   be used to flood somebody's inbox. Links expire after 7 days, and a daily
-  job deletes signups nobody confirmed by then.
+  job deletes signups nobody confirmed within 7 days of their latest link.
 - Everyone already on the list counts as confirmed. Their CRM contacts keep
   the `remindly-unverified` tag; new contacts no longer get it.
 - The privacy policy and the signup form say an address is confirmed first.
 
-
-## [Unreleased]
 
 ## [0.20.1] - 2026-10-02
 

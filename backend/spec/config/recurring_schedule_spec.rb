@@ -28,6 +28,9 @@ RSpec.describe "config/recurring.yml" do
       "check_coverage_gaps",
       "mark_missed_occurrences",
       "prune_analytics",
+      # Keeps the confirmation email's promise that an address nobody confirms
+      # is deleted after a week.
+      "prune_unconfirmed_subscribers",
       "clear_solid_queue_finished_jobs",
       # The delivery chain for phone reminders, both halves of it. expand_reminders
       # materialises the occurrences and voice_reminder_scheduler telephones about
