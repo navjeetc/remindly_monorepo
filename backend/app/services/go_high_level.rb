@@ -54,7 +54,15 @@ class GoHighLevel
   # Errno::ENETUNREACH (and every other OS error not on the list) through, and
   # each of those dropped a change for good. SystemCallError is every Errno;
   # IOError covers EOFError; Timeout::Error covers Net's own timeouts.
-  TRANSPORT_ERRORS = [ Timeout::Error, IOError, SocketError, SystemCallError, OpenSSL::SSL::SSLError ].freeze
+  #
+  # The last three are Net::HTTP's protocol errors: a garbled status line or
+  # header (a proxy cutting a response short will do it). Each descends
+  # straight from StandardError, outside every family above, so a transient
+  # bad response failed the change for good instead of retrying.
+  TRANSPORT_ERRORS = [
+    Timeout::Error, IOError, SocketError, SystemCallError, OpenSSL::SSL::SSLError,
+    Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError
+  ].freeze
 
   def self.configured? = credentials[:token].present? && credentials[:location_id].present?
 

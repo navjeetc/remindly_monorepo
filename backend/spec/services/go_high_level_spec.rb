@@ -210,7 +210,8 @@ RSpec.describe GoHighLevel do
       end
     end
 
-    [ Net::OpenTimeout, Net::WriteTimeout, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ENETUNREACH, EOFError, OpenSSL::SSL::SSLError ].each do |failure|
+    [ Net::OpenTimeout, Net::WriteTimeout, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::ENETUNREACH, EOFError, OpenSSL::SSL::SSLError,
+      Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError ].each do |failure|
       context "when the connection fails with #{failure}" do
         let(:reply) { nil }
 
