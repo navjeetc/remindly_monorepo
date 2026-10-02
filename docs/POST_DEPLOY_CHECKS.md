@@ -39,21 +39,6 @@ Expected: all 200; `application/xml`; visit count unchanged; sender
 
 ## Manual — the ones nothing can check for you
 
-### 0. Once, after the 0.21.0 deploy only
-
-Wait until the deploy has finished and **at least one full minute more has
-passed**, then run:
-
-```bash
-cd backend && bundle exec kamal app exec --reuse "bin/rails subscribers:grandfather_cutover_signups"
-```
-
-Confirms anyone who signed up through the old container during the cutover
-(see the task for why). The wait matters: the task skips rows less than a
-minute old, so running it too soon would miss a signup the old container
-took in its last minute, and that address would be pruned a week later.
-Expect "Confirmed 0 signups" almost always. Delete this step once it has run.
-
 ### 1. A real signup, with a real address
 
 The whole path — form, `Subscriber`, `deliver_later`, Solid Queue, Postmark —
