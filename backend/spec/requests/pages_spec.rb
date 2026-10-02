@@ -606,6 +606,23 @@ RSpec.describe "Pages", type: :request do
       expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
     end
 
+    # The contents list is only useful while it matches the page. A section
+    # added without a contents entry, or renamed without its anchor, would
+    # leave it quietly wrong.
+    it "lists every section in its contents, each linking to that section" do
+      get "/how_to"
+      doc = Nokogiri::HTML(response.body)
+      sections = doc.css("h2[id]").reject { |h| h.ancestors("nav").any? }
+      links = doc.css("nav.contents ol a")
+
+      expect(links.map { |a| a["href"] }).to eq(sections.map { |h| "##{h["id"]}" })
+      expect(links.map(&:text)).to eq(sections.map(&:text))
+      expect(doc.css("h2").reject { |h| h.ancestors("nav").any? }.map { |h| h["id"] }).to all(be_present)
+      expect(doc.at_css("a.to-contents")["href"]).to eq("#contents")
+      # Fixed in place, it would repeat over the text of every printed page.
+      expect(doc.at_css("a.to-contents")["class"]).to include("no-print")
+    end
+
     # The walk-through video plays on the page, but Loom's player (its scripts
     # and cookies) is put there only when the visitor presses play. Until then
     # the page carries our own poster and a link, nothing that fetches.

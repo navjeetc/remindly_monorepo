@@ -9,6 +9,11 @@
   <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-md w-full space-y-8">
+        <%# Most people arrive here from Sign in on the public site. Without
+            this, the only way back was the How to page. %>
+        <div class="text-center">
+          <%= link_to "← Back to the Remindly home page", root_path, class: "text-sm font-medium text-blue-700 hover:underline" %>
+        </div>
         <div>
           <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Remindly Caregiver Dashboard
