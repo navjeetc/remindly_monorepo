@@ -460,8 +460,12 @@
       .contents ol { margin: 0; padding-left: 1.4rem; display: grid; gap: 0.4rem; }
       .contents p { margin: 1rem 0 0; color: var(--muted); }
       h2[id], #contents { scroll-margin-top: 1rem; }
+      /* z-index because the video poster below is positioned too, and comes
+         later in the page: without it the poster paints over this link as it
+         scrolls past the corner, and takes its clicks. */
       .to-contents {
         position: fixed;
+        z-index: 10;
         right: 1rem;
         bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
         padding: 0.6rem 1rem;

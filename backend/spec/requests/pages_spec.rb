@@ -619,6 +619,8 @@ RSpec.describe "Pages", type: :request do
       expect(links.map(&:text)).to eq(sections.map(&:text))
       expect(doc.css("h2").reject { |h| h.ancestors("nav").any? }.map { |h| h["id"] }).to all(be_present)
       expect(doc.at_css("a.to-contents")["href"]).to eq("#contents")
+      # Fixed in place, it would repeat over the text of every printed page.
+      expect(doc.at_css("a.to-contents")["class"]).to include("no-print")
     end
 
     # The walk-through video plays on the page, but Loom's player (its scripts
