@@ -30,6 +30,22 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
         .to include([ "SyncSubscriberToCrmJob", [ "ann@example.com" ] ])
     end
 
+    # The shape GHL's standard Webhook action actually sent on the first live
+    # call: contact fields at the top level, the workflow's custom data under
+    # customData. The secret there was refused until this was read.
+    it "accepts the secret where GHL puts it, under customData" do
+      Subscriber.subscribe(email: "ann@example.com", source: "home")
+
+      notify(
+        contact_id: "c1", email: "ann@example.com", tags: "remindly-subscriber",
+        workflow: { id: "w1", name: "Remindly unsubscribe" }, triggerData: {},
+        customData: { secret: secret }
+      )
+
+      expect(response).to have_http_status(:ok)
+      expect(Subscriber.where(email: "ann@example.com")).to be_empty
+    end
+
     it "accepts the email nested under contact" do
       Subscriber.subscribe(email: "ann@example.com", source: "home")
 
@@ -81,6 +97,13 @@ RSpec.describe "CRM unsubscribe webhook", type: :request do
 
     it "refuses a wrong secret and deletes nothing" do
       notify(secret: "guess", email: "ann@example.com")
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(Subscriber.count).to eq(1)
+    end
+
+    it "refuses a wrong secret under customData" do
+      notify(email: "ann@example.com", customData: { secret: "guess" })
 
       expect(response).to have_http_status(:unauthorized)
       expect(Subscriber.count).to eq(1)
