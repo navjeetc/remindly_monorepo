@@ -32,9 +32,10 @@ RSpec.describe "Typing a phone number the way it is written", type: :model do
   # The country code stays typeable. Assuming +1 for a number that says +44 is
   # how a call goes to a stranger.
   it "leaves a number that names its own country code alone" do
-    senior.update!(phone: "+44 20 7123 4567")
+    senior.phone = "+44 20 7123 4567"
+    senior.valid?
 
-    expect(senior.reload.phone).to eq("+442071234567")
+    expect(senior.phone).to eq("+442071234567")
   end
 
   # Normalising is not the same as accepting anything. Seven digits is a local

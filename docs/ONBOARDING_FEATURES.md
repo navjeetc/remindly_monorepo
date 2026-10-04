@@ -24,7 +24,7 @@ Last checked: 2026-09-25, accurate for version 0.15.0.
 **Reminder phone calls, not another app.** Remindly rings your parent's own
 phone, landline or mobile, at the right time and says the reminder out loud.
 They press 1 when it's done or 2 to be reminded again shortly. There's nothing
-to install and nothing to read.
+to install and nothing to read. Calls go to numbers in the US and Canada.
 
 **Nobody is called without agreeing first.** The first call only asks
 permission, and says who set it up. Pressing 9 on any call stops the calls,
