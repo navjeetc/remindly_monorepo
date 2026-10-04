@@ -64,5 +64,26 @@ RSpec.describe SubscriberMailer, type: :mailer do
     end
 
     include_examples "an email that can be unsubscribed from"
+
+    # Someone who has just confirmed is the likeliest person on the list to try
+    # Remindly, so the welcome says what it is and links to it, tagged so the
+    # click shows on Admin -> Traffic.
+    it "says what Remindly does and links to it, tagged as from this email" do
+      home = "https://www.remindly.care/?from=welcome-email"
+      walkthrough = "https://www.remindly.care/how_to?from=welcome-email#videos"
+
+      text = mail.text_part.body.to_s
+      expect(text).to include("rings your parent's own phone", home, walkthrough)
+
+      links = Nokogiri::HTML(mail.html_part.body.to_s).css("a").map { |a| a["href"] }
+      expect(links).to include(home, walkthrough)
+      expect(mail.html_part.body.to_s).to include("rings your parent's")
+    end
+
+    # The tag has to survive PageCount's filter, or the clicks are counted
+    # untagged and the email's effect is invisible.
+    it "uses a source tag the traffic counter keeps" do
+      expect(PageCount.normalize_source("welcome-email")).to eq("welcome-email")
+    end
   end
 end

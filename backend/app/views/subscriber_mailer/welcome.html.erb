@@ -5,14 +5,31 @@
   numbers worth having on the fridge door.
 </p>
 
+<%#
+  The person reading this has just confirmed they want caregiving help from
+  us, so this is the warmest moment to say what Remindly is. Every claim here
+  is from docs/ONBOARDING_FEATURES.md: keep the two in step. ?from= tags the
+  click so it shows on Admin -> Traffic.
+%>
+<p>
+  <strong>In case you haven't looked yet:</strong> Remindly rings your parent's
+  own phone, landline or mobile, when something is due (tablets, a glass of
+  water, an appointment) and says it out loud. They press 1 when it's done. If
+  there's a tablet in the house, it can speak from the screen instead. You set
+  it all up from wherever you are, and for medication you get an email when a
+  dose is marked done, or when the time passes and nobody marks it.
+</p>
+
+<p>
+  <a href="<%= "#{ApplicationHelper::CANONICAL_HOST}/?from=welcome-email" %>">See how Remindly works</a>.
+  It's free while in beta. Or
+  <a href="<%= "#{ApplicationHelper::CANONICAL_HOST}/how_to?from=welcome-email#videos" %>">watch the 11-minute walk-through</a>.
+</p>
+
 <p>
   About once a month I send one useful thing about caring for a parent at a
   distance, and a line on what has changed in Remindly. That is all — no more
   than that.
   <a href="<%= "#{ApplicationHelper::CANONICAL_HOST}/subscribers/unsubscribe/#{@subscriber.signed_id(purpose: :unsubscribe)}" %>">Unsubscribe</a>
   any time, or just reply to this email to stop.
-</p>
-
-<p>
-  <a href="<%= ApplicationHelper::CANONICAL_HOST %>">Remindly</a> is free to use.
 </p>

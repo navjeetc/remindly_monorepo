@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it from Sign in on the public site, and the only way back was the How to
   page.
 
+### Changed
+- **The welcome email says what Remindly is.** Someone who has just
+  confirmed their place on the mailing list used to get the routine sheet
+  and a bare "Remindly is free to use" link. It now has a short paragraph on
+  what Remindly does (the phone call, the speaking tablet, the medication
+  emails) and links to the home page and the 11-minute walk-through, tagged
+  `?from=welcome-email` so the clicks show on Admin → Traffic.
+
 ## [0.21.0] - 2026-10-02
 
 ### Changed
