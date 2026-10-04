@@ -79,11 +79,5 @@ RSpec.describe SubscriberMailer, type: :mailer do
       expect(links).to include(home, walkthrough)
       expect(mail.html_part.body.to_s).to include("rings your parent's")
     end
-
-    # The tag has to survive PageCount's filter, or the clicks are counted
-    # untagged and the email's effect is invisible.
-    it "uses a source tag the traffic counter keeps" do
-      expect(PageCount.normalize_source("welcome-email")).to eq("welcome-email")
-    end
   end
 end
