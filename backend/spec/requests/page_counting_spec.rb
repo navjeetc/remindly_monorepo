@@ -36,6 +36,21 @@ RSpec.describe "Public page counting", type: :request do
     expect(PageCount.tagged.pluck(:source)).to eq([ "agingparents" ])
   end
 
+  # The welcome email's links, followed as a recipient would: each must land on
+  # a counted page with the email's tag kept, or whether the email brings
+  # anyone to the site is invisible on Admin -> Traffic. Read from the
+  # rendered email rather than restated, so a changed link is tested as sent.
+  it "counts a click from the welcome email under its tag" do
+    welcome = SubscriberMailer.welcome(Subscriber.create!(email: "ann@example.com"))
+    links = Nokogiri::HTML(welcome.html_part.body.to_s).css("a").map { |a| a["href"] }
+      .select { |href| href.include?("from=welcome-email") }
+    expect(links.size).to eq(2)
+
+    links.each { |href| browse(URI(href).request_uri) }
+
+    expect(PageCount.tagged.where(source: "welcome-email").pluck(:path)).to contain_exactly("/", "/how_to")
+  end
+
   # The whole privacy position of these pages, restated as a test. Ahoy's
   # cookies are dropped and the marketing layout omits csrf_meta_tags so no
   # session cookie is issued either; a counter that reintroduced either would
