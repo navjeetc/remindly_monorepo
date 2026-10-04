@@ -72,7 +72,8 @@ question about your clients between shifts"
 > says the reminder out loud. They press 1 when it's done. For medication, the
 > family is emailed when a dose is marked done, and again if the time passes
 > and nobody marks it, so nobody has to ring round to check.
-> Nothing calls anyone until the client has agreed to it on a first call.
+> The first call only asks the client's permission and says who set it up;
+> no reminder calls come until they agree.
 >
 > It's free while in beta, with no app for the client to learn.
 >
@@ -147,8 +148,9 @@ Fits on one printed page.
 >
 > **Safe by design**
 >
-> - **Nobody is called without agreeing first.** The first call only asks
->   permission, and says who set it up.
+> - **No reminders without the client's agreement.** The first call only asks
+>   permission, and says who set it up. Reminder calls start only once they
+>   agree.
 > - **The client stays in control.** Pressing 9 on any call stops the calls.
 >   Calls happen only in the hours the family picks, between 6am and 10pm the
 >   client's time.
