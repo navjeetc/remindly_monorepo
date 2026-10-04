@@ -57,6 +57,16 @@ RSpec.describe "Saving a number Remindly cannot call", type: :model do
     expect(refusal_for("12345")).to eq("Phone must be a valid E.164 number like +15551234567")
   end
 
+  # A digit short or long still looks like a number to E.164, but it is a
+  # typing slip, not a place outside the US and Canada.
+  it "calls a +1 number of the wrong length a typing slip, not a foreign number" do
+    [ "+1413212909", "+141321290922", "1 413 212 909" ].each do |phone|
+      expect(refusal_for(phone)).to eq(
+        "Phone needs 10 digits after the +1: a 3-digit area code (never starting with 0 or 1) and a 7-digit number"
+      ), phone
+    end
+  end
+
   # A row saved before the rule must stay saveable for an unrelated edit.
   it "does not block other changes to a senior whose saved number predates the rule" do
     senior.update_column(:phone, "+442071234567")

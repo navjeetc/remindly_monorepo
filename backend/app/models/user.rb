@@ -624,7 +624,18 @@ class User < ApplicationRecord
   # some unrelated edit. Skipped when the shape is already wrong, so the
   # caregiver is told one thing at a time. See AreaCode.callable?.
   def phone_is_callable
-    return if errors.include?(:phone) || AreaCode.callable?(phone)
+    return if errors.include?(:phone)
+
+    # A +1 number a digit short or long passes phone_is_e164 but has no area
+    # code to look up. That is a typing slip, not a place, and saying it was
+    # outside the US and Canada would send the caregiver looking for the wrong
+    # mistake. So is an area code starting 0 or 1, which none does: ten digits
+    # are read as +1, so "1 413 212 909", a digit short, arrived as +11413212909
+    # and passed as an area code the list does not name.
+    if phone.start_with?("+1") && !phone.match?(/\A\+1[2-9]\d{9}\z/)
+      return errors.add(:phone, "needs 10 digits after the +1: a 3-digit area code (never starting with 0 or 1) and a 7-digit number")
+    end
+    return if AreaCode.callable?(phone)
 
     where = AreaCode.region_for(phone)
     errors.add(:base, "Remindly can only call numbers in the US and Canada for now, and " +
