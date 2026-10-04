@@ -20,12 +20,27 @@ ever happens, needs its own sending domain and a tool built for it.
 shows on Admin → Traffic. Tags must match `PageCount::SOURCE_FORMAT`
 (lowercase letters, digits, `-` and `_`, up to 40 characters).
 
-**The law.** A one-to-one business email like these is fine under CAN-SPAM. If
-one is ever sent in bulk, it needs Navjeet's postal address and a way to opt
-out ("Reply 'no thanks' and I won't write again"), honoured within 10 days.
+**The law (CAN-SPAM).** These are commercial emails: they promote Remindly.
+The FTC's guidance is explicit that the law covers *every* commercial email,
+including one sent to a single person and one sent to a business; there is no
+one-to-one or business-to-business exception. So every email here must have:
 
-No phone numbers or personal addresses in this file: `[phone number]` stays a
-placeholder.
+- an honest From line and a subject that isn't misleading;
+- **a valid physical postal address** for the sender: a street address, a
+  P.O. box, or a registered private mailbox (use one of the last two rather
+  than a home address);
+- **a clear way to opt out**, honoured within **10 business days**, and never
+  written to again after;
+- nothing that hides it is promotional.
+
+The templates below carry the address and the opt-out line; don't trim them
+off when sending. The voicemail and the printed explainer are not emails, but
+keep the opt-out promise there too: anyone who says no is not contacted again.
+Keep a note of who opted out. See
+https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business.
+
+No phone numbers or addresses in this file: `[phone number]` and
+`[postal address]` stay placeholders.
 
 ---
 
@@ -72,7 +87,11 @@ question about your clients between shifts"
 > Thanks for reading,
 > Navjeet Chabbewal
 > [phone number]
-> www.remindly.care
+> www.remindly.care/?from=agency
+>
+> Remindly · [postal address]
+> If you'd rather not hear from me again, reply "no thanks" and I won't write
+> again.
 
 Personalise one line per agency (the area they serve, something from their
 site). It is the difference between being read and being skipped.
@@ -84,6 +103,12 @@ About a week later, once, if there is no reply:
 > Hi [name], just floating this back up in case it got buried. Happy to drop by
 > for 15 minutes, or to send a one-page summary you could pass to a family.
 > Either way, thanks. Navjeet
+>
+> Remindly · [postal address]
+> If you'd rather not hear from me again, reply "no thanks" and I won't write
+> again.
+
+Don't send it to anyone who replied "no thanks" to the first email.
 
 ### Voicemail
 
@@ -141,4 +166,4 @@ Fits on one printed page.
 > www.remindly.care/how_to?from=agency#videos
 >
 > **Questions, or want it set up for a client?** Navjeet Chabbewal ·
-> [phone number] · hello@remindly.care · www.remindly.care
+> [phone number] · hello@remindly.care · www.remindly.care/?from=agency
