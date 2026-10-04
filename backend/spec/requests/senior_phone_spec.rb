@@ -64,6 +64,14 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(response.body).to include("Remindly can only call numbers in the US and Canada for now")
     end
 
+    # The hint under the field must not invite a number the save then refuses.
+    it "says where calls can go before a number is typed" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("Remindly can call numbers in the US and Canada")
+      expect(response.body).not_to include("country code")
+    end
+
     # The callback under this is the one the whole design rests on.
     it "revokes consent when the number is changed" do
       senior.update!(phone: "+15551234567")
