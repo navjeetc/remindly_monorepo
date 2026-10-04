@@ -44,6 +44,32 @@ class AreaCode
     "TURKS & CAICOS ISLANDS" => "Turks and Caicos Islands"
   }.freeze
 
+  # Where Remindly's calls can go: the fifty states, DC, and Canada's provinces
+  # and territories. Telnyx's outbound profile allows only "United States" and
+  # "Canada", and +1 is wider than both -- Jamaica, the Bahamas and the rest of
+  # the Caribbean share it, as do Bermuda and the US territories, and calls
+  # there are billed and refused as international. The territories are left out
+  # because it is not confirmed that Telnyx counts them as the United States;
+  # add one here only after a live call to it has rung.
+  CALLABLE_REGIONS = (
+    (US_NAMES.values - [ "American Samoa", "Guam", "Northern Mariana Islands", "Puerto Rico", "US Virgin Islands" ]) +
+    [ "Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador",
+      "Northwest Territories, Yukon and Nunavut", "Nova Scotia and Prince Edward Island",
+      "Ontario", "Quebec", "Saskatchewan" ]
+  ).freeze
+
+  # Whether Remindly can telephone this number. A +1 number whose area code
+  # NANPA lists somewhere outside CALLABLE_REGIONS cannot; one it does not list
+  # at all (a code newer than config/area_codes.yml, a toll-free one) is let
+  # through, because refusing a real US number is worse than the rare call that
+  # Telnyx then declines. Not +1 at all: cannot.
+  def self.callable?(phone)
+    return false unless self.for(phone)
+
+    region = region_for(phone)
+    region.nil? || CALLABLE_REGIONS.include?(region)
+  end
+
   # "413" for +14132129092; nil for anything that is not a +1 number, where the
   # first digits after the country code are not an area code at all.
   def self.for(phone)

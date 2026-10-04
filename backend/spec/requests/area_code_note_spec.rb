@@ -46,8 +46,10 @@ RSpec.describe "The area code beside a care receiver's number", type: :request d
     expect(text).not_to include("Area code")
   end
 
+  # Such a number can no longer be saved (see the callable spec), but one
+  # saved before that rule still renders.
   it "says nothing for a number outside +1, rather than guessing" do
-    senior.update!(phone: "+442071234567")
+    senior.update_column(:phone, "+442071234567")
 
     get "/dashboard/senior/#{senior.id}"
 

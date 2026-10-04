@@ -115,9 +115,12 @@
         <% if (note = area_code_note(senior.phone)) %>
           <p class="mt-1 text-sm text-gray-600"><%= note %></p>
         <% end %>
+        <%# Says where calls can go before anyone types a number that cannot
+            be saved: Telnyx calls only the US and Canada, and User refuses
+            anything else (see AreaCode.callable?). It used to invite a + and
+            a country code for "anywhere else". %>
         <p class="mt-1 text-xs text-gray-500">
-          US and Canada numbers can be typed plain — we'll add the +1.
-          Anywhere else, start with + and the country code.
+          Remindly can call numbers in the US and Canada. Type them plain — we'll add the +1.
           Changing the number means asking again.
         </p>
       <% end %>

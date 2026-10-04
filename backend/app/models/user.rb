@@ -210,6 +210,7 @@ class User < ApplicationRecord
   validates :tz, presence: true
   validate :tz_resolves_to_a_real_zone
   validate :phone_is_e164, if: -> { phone.present? }
+  validate :phone_is_callable, if: -> { phone.present? && will_save_change_to_phone? }
 
   # Consent is to a number, not to a person.
   #
@@ -610,5 +611,34 @@ class User < ApplicationRecord
     return if phone.match?(/\A\+[1-9]\d{7,14}\z/)
 
     errors.add(:phone, "must be a valid E.164 number like +15551234567")
+  end
+
+  # Telnyx refuses every destination outside the US and Canada, so a number
+  # elsewhere was saved without a word and then failed at "Call and ask" --
+  # with advice to try again in a moment, which never helps, or with "Calling
+  # now" and a phone that never rang -- spending one of the day's five
+  # attempts each time. Refused here instead, where the caregiver can read why.
+  #
+  # Only when the number changes: a row saved before this rule (there were
+  # none outside +1 when it shipped) must not become impossible to save for
+  # some unrelated edit. Skipped when the shape is already wrong, so the
+  # caregiver is told one thing at a time. See AreaCode.callable?.
+  def phone_is_callable
+    return if errors.include?(:phone)
+
+    # A +1 number a digit short or long passes phone_is_e164 but has no area
+    # code to look up. That is a typing slip, not a place, and saying it was
+    # outside the US and Canada would send the caregiver looking for the wrong
+    # mistake. So is an area code starting 0 or 1, which none does: ten digits
+    # are read as +1, so "1 413 212 909", a digit short, arrived as +11413212909
+    # and passed as an area code the list does not name.
+    if phone.start_with?("+1") && !phone.match?(/\A\+1[2-9]\d{9}\z/)
+      return errors.add(:phone, "needs 10 digits after the +1: a 3-digit area code (never starting with 0 or 1) and a 7-digit number")
+    end
+    return if AreaCode.callable?(phone)
+
+    where = AreaCode.region_for(phone)
+    errors.add(:base, "Remindly can only call numbers in the US and Canada for now, and " +
+                      (where ? "#{phone} is in #{where}." : "#{phone} is outside them."))
   end
 end

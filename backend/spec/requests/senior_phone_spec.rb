@@ -54,6 +54,24 @@ RSpec.describe "Caregiver managing a senior's phone reminders", type: :request d
       expect(senior.reload.phone).to be_nil
     end
 
+    # Telnyx calls only the US and Canada. Saved anyway, a number elsewhere
+    # failed later at "Call and ask" with nothing to say why.
+    it "refuses a number Remindly cannot call, and says why on the page" do
+      patch "/dashboard/senior/#{senior.id}/phone", params: { user: { phone: "+44 20 7123 4567" } }
+
+      expect(senior.reload.phone).to be_nil
+      follow_redirect!
+      expect(response.body).to include("Remindly can only call numbers in the US and Canada for now")
+    end
+
+    # The hint under the field must not invite a number the save then refuses.
+    it "says where calls can go before a number is typed" do
+      get senior_dashboard_path(senior)
+
+      expect(response.body).to include("Remindly can call numbers in the US and Canada")
+      expect(response.body).not_to include("country code")
+    end
+
     # The callback under this is the one the whole design rests on.
     it "revokes consent when the number is changed" do
       senior.update!(phone: "+15551234567")

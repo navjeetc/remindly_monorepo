@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page.
 
 ### Changed
+- **A phone number outside the US and Canada is refused when it is typed.**
+  Remindly's calls go only to the US and Canada, so a number anywhere else
+  used to save without comment and then fail at "Call and ask": either with
+  advice to try again in a moment, which never helped, or with "Calling now"
+  and a phone that never rang, each try spending one of the day's five
+  attempts. The caregiver is now told straight away, by name where the area
+  code says where: "Remindly can only call numbers in the US and Canada for
+  now, and +18765550123 is in Jamaica." +1 numbers are checked by area code,
+  since the Caribbean, Bermuda and the US territories share +1 but are not
+  callable; an area code the NANPA list does not name is let through.
 - **The welcome email says what Remindly is.** Someone who has just
   confirmed their place on the mailing list used to get the routine sheet
   and a bare "Remindly is free to use" link. It now has a short paragraph on
