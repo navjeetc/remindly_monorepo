@@ -18,7 +18,9 @@ ever happens, needs its own sending domain and a tool built for it.
 
 **Tag the links.** Each audience has its own `?from=` tag, so a visit it brings
 shows on Admin → Traffic. Tags must match `PageCount::SOURCE_FORMAT`
-(lowercase letters, digits, `-` and `_`, up to 40 characters).
+(lowercase letters, digits, `-` and `_`, up to 40 characters, starting
+with a letter or digit). Anything else is silently dropped and the visit is
+counted untagged.
 
 **The law (CAN-SPAM).** These are commercial emails: they promote Remindly.
 The FTC's guidance is explicit that the law covers *every* commercial email,
