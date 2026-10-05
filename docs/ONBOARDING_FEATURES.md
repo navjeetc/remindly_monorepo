@@ -26,8 +26,9 @@ phone, landline or mobile, at the right time and says the reminder out loud.
 They press 1 when it's done or 2 to be reminded again shortly. There's nothing
 to install and nothing to read. Calls go to numbers in the US and Canada.
 
-**Nobody is called without agreeing first.** The first call only asks
-permission, and says who set it up. Pressing 9 on any call stops the calls,
+**No reminder calls until they agree.** The first call only asks permission,
+and says who set it up; reminders start once they press 1. Pressing 9 on any
+call stops the calls,
 and you can pick the hours calls are allowed, anywhere from 6am to 10pm their
 time.
 
@@ -61,7 +62,7 @@ most likely to have — what it does, whether it is safe for their parent,
 what they get out of it, and what it costs.
 
 1. Reminder phone calls, not another app
-2. Nobody is called without agreeing first
+2. No reminder calls until they agree
 3. You hear what happened, without ringing to ask
 4. Free while in beta
 
