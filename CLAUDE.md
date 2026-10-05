@@ -88,6 +88,8 @@ Post bodies are rendered with `html_safe` — sound only because posts are repo 
 
 `docs/ONBOARDING_FEATURES.md` is the feature list pasted into invitation emails for new users. It lists only what is live in production, and it is a pitch rather than a changelog: a PR that ships something worth telling a prospective user about adds it, a PR that makes an entry wrong corrects it, and a PR that deliberately leaves it alone says so.
 
+`docs/OUTREACH_TEMPLATES.md` holds the messages sent to prospective users and to people who can point families to Remindly (home care agencies first), plus a one-page explainer. Its product claims come from `docs/ONBOARDING_FEATURES.md`, so a PR that makes a feature entry wrong checks this file too. Outreach is sent personally, never through Postmark or GoHighLevel; the file says why.
+
 ### UI conventions
 **Read `docs/UI_STYLE_GUIDE.md` before adding or changing any field, button or form on a web page.** Fields use the `field` class, buttons use `button` plus `button-primary`, `button-secondary` or `button-danger` (filled, never a white outlined box), new-record forms autofocus the first field a person types into, and labels carry no emoji. The styles live in `backend/app/views/shared/_ui_styles.css.erb`; `spec/requests/form_fields_look_like_fields_spec.rb` enforces the rules across every view, so a page that skips them fails CI.
 
