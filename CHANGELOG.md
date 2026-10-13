@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Remindly rings once to ask). "Nothing is spoken until they agree" is now
   "no reminder is spoken", since the asking call speaks; and only saying no
   on the screen deletes the setup, while pressing 9 stops the calls.
+- **A reminder call takes two keypresses, not one**: 1 to hear it, then 1
+  when it's done. The FAQ, the elderly-parents page, the welcome email, the
+  onboarding feature list and the outreach templates said "press 1 when
+  it's done". (The consent call is a single 1.)
 - **"How do I know whether they actually took it?"** now says in the answer
   itself that a Done is an acknowledgement, not proof.
 
