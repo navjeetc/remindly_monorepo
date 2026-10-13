@@ -690,6 +690,18 @@ RSpec.describe "Pages", type: :request do
       expect(canonical_href).to eq("https://www.remindly.care/faq")
     end
 
+    # Remindly is phone-first. A conversion review (2026-10-12) found the FAQ
+    # still saying a parent needed a browser device, while the home page
+    # promised calls to any phone, and describing consent as screen-only.
+    it "answers what a parent needs with their telephone, and consent by phone too" do
+      get "/faq"
+      answers = structured_data["mainEntity"].to_h { |q| [ q["name"], q["acceptedAnswer"]["text"] ] }
+
+      expect(answers["What does my parent need at their end?"]).to start_with("Just their own telephone")
+      expect(answers["How does a caregiver get connected to the person they care for?"]).to include("pressing 1 on the first call")
+      expect(answers["How do I know whether they actually took it?"]).to include("A Done is an acknowledgement, not proof")
+    end
+
     # The whole point of the page: rich results for the questions caregivers
     # actually type. Google drops a FAQPage whose questions are not also visible
     # on the page, so both come from one source in the template.
