@@ -698,7 +698,9 @@ RSpec.describe "Pages", type: :request do
       answers = structured_data["mainEntity"].to_h { |q| [ q["name"], q["acceptedAnswer"]["text"] ] }
 
       expect(answers["What does my parent need at their end?"]).to start_with("Just their own telephone")
-      expect(answers["How does a caregiver get connected to the person they care for?"]).to include("pressing 1 on the first call")
+      connected = answers["How does a caregiver get connected to the person they care for?"]
+      expect(connected).to include("If they only have a telephone, add their number")
+      expect(connected).to include("No reminder is spoken")
       expect(answers["How do I know whether they actually took it?"]).to include("A Done is an acknowledgement, not proof")
     end
 

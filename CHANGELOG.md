@@ -17,7 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to tablet use.
 - **Consent was described as on-screen only** on the FAQ, the home page and
   the elderly-parents page; each now says a phone-only parent agrees by
-  pressing 1 on the first call.
+  pressing 1 on the first call, and describes that route (add their number;
+  Remindly rings once to ask). "Nothing is spoken until they agree" is now
+  "no reminder is spoken", since the asking call speaks; and only saying no
+  on the screen deletes the setup, while pressing 9 stops the calls.
 - **"How do I know whether they actually took it?"** now says in the answer
   itself that a Done is an acknowledgement, not proof.
 
