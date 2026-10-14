@@ -34,7 +34,7 @@ class MagicController < ApplicationController
 
       # If it's a browser request, redirect to login with error
       if request.format.html?
-        redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
+        redirect_to login_path, alert: "That sign-in link has expired or isn't valid. Enter your email below for a new one."
       else
         head :unauthorized
       end
@@ -54,6 +54,12 @@ class MagicController < ApplicationController
 
     # If it's a browser request (HTML), set session and redirect to dashboard
     if request.format.html?
+      # A link requested from "Set up reminders for my parent" has already said
+      # what this account is for, so a new one skips the role question. Only
+      # ever a first choice: choose_role_once refuses to change a role that is
+      # set, so an existing account keeps whatever it is.
+      user.choose_role_once("caregiver") if params[:for] == "parent"
+
       payload = { uid: user.id, exp: 30.days.from_now.to_i }
       jwt_token = JWT.encode(payload, hmac_secret, "HS256")
       session[:jwt_token] = jwt_token

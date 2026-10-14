@@ -72,5 +72,29 @@ RSpec.describe "Magic link", type: :request do
 
       expect(magic_link_in_last_email).to start_with("https://remindly.anakhsoft.com/magic/verify")
     end
+
+    it "carries a sign-up begun from \"for my parent\" into the emailed link" do
+      post "/login/magic", params: { email: "user@example.com", for: "parent" }
+
+      # The text part: the HTML part escapes & as &amp;, which a query parser
+      # reads as a parameter called "amp;for".
+      link = ActionMailer::Base.deliveries.last.text_part.decoded[%r{https?://\S+}]
+      expect(Rack::Utils.parse_query(URI(link).query)["for"]).to eq("parent")
+      expect(response).to redirect_to("/login?for=parent")
+    end
+
+    it "leaves an ordinary sign-in link alone" do
+      post "/login/magic", params: { email: "user@example.com" }
+
+      expect(URI(magic_link_in_last_email).query).not_to include("for=")
+      expect(response).to redirect_to("/login")
+    end
+
+    it "passes on nothing it does not recognise" do
+      post "/login/magic", params: { email: "user@example.com", for: "admin" }
+
+      expect(URI(magic_link_in_last_email).query).not_to include("for=")
+      expect(response).to redirect_to("/login")
+    end
   end
 end

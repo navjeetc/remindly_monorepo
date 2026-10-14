@@ -64,7 +64,7 @@ RSpec.describe "Pages", type: :request do
         primaries = doc.css(".actions .btn-primary")
         expect(primaries.length).to eq(1), "the hero should offer one primary action, found #{primaries.length}"
         expect(primaries.first.text).to match(/set up reminders/i)
-        expect(primaries.first["href"]).to eq("/login")
+        expect(primaries.first["href"]).to eq("/login?for=parent")
       end
 
       # The first objection is practical — what device, is there an app — and it
@@ -153,11 +153,16 @@ RSpec.describe "Pages", type: :request do
         expect(doc.css("a").map { |a| a["href"] }).to include("mailto:hello@remindly.care")
       end
 
-      # Onboarding is self-serve now: first sign-in asks which role you are and
-      # takes you straight in, so the homepage sets that expectation.
-      it "explains the self-serve first-sign-in flow" do
+      # Every "for my parent" button already says what the account is for, so
+      # it starts the sign-up that skips the role question. The plain Sign in
+      # in the nav stays plain: a returning care receiver uses it too.
+      it "starts the caregiver sign-up from every button that says it is for a parent" do
         get "/"
-        expect(response.body).to include("asks one question")
+
+        parent_buttons = doc.css("a").select { |a| a.text.include?("Set up reminders for my parent") }
+        expect(parent_buttons).not_to be_empty
+        expect(parent_buttons.map { |a| a["href"] }).to all(eq("/login?for=parent"))
+        expect(doc.css("a.nav-cta").map { |a| a["href"] }).to all(eq("/login"))
       end
 
       # Excluding the path in Ahoy::Store stops the visit row, but Ahoy still
@@ -790,14 +795,14 @@ RSpec.describe "Pages", type: :request do
       expect(response.body).to match(/not a substitute/i)
     end
 
-    it "opens with one primary call to action, pointing at sign-in" do
+    it "opens with one primary call to action, pointing at the caregiver sign-up" do
       get landing
 
       hero = doc.at_css(".actions")
       primaries = hero.css(".btn-primary")
 
       expect(primaries.length).to eq(1)
-      expect(primaries.first["href"]).to eq("/login")
+      expect(primaries.first["href"]).to eq("/login?for=parent")
     end
 
     # This route is indexable and a signed-in reader can arrive on it from a
