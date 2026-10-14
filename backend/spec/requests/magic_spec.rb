@@ -90,6 +90,12 @@ RSpec.describe "Magic link", type: :request do
       expect(response).to redirect_to("/login")
     end
 
+    it "keeps the parent start when the email was left blank" do
+      post "/login/magic", params: { email: "", for: "parent" }
+
+      expect(response).to redirect_to("/login?for=parent")
+    end
+
     it "passes on nothing it does not recognise" do
       post "/login/magic", params: { email: "user@example.com", for: "admin" }
 

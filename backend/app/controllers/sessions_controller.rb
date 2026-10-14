@@ -26,7 +26,7 @@ class SessionsController < ActionController::Base
     # is delivered today only because the mailer raises on a nil recipient,
     # which is a thin thing to be standing behind.
     if email.blank?
-      return redirect_to login_path, alert: "Enter your email address."
+      return redirect_to login_path(for: ("parent" if for_parent?)), alert: "Enter your email address."
     end
 
     user = User.find_or_create_by!(email: email)
