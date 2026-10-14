@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-13
+
 ### Changed
+- **The sign-in page reads as the place to start.** Arriving from "Set up
+  reminders for my parent" it says "Start setting up reminders for your
+  parent" and "New here? This creates your account"; from the plain Sign in
+  link it says the same link creates an account. The button is "Email me a
+  secure sign-in link" rather than "Send Magic Link", a short "what happens
+  next" replaces the passwordless note, the How-to is a small link, and the
+  confirmation names the address and mentions the spam folder.
+- **"Set up reminders for my parent" skips the role question.** The emailed
+  link carries `for=parent`, and a new account that follows it is made a
+  caregiver. An account that already has a role is never changed.
+- **The monthly note's "What has changed since you signed up"** now leads
+  with the phone calls (their own landline or mobile, 1 to hear, 1 when
+  done), says the parent needs no account and agrees on the first call, and
+  points at the simpler start.
+
 - **The home page is about half as long** (~1,475 words to ~650). It keeps the
   headline, the four steps with their limits, the call transcript, both
   screenshots and the closing button; the cost section, the tablet section
@@ -17,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page links directly to the missed-call answer and to the connecting answer.
 
 ### Fixed
+- **"You can change this later in your profile"** on the role chooser and
+  the How-to was no longer true (switching was removed); both now say to
+  email hello@remindly.care, as the profile does.
 - **The FAQ and the elderly-parents page described Remindly as screen-only.**
   "What does my parent need?" said a browser device and nothing else, while
   the home page promised calls to any phone; it now leads with their own

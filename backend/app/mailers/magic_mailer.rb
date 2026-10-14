@@ -2,9 +2,9 @@ class MagicMailer < ApplicationMailer
   ALLOWED_ORIGIN_HOSTS = %w[remindly.anakhsoft.com remindly.care www.remindly.care localhost 127.0.0.1].freeze
 
 
-  def magic_link_email(user, token, web: false, origin: nil)
+  def magic_link_email(user, token, web: false, origin: nil, for_parent: false)
     @user = user
-    @magic_link = generate_magic_link(token, web: web, origin: origin)
+    @magic_link = generate_magic_link(token, web: web, origin: origin, for_parent: for_parent)
 
     mail(
       to: @user.email,
@@ -14,7 +14,7 @@ class MagicMailer < ApplicationMailer
 
   private
 
-  def generate_magic_link(token, web: false, origin: nil)
+  def generate_magic_link(token, web: false, origin: nil, for_parent: false)
     # Voice clients go through the session login and land on /voice_reminders.
     # This used to point at /client/, the standalone JS client, which has been
     # retired — it was superseded by /voice_reminders and received no traffic.
@@ -37,6 +37,10 @@ class MagicMailer < ApplicationMailer
     # caregiver dashboard. A senior following this link wants their reminders,
     # not a navigation step.
     params[:next] = "voice_reminders" if web
+    # Carried from "Set up reminders for my parent" so the new account is made a
+    # caregiver without asking. Unsigned on purpose: it only answers the role
+    # question for whoever holds this token, which they could answer anyway.
+    params[:for] = "parent" if for_parent
     uri.query = URI.encode_www_form(params)
     uri.to_s
   end

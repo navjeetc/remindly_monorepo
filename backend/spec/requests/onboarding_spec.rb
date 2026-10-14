@@ -20,6 +20,44 @@ RSpec.describe "Self-serve role onboarding", type: :request do
     expect(response.body).not_to include("Pending Approval")
   end
 
+  # "Set up reminders for my parent" has already answered the question, and the
+  # link it emails carries that through.
+  context "when the link was requested from \"for my parent\"" do
+    def sign_in_for_parent(user)
+      post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes), for: "parent" }
+    end
+
+    it "makes a new account a caregiver and skips the question" do
+      sign_in_for_parent(new_user)
+      expect(new_user.reload.role).to eq("caregiver")
+
+      get "/dashboard"
+      expect(response.body).not_to include("I'll be receiving the reminders")
+    end
+
+    # choose_role_once is what guarantees this; pinned here because the
+    # parameter is unsigned and anyone can add it to their own link.
+    it "keeps the \"for my parent\" start when the link has expired" do
+      get "/magic/verify", params: { token: "expired-or-tampered", for: "parent" }
+
+      expect(response).to redirect_to("/login?for=parent")
+    end
+
+    it "never changes an account that already has a role" do
+      new_user.update_column(:role, User.roles.fetch(:senior))
+
+      sign_in_for_parent(new_user)
+
+      expect(new_user.reload.role).to eq("senior")
+    end
+  end
+
+  it "still asks a new account that signed in the ordinary way" do
+    sign_in(new_user)
+
+    expect(new_user.reload.role).to be_nil
+  end
+
   it "sets the chosen role and lands the user in the app" do
     sign_in(new_user)
 

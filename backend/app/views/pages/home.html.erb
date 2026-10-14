@@ -70,7 +70,7 @@
   a detour rather than an alternative, so it reads as "not yet" instead of "or".
 %>
 <div class="actions">
-  <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <a class="btn btn-primary" href="<%= login_path(for: "parent") %>">Set up reminders for my parent — free</a>
   <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works first</a>
 </div>
 
@@ -238,10 +238,9 @@
 <h2>Getting started</h2>
 
 <p>
-  Enter your email on the <a href="<%= login_path %>">sign-in page</a> and
-  Remindly sends you a link — no password to choose. The first time, it
-  asks one question, whether you are setting it up for someone else, and takes
-  you straight in.
+  <a href="<%= login_path(for: "parent") %>">Enter your email</a> and Remindly
+  sends you a link that creates your account and signs you in — no password to
+  choose, and nothing to install.
 </p>
 
 <%#
@@ -282,7 +281,7 @@
 </p>
 
 <div class="actions-end">
-  <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+  <a class="btn btn-primary" href="<%= login_path(for: "parent") %>">Set up reminders for my parent — free</a>
 </div>
 
 <%= render "shared/subscribe_form", source: "home" %>

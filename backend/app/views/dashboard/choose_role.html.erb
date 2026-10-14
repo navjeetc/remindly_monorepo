@@ -18,7 +18,10 @@
     <% end %>
   </div>
 
-  <p class="mt-8 text-sm text-gray-500">You can change this later in your profile.</p>
+  <%# This said "you can change this later in your profile", which stopped being
+    true when switching was removed (User#choose_role_once). The profile says to
+    email, so this does too. %>
+  <p class="mt-8 text-sm text-gray-500">Picked the wrong one? Email hello@remindly.care and we'll change it.</p>
 
   <div class="mt-6 text-sm text-gray-500">
     Signed in as <strong><%= current_user.email %></strong> ·

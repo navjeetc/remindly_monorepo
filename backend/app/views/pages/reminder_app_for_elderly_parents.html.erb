@@ -71,7 +71,7 @@
   <% if current_user %>
     <a class="btn btn-primary" href="<%= dashboard_path %>">Go to your dashboard</a>
   <% else %>
-    <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+    <a class="btn btn-primary" href="<%= login_path(for: "parent") %>">Set up reminders for my parent — free</a>
   <% end %>
   <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works first</a>
 </div>
@@ -294,10 +294,9 @@
 <h2>Setting it up</h2>
 
 <p>
-  Enter your email on the <a href="<%= login_path %>">sign-in page</a> and
-  Remindly sends you a link — there is no password to choose. The first time you
-  sign in it asks one question, whether you are setting this up for someone else
-  or will be receiving the reminders yourself, and takes you straight in.
+  <a href="<%= login_path(for: "parent") %>">Enter your email</a> and Remindly
+  sends you a link that creates your account and signs you in — there is no
+  password to choose.
 </p>
 
 <%#
@@ -333,6 +332,6 @@
   <% if current_user %>
     <a class="btn btn-secondary" href="<%= dashboard_path %>">Back to your dashboard</a>
   <% else %>
-    <a class="btn btn-primary" href="<%= login_path %>">Set up reminders for my parent — free</a>
+    <a class="btn btn-primary" href="<%= login_path(for: "parent") %>">Set up reminders for my parent — free</a>
   <% end %>
 </div>

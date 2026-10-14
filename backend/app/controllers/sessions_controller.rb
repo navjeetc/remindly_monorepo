@@ -26,16 +26,18 @@ class SessionsController < ActionController::Base
     # is delivered today only because the mailer raises on a nil recipient,
     # which is a thin thing to be standing behind.
     if email.blank?
-      return redirect_to login_path, alert: "Enter your email address."
+      return redirect_to login_path(for: ("parent" if for_parent?)), alert: "Enter your email address."
     end
 
     user = User.find_or_create_by!(email: email)
     token = user.signed_id(purpose: :magic_login, expires_in: 30.minutes)
 
     # Send magic link email (web: false for dashboard, goes to /magic/verify)
-    MagicMailer.magic_link_email(user, token, web: false, origin: request.base_url).deliver_now
+    MagicMailer.magic_link_email(user, token, web: false, origin: request.base_url, for_parent: for_parent?).deliver_now
 
-    redirect_to login_path, notice: "Magic link sent! Check your email to sign in."
+    redirect_to login_path(for: ("parent" if for_parent?)),
+      notice: "We've emailed a sign-in link to #{email}. It expires after 30 minutes. " \
+              "If it isn't there in a minute or two, check your spam folder."
   end
 
   # Verify magic link and log in
@@ -76,7 +78,7 @@ class SessionsController < ActionController::Base
         user_agent: request.user_agent
       }
 
-      redirect_to login_path, alert: "Invalid or expired magic link. Please try again."
+      redirect_to login_path, alert: "That sign-in link has expired or isn't valid. Enter your email below for a new one."
     end
   end
 
@@ -142,10 +144,18 @@ class SessionsController < ActionController::Base
 
   private
 
+  # Arrived from "Set up reminders for my parent" on the public site, which
+  # answers the one question onboarding would otherwise ask.
+  def for_parent?
+    params[:for] == "parent"
+  end
+  helper_method :for_parent?
+
   def sign_in_form_expired(error)
     raise error unless action_name == "request_magic_link"
 
-    redirect_to login_path, alert: "That sign-in page had expired. Please enter your email again."
+    redirect_to login_path(for: ("parent" if for_parent?)),
+      alert: "That sign-in page had expired. Please enter your email again."
   end
 
   def current_user
