@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-13
+
 ### Changed
 - **The sign-in page reads as the place to start.** Arriving from "Set up
   reminders for my parent" it says "Start setting up reminders for your
