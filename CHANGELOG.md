@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **The FAQ and the elderly-parents page described Remindly as screen-only.**
+  "What does my parent need?" said a browser device and nothing else, while
+  the home page promised calls to any phone; it now leads with their own
+  telephone (US or Canada) and offers the tablet as the alternative. The
+  first FAQ answer describes the call, and says the done/missed emails are
+  for medication. "Does the page have to stay open?" says it applies only
+  to tablet use.
+- **Consent was described as on-screen only** on the FAQ, the home page and
+  the elderly-parents page; each now says a phone-only parent agrees by
+  pressing 1 on the first call, and describes that route (add their number;
+  Remindly rings once to ask). "Nothing is spoken until they agree" is now
+  "no reminder is spoken", since the asking call speaks; and saying no
+  (pressing 9 on that first call, or no on the screen) deletes the setup,
+  while pressing 9 on a later call stops the calls.
+- **A reminder call takes two keypresses, not one**: 1 to hear it, then 1
+  when it's done. The FAQ, the elderly-parents page, the welcome email, the
+  onboarding feature list and the outreach templates said "press 1 when
+  it's done", and `/how_to` and the elderly-parents page described a single
+  keypress. (The consent call is a single 1.)
+- **"How do I know whether they actually took it?"** now says in the answer
+  itself that a Done is an acknowledgement, not proof.
+
 ### Added
 - **A walk-through video on the How to page**: a caregiver signs up, sets
   up a care receiver, adds their phone number with the press-1 agreement

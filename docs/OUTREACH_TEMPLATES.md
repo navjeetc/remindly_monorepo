@@ -71,9 +71,10 @@ question about your clients between shifts"
 >
 > It covers the hours between your caregivers' visits. At the time a dose or
 > task is due, Remindly rings the client's own phone, landline or mobile, and
-> says the reminder out loud. They press 1 when it's done. For medication, the
-> family is emailed when a dose is marked done, and again if the time passes
-> and nobody marks it, so nobody has to ring round to check.
+> says the reminder out loud. They press 1 to hear it and 1 again when it's
+> done. For medication, the family is emailed when a dose is marked done, and
+> again if the time passes and nobody marks it, so nobody has to ring round to
+> check.
 > The first call only asks the client's permission and says who set it up;
 > no reminder calls come until they agree.
 >
@@ -141,8 +142,9 @@ Fits on one printed page.
 >    tablets, a glass of water, Thursday's appointment. Reminders repeat daily
 >    or weekly, on the client's clock.
 > 2. **Remindly calls the client's own phone**, landline or mobile, at the
->    right time and says the reminder out loud. They press 1 when it's done, or
->    2 to be reminded again shortly. Nothing to install, nothing to read.
+>    right time and says the reminder out loud. They press 1 to hear it,
+>    then 1 when it's done, or 2 to be reminded again shortly. Nothing to
+>    install, nothing to read.
 > 3. **The family hears what happened.** For medication, they get an email when
 >    a dose is marked done, and another if the time passes and nobody marks it.
 >    For reminders where being late matters, they're told as soon as the first
