@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the "two things worth knowing" box are gone. Their detail was already
   on the FAQ, except for two answers it gains: "What happens if they don't
   answer the call?" and "Will my parent think it's a scam call?". The home
-  page links to those answers directly.
+  page links directly to the missed-call answer and to the connecting answer.
 
 ### Fixed
 - **The FAQ and the elderly-parents page described Remindly as screen-only.**
