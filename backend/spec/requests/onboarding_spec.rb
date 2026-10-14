@@ -37,6 +37,12 @@ RSpec.describe "Self-serve role onboarding", type: :request do
 
     # choose_role_once is what guarantees this; pinned here because the
     # parameter is unsigned and anyone can add it to their own link.
+    it "keeps the \"for my parent\" start when the link has expired" do
+      get "/magic/verify", params: { token: "expired-or-tampered", for: "parent" }
+
+      expect(response).to redirect_to("/login?for=parent")
+    end
+
     it "never changes an account that already has a role" do
       new_user.update_column(:role, User.roles.fetch(:senior))
 

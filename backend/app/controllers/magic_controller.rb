@@ -34,7 +34,10 @@ class MagicController < ApplicationController
 
       # If it's a browser request, redirect to login with error
       if request.format.html?
-        redirect_to login_path, alert: "That sign-in link has expired or isn't valid. Enter your email below for a new one."
+        # Keep the "for my parent" start: without it the new link is a plain
+        # one, and the account it creates is asked the role question after all.
+        redirect_to login_path(for: ("parent" if params[:for] == "parent")),
+          alert: "That sign-in link has expired or isn't valid. Enter your email below for a new one."
       else
         head :unauthorized
       end
