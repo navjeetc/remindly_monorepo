@@ -128,25 +128,15 @@ RSpec.describe "Pages", type: :request do
 
       # The FAQ carries the long-tail search content and the FAQPage graph, and
       # was reachable from here only through one link in the closing paragraph
-      # and the footer — both below everything on the page.
-      it "links to the questions page from where cost is discussed, not only at the foot" do
+      # and the footer — both below everything on the page. The cost section it
+      # used to hang from went in the trim (the free note says it at the top),
+      # so the link now belongs to the sentence that raises "what's the catch".
+      it "links to the questions page from where the catch is raised, not only at the foot" do
         get "/"
 
-        # Walk only as far as the next heading. Taking every following sibling
-        # would sweep up the closing paragraph's link and pass with or without
-        # a link in this section, which is the thing being tested.
-        heading = doc.at_css("h2:contains('What it costs')")
-        expect(heading).to be_present, "the 'What it costs' section is gone"
-
-        section = []
-        node = heading.next_element
-        while node && node.name != "h2"
-          section << node
-          node = node.next_element
-        end
-
-        hrefs = section.flat_map { |n| n.css("a").map { |a| a["href"] } }
-        expect(hrefs).to include("/faq"), "nothing links to the FAQ from the section about cost"
+        paragraph = doc.css("p").find { |p| p.text.include?("catch") }
+        expect(paragraph).to be_present, "nothing on the homepage asks what the catch is"
+        expect(paragraph.css("a").map { |a| a["href"] }).to include("/faq")
       end
 
       # /how_to is otherwise an orphan - nothing links to it, so nothing finds it.
@@ -702,6 +692,19 @@ RSpec.describe "Pages", type: :request do
       expect(connected).to include("If they only have a telephone, add their number")
       expect(connected).to include("No reminder is spoken")
       expect(answers["How do I know whether they actually took it?"]).to include("A Done is an acknowledgement, not proof")
+    end
+
+    # The homepage was trimmed by sending its detail here, and it links to two
+    # answers by id. A renamed or dropped anchor would leave those links landing
+    # at the top of a long page, which nothing else would notice.
+    it "has the answers the homepage links to directly" do
+      get "/"
+      targets = Nokogiri::HTML(response.body).css("a[href^='/faq#']").map { |a| a["href"].delete_prefix("/faq#") }
+      expect(targets).to include("if-they-dont-answer", "connecting")
+
+      get "/faq"
+      faq = Nokogiri::HTML(response.body)
+      targets.each { |id| expect(faq.at_css("h2##{id}")).to be_present, "/faq has no ##{id}" }
     end
 
     # The whole point of the page: rich results for the questions caregivers

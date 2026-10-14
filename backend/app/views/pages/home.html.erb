@@ -117,65 +117,52 @@
 
   <ol>
     <li>
-      <strong>You schedule it</strong> — the morning tablets, an appointment, a
-      walk after lunch — from your own phone or computer, wherever you are.
+      <strong>You schedule it</strong> — from your own phone or computer,
+      wherever you are.
     </li>
     <li>
-      <strong>Remindly calls</strong> — their own telephone rings at the right
-      time and says the reminder out loud. Nothing to install, and no app store
-      account. If there is a tablet or a computer in the house, Remindly can
-      speak from that instead.
+      <strong>Remindly calls</strong> — their own landline or mobile rings at the
+      right time and says the reminder out loud. Nothing to install. If there is
+      a tablet in the house, it can speak from that instead.
     </li>
     <li>
       <%# Two presses on a telephone, not one: the screening line asks for a
           keypress before the reminder is spoken at all, which is what stops a
           reminder being read onto an answering machine. The transcript below
-          shows both, so a step claiming one was contradicted on the same
-          page. %>
+          shows both. %>
       <strong>They press a key</strong> — 1 to hear the reminder, then 1 for
-      done or 2 to be reminded again shortly. On a screen it is one big button
-      instead. Never more than one key at a time, and nothing to read.
+      done or 2 to be reminded again shortly. On a screen it is one big button.
     </li>
     <li>
-      <%# Scoped to medication on purpose. Acknowledged and missed emails go to
-          caregivers opted into the reminder's category, and medication is the
-          only one on by default -- see ReminderNotificationService. Promising
-          this for every reminder would be promising the firehose a caregiver
-          has to ask for. %>
+      <%# Scoped to medication on purpose: it is the only category caregivers
+          are opted into by default -- see ReminderNotificationService. %>
       <strong>You are told</strong> — for medication, an email when it is marked
       done, and another if the time passes and nobody marks it.
     </li>
   </ol>
 
+  <%# The limits, in the same panel as the promise: anything that would feel
+      like a bait-and-switch if it were found later belongs here, not only on
+      /how_to. %>
   <p class="setup-foot">
-    Any device with a web browser and a speaker will do — an old tablet, a
-    laptop, the computer already on the desk. Signing in is a link sent by
-    email, so there is no password for anyone to remember.
-  </p>
-
-  <%# The limits, in the same panel as the promise. The whole case for the calls
-      belongs on /how_to and the elderly parents page; what belongs here is
-      everything that would feel like a bait-and-switch if it were found later.
-      Leaving the hours and the opt-out for the other page would make this the
-      reassuring version and that one the true one. %>
-  <p class="setup-foot">
-    <strong>The limits, before you build anything on this.</strong> Calls are
-    made between 8am and 9pm at their end, or the hours you set. Nobody is
-    telephoned without agreeing first — the opening call only asks, and never
-    asks for personal details —
+    <strong>The limits, up front.</strong> Calls are made between 8am and 9pm at
+    their end, or the hours you set. Nobody is telephoned without agreeing
+    first — the opening call only asks, and never asks for personal details —
     and pressing 9 on any call stops the reminder calls.
     <a href="<%= how_to_path %>">How the calls work</a>.
   </p>
 </section>
 
 <%#
-  The single biggest unknown for somebody deciding, and until now the page
-  answered it nowhere: what does an automated call to my mother actually sound
-  like. Every quoted line here is the script in config/locales/voice.en.yml,
-  word for word, including the screening line that plays first on every call.
-  spec/requests/home_call_transcript_spec.rb holds them together — if the
-  script is reworded and this is not, that spec fails, which is the only thing
-  standing between this section and becoming a plausible fiction.
+  Every quoted line here is the script in config/locales/voice.en.yml, word for
+  word, including the screening line that plays first on every call.
+  spec/requests/home_call_transcript_spec.rb holds them together.
+
+  The missed-call paragraph is the question the transcript raises: she did not
+  pick up, now what. Three attempts and five minutes are TelnyxCall::MAX_ATTEMPTS
+  and RETRY_AFTER; the early email is scoped to time-critical reminders because
+  that is what ReminderNotificationService.notify_unanswered checks. The full
+  answer, voicemail included, is on the FAQ.
 %>
 <section class="transcript" aria-labelledby="transcript-heading">
   <h2 id="transcript-heading">What the call actually sounds like</h2>
@@ -208,237 +195,82 @@
   </ol>
 
   <p class="transcript-foot">
-    That is the whole of it. It names Remindly before it asks for anything,
-    because an automated voice telling an older person to press a key is the
-    shape of the calls this age group is warned about — and being recognisable
-    in the first three seconds is the only defence that survives a mobile
-    network stripping the caller ID.
+    If nobody answers, Remindly tries again — up to three times, five minutes
+    apart. For a reminder where <strong>being late matters</strong>, you are
+    emailed after the first unanswered call — once, not once per attempt —
+    while there is still time to do something. <a href="<%= faq_path %>#if-they-dont-answer">What happens when a
+    call is missed</a>.
   </p>
 </section>
 
 <%#
-  The question the transcript raises and does not answer, and the one a
-  caregiver is really buying against: she did not pick up, now what. Numbers
-  rather than adjectives, because "we keep trying" is what every product on
-  this shelf says. Three attempts and five minutes are TelnyxCall::MAX_ATTEMPTS
-  and RETRY_AFTER; a spec pins them so the copy cannot drift from the code.
-
-  The second paragraph is scoped to time-critical reminders because that is
-  what ReminderNotificationService.notify_unanswered checks. Saying it
-  unqualified would promise every caregiver an email on every silent hydration
-  call, which is neither what happens nor what anybody wants.
-%>
-<h2>A call nobody answers does not just vanish</h2>
-
-<p>
-  If the telephone rings out, Remindly tries again — up to three times, five
-  minutes apart, and only inside the hours above. A voicemail cannot press a
-  key, so an answering machine does not count as an answer and the reminder is
-  never left on one.
-</p>
-
-<p>
-  When you have marked a reminder as one where <strong>being late matters</strong>,
-  you are emailed as soon as the <em>first</em> call goes unanswered — while the
-  other attempts are still to come, and the email says how many are still on the
-  way. Once, not once per attempt. That is the whole reason that setting exists:
-  to hear about it early enough to do something, rather than at the end of the
-  day.
-</p>
-
-<%#
   Real screenshots of the running app, not mockups — width and height are the
-  file's own dimensions so the browser reserves the space and the text below
-  does not jump when the image arrives.
-
-  The care receiver's screen comes first. The buyer is the adult child, but the
-  objection that stops them is "my mother will never use this", and that is
-  answered by a picture rather than a paragraph.
-
-  Still lazy-loaded, though. Moving it up the document did not move it above the
-  fold: the hero, the buttons, the free note and the setup panel run past the
-  first screen on a laptop and well past it on a phone, so this is roughly 40KB
-  fetched eagerly to compete with content the visitor can actually see.
+  file's own dimensions so the browser reserves the space. The care receiver's
+  screen comes first: the objection that stops a buyer is "my mother will never
+  use this", and a picture answers it faster than a paragraph.
 %>
 <figure class="shot">
   <img src="/screenshot-voice-reminders.webp"
        width="1400" height="1179" loading="lazy" decoding="async"
        alt="The Remindly screen a care receiver sees: a heading reading My Reminders, a note that there are six reminders today, then each reminder as a large card — Take your morning medication at 8:00 AM with the note two white tablets with breakfast, and Have a glass of water at 10:30 AM — each with a big green Done button and a Snooze button beside it.">
   <figcaption>
-    <strong>No app to learn. Just a familiar screen that speaks when it's time.</strong>
-    Everything is large, and there are only ever two things to press.
+    <strong>No app to learn.</strong> If there is a tablet in the house, this is
+    all they see: large type, and only ever two things to press.
   </figcaption>
 </figure>
-
-<h2>If there is a tablet in the house</h2>
-
-<p>
-  A tablet or computer sits somewhere they already spend time — the kitchen
-  table, beside a favourite chair — with Remindly open on the screen, the way a
-  clock sits on a shelf. When a reminder is due, it speaks:
-  <em>"Take your morning medication."</em>
-</p>
-
-<p>
-  The screen lists the day's reminders in large type, each with two buttons:
-  <strong>Done</strong> and <strong>Snooze</strong>. Nothing to install, no
-  password to remember, no menus to get lost in.
-</p>
-
-<h2>What it looks like at yours</h2>
-
-<p>
-  You see the whole day at a glance from your own dashboard. For medication,
-  Remindly emails you when a dose is <strong>marked done</strong> on their
-  device, and again if the time passes and it has not been — so checking in does
-  not have to mean ringing to ask whether they remembered.
-</p>
-
-<div class="note">
-  <p>
-    <strong>What "done" means, and what it doesn't.</strong> Remindly records
-    that someone pressed <strong>Done</strong> on the reminder. That is a good
-    signal and it is not proof: it cannot tell you a tablet was actually
-    swallowed, and it is not a substitute for a pill dispenser, a carer or
-    medical advice. If a missed dose would be dangerous, Remindly should not be
-    the only thing standing between your parent and that dose.
-  </p>
-</div>
-
-<p>
-  Alongside the reminders that repeat, there is a shared list of the one-off
-  things — a prescription to collect, an appointment on Thursday, the grocery
-  delivery someone needs to be in for. If more than one of you is helping, you
-  can each take what you can and see what the others have picked up.
-</p>
 
 <figure class="shot">
   <img src="/screenshot-tasks.webp"
        width="1400" height="744" loading="lazy" decoding="async"
        alt="The caregiver's task list for Margaret Ellis, showing five tasks with dates: ring about the boiler service marked Completed, collect repeat prescription marked High priority and Pending, a cardiology appointment marked High and Assigned, a grocery delivery marked Medium and Assigned, and change the bed linen marked Low and Pending — each showing who it is assigned to, or Unassigned.">
-  <figcaption>What you see. Who is doing what, what is still unclaimed, and what has already been dealt with.</figcaption>
+  <figcaption>
+    <strong>What you see.</strong> The day at a glance — and, if a brother or
+    sister is helping too, who is doing what.
+  </figcaption>
 </figure>
 
-<div class="note">
-  <p>
-    <strong>Two things worth knowing before you set this up.</strong>
-  </p>
-  <p>
-    Remindly speaks through the page, so that page needs to stay open on their
-    device — think of it as leaving a clock on the counter rather than an app you
-    open when you need it. Close the tab and nothing is spoken.
-  </p>
-  <p>
-    And browsers will not play sound until someone has touched the screen, so on
-    an iPad Remindly asks for a single tap after it starts up. It remembers
-    anything it could not say and speaks it once you do.
-  </p>
-</div>
-
-<h2>What it costs</h2>
-
 <p>
-  Nothing, while it is in beta — every reminder, every caregiver you link, every
-  email it sends you. There is no card to enter and no trial that quietly ends.
-  If charging ever becomes necessary, anyone already using Remindly will be told
-  first, well before anything changes.
-</p>
-
-<p>
-  It is early software, and being useful to people matters more right now than
-  being paid for. If that ever changes, anyone already using Remindly will hear
-  it from us first, and well before it does.
-</p>
-
-<%#
-  The FAQ was reachable from the homepage only through one link in the last
-  paragraph and the footer — both below everything — despite being the page
-  that carries the long-tail search content and the FAQPage graph. Someone
-  reading about cost is exactly the person wondering what the catch is, so this
-  is where the link belongs.
-%>
-<p>
-  If that sounds like there must be a catch,
-  <a href="<%= faq_path %>">the questions page says plainly why there isn't</a> —
-  along with what Remindly deliberately does not do.
-</p>
-
-<%#
-  The one internal link to the landing page, and it is here rather than higher
-  up on purpose: someone still reading at this point is deciding, and that page
-  is written for deciding. It also has to be linked from somewhere — a page
-  reachable only through the sitemap is one a search engine has no reason to
-  think matters.
-
-  It sits above "Getting started" rather than at the foot, though. It used to be
-  the last thing on the page, which meant the page closed by suggesting the
-  reader go and look at something else.
-%>
-<p>
-  Still comparing options? What a
-  <a href="<%= reminder_app_for_elderly_parents_path %>">reminder app for an
-  elderly parent</a> actually has to do is a shorter list than it looks, and
-  worth checking against anything else you are considering.
+  A <strong>Done</strong> is an acknowledgement, not proof that a tablet was
+  swallowed, and Remindly is not a medical device.
+  <a href="<%= faq_path %>">What Remindly can and can't tell you</a>.
 </p>
 
 <h2>Getting started</h2>
 
 <p>
   Enter your email on the <a href="<%= login_path %>">sign-in page</a> and
-  Remindly sends you a link. There is no password to choose or remember, and
-  nothing to install.
-</p>
-
-<p>
-  The first time you sign in, Remindly asks one question — whether you are setting
-  it up for someone else or will be receiving the reminders yourself — and takes
-  you straight in. No waiting, and you can change that answer later from your
-  profile.
+  Remindly sends you a link — no password to choose. The first time, it
+  asks one question, whether you are setting it up for someone else, and takes
+  you straight in.
 </p>
 
 <%#
-  The sentence the homepage could not honestly print until this month.
-
-  "You create the reminders" was the promise at the top of this page while the
-  person receiving them still had to sign up, find an email and read a long code
-  down a telephone before any of it worked. Saying so here, in the section
-  someone reads once they have decided to try it, is the point of having built
-  it — and the consent line belongs in the same breath, because a reader whose
-  next thought is "so I can set this up on my mother without telling her" should
-  meet the answer immediately rather than discover it later.
+  The consent line sits in the same breath as "they need no account", because a
+  reader whose next thought is "so I can set this up on my mother without
+  telling her" should meet the answer immediately rather than discover it later.
 %>
-
 <p>
-  Then you set up the person you care for — their name and their timezone, and
-  that is the whole form. <strong>They need no email address, no password and no
-  account.</strong> Write their reminders straight away. If they only have a
-  telephone, add their number and Remindly rings once to ask them; if there is a
-  tablet, hand over access by opening the link on it and bookmarking it, or by
-  reading them six numbers down the telephone to type in.
-</p>
-
-<p>
-  No reminder is spoken and you see nothing about their day until they agree:
-  on their own screen, which names you when it asks, or, if they only have a
-  telephone, by pressing 1 on the first call, which only asks. Saying no —
-  pressing 9 on that first call, or no on the screen — deletes everything you
-  set up; pressing 9 on a later call stops the calls. That is deliberate: a reminder system arranged for somebody
-  without their knowledge is not a thing Remindly will help you build.
-</p>
-
-<p>
-  The <a href="<%= how_to_path %>">guide</a> walks through setting up a first
-  reminder once you are in, and the
-  <a href="<%= faq_path %>">questions page</a> covers what this looks like in
-  practice — including what Remindly deliberately does not do.
+  Then add the person you care for: their name and timezone. <strong>They need
+  no email address, no password and no account.</strong> No reminder is spoken
+  until they agree — by pressing 1 on the first call, which only asks, or on
+  their own screen — and if they say no, everything you set up is deleted.
+  <a href="<%= faq_path %>#connecting">How connecting works</a>.
 </p>
 
 <%#
-  A page this long ends, as it did, on a link to a comparison page — which asks
-  the reader to go and keep shopping. What it needed was the moment being sold,
-  put in a specific tomorrow rather than in the abstract, and the same button
-  from the top within reach of somebody who has now read everything.
+  The one internal link to the landing page — a page reachable only through the
+  sitemap is one a search engine has no reason to think matters — and the FAQ
+  link for the reader wondering what the catch is with a free product.
+%>
+<p>
+  Still comparing options? What a
+  <a href="<%= reminder_app_for_elderly_parents_path %>">reminder app for an
+  elderly parent</a> actually has to do is a shorter list than it looks. And if
+  free sounds like there must be a catch,
+  <a href="<%= faq_path %>">the questions page says plainly why there isn't</a>.
+</p>
 
+<%#
   Not inside .actions: a spec counts the primary buttons in that container so
   the hero keeps offering exactly one decision, and this must not satisfy it.
 %>
@@ -446,8 +278,7 @@
 
 <p>
   Her telephone rings, she presses 1, and the email is with you before the
-  kettle has boiled. Nothing for her to learn, nothing for you to install, and
-  nothing to pay.
+  kettle has boiled.
 </p>
 
 <div class="actions-end">

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The home page is about half as long** (~1,475 words to ~650). It keeps the
+  headline, the four steps with their limits, the call transcript, both
+  screenshots and the closing button; the cost section, the tablet section
+  and the "two things worth knowing" box are gone. Their detail was already
+  on the FAQ, except for two answers it gains: "What happens if they don't
+  answer the call?" and "Will my parent think it's a scam call?". The home
+  page links to those answers directly.
+
 ### Fixed
 - **The FAQ and the elderly-parents page described Remindly as screen-only.**
   "What does my parent need?" said a browser device and nothing else, while

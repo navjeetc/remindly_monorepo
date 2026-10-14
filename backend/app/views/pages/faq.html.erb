@@ -9,6 +9,9 @@
 
   Answers are plain strings, not HTML: FAQPage accepts limited markup and a link
   in an answer buys nothing here, while the strings stay usable as-is in JSON.
+
+  An optional third element is the heading's id, for questions another page
+  links to directly. It goes nowhere near the structured data.
 %>
 <% faqs = [
      [
@@ -32,12 +35,22 @@
        "You know whether it was marked done — not whether the tablet was swallowed. At their end they mark a reminder done by pressing 1 on the call or Done on the screen; one nobody answers shows as missed, and you see the whole day at a glance from your own dashboard. For medication, Remindly emails you when a dose is marked done and again if one is missed. A Done is an acknowledgement, not proof: Remindly is not a medical device and not a substitute for care. You choose which kinds of reminder email you — medication is on by default, while hydration and routine reminders happen many times a day and stay off unless you turn them on."
      ],
      [
+       "What happens if they don't answer the call?",
+       "Remindly tries again — up to three times, five minutes apart, and only inside the calling hours. A voicemail cannot press a key, so an answering machine never counts as an answer and the reminder is never left on one. If nobody answers any attempt, the reminder shows as missed, and for medication you are emailed. For a reminder you have marked as one where being late matters, you are emailed as soon as the first call goes unanswered, while the other attempts are still to come — once, not once per attempt — so you hear about it early enough to do something rather than at the end of the day.",
+       "if-they-dont-answer"
+     ],
+     [
+       "Will my parent think it's a scam call?",
+       "That is the worry the call is built around. An automated voice telling an older person to press a key is exactly the shape of the calls this age group is warned about, so every call names Remindly in its first sentence, before it asks for anything, and it never asks for personal details. Being recognisable in the first few seconds matters because a mobile network can strip the caller ID. Nobody is rung with reminders until they have agreed: the first call says who set it up and only asks, and pressing 9 on any call stops the reminder calls."
+     ],
+     [
        "Can more than one person in the family help?",
        "Yes. Several caregivers can be linked to the same person, each with their own sign-in and their own notification settings, so a sibling who wants every medication alert and one who wants none can both be connected. There are also shared tasks — a specific thing to be done once, which you can assign to a particular caregiver or leave open for whoever gets to it."
      ],
      [
        "How does a caregiver get connected to the person they care for?",
-       "Two ways. If your parent has never used Remindly, you set them up yourself — their name and their timezone, and nothing else. If they only have a telephone, add their number and Remindly rings once to ask them, saying who set it up; they press 1 to agree. If there is a tablet or computer, open the link on it and bookmark it, or read them six numbers down the telephone to type in at remindly.care/start. No reminder is spoken and you see no activity until they agree — by pressing 1 on that first call, or on their own screen, which names you when it asks. The second way is the original one and still works when the person already has an account: they generate a one-time pairing code and share it, and the caregiver enters it. Either side can end the connection at any time, and access stops immediately — nobody is ever locked into an arrangement they did not choose."
+       "Two ways. If your parent has never used Remindly, you set them up yourself — their name and their timezone, and nothing else. If they only have a telephone, add their number and Remindly rings once to ask them, saying who set it up; they press 1 to agree. If there is a tablet or computer, open the link on it and bookmark it, or read them six numbers down the telephone to type in at remindly.care/start. No reminder is spoken and you see no activity until they agree — by pressing 1 on that first call, or on their own screen, which names you when it asks. Saying no — pressing 9 on that first call, or no on the screen — deletes everything you set up; pressing 9 on a later call only stops the calls. The second way is the original one and still works when the person already has an account: they generate a one-time pairing code and share it, and the caregiver enters it. Either side can end the connection at any time, and access stops immediately — nobody is ever locked into an arrangement they did not choose.",
+       "connecting"
      ],
      [
        "Is Remindly free?",
@@ -60,7 +73,7 @@
 <% content_for :structured_data, json_ld(
      "@context" => "https://schema.org",
      "@type" => "FAQPage",
-     "mainEntity" => faqs.map { |question, answer|
+     "mainEntity" => faqs.map { |question, answer, _anchor|
        {
          "@type" => "Question",
          "name" => question,
@@ -78,8 +91,8 @@
   plainly, including the ones where the answer is no.
 </p>
 
-<% faqs.each do |question, answer| %>
-  <h2><%= question %></h2>
+<% faqs.each do |question, answer, anchor| %>
+  <%= tag.h2 question, id: anchor %>
   <p><%= answer %></p>
 <% end %>
 
