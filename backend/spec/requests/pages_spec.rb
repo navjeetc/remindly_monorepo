@@ -156,6 +156,16 @@ RSpec.describe "Pages", type: :request do
       # Every "for my parent" button already says what the account is for, so
       # it starts the sign-up that skips the role question. The plain Sign in
       # in the nav stays plain: a returning care receiver uses it too.
+      # No cookie can carry an ad's tag from the page it landed on to the
+      # sign-up, so the links do: every way to start keeps ?from=.
+      it "carries the visitor's ?from= tag into every way to sign up" do
+        get "/", params: { from: "meta" }
+
+        parent_buttons = doc.css("a").select { |a| a.text.include?("Set up reminders for my parent") }
+        expect(parent_buttons.map { |a| a["href"] }).to all(eq("/login?for=parent&from=meta"))
+        expect(doc.css("a.nav-cta").map { |a| a["href"] }).to all(eq("/login?from=meta"))
+      end
+
       it "starts the caregiver sign-up from every button that says it is for a parent" do
         get "/"
 

@@ -96,6 +96,34 @@ RSpec.describe "Magic link", type: :request do
       expect(response).to redirect_to("/login?for=parent")
     end
 
+    # What the activation funnel credits an account to. Only a new account: an
+    # existing one signing in again from an ad is not a sign-up the ad produced.
+    it "records the ?from= tag on a new account" do
+      post "/login/magic", params: { email: "new@example.com", from: "Meta" }
+
+      expect(User.find_by!(email: "new@example.com").signup_source).to eq("meta")
+    end
+
+    it "never retags an existing account" do
+      existing = User.create!(email: "old@example.com", signup_source: "reddit")
+
+      post "/login/magic", params: { email: "old@example.com", from: "meta" }
+
+      expect(existing.reload.signup_source).to eq("reddit")
+    end
+
+    it "stores nothing for a tag we could not have written" do
+      post "/login/magic", params: { email: "new@example.com", from: "<script>" }
+
+      expect(User.find_by!(email: "new@example.com").signup_source).to be_nil
+    end
+
+    it "keeps the tag when the email was left blank" do
+      post "/login/magic", params: { email: "", for: "parent", from: "meta" }
+
+      expect(response).to redirect_to("/login?for=parent&from=meta")
+    end
+
     it "passes on nothing it does not recognise" do
       post "/login/magic", params: { email: "user@example.com", for: "admin" }
 

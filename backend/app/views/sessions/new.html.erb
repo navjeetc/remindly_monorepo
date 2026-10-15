@@ -55,6 +55,7 @@
         <div class="mt-8 space-y-6">
           <%= form_with url: request_magic_link_path, method: :post, class: "space-y-6" do |f| %>
             <%= hidden_field_tag :for, "parent" if for_parent? %>
+            <%= hidden_field_tag :from, campaign_source if campaign_source %>
             <div>
               <%= f.label :email, "Your email address", class: "block text-sm font-medium text-gray-700" %>
               <%= f.email_field :email, required: true, autofocus: true, autocomplete: "email", placeholder: "you@example.com", class: "field mt-1 block w-full" %>

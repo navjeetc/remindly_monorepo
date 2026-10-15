@@ -43,6 +43,12 @@ RSpec.describe "The sign-in page", type: :request do
     end
   end
 
+  it "carries the ?from= tag into the request, so the new account is credited to it" do
+    get login_path(for: "parent", from: "meta")
+
+    expect(Nokogiri::HTML(response.body).at_css("form input[type=hidden][name=from]")&.[]("value")).to eq("meta")
+  end
+
   it "says what the button does rather than calling it a magic link" do
     get login_path
 

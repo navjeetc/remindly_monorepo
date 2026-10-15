@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Sign-ups and activation on Admin → Traffic.** For the accounts created
+  in the chosen period: how many signed in, added someone, wrote a reminder,
+  and had that person agree, in total and by the `?from=` tag the account was
+  created from. A new account records that tag (`users.signup_source`), carried
+  from the public page it landed on through the sign-up links, with no cookie;
+  `users.first_signed_in_at` records when the emailed link was first opened.
+  The privacy policy says the tag is kept on the account.
+
 ## [0.22.0] - 2026-10-13
 
 ### Changed

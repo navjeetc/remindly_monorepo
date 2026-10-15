@@ -746,7 +746,7 @@
           <% if current_user %>
             <a class="nav-cta" href="<%= dashboard_path %>">Dashboard</a>
           <% else %>
-            <a class="nav-cta" href="<%= login_path %>">Sign in</a>
+            <a class="nav-cta" href="<%= sign_in_path %>">Sign in</a>
           <% end %>
         </nav>
       </div>
@@ -768,7 +768,7 @@
           <% if current_user %>
             <a href="<%= dashboard_path %>">Dashboard</a>
           <% else %>
-            <a href="<%= login_path %>">Sign in</a>
+            <a href="<%= sign_in_path %>">Sign in</a>
           <% end %>
           <a href="mailto:hello@remindly.care">hello@remindly.care</a>
         </div>
