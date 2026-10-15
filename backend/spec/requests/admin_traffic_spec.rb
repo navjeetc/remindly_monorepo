@@ -63,6 +63,20 @@ RSpec.describe "Admin traffic report", type: :request do
     end
   end
 
+  # What an ad bought, next to what it was seen by.
+  it "shows how far the accounts created in the period got, by tag" do
+    create(:user, :caregiver, signup_source: "meta", first_signed_in_at: Time.current)
+    create(:user, :caregiver, signup_source: "meta")
+
+    sign_in_as(admin)
+    get "/admin/traffic"
+
+    section = Nokogiri::HTML(response.body).css("div").find { |d| d.at_css("h3")&.text == "Sign-ups and activation" }
+    expect(section).to be_present
+    meta_row = section.css("tr").find { |tr| tr.at_css("td")&.text == "meta" }
+    expect(meta_row.css("td").map { |td| td.text.squish }).to eq(%w[meta 2 1 0 0 0])
+  end
+
   # The page is reached before anything has been recorded, on the first deploy
   # and again after every prune. Empty states are the state it will most often
   # be seen in early on, so they should say something useful rather than break.

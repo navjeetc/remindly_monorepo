@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Self-serve role onboarding", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   def sign_in(user)
     post "/magic/verify", params: { token: user.signed_id(purpose: :magic_login, expires_in: 30.minutes) }
   end
@@ -56,6 +58,19 @@ RSpec.describe "Self-serve role onboarding", type: :request do
     sign_in(new_user)
 
     expect(new_user.reload.role).to be_nil
+  end
+
+  # An account is created when the link is asked for, so "signed up" in the
+  # activation funnel needs to know who actually opened it.
+  it "records the first time the link is opened, and only the first" do
+    sign_in(new_user)
+    first = new_user.reload.first_signed_in_at
+    expect(first).to be_present
+
+    travel 1.day do
+      sign_in(new_user)
+    end
+    expect(new_user.reload.first_signed_in_at).to eq(first)
   end
 
   it "sets the chosen role and lands the user in the app" do

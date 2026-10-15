@@ -1,4 +1,25 @@
 module ApplicationHelper
+  # Where "Set up reminders for my parent" goes. It carries the ?from= tag the
+  # visitor arrived with, so an account created from an ad is credited to it
+  # (users.signup_source) — through the URL, because these pages set no cookie
+  # and must not start. A tag only survives the one click from the page it
+  # landed on; that is the trade for keeping the public pages cookie-free.
+  def start_setup_path
+    login_path(for: "parent", from: campaign_source)
+  end
+
+  # The nav's plain Sign in, carrying the tag the same way: somebody who arrives
+  # from an ad and signs up from the nav is still that ad's sign-up.
+  def sign_in_path
+    login_path(from: campaign_source)
+  end
+
+  # The visitor's ?from= tag, normalised as PageCount normalises it; nil for
+  # anything that is not a tag we could have written.
+  def campaign_source
+    PageCount.normalize_source(params[:from]).presence
+  end
+
   # Shared styling for the top navigation links. Six links repeated the same long
   # class string with only the active/inactive branch differing, so a change to
   # the nav meant six edits that had to stay in step.

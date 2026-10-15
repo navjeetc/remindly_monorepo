@@ -38,6 +38,57 @@
   </div>
 
   <%#
+    What a paid ad is actually buying. Page views say people came; this says
+    whether any of them started. Each column counts accounts created in the
+    period that got that far, and the tag is the ?from= on the link the account
+    was created from — the same tag as the campaign table below.
+  %>
+  <div class="bg-white shadow sm:rounded-lg p-4">
+    <h3 class="text-lg font-semibold text-gray-900 mb-1">Sign-ups and activation</h3>
+    <p class="text-sm text-gray-500 mb-3">
+      Accounts created in this period, and how far each got. "Added someone" means
+      they set up a person to remind; "They agreed" means that person said yes.
+    </p>
+
+    <% created = @activation_totals[:created] %>
+    <% if created.positive? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead>
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
+            <% Activation::STEPS.each_value do |label| %>
+              <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"><%= label %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr class="bg-gray-50">
+            <td class="px-3 py-2 text-sm font-semibold text-gray-900">All</td>
+            <% @activation_totals.each do |step, total| %>
+              <td class="px-3 py-2 text-sm text-gray-900 text-right font-semibold">
+                <%= number_with_delimiter(total) %>
+                <% unless step == :created %>
+                  <span class="block text-xs font-normal text-gray-500"><%= (total * 100.0 / created).round %>%</span>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+          <% @activation_by_source.each do |source, steps| %>
+            <tr>
+              <td class="px-3 py-2 text-sm text-gray-900"><%= source %></td>
+              <% steps.each_value do |total| %>
+                <td class="px-3 py-2 text-sm text-gray-900 text-right"><%= number_with_delimiter(total) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="text-sm text-gray-500 py-2">No accounts were created in this period.</p>
+    <% end %>
+  </div>
+
+  <%#
     The table this page exists for. Everything else is context; this is the one
     that answers whether a post, a link or a mention sent real people.
   %>

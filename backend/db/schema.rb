@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_02_053600) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_14_020000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -314,6 +314,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_053600) do
     t.datetime "created_at", null: false
     t.string "email"
     t.datetime "email_undeliverable_at"
+    t.datetime "first_signed_in_at"
     t.string "name"
     t.string "nickname"
     t.boolean "notify_on_coverage_gaps", default: true, null: false
@@ -322,6 +323,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_02_053600) do
     t.string "phone"
     t.datetime "phone_verified_at"
     t.integer "role"
+    t.string "signup_source"
     t.string "spoken_language", default: "en-US", null: false
     t.integer "text_size", default: 0, null: false
     t.string "tz", default: "America/New_York"

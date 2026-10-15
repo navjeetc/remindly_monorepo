@@ -46,6 +46,7 @@ class MagicController < ApplicationController
 
     # Authenticate user with Ahoy
     ahoy.authenticate(user)
+    user.record_first_sign_in!
 
     # Track successful login
     ahoy.track "Login Success", {
