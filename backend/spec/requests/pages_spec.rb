@@ -156,6 +156,20 @@ RSpec.describe "Pages", type: :request do
       # Every "for my parent" button already says what the account is for, so
       # it starts the sign-up that skips the role question. The plain Sign in
       # in the nav stays plain: a returning care receiver uses it too.
+      # Codex on #206: only the homepage, the landing page and the nav kept the
+      # tag, so an ad pointed at the FAQ or a post lost it at the page's own
+      # button. Every public page, every link to sign in.
+      it "keeps ?from= on every sign-in link on every public page" do
+        paths = PagesController::STATIC_PATHS + [ Post.all.first.path ]
+        paths.each do |path|
+          get path, params: { from: "meta" }
+          hrefs = Nokogiri::HTML(response.body).css("a[href^='/login']").map { |a| a["href"] }
+
+          expect(hrefs).not_to be_empty, "#{path} has no link to sign in"
+          expect(hrefs).to all(include("from=meta")), "#{path} drops the tag: #{hrefs.inspect}"
+        end
+      end
+
       # No cookie can carry an ad's tag from the page it landed on to the
       # sign-up, so the links do: every way to start keeps ?from=.
       it "carries the visitor's ?from= tag into every way to sign up" do
