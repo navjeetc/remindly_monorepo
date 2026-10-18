@@ -20,8 +20,11 @@
   out loud. They press 1 to hear it and 1 when it is done, so nothing else is
   needed in the house. You can set it all up yourself, with no account or code
   for them to deal with; the first call says who set it up and asks them to
-  agree. And starting is simpler: press "Set up reminders for my parent" on the
-  website, and the link we email you creates your account.
+  agree. And starting is simpler: press "Set up reminders for my parent" on
+  <%# Tagged so a sign-up from this note shows under its own name on
+      Admin → Traffic, next to its page views. %>
+  <a href="<%= "#{ApplicationHelper::CANONICAL_HOST}/?from=monthly-note" %>">the website</a>,
+  and the link we email you creates your account.
 </p>
 
 <p>

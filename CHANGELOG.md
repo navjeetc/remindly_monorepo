@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The monthly note links to the website**, tagged `?from=monthly-note`, where
+  it tells people to press "Set up reminders for my parent"; a sign-up it
+  brings shows under that tag on Admin → Traffic.
+
 ## [0.23.0] - 2026-10-17
 
 ### Added
