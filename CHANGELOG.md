@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-17
+
 ### Added
 - **Sign-ups and activation on Admin → Traffic.** For the accounts created
   in the chosen period: how many signed in, added someone, wrote a reminder,
