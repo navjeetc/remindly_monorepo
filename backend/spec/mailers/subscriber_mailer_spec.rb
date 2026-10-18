@@ -54,6 +54,16 @@ RSpec.describe SubscriberMailer, type: :mailer do
     end
 
     include_examples "an email that can be unsubscribed from"
+
+    # The note tells people to press "Set up reminders for my parent" on the
+    # website, so it links there — tagged, so a sign-up it brings shows under
+    # its own name on Admin -> Traffic.
+    it "links to the website, tagged as from this note, in both parts" do
+      home = "https://www.remindly.care/?from=monthly-note"
+
+      expect(mail.text_part.body.to_s).to include(home)
+      expect(Nokogiri::HTML(mail.html_part.body.to_s).css("a").map { |a| a["href"] }).to include(home)
+    end
   end
 
   describe "#welcome" do
