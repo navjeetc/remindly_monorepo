@@ -26,6 +26,12 @@ class Admin::TrafficController < WebController
     # Daily, so a spike on the day something was posted is visible at a glance —
     # which is the shape the answer usually takes.
     @by_day = counts.humans.group(:day).sum(:count).sort_by { |day, _| day }.reverse.first(14)
+
+    # What the views turned into. Same period, so an ad's row here and its
+    # campaign tag above describe the same days.
+    activation = Activation.new(since: @since)
+    @activation_totals = activation.totals
+    @activation_by_source = activation.by_source
   end
 
   private

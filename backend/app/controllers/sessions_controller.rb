@@ -26,10 +26,13 @@ class SessionsController < ActionController::Base
     # is delivered today only because the mailer raises on a nil recipient,
     # which is a thin thing to be standing behind.
     if email.blank?
-      return redirect_to login_path(for: ("parent" if for_parent?)), alert: "Enter your email address."
+      return redirect_to login_path(for: ("parent" if for_parent?), from: campaign_source), alert: "Enter your email address."
     end
 
-    user = User.find_or_create_by!(email: email)
+    # The tag only names a *new* account's origin. An existing one keeps
+    # whatever it came in with, or nothing: signing in again from an ad is not
+    # a sign-up the ad produced.
+    user = User.find_or_create_by!(email: email) { |new_user| new_user.signup_source = campaign_source }
     token = user.signed_id(purpose: :magic_login, expires_in: 30.minutes)
 
     # Send magic link email (web: false for dashboard, goes to /magic/verify)
@@ -48,6 +51,7 @@ class SessionsController < ActionController::Base
     if user
       # Authenticate user with Ahoy
       ahoy.authenticate(user)
+      user.record_first_sign_in!
 
       # Track successful login
       ahoy.track "Login Success", {
@@ -151,10 +155,17 @@ class SessionsController < ActionController::Base
   end
   helper_method :for_parent?
 
+  # The ?from= tag the visitor arrived with, normalised the way PageCount
+  # normalises it so an ad's page views and the accounts it produced share one
+  # name. nil for anything that is not a tag we could have written.
+  def campaign_source
+    PageCount.normalize_source(params[:from]).presence
+  end
+
   def sign_in_form_expired(error)
     raise error unless action_name == "request_magic_link"
 
-    redirect_to login_path(for: ("parent" if for_parent?)),
+    redirect_to login_path(for: ("parent" if for_parent?), from: campaign_source),
       alert: "That sign-in page had expired. Please enter your email again."
   end
 

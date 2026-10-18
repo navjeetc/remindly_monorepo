@@ -437,6 +437,17 @@ class User < ApplicationRecord
     true
   end
 
+  # The first time this person opened an emailed sign-in link, for the
+  # activation funnel (see Activation). Written once, in the WHERE for the same
+  # reason as choose_role_once: two tabs opening the link at once must not leave
+  # the later time.
+  def record_first_sign_in!(at: Time.current)
+    return if first_signed_in_at
+
+    self.class.where(id: id, first_signed_in_at: nil).update_all(first_signed_in_at: at)
+    self.first_signed_in_at = at
+  end
+
   # Outbound reminder calls are restricted to a window in the *called party's*
   # own local time. That is what makes tz load-bearing for phone reminders
   # rather than a display convenience: the profile bug that silently moved
