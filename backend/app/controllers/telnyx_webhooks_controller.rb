@@ -113,6 +113,7 @@ class TelnyxWebhooksController < ApplicationController
 
     return handle_verification_answered(call, event_id) if call.purpose == "verification"
     return handle_escalation_consent_answered(call, event_id) if call.purpose == "escalation_consent"
+    return handle_escalation_answered(call, event_id) if call.purpose == "escalation"
 
     # Redelivery is covered by command_id: Telnyx refuses a command it has
     # already run, and event_id is stable across redeliveries. answered_at
@@ -142,6 +143,7 @@ class TelnyxWebhooksController < ApplicationController
 
     return handle_verification_answered(call, event_id) if call.purpose == "verification"
     return handle_escalation_consent_answered(call, event_id) if call.purpose == "escalation_consent"
+    return handle_escalation_answered(call, event_id) if call.purpose == "escalation"
 
     occurrence = call.occurrence
     reminder = occurrence.reminder
@@ -192,6 +194,7 @@ class TelnyxWebhooksController < ApplicationController
   def handle_gather_ended(call, payload, event_id)
     return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
     return handle_escalation_consent_gather_ended(call, payload, event_id) if call.purpose == "escalation_consent"
+    return handle_escalation_gather_ended(call, payload, event_id) if call.purpose == "escalation"
 
     # Telnyx sending the screening keypress a second time, which happens when our
     # 200 does not reach it. Everything that event asked for was done on the
@@ -276,6 +279,7 @@ class TelnyxWebhooksController < ApplicationController
         # than only on attempt 1 means a redelivered webhook or a lost first
         # event still reaches somebody.
         notify_unanswered_if_critical(call)
+        escalate_if_last_attempt(call)
       end
     end
 
@@ -337,7 +341,13 @@ class TelnyxWebhooksController < ApplicationController
     # started — so it covered "answered and pressed nothing" and missed "the
     # phone rang out", which is the more common of the two and the more
     # worrying.
-    notify_unanswered_if_critical(call) if unanswered
+    return unless unanswered
+
+    notify_unanswered_if_critical(call)
+    escalate_if_last_attempt(call)
+
+    # A caregiver who did not pick up: the next one is rung after the gap.
+    EscalationCallJob.advance(call.escalation_occurrence, call.attempt_number, wait: TelnyxCall::ESCALATION_GAP) if call.purpose == "escalation"
   end
 
   # Deliberately no rescue: a failure here must propagate so `receive` answers
@@ -532,12 +542,98 @@ class TelnyxWebhooksController < ApplicationController
     call.outcome == "no_response" && %w[ 1 9 ].include?(payload["digits"].to_s)
   end
 
+  # A caregiver rung because somebody they look after did not answer any of the
+  # calls for a time-critical reminder. Spoken straight away, with no screening
+  # keypress: unlike a reminder call it never says what the reminder was, so a
+  # voicemail that hears it learns only that Remindly rang about this person --
+  # and the caregiver agreed to these calls on this number themselves.
+  def handle_escalation_answered(call, event_id)
+    TelnyxVoiceService.gather_digit(
+      call_control_id: call.call_control_id,
+      prompt: escalation_request_for(call),
+      language: call_language(call),
+      command_id: event_id,
+      max_tries: 2
+    )
+
+    call.update!(answered_at: Time.current)
+  end
+
+  def escalation_request_for(call)
+    occurrence = call.escalation_occurrence
+    senior = occurrence.reminder.user
+    due = senior.local_time(at: occurrence.scheduled_at)
+
+    I18n.t("caregiver_voice.escalation.request",
+      name: senior.display_name,
+      time: due ? due.strftime("%-l:%M %p") : "earlier today",
+      locale: :en)
+  end
+
+  # 1 sees to it, 2 passes to the next person now, 9 stops these calls to this
+  # caregiver (and passes on), and anything else is no answer, which waits the
+  # gap before the next person. Only 9 writes to the caregiver, and none of
+  # them touches the care receiver or the dose: a caregiver saying they will
+  # check is not the dose being taken.
+  def handle_escalation_gather_ended(call, payload, event_id)
+    digits = payload["digits"].to_s
+
+    # Pending, or a real answer that arrived after the hangup had already
+    # recorded no answer -- the same late delivery answer_still_open? allows for.
+    open = call.outcome == "pending" || (call.outcome == "no_response" && %w[ 1 2 9 ].include?(digits))
+
+    if open
+      record_keypress(call, digits)
+      occurrence = call.escalation_occurrence
+
+      case digits
+      when "1"
+        call.update!(outcome: "accepted", completed_at: Time.current)
+        ReminderNotificationService.notify_escalation_accepted(occurrence, accepted_by: call.user)
+      when "2"
+        call.update!(outcome: "passed", completed_at: Time.current)
+        EscalationCallJob.advance(occurrence, call.attempt_number)
+      when "9"
+        escalation_opt_out!(call)
+        EscalationCallJob.advance(occurrence, call.attempt_number)
+      else
+        call.update!(outcome: "no_response", completed_at: Time.current)
+        EscalationCallJob.advance(occurrence, call.attempt_number, wait: TelnyxCall::ESCALATION_GAP)
+      end
+    end
+
+    return if payload["status"] == "call_hangup" || call.status == "hangup"
+    return if say_farewell(call, event_id)
+
+    end_call(call, event_id)
+  end
+
+  # Starts ringing caregivers once the care receiver's last call for a
+  # time-critical reminder has gone unanswered. Only the last: the earlier
+  # attempts still have a call coming after them. Silence and a hangup are the
+  # only ways here -- a 9 is an answer, and the care receiver saying stop is
+  # not a reason to ring somebody else.
+  def escalate_if_last_attempt(call)
+    return unless call.purpose == "reminder"
+    return unless call.attempt_number.to_i >= TelnyxCall::MAX_ATTEMPTS
+    return unless call.occurrence&.reminder&.critical?
+
+    EscalationCallJob.perform_later(call.occurrence_id, 1)
+  rescue => e
+    # As with the alert: never let this take the webhook down.
+    Rails.logger.error "Escalation enqueue failed for call #{call.id}: #{e.class}: #{e.message}"
+  end
+
   # Escalation-consent calls have their own goodbyes: the care receiver's
   # ("We will call you when it is time for a reminder") would promise the
   # caregiver calls they have not agreed to.
   def farewell_message(call, key)
-    if call.purpose == "escalation_consent"
+    case call.purpose
+    when "escalation_consent"
       I18n.t("caregiver_voice.escalation_consent.#{key}", locale: :en)
+    when "escalation"
+      I18n.t("caregiver_voice.escalation.#{key}",
+             name: call.escalation_occurrence.reminder.user.display_name, locale: :en)
     else
       I18n.t("voice.confirmation.#{key}",
              minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
@@ -546,7 +642,8 @@ class TelnyxWebhooksController < ApplicationController
   end
 
   def call_language(call)
-    call.purpose == "escalation_consent" ? "en-US" : call.user.spoken_language
+    # Caregivers have no spoken-language setting; their words are English only.
+    call.purpose.start_with?("escalation") ? "en-US" : call.user.spoken_language
   end
 
   # The only thing in the application that can set call_reminders_enabled *true*.
@@ -722,7 +819,9 @@ class TelnyxWebhooksController < ApplicationController
     "consented" => :consented,
     "opted_out" => :opted_out,
     "taken" => :taken,
-    "snooze" => :snoozed
+    "snooze" => :snoozed,
+    "accepted" => :accepted,
+    "passed" => :passed
   }.freeze
 
   # Say goodbye, and let the goodbye finish.

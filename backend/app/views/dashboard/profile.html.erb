@@ -112,6 +112,13 @@
                   <% if current_user.escalation_consent_at_in_database.present? && current_user.escalation_opted_out_at.blank? %>
                     <strong>Confirmed.</strong> Remindly may call <%= formatted_phone_number(saved) %>
                     when someone you look after misses an important reminder. Press 9 on any of those calls to stop them.
+                    <% listed = current_user.caregiver_links.where.not(escalation_position: nil).includes(:senior).order(:escalation_position) %>
+                    <% if listed.any? %>
+                      You're on the call list for
+                      <%= listed.map { |l| "#{l.senior.display_name} (#{l.escalation_position.ordinalize})" }.to_sentence %>.
+                    <% else %>
+                      You're not on anybody's call list yet; that's set on the page of the person you look after.
+                    <% end %>
                   <% else %>
                     <p class="mb-3">
                       <% if current_user.escalation_opted_out_at.present? %>

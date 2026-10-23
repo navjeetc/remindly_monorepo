@@ -160,6 +160,47 @@ class TelnyxVoiceService
     record_failure(attempt)
   end
 
+  # Rings a caregiver because a care receiver missed a time-critical reminder.
+  # Its own method for the reason verify is: what client_state names, and what
+  # the webhook does on answer, are this call's alone.
+  def self.escalate(attempt)
+    number = attempt.to_number.presence
+    return record_failure(attempt) if number.blank?
+
+    from = credentials[:from_number]
+    connection_id = credentials[:connection_id]
+    return record_failure(attempt) if from.blank? || connection_id.blank?
+
+    payload = {
+      connection_id: connection_id,
+      to: number,
+      from: from,
+      client_state: Base64.strict_encode64(
+        { attempt_id: attempt.id, user_id: attempt.user_id, attempt_number: attempt.attempt_number,
+          call_day: attempt.call_day.to_s, purpose: attempt.purpose }.to_json
+      ),
+      command_id: command_id_for("escalate")
+    }
+
+    hook = webhook_url
+    payload[:webhook_url] = hook if hook.present?
+
+    response = post("/calls", payload, command_id: payload[:command_id])
+    unless response&.key?("data")
+      Rails.logger.error "Telnyx escalation dial response missing data: #{response.inspect}"
+      return record_failure(attempt)
+    end
+
+    data = response["data"]
+    attempt.update!(call_control_id: data["call_control_id"], call_leg_id: data["call_leg_id"],
+                    status: "initiated", outcome: "pending")
+    data["call_control_id"]
+  rescue => e
+    Rails.logger.error "Telnyx escalation dial failed for attempt #{attempt.id}: #{e.message}"
+    record_failure(attempt)
+  end
+
+
   # Play the reminder message using TTS.
   # language is Telnyx's code for the accent the voice reads with, and it has to
   # arrive with text already written in that language — the two travel together

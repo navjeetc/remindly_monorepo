@@ -20,6 +20,10 @@ class CaregiverLink < ApplicationRecord
   enum :state, { pending: 0, provisional: 1, active: 2 }, prefix: :state
 
   validates :pairing_token, uniqueness: true, allow_nil: true
+  # Where this caregiver sits in the order Remindly rings when the care receiver
+  # misses a time-critical reminder; nil is not rung. Unique per care receiver
+  # in the database as well.
+  validates :escalation_position, inclusion: { in: 1..TelnyxCall::MAX_ESCALATION_POSITIONS }, allow_nil: true
   validate :caregiver_cannot_be_senior
 
   # How long a pairing token can be redeemed for.

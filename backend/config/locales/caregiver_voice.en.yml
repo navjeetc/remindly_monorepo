@@ -20,3 +20,21 @@ en:
       opted_out: >-
         Thank you. We will not call you about missed reminders.
         You can turn them back on from your profile.
+    # The escalation call itself: the care receiver did not answer any of the
+    # calls for a time-critical reminder. It names the person and the time and
+    # never the reminder, so a voicemail that hears it learns no more than that
+    # Remindly rang about them.
+    escalation:
+      request: >-
+        Hello. This is Remindly, calling about %{name}.
+        %{name} has not answered our calls about an important reminder that was due at %{time}.
+        If you will check on %{name}, press 1.
+        To pass this to the next person on the list, press 2.
+        To stop these calls to you, press 9.
+      accepted: >-
+        Thank you. We will let the others know you are checking on %{name}.
+      passed: >-
+        Thank you. We will try the next person on the list, if there is one.
+      opted_out: >-
+        Thank you. We will not call you about missed reminders again.
+        You can turn these calls back on from your profile.

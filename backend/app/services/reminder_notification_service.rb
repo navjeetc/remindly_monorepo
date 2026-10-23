@@ -85,6 +85,32 @@ class ReminderNotificationService
     end
   end
 
+  # A caregiver pressed 1 on an escalation call: they will check on the care
+  # receiver. Every other caregiver hears, because every one of them was told
+  # nobody had answered, and is otherwise left wondering whether to drive over.
+  #
+  # Called once, by the keypress that moved the call to accepted; a redelivery
+  # finds it accepted and does not come back here. Email only -- nothing else
+  # to do about it on the dashboard.
+  def self.notify_escalation_accepted(occurrence, accepted_by:)
+    reminder = occurrence.reminder
+    senior = reminder&.user
+    return unless senior
+
+    senior.caregivers.where.not(id: accepted_by.id).find_each do |caregiver|
+      next unless caregiver.email_deliverable?
+
+      ReminderActivityMailer
+        .with(caregiver: caregiver, senior: senior, reminder: reminder,
+              occurrence: occurrence, accepted_by: accepted_by)
+        .escalation_accepted
+        .deliver_later
+    end
+  rescue StandardError => e
+    # Never take the webhook down over an email; the call outcome is recorded.
+    Rails.logger.error "Escalation accepted email failed for occurrence #{occurrence.id}: #{e.class}: #{e.message}"
+  end
+
   # The caregivers who should hear about this reminder — the senior's caregivers
   # who chose this reminder's category. Public so the missed sweep can skip
   # enqueuing work nobody opted in to. Returns [] for an owner-less reminder.

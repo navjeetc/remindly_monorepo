@@ -109,6 +109,19 @@ class ReminderActivityMailer < ApplicationMailer
     mail(to: @caregiver.email, subject: subject.squish)
   end
 
+  # A caregiver answered an escalation call and pressed 1 to say they will
+  # check on the care receiver. Sent to the others, who were all told nobody
+  # had answered.
+  #
+  # Params: caregiver, senior, reminder, occurrence, accepted_by
+  def escalation_accepted
+    setup
+    @accepted_by = params[:accepted_by]
+
+    mail(to: @caregiver.email,
+         subject: "#{@accepted_by.display_name} is checking on #{@senior.display_name}: #{@reminder.title}".squish)
+  end
+
   private
 
   def setup
