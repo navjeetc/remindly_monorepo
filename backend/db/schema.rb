@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_14_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -283,6 +283,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_020000) do
     t.index ["occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_occurrence_and_attempt", unique: true
     t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
     t.index ["requested_by_id"], name: "index_telnyx_calls_on_requested_by_id"
+    t.index ["to_number", "call_day", "attempt_number"], name: "index_telnyx_calls_on_number_day_and_escalation_consent_attempt", unique: true, where: "purpose = 'escalation_consent' AND to_number IS NOT NULL"
     t.index ["to_number", "call_day", "attempt_number"], name: "index_telnyx_calls_on_number_day_and_verification_attempt", unique: true, where: "purpose = 'verification' AND to_number IS NOT NULL"
     t.index ["to_number"], name: "index_telnyx_calls_one_live_call_per_number", unique: true, where: "completed_at IS NULL AND to_number IS NOT NULL"
     t.index ["user_id", "call_day", "daily_sequence"], name: "index_telnyx_calls_on_user_day_and_sequence", unique: true, where: "call_day IS NOT NULL"
@@ -314,6 +315,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_14_020000) do
     t.datetime "created_at", null: false
     t.string "email"
     t.datetime "email_undeliverable_at"
+    t.datetime "escalation_consent_at"
+    t.datetime "escalation_opted_out_at"
     t.datetime "first_signed_in_at"
     t.string "name"
     t.string "nickname"

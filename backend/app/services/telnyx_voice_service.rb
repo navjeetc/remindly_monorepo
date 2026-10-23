@@ -133,7 +133,7 @@ class TelnyxVoiceService
       # calls already in flight across a deploy.
       client_state: Base64.strict_encode64(
         { attempt_id: attempt.id, user_id: senior.id, attempt_number: attempt.attempt_number,
-          call_day: attempt.call_day.to_s, purpose: "verification" }.to_json
+          call_day: attempt.call_day.to_s, purpose: attempt.purpose }.to_json
       ),
       command_id: command_id_for("verify")
     }

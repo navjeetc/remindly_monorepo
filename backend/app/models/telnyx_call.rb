@@ -17,7 +17,7 @@ class TelnyxCall < ApplicationRecord
   validates :outcome, presence: true
   validates :purpose, inclusion: { in: ->(_) { PURPOSES } }
   validates :occurrence, presence: true, if: -> { purpose == "reminder" }
-  validates :occurrence_id, absence: true, if: -> { purpose == "verification" }
+  validates :occurrence_id, absence: true, if: -> { CONSENT_PURPOSES.include?(purpose) }
 
   STATUSES = %w[
     pending
@@ -52,7 +52,18 @@ class TelnyxCall < ApplicationRecord
   # What a call is for. A reminder announces a dose; a verification asks whether
   # this number agrees to be telephoned at all, and so belongs to a number rather
   # than to an occurrence.
-  PURPOSES = %w[ reminder verification ].freeze
+  #
+  # escalation_consent is the same question asked of a caregiver: may Remindly
+  # ring this number when somebody they look after misses an important reminder.
+  # It is its own purpose rather than a flavour of verification because the two
+  # keypresses mean different things -- a care receiver's 9 on their first call
+  # refuses the whole arrangement, and a caregiver's 9 must never reach that.
+  PURPOSES = %w[ reminder verification escalation_consent ].freeze
+
+  # The calls that ask a number for its agreement rather than announce a dose.
+  # They share the reservation rules (calling hours, one call at a time, a
+  # rolling daily bound per number) and differ only in what the answer writes.
+  CONSENT_PURPOSES = %w[ verification escalation_consent ].freeze
 
   # Verification calls are excluded from MAX_CALLS_PER_DAY: they are setup rather
   # than delivery, and someone who has just agreed should not find their first
@@ -76,6 +87,7 @@ class TelnyxCall < ApplicationRecord
 
   scope :reminders, -> { where(purpose: "reminder") }
   scope :verifications, -> { where(purpose: "verification") }
+  scope :escalation_consents, -> { where(purpose: "escalation_consent") }
 
   # The design document allows "no answer or busy retries after a few minutes,
   # twice at most, then stops" -- three attempts in all. How many, and how far
@@ -135,7 +147,10 @@ class TelnyxCall < ApplicationRecord
   # afford them — a web request, where three timeouts plus the dial can occupy a
   # worker for half a minute during a provider slowdown. Those callers enqueue
   # ReconcileStaleCallsJob instead and ask the caregiver to try again.
-  def self.reserve_verification(user, requested_by: nil, now: Time.current, reconcile: true)
+  #
+  # purpose: "escalation_consent" asks a caregiver instead; see CONSENT_PURPOSES.
+  def self.reserve_verification(user, requested_by: nil, now: Time.current, reconcile: true, purpose: "verification")
+    raise ArgumentError, "not a consent purpose: #{purpose}" unless CONSENT_PURPOSES.include?(purpose)
     return nil if user.phone.blank?
 
     # A verification call rings a real telephone, so the window that protects
@@ -152,15 +167,23 @@ class TelnyxCall < ApplicationRecord
     # concurrent claims collide — but the *bound* is the window, which has no
     # boundary to wait for and no timezone to edit.
     day = now.utc.to_date
-    taken = verifications_in_window(user.phone, now).count
+    taken = verifications_in_window(user.phone, now, purpose: purpose).count
     return nil if taken >= MAX_VERIFICATIONS_PER_DAY
+
+    # Numbered within the day's bucket, not from the window's count. The two
+    # disagree once yesterday's attempts age out: three from last night make
+    # this morning's first attempt number 4, and when they leave the window the
+    # count drops back and taken + 1 hands out a number today already holds.
+    # The unique index refused it, and the screen called that a call in
+    # progress. (Copilot on #210.)
+    next_number = where(purpose: purpose, to_number: user.phone, call_day: day).maximum(:attempt_number).to_i + 1
 
     create!(
       user: user,
       occurrence: nil,
       requested_by: requested_by,
-      purpose: "verification",
-      attempt_number: taken + 1,
+      purpose: purpose,
+      attempt_number: next_number,
       # The number as it stands now. Consent is checked against this rather than
       # against users.phone at the time of the keypress, because a caregiver can
       # edit the number while the call is ringing — and an agreement given on one
@@ -279,8 +302,8 @@ class TelnyxCall < ApplicationRecord
   # Verification calls to a number within the rolling window. The one query the
   # bound and the screen must both use, or the screen offers attempts the model
   # refuses.
-  def self.verifications_in_window(number, now = Time.current)
-    verifications.where(to_number: number, created_at: (now - VERIFICATION_WINDOW)..now)
+  def self.verifications_in_window(number, now = Time.current, purpose: "verification")
+    where(purpose: purpose, to_number: number, created_at: (now - VERIFICATION_WINDOW)..now)
   end
 
   def self.zone_name(user)

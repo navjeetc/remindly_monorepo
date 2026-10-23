@@ -53,6 +53,17 @@ class FeatureFlag
     # Remindly may telephone at all, and this one answers whether a particular
     # script is fit to be spoken. Turning this on is the reviewer's signature,
     # and it is a change to the deploy configuration rather than a console edit.
+    # A caregiver's own number, and the call that asks whether Remindly may ring
+    # it when somebody they look after misses an important reminder. Off until
+    # the escalation call itself exists: offering the number before then would
+    # promise a call that nothing places. Inside phone_call_reminders, never
+    # instead of it -- both must be on.
+    escalation_calls: {
+      name: "Escalation Calls",
+      description: "Phone a caregiver when somebody they look after misses an important reminder",
+      default: false,
+      env_var: "ENABLE_ESCALATION_CALLS"
+    },
     translated_calls: {
       name: "Translated Calls",
       description: "Offer call languages other than English (each needs a native speaker's review first)",

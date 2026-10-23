@@ -41,7 +41,11 @@ class DashboardController < WebController
   # Named, because a controller with more than one rate limit shares a cache key
   # between them unless each says which it is — so the two would spend each
   # other's allowance, and neither would hold at the number it advertises.
-  rate_limit to: 10, within: 1.day, only: :verify_phone,
+  #
+  # confirm_phone shares it, under the same name and so the same allowance: a
+  # caregiver's own number is whatever they last typed into their profile, so
+  # without this a caregiver could rotate the field and ring a stranger per save.
+  rate_limit to: 10, within: 1.day, only: %i[ verify_phone confirm_phone ],
              by: -> { current_user&.id }, name: "asking-to-telephone"
 
   # Creating an account for somebody who has not asked for one is the one write
@@ -174,6 +178,68 @@ class DashboardController < WebController
       redirect_to dashboard_path, notice: "Profile updated successfully"
     else
       render :profile, status: :unprocessable_entity
+    end
+  end
+
+  # Rings the caregiver's own number to ask whether Remindly may call them there
+  # when somebody they look after misses an important reminder.
+  #
+  # The same guards as verify_phone, in the same order and for the same reasons:
+  # nothing rings outside the caregiver's own calling hours, never while another
+  # call to the number is live, and no more than the daily bound of attempts.
+  def confirm_phone
+    return head :forbidden unless current_user.escalation_phone_offered?
+
+    if current_user.phone.blank?
+      return redirect_to profile_path, alert: "Add your phone number first, then we can call to confirm it."
+    end
+
+    if current_user.escalation_callable?
+      return redirect_to profile_path, notice: "This number is already confirmed."
+    end
+
+    now = Time.current
+    unless current_user.within_calling_hours?(at: now)
+      return redirect_to profile_path,
+        alert: "We only place calls between #{current_user.calling_hours_label} your time. Try again then."
+    end
+
+    attempt = TelnyxCall.reserve_verification(current_user, requested_by: current_user, reconcile: false,
+                                              now: now, purpose: "escalation_consent")
+    if attempt.nil?
+      spent = TelnyxCall.verifications_in_window(current_user.phone, now, purpose: "escalation_consent").count
+      if spent >= TelnyxCall::MAX_VERIFICATIONS_PER_DAY
+        return redirect_to profile_path,
+          alert: "We have already called this number #{spent} times today. Try again tomorrow."
+      end
+
+      ReconcileStaleCallsJob.perform_later(current_user.id)
+      return redirect_to profile_path, alert: "There is already a call to this number in progress. Try again in a few minutes."
+    end
+
+    # Re-read after the claim, as verify_phone does: an earlier confirm call can
+    # be answered with 1 while this request works, and completing that call is
+    # what freed the line for this reservation. Destroyed rather than completed
+    # because nothing was dialled, so it must not spend one of the day's tries.
+    if current_user.reload.escalation_callable?
+      attempt.destroy!
+      return redirect_to profile_path, notice: "This number is already confirmed."
+    end
+
+    # And the clock re-read immediately before dialling, for verify_phone's
+    # reason: deciding on one reading is consistent, not current, and a request
+    # that straddles the end of the window must not ring.
+    at_dial = Time.current
+    unless current_user.within_calling_hours?(at: at_dial)
+      attempt.destroy!
+      return redirect_to profile_path,
+        alert: "We only place calls between #{current_user.calling_hours_label} your time. Try again then."
+    end
+
+    if TelnyxVoiceService.verify(attempt).present?
+      redirect_to profile_path, notice: "Calling #{helpers.formatted_phone_number(current_user.phone)} now. Press 1 to confirm."
+    else
+      redirect_to profile_path, alert: "We could not place the call just now. Please try again in a minute."
     end
   end
 
@@ -1120,9 +1186,14 @@ class DashboardController < WebController
   end
 
   def profile_params
-    params.require(:user).permit(:name, :nickname, :tz, :text_size,
-                                 :notify_on_task_assigned_to_others,
-                                 :notify_on_coverage_gaps, notify_reminder_categories: [])
+    permitted = [ :name, :nickname, :tz, :text_size,
+                  :notify_on_task_assigned_to_others,
+                  :notify_on_coverage_gaps, { notify_reminder_categories: [] } ]
+    # A caregiver's own number, for escalation calls. Only a caregiver may set
+    # it here: a care receiver's number is a caregiver's to propose
+    # (update_phone) and the care receiver's to agree to, never a profile field.
+    permitted << :phone if current_user.escalation_phone_offered?
+    params.require(:user).permit(*permitted)
   end
 
   def parse_time_safely(time_string, timezone)

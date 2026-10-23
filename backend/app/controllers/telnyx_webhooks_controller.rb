@@ -112,6 +112,7 @@ class TelnyxWebhooksController < ApplicationController
     return if call.answered_at.present?
 
     return handle_verification_answered(call, event_id) if call.purpose == "verification"
+    return handle_escalation_consent_answered(call, event_id) if call.purpose == "escalation_consent"
 
     # Redelivery is covered by command_id: Telnyx refuses a command it has
     # already run, and event_id is stable across redeliveries. answered_at
@@ -140,6 +141,7 @@ class TelnyxWebhooksController < ApplicationController
     return if call.answered_at.present?
 
     return handle_verification_answered(call, event_id) if call.purpose == "verification"
+    return handle_escalation_consent_answered(call, event_id) if call.purpose == "escalation_consent"
 
     occurrence = call.occurrence
     reminder = occurrence.reminder
@@ -189,6 +191,7 @@ class TelnyxWebhooksController < ApplicationController
 
   def handle_gather_ended(call, payload, event_id)
     return handle_verification_gather_ended(call, payload, event_id) if call.purpose == "verification"
+    return handle_escalation_consent_gather_ended(call, payload, event_id) if call.purpose == "escalation_consent"
 
     # Telnyx sending the screening keypress a second time, which happens when our
     # 200 does not reach it. Everything that event asked for was done on the
@@ -410,7 +413,7 @@ class TelnyxWebhooksController < ApplicationController
   end
 
   def handle_verification_gather_ended(call, payload, event_id)
-    if call.outcome == "pending"
+    if answer_still_open?(call, payload)
       digits = payload["digits"]
       record_keypress(call, digits)
 
@@ -448,6 +451,102 @@ class TelnyxWebhooksController < ApplicationController
     # Raising here for the same reason as the reminder path: with no farewell
     # playing, this is the only thing left to close the line.
     end_call(call, event_id)
+  end
+
+  # A caregiver's consent call: may Remindly ring this number when somebody they
+  # look after misses an important reminder. Asked from the caregiver's own
+  # profile, so there is nobody else to name -- and in English, because a
+  # caregiver has no spoken-language setting and these words exist in English
+  # only.
+  def handle_escalation_consent_answered(call, event_id)
+    TelnyxVoiceService.gather_digit(
+      call_control_id: call.call_control_id,
+      prompt: I18n.t("caregiver_voice.escalation_consent.request", locale: :en),
+      language: call_language(call),
+      command_id: event_id
+    )
+
+    call.update!(answered_at: Time.current)
+  end
+
+  # Same shape as handle_verification_gather_ended, with one deliberate
+  # difference: 9 here only stops escalation calls to this caregiver. It never
+  # reaches opt_out! or refuse_arrangement!, which act on a care receiver.
+  def handle_escalation_consent_gather_ended(call, payload, event_id)
+    if answer_still_open?(call, payload)
+      digits = payload["digits"]
+      record_keypress(call, digits)
+
+      case digits
+      when "1" then escalation_consent!(call)
+      when "9" then escalation_opt_out!(call)
+      else
+        call.update!(outcome: "declined", completed_at: Time.current)
+      end
+    end
+
+    return if payload["status"] == "call_hangup" || call.status == "hangup"
+    return if say_farewell(call, event_id)
+
+    end_call(call, event_id)
+  end
+
+  # Consent for the number that was dialled, compared and written in one
+  # statement -- the same handshake as consent!, for the same reason: the
+  # caregiver can change their number while this call rings, and the old
+  # handset's 1 must not authorise the new one.
+  def escalation_consent!(call)
+    granted = User.where(id: call.user_id, phone: call.to_number.presence)
+                  .update_all(escalation_consent_at: Time.current,
+                              escalation_opted_out_at: nil,
+                              updated_at: Time.current)
+
+    if granted.zero?
+      Rails.logger.warn "Escalation consent ignored for user #{call.user_id}: the number changed while the call was in progress"
+      return call.update!(outcome: "declined", completed_at: Time.current)
+    end
+
+    call.update!(outcome: "consented", completed_at: Time.current)
+  end
+
+  def escalation_opt_out!(call)
+    TelnyxCall.transaction do
+      User.where(id: call.user_id).update_all(escalation_opted_out_at: Time.current, updated_at: Time.current)
+      call.update!(outcome: "opted_out", completed_at: Time.current)
+    end
+  end
+
+  # Whether a consent call's keypress may still decide its outcome.
+  #
+  # Pending, plainly. But also no_response when the keypress is a real answer:
+  # somebody who presses 1 or 9 and puts the phone straight down can have the
+  # hangup delivered first, and handle_hangup reads a pending call as nobody
+  # having answered. Refusing the digits after that would throw away a consent
+  # or, worse, an opt-out the person gave. Silence and unoffered digits stay
+  # no_response, since they would only have recorded "declined". The hangup
+  # status is left standing, which is what keeps the farewell from being
+  # spoken to a dead line. (Copilot on #210.)
+  def answer_still_open?(call, payload)
+    return true if call.outcome == "pending"
+
+    call.outcome == "no_response" && %w[ 1 9 ].include?(payload["digits"].to_s)
+  end
+
+  # Escalation-consent calls have their own goodbyes: the care receiver's
+  # ("We will call you when it is time for a reminder") would promise the
+  # caregiver calls they have not agreed to.
+  def farewell_message(call, key)
+    if call.purpose == "escalation_consent"
+      I18n.t("caregiver_voice.escalation_consent.#{key}", locale: :en)
+    else
+      I18n.t("voice.confirmation.#{key}",
+             minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
+             locale: call.user.spoken_locale)
+    end
+  end
+
+  def call_language(call)
+    call.purpose == "escalation_consent" ? "en-US" : call.user.spoken_language
   end
 
   # The only thing in the application that can set call_reminders_enabled *true*.
@@ -673,14 +772,12 @@ class TelnyxWebhooksController < ApplicationController
                         .update_all(farewell_requested_at: Time.current, updated_at: Time.current)
     return true if claimed.zero?
 
-    message = I18n.t("voice.confirmation.#{key}",
-                     minutes: Occurrence::SNOOZE_DEFAULT_MINUTES,
-                     locale: call.user.spoken_locale)
+    message = farewell_message(call, key)
 
     spoken = TelnyxVoiceService.speak(
       call_control_id: call.call_control_id,
       message: message,
-      language: call.user.spoken_language,
+      language: call_language(call),
       # Distinct from the event's own id, which the hangup and the gather already
       # use as their idempotency key: Telnyx refuses a command_id it has already
       # run, so sharing one would silently drop whichever command came second.
@@ -884,10 +981,11 @@ class TelnyxWebhooksController < ApplicationController
     # as well as today's. update_all would then try to give both rows the same
     # call_control_id, hit the unique index, roll back, and return nothing — the
     # webhook acknowledged while the senior listens to silence.
-    if state["purpose"] == "verification"
+    if TelnyxCall::CONSENT_PURPOSES.include?(state["purpose"])
       return nil if state["call_day"].blank?
 
-      return claim(TelnyxCall.verifications.where(user_id: state["user_id"],
+      return claim(TelnyxCall.where(purpose: state["purpose"],
+                                    user_id: state["user_id"],
                                                   call_day: state["call_day"],
                                                   attempt_number: attempt_number,
                                                   call_control_id: nil),
