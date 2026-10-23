@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   receiver's own calls. Recorded in `users.escalation_consent_at` and
   `users.escalation_opted_out_at`; the agreement is forgotten when the
   number changes.
+- **Escalation calls** (same flag). When a care receiver doesn't answer any
+  of the calls for a reminder marked "being late matters", Remindly rings
+  their caregivers one at a time, in an order set on the care receiver's
+  page (up to three). On that call 1 means "I'll check" and stops the rest,
+  emailing the other caregivers who is checking; 2 passes to the next person
+  straight away; 9 stops these calls to that caregiver; no answer waits two
+  minutes, then tries the next person. Each caregiver is rung only if they
+  confirmed their number, within their own calling hours, and at most six
+  times a day. The call names the care receiver and the due time, never the
+  reminder. The caregiver's profile says whose list they are on.
 
 ### Changed
 - **The monthly note links to the website**, tagged `?from=monthly-note`, where

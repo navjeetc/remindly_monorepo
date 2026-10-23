@@ -148,6 +148,7 @@ Rails.application.routes.draw do
   patch "dashboard/senior/:senior_id/phone", to: "dashboard#update_phone", as: :senior_phone
   patch "dashboard/senior/:senior_id/spoken_language", to: "dashboard#update_spoken_language", as: :senior_spoken_language
   patch "dashboard/senior/:senior_id/calling_hours", to: "dashboard#update_calling_hours", as: :senior_calling_hours
+  patch "dashboard/senior/:senior_id/escalation_order", to: "dashboard#update_escalation_order", as: :senior_escalation_order
   post  "dashboard/senior/:senior_id/verify_phone", to: "dashboard#verify_phone", as: :verify_senior_phone
 
   # No :senior_id, unlike every other route in this block. The card describes

@@ -1,0 +1,72 @@
+<%#
+  Who Remindly rings, and in what order, when this person does not answer any
+  of the calls for a reminder marked "being late matters". One at a time:
+  1 on the call means "I'll check", and stops the rest; 2 passes to the next
+  person now; no answer waits two minutes and then tries the next.
+
+  Each caregiver agrees to be rung on their own profile. Putting somebody in
+  the order here does not ring them until they have, which is why each row
+  says where that person stands.
+%>
+<% links = senior.senior_links.where.not(caregiver_id: nil).includes(:caregiver).sort_by { |l| [ l.escalation_position || 99, l.caregiver.display_name.to_s ] } %>
+<div id="escalation-order" class="bg-white overflow-hidden shadow rounded-lg">
+  <div class="px-5 py-4 border-b border-gray-200">
+    <h3 class="text-lg font-medium text-gray-900">If <%= senior.display_name %> doesn't answer</h3>
+  </div>
+
+  <div class="p-5 space-y-4">
+    <p class="text-sm text-gray-700">
+      For reminders marked <strong>being late matters</strong>: once <%= senior.display_name %> has
+      missed all <%= TelnyxCall::MAX_ATTEMPTS %> calls, we phone the people below, one at a time.
+      Pressing 1 on that call means you'll check on them, and we stop. No answer, and we try the next
+      person two minutes later.
+    </p>
+
+    <% unless senior.callable_by_phone? %>
+      <p class="text-sm text-amber-800">
+        <strong>This won't do anything yet.</strong> It starts after <%= senior.display_name %>'s own
+        phone reminders go unanswered, and <%= senior.display_name %> doesn't get phone reminders yet.
+      </p>
+    <% end %>
+
+    <% if permission == "manage" %>
+      <%= form_with url: senior_escalation_order_path(senior), method: :patch, class: "space-y-3" do %>
+        <% links.each do |link| %>
+          <% caregiver = link.caregiver %>
+          <div class="flex items-center justify-between gap-4">
+            <div class="text-sm">
+              <%= label_tag "positions_#{link.id}", caregiver.display_name, class: "font-medium text-gray-900" %>
+              <p class="text-gray-500">
+                <% if caregiver.escalation_callable? %>
+                  Has confirmed <%= formatted_phone_number(caregiver.phone) %>.
+                <% elsif caregiver.escalation_opted_out_at.present? %>
+                  Has asked not to get these calls, so we'll skip them.
+                <% else %>
+                  Hasn't confirmed a number yet, so we'll skip them. They can add one on their profile.
+                <% end %>
+              </p>
+            </div>
+            <%= select_tag "positions[#{link.id}]",
+                  options_for_select([ [ "Not called", "" ], [ "1st", "1" ], [ "2nd", "2" ], [ "3rd", "3" ] ], link.escalation_position.to_s),
+                  id: "positions_#{link.id}", class: "field w-32" %>
+          </div>
+        <% end %>
+
+        <div class="flex justify-end">
+          <%= submit_tag "Save order", class: "button button-primary" %>
+        </div>
+      <% end %>
+    <% else %>
+      <% ordered = links.select(&:escalation_position) %>
+      <% if ordered.any? %>
+        <ol class="list-decimal ml-5 text-sm text-gray-700">
+          <% ordered.each do |link| %>
+            <li><%= link.caregiver.display_name %></li>
+          <% end %>
+        </ol>
+      <% else %>
+        <p class="text-sm text-gray-500">Nobody is on the list yet.</p>
+      <% end %>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, Helvetica, Arial, sans-serif; color: #222; line-height: 1.5;">
+    <div style="border-left: 4px solid #16a34a; background: #f0fdf4; padding: 16px; margin-bottom: 16px;">
+      <p style="margin: 0; font-size: 16px;">
+        <strong><%= @accepted_by.display_name %> is checking on <%= @senior.display_name %></strong>
+        about <strong><%= @reminder.title %></strong><% if @scheduled_at %>, due at <%= @due_time_label %><% end %>.
+      </p>
+    </div>
+
+    <p>
+      <%= @senior.display_name %> didn't answer our calls about it, so Remindly rang the people on the list.
+      <%= @accepted_by.display_name %> answered and pressed 1 to say they would check, so we've stopped calling.
+    </p>
+
+    <p><a href="<%= @dashboard_url %>" style="color: #2563eb;">Open <%= @senior.display_name %>'s dashboard</a></p>
+  </body>
+</html>

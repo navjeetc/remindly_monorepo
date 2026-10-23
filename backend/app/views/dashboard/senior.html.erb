@@ -63,6 +63,12 @@
       exactly as pressing Yes on a screen does. %>
   <% if FeatureFlag.enabled?(:phone_call_reminders) %>
     <%= render "dashboard/phone_reminders", senior: @senior, permission: @permission, attempts: @verification_attempts %>
+
+    <% if FeatureFlag.enabled?(:escalation_calls) %>
+      <div class="mt-6">
+        <%= render "dashboard/escalation_order", senior: @senior, permission: @permission %>
+      </div>
+    <% end %>
   <% end %>
 
   <%# Outside the phone-calls flag on purpose: the device link is the screen

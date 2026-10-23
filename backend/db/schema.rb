@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_000000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -78,6 +78,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
   create_table "caregiver_links", force: :cascade do |t|
     t.integer "caregiver_id"
     t.datetime "created_at", null: false
+    t.integer "escalation_position"
     t.string "pairing_token"
     t.integer "permission", default: 0, null: false
     t.integer "senior_id", null: false
@@ -85,6 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
     t.datetime "updated_at", null: false
     t.index ["pairing_token"], name: "index_caregiver_links_on_pairing_token", unique: true
     t.index ["senior_id", "caregiver_id"], name: "index_caregiver_links_on_senior_id_and_caregiver_id", unique: true
+    t.index ["senior_id", "escalation_position"], name: "index_caregiver_links_on_senior_and_escalation_position", unique: true, where: "escalation_position IS NOT NULL"
     t.index ["senior_id", "state"], name: "index_caregiver_links_on_senior_id_and_state"
   end
 
@@ -266,6 +268,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
     t.datetime "created_at", null: false
     t.integer "daily_sequence"
     t.string "dtmf"
+    t.integer "escalation_occurrence_id"
     t.datetime "farewell_requested_at"
     t.string "farewell_speak_id"
     t.text "last_payload"
@@ -280,6 +283,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
     t.integer "user_id", null: false
     t.index ["call_control_id"], name: "index_telnyx_calls_on_call_control_id", unique: true
     t.index ["call_leg_id"], name: "index_telnyx_calls_on_call_leg_id", unique: true, where: "call_leg_id IS NOT NULL"
+    t.index ["escalation_occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_escalated_occurrence_and_position", unique: true, where: "purpose = 'escalation'"
     t.index ["occurrence_id", "attempt_number"], name: "index_telnyx_calls_on_occurrence_and_attempt", unique: true
     t.index ["occurrence_id"], name: "index_telnyx_calls_on_occurrence_id"
     t.index ["requested_by_id"], name: "index_telnyx_calls_on_requested_by_id"
@@ -352,6 +356,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_180000) do
   add_foreign_key "tasks", "users", column: "created_by_id"
   add_foreign_key "tasks", "users", column: "senior_id"
   add_foreign_key "telnyx_calls", "occurrences"
+  add_foreign_key "telnyx_calls", "occurrences", column: "escalation_occurrence_id"
   add_foreign_key "telnyx_calls", "users"
   add_foreign_key "telnyx_calls", "users", column: "requested_by_id"
   add_foreign_key "time_blocks", "users"

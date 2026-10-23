@@ -6,6 +6,10 @@ class TelnyxCall < ApplicationRecord
   belongs_to :occurrence, optional: true
   belongs_to :user
 
+  # The missed occurrence an escalation call is about. Its own column rather
+  # than occurrence_id; see the migration that added it.
+  belongs_to :escalation_occurrence, class_name: "Occurrence", optional: true
+
   # Who asked for this call to be placed. Only meaningful for a verification,
   # where the script names them aloud — see consent_request_for.
   belongs_to :requested_by, class_name: "User", optional: true
@@ -17,7 +21,9 @@ class TelnyxCall < ApplicationRecord
   validates :outcome, presence: true
   validates :purpose, inclusion: { in: ->(_) { PURPOSES } }
   validates :occurrence, presence: true, if: -> { purpose == "reminder" }
-  validates :occurrence_id, absence: true, if: -> { CONSENT_PURPOSES.include?(purpose) }
+  validates :occurrence_id, absence: true, if: -> { purpose != "reminder" }
+  validates :escalation_occurrence, presence: true, if: -> { purpose == "escalation" }
+  validates :escalation_occurrence_id, absence: true, if: -> { purpose != "escalation" }
 
   STATUSES = %w[
     pending
@@ -47,6 +53,8 @@ class TelnyxCall < ApplicationRecord
     consented
     declined
     opted_out
+    accepted
+    passed
   ].freeze
 
   # What a call is for. A reminder announces a dose; a verification asks whether
@@ -58,7 +66,10 @@ class TelnyxCall < ApplicationRecord
   # It is its own purpose rather than a flavour of verification because the two
   # keypresses mean different things -- a care receiver's 9 on their first call
   # refuses the whole arrangement, and a caregiver's 9 must never reach that.
-  PURPOSES = %w[ reminder verification escalation_consent ].freeze
+  #
+  # escalation rings a caregiver who agreed to it, because a care receiver did
+  # not answer any of the calls for a time-critical reminder.
+  PURPOSES = %w[ reminder verification escalation_consent escalation ].freeze
 
   # The calls that ask a number for its agreement rather than announce a dose.
   # They share the reservation rules (calling hours, one call at a time, a
@@ -88,6 +99,20 @@ class TelnyxCall < ApplicationRecord
   scope :reminders, -> { where(purpose: "reminder") }
   scope :verifications, -> { where(purpose: "verification") }
   scope :escalation_consents, -> { where(purpose: "escalation_consent") }
+  scope :escalations, -> { where(purpose: "escalation") }
+
+  # How many caregivers an escalation runs through, and how long it waits after
+  # one does not answer before ringing the next. Two minutes: long enough for
+  # somebody who missed it to ring back or open the dashboard, short enough that
+  # a dose where being late matters is still worth catching.
+  MAX_ESCALATION_POSITIONS = 3
+  ESCALATION_GAP = 2.minutes
+
+  # Per caregiver, over the same rolling window as verifications. A care
+  # receiver with several time-critical doses on a bad day could otherwise ring
+  # one caregiver all afternoon; past this the caregiver is skipped and the
+  # emails still reach them.
+  MAX_ESCALATIONS_PER_DAY = 6
 
   # The design document allows "no answer or busy retries after a few minutes,
   # twice at most, then stops" -- three attempts in all. How many, and how far
@@ -202,6 +227,37 @@ class TelnyxCall < ApplicationRecord
     # nothing constrained verification attempts, so two concurrent reserves both
     # succeeded and the daily bound was advisory.
     nil
+  end
+
+  # Claims the escalation call to the caregiver at `position` for this missed
+  # occurrence. nil when it cannot be claimed: another job already holds this
+  # position (the unique index), or the caregiver is on another call right now
+  # (the one-live-call-per-number index). The job tells the two apart.
+  def self.reserve_escalation(occurrence, caregiver, position, now: Time.current)
+    # Closes this number's abandoned claims first, as reserve and
+    # reserve_verification do. Without it one call whose ending never reached
+    # us held the caregiver's number for good, and every later escalation
+    # skipped them as "on another call". (Codex and Copilot on #211.) Runs in a
+    # job, so the provider lookups it may make cost no web request anything.
+    expire_stale_attempts(caregiver, now)
+
+    create!(
+      user: caregiver,
+      purpose: "escalation",
+      escalation_occurrence: occurrence,
+      attempt_number: position,
+      to_number: caregiver.phone,
+      call_day: now.utc.to_date,
+      call_tz: zone_name(caregiver),
+      status: "reserved",
+      outcome: "pending"
+    )
+  rescue ActiveRecord::RecordNotUnique
+    nil
+  end
+
+  def self.escalations_in_window(caregiver, now = Time.current)
+    escalations.where(user_id: caregiver.id, created_at: (now - VERIFICATION_WINDOW)..now)
   end
 
   def self.reserve(occurrence, user, now: Time.current)

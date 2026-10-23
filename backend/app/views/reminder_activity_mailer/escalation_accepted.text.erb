@@ -1,0 +1,5 @@
+<%= @accepted_by.display_name %> is checking on <%= @senior.display_name %> about <%= @reminder.title %><% if @scheduled_at %>, due at <%= @due_time_label %><% end %>.
+
+<%= @senior.display_name %> didn't answer our calls about it, so Remindly rang the people on the list. <%= @accepted_by.display_name %> answered and pressed 1 to say they would check, so we've stopped calling.
+
+<%= @dashboard_url %>

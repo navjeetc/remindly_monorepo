@@ -380,6 +380,55 @@ class DashboardController < WebController
     end
   end
 
+  # The order Remindly rings caregivers in when this care receiver does not
+  # answer any of the calls for a time-critical reminder. Anybody with manage
+  # permission sets it, for everybody: it is one list per care receiver, and a
+  # caregiver who would rather not be rung says so on their own profile or with
+  # 9 on a call, which no order here can override.
+  def update_escalation_order
+    unless FeatureFlag.enabled?(:phone_call_reminders) && FeatureFlag.enabled?(:escalation_calls)
+      return head :forbidden
+    end
+
+    link = current_user.caregiver_links.find_by!(senior_id: params[:senior_id])
+    return head :forbidden unless link.permission == "manage"
+
+    senior = link.senior
+    links = senior.senior_links.where.not(caregiver_id: nil).includes(:caregiver).to_a
+    submitted = params.fetch(:positions, {}).permit(*links.map { |l| l.id.to_s })
+    wanted = links.index_with { |l| submitted[l.id.to_s].presence&.to_i }
+
+    chosen = wanted.values.compact
+    unless chosen.all? { |p| (1..TelnyxCall::MAX_ESCALATION_POSITIONS).cover?(p) }
+      return head :unprocessable_content
+    end
+    if chosen.uniq.size != chosen.size
+      return redirect_to senior_dashboard_path(senior, anchor: "escalation-order"),
+        alert: "Each place in the order can only have one person."
+    end
+
+    # Cleared first, then written: the unique index on (senior, position) would
+    # refuse a swap made one row at a time. Written with update_all too, not
+    # update!: the loaded links still hold their old positions, so a position
+    # submitted unchanged looked clean to update! and was never written back --
+    # saving an untouched order emptied it. (Codex and Copilot on #211.) The
+    # range was checked above, which is all the model's validation adds.
+    CaregiverLink.transaction do
+      CaregiverLink.where(id: links.map(&:id)).update_all(escalation_position: nil, updated_at: Time.current)
+      wanted.each do |l, position|
+        CaregiverLink.where(id: l.id).update_all(escalation_position: position, updated_at: Time.current) if position
+      end
+    end
+
+    names = wanted.compact.sort_by { |_, p| p }.map { |l, _| l.caregiver.display_name }
+    notice = if names.empty?
+      "Saved. Nobody will be called if #{senior.display_name} misses an important reminder."
+    else
+      "Saved. If #{senior.display_name} misses an important reminder, we'll call #{names.to_sentence(two_words_connector: ", then ", last_word_connector: ", then ")}."
+    end
+    redirect_to senior_dashboard_path(senior, anchor: "escalation-order"), notice: notice
+  end
+
   def new_care_receiver
     @senior = User.new(tz: current_user.tz)
   end

@@ -2,6 +2,10 @@ class Occurrence < ApplicationRecord
   belongs_to :reminder
   has_many :acknowledgements, dependent: :destroy
   has_many :telnyx_calls, dependent: :destroy
+  # Caregivers rung because this one went unanswered. Kept apart from
+  # telnyx_calls, which every reader takes to mean the care receiver's own calls.
+  has_many :escalation_calls, class_name: "TelnyxCall", foreign_key: :escalation_occurrence_id,
+                              inverse_of: :escalation_occurrence, dependent: :destroy
   enum :status, { pending: 0, acknowledged: 1, missed: 2 }, prefix: true
 
   # How late a row may be written and still be treated as having come due
