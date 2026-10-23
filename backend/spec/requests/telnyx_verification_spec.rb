@@ -327,4 +327,26 @@ RSpec.describe "Telnyx verification calls", type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  # Copilot on #210, true here as much as for a caregiver: the hangup can be
+  # delivered before the keypress, and a 9 given and then hung up on is still
+  # a 9.
+  describe "a keypress delivered after the hangup" do
+    before { telnyx_post("call.answered") }
+
+    it "still honours a 9" do
+      telnyx_post("call.hangup")
+      telnyx_post("call.gather.ended", digits: "9", status: "call_hangup")
+
+      expect(senior.reload.call_opted_out_at).to be_present
+      expect(call.reload.outcome).to eq("opted_out")
+    end
+
+    it "still records a 1" do
+      telnyx_post("call.hangup")
+      telnyx_post("call.gather.ended", digits: "1", status: "call_hangup")
+
+      expect(senior.reload.call_reminders_enabled).to be true
+    end
+  end
 end

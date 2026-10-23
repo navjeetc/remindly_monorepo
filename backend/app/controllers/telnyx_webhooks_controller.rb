@@ -413,7 +413,7 @@ class TelnyxWebhooksController < ApplicationController
   end
 
   def handle_verification_gather_ended(call, payload, event_id)
-    if call.outcome == "pending"
+    if answer_still_open?(call, payload)
       digits = payload["digits"]
       record_keypress(call, digits)
 
@@ -473,7 +473,7 @@ class TelnyxWebhooksController < ApplicationController
   # difference: 9 here only stops escalation calls to this caregiver. It never
   # reaches opt_out! or refuse_arrangement!, which act on a care receiver.
   def handle_escalation_consent_gather_ended(call, payload, event_id)
-    if call.outcome == "pending"
+    if answer_still_open?(call, payload)
       digits = payload["digits"]
       record_keypress(call, digits)
 
@@ -514,6 +514,22 @@ class TelnyxWebhooksController < ApplicationController
       User.where(id: call.user_id).update_all(escalation_opted_out_at: Time.current, updated_at: Time.current)
       call.update!(outcome: "opted_out", completed_at: Time.current)
     end
+  end
+
+  # Whether a consent call's keypress may still decide its outcome.
+  #
+  # Pending, plainly. But also no_response when the keypress is a real answer:
+  # somebody who presses 1 or 9 and puts the phone straight down can have the
+  # hangup delivered first, and handle_hangup reads a pending call as nobody
+  # having answered. Refusing the digits after that would throw away a consent
+  # or, worse, an opt-out the person gave. Silence and unoffered digits stay
+  # no_response, since they would only have recorded "declined". The hangup
+  # status is left standing, which is what keeps the farewell from being
+  # spoken to a dead line. (Copilot on #210.)
+  def answer_still_open?(call, payload)
+    return true if call.outcome == "pending"
+
+    call.outcome == "no_response" && %w[ 1 9 ].include?(payload["digits"].to_s)
   end
 
   # Escalation-consent calls have their own goodbyes: the care receiver's

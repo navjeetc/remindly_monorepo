@@ -182,4 +182,41 @@ RSpec.describe "Telnyx escalation consent calls", type: :request do
       expect(reserved.answered_at).to be_present
     end
   end
+
+  # Copilot on #210: press and put the phone straight down, and the hangup can
+  # be delivered before the keypress. The answer still counts.
+  describe "a keypress delivered after the hangup" do
+    before { telnyx_post("call.answered") }
+
+    it "still records a 1" do
+      telnyx_post("call.hangup")
+      telnyx_post("call.gather.ended", digits: "1", status: "call_hangup")
+
+      expect(caregiver.reload).to be_escalation_callable
+      expect(call.reload.outcome).to eq("consented")
+      expect(call.status).to eq("hangup")
+    end
+
+    it "still records a 9" do
+      telnyx_post("call.hangup")
+      telnyx_post("call.gather.ended", digits: "9", status: "call_hangup")
+
+      expect(caregiver.reload.escalation_opted_out_at).to be_present
+      expect(call.reload.outcome).to eq("opted_out")
+    end
+
+    it "speaks no goodbye to the line that has gone" do
+      telnyx_post("call.hangup")
+      telnyx_post("call.gather.ended", digits: "1", status: "call_hangup")
+
+      expect(TelnyxVoiceService).not_to have_received(:speak)
+    end
+
+    it "leaves silence as no answer" do
+      telnyx_post("call.hangup")
+      telnyx_post("call.gather.ended", digits: "", status: "call_hangup")
+
+      expect(call.reload.outcome).to eq("no_response")
+    end
+  end
 end

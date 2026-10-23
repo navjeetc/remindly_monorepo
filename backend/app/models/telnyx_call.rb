@@ -170,12 +170,20 @@ class TelnyxCall < ApplicationRecord
     taken = verifications_in_window(user.phone, now, purpose: purpose).count
     return nil if taken >= MAX_VERIFICATIONS_PER_DAY
 
+    # Numbered within the day's bucket, not from the window's count. The two
+    # disagree once yesterday's attempts age out: three from last night make
+    # this morning's first attempt number 4, and when they leave the window the
+    # count drops back and taken + 1 hands out a number today already holds.
+    # The unique index refused it, and the screen called that a call in
+    # progress. (Copilot on #210.)
+    next_number = where(purpose: purpose, to_number: user.phone, call_day: day).maximum(:attempt_number).to_i + 1
+
     create!(
       user: user,
       occurrence: nil,
       requested_by: requested_by,
       purpose: purpose,
-      attempt_number: taken + 1,
+      attempt_number: next_number,
       # The number as it stands now. Consent is checked against this rather than
       # against users.phone at the time of the keypress, because a caregiver can
       # edit the number while the call is ringing — and an agreement given on one
