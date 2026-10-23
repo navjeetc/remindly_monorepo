@@ -169,6 +169,17 @@ RSpec.describe "Escalation calls", type: :request do
       expect(TelnyxVoiceService).to have_received(:escalate).once
     end
 
+    # Codex and Copilot on #211: a call whose ending never reached us held the
+    # caregiver's number, and every later escalation skipped them.
+    it "frees a caregiver's number held by an abandoned call" do
+      stuck = Occurrence.create!(reminder: reminder, scheduled_at: 2.days.ago, status: :missed)
+      TelnyxCall.reserve_escalation(stuck, first, 1, now: 2.days.ago).update_columns(created_at: 2.days.ago)
+
+      EscalationCallJob.perform_now(occurrence.id, 1)
+
+      expect(TelnyxVoiceService).to have_received(:escalate).with(escalation_to(first))
+    end
+
     it "stops after the last position" do
       expect { EscalationCallJob.perform_now(occurrence.id, TelnyxCall::MAX_ESCALATION_POSITIONS + 1) }
         .not_to have_enqueued_job(EscalationCallJob)
@@ -266,6 +277,19 @@ RSpec.describe "Escalation calls", type: :request do
         .at(Time.current + TelnyxCall::ESCALATION_GAP)
     end
 
+    # Copilot on #211: the keypress handled first, then a hangup that had read
+    # the call as still pending. The hangup must not undo the 1.
+    it "keeps a 1 when the hangup is handled from a stale read" do
+      telnyx_post(call, "call.answered")
+      stale = TelnyxCall.find(call.id)
+      telnyx_post(call, "call.gather.ended", digits: "1")
+
+      TelnyxWebhooksController.new.send(:handle_hangup, stale)
+
+      expect(call.reload.outcome).to eq("accepted")
+      expect(enqueued_jobs.select { |j| j["job_class"] == "EscalationCallJob" }).to be_empty
+    end
+
     it "still counts a 1 delivered after the hangup" do
       telnyx_post(call, "call.answered")
       telnyx_post(call, "call.hangup")
@@ -307,6 +331,18 @@ RSpec.describe "Escalation calls", type: :request do
       expect(flash[:notice]).to include("we'll call Navjeet, then Christy")
     end
 
+    # Codex and Copilot on #211: saving an untouched order emptied it.
+    it "keeps the order when it is saved unchanged" do
+      first_link = CaregiverLink.find_by!(caregiver: first)
+      second_link = CaregiverLink.find_by!(caregiver: second)
+
+      patch "/dashboard/senior/#{senior.id}/escalation_order",
+        params: { positions: { first_link.id => "1", second_link.id => "2" } }
+
+      expect(first_link.reload.escalation_position).to eq(1)
+      expect(second_link.reload.escalation_position).to eq(2)
+    end
+
     it "takes somebody off the list" do
       second_link = CaregiverLink.find_by!(caregiver: second)
       first_link = CaregiverLink.find_by!(caregiver: first)
@@ -315,6 +351,7 @@ RSpec.describe "Escalation calls", type: :request do
         params: { positions: { first_link.id => "1", second_link.id => "" } }
 
       expect(second_link.reload.escalation_position).to be_nil
+      expect(first_link.reload.escalation_position).to eq(1)
     end
 
     it "refuses two people in one place" do

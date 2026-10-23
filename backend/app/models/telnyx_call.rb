@@ -234,6 +234,13 @@ class TelnyxCall < ApplicationRecord
   # position (the unique index), or the caregiver is on another call right now
   # (the one-live-call-per-number index). The job tells the two apart.
   def self.reserve_escalation(occurrence, caregiver, position, now: Time.current)
+    # Closes this number's abandoned claims first, as reserve and
+    # reserve_verification do. Without it one call whose ending never reached
+    # us held the caregiver's number for good, and every later escalation
+    # skipped them as "on another call". (Codex and Copilot on #211.) Runs in a
+    # job, so the provider lookups it may make cost no web request anything.
+    expire_stale_attempts(caregiver, now)
+
     create!(
       user: caregiver,
       purpose: "escalation",

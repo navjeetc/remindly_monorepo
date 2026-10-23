@@ -20,6 +20,12 @@ class EscalationCallJob < ApplicationJob
     occurrence = Occurrence.find_by(id: occurrence_id)
     return unless occurrence && still_needs_somebody?(occurrence)
 
+    # A second run for a position already rung has nothing to do; the chain is
+    # the first run's to continue. Checked before the refusals, since a cap the
+    # first run's own call has just filled would otherwise send this one on to
+    # the next caregiver while that call is still ringing. (Copilot on #211.)
+    return if occurrence.escalation_calls.exists?(attempt_number: position)
+
     senior = occurrence.reminder.user
     caregiver = CaregiverLink.find_by(senior_id: senior.id, escalation_position: position)&.caregiver
 

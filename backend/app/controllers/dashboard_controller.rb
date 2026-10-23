@@ -408,10 +408,16 @@ class DashboardController < WebController
     end
 
     # Cleared first, then written: the unique index on (senior, position) would
-    # refuse a swap made one row at a time.
+    # refuse a swap made one row at a time. Written with update_all too, not
+    # update!: the loaded links still hold their old positions, so a position
+    # submitted unchanged looked clean to update! and was never written back --
+    # saving an untouched order emptied it. (Codex and Copilot on #211.) The
+    # range was checked above, which is all the model's validation adds.
     CaregiverLink.transaction do
       CaregiverLink.where(id: links.map(&:id)).update_all(escalation_position: nil, updated_at: Time.current)
-      wanted.each { |l, position| l.update!(escalation_position: position) if position }
+      wanted.each do |l, position|
+        CaregiverLink.where(id: l.id).update_all(escalation_position: position, updated_at: Time.current) if position
+      end
     end
 
     names = wanted.compact.sort_by { |_, p| p }.map { |l, _| l.caregiver.display_name }

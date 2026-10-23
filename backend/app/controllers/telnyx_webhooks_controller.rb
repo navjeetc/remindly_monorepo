@@ -325,15 +325,21 @@ class TelnyxWebhooksController < ApplicationController
   # Only the outcome is conditional — a keypress already resolved it, and a
   # hangup arriving afterwards must not overwrite what the senior said.
   def handle_hangup(call)
-    attributes = { completed_at: call.completed_at || Time.current }
+    call.update!(completed_at: call.completed_at || Time.current)
+
     # Nobody pressed anything, which covers both the mailbox and the phone that
     # rang out -- the two are no longer distinguished, because the detection that
     # told them apart proved unreliable and was removed. "voicemail" was briefly
     # an outcome here and is not one: TelnyxCall::OUTCOMES has never listed it.
-    unanswered = call.outcome == "pending"
-    attributes[:outcome] = "no_response" if unanswered
-
-    call.update!(attributes)
+    #
+    # Written only if nothing has decided the outcome, compared and written in one
+    # statement. Read-then-write let a keypress handled at the same moment --
+    # press 1 and hang up at once, and the two events arrive together -- be
+    # overwritten: an escalation accepted by one caregiver went back to
+    # no_response and rang the next. (Copilot on #211.)
+    unanswered = TelnyxCall.where(id: call.id, outcome: "pending")
+                           .update_all(outcome: "no_response", updated_at: Time.current) == 1
+    call.reload
 
     # This is where a call nobody picked up ends, and it is the case the
     # critical flag exists for. The alert originally lived only in
