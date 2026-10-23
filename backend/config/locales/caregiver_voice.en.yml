@@ -1,0 +1,22 @@
+# What a caregiver hears on the call that confirms their own number for
+# escalation calls (when somebody they look after misses an important
+# reminder). Kept out of voice.*, which is the care receiver's script and must
+# exist in every spoken language (spec/requests/spoken_language_spec.rb):
+# caregivers have no spoken-language setting, so this is English only and the
+# webhook asks for it in :en explicitly.
+en:
+  caregiver_voice:
+    escalation_consent:
+      request: >-
+        Hello. This is Remindly. You asked us to call to confirm this number.
+        If someone you look after misses an important reminder,
+        we can phone you here so you can check on them.
+        If you would like these calls, press 1 now.
+        If you would rather not, press 9 and we will not call you about missed reminders.
+      consented: >-
+        Thank you. You are all set.
+        We will only call you here when an important reminder is missed.
+        You can press 9 on any of those calls to stop them.
+      opted_out: >-
+        Thank you. We will not call you about missed reminders.
+        You can turn them back on from your profile.

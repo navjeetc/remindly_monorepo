@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **A caregiver's own number, for calls about missed reminders** (behind
+  `ENABLE_ESCALATION_CALLS`, off in production until the call itself ships).
+  A caregiver can add their number on the profile and press "Call me to
+  confirm": a short call asks them to press 1 to agree to be rung when
+  somebody they look after misses an important reminder, or 9 to say no.
+  The 9 stops only those calls to the caregiver and never touches the care
+  receiver's own calls. Recorded in `users.escalation_consent_at` and
+  `users.escalation_opted_out_at`; the agreement is forgotten when the
+  number changes.
+
 ### Changed
 - **The monthly note links to the website**, tagged `?from=monthly-note`, where
   it tells people to press "Set up reminders for my parent"; a sign-up it

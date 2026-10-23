@@ -502,6 +502,30 @@ class User < ApplicationRecord
     call_reminders_enabled?
   end
 
+  # Whether Remindly may telephone this caregiver when somebody they look after
+  # misses an important reminder. Never the same question as callable_by_phone?,
+  # which is a care receiver's agreement to reminder calls; see the migration
+  # that added these columns for why the two are kept apart.
+  #
+  # The opt-out wins over a consent recorded afterwards for the same reason it
+  # does there -- though here a fresh confirmation call clears it, because the
+  # caregiver asked for that call themselves from their own profile.
+  # Whether this person is offered the escalation number on their profile at
+  # all. One place, because the profile field, the parameter it is saved from
+  # and the confirm call must appear and disappear together.
+  def escalation_phone_offered?
+    role_caregiver? &&
+      FeatureFlag.enabled?(:phone_call_reminders) &&
+      FeatureFlag.enabled?(:escalation_calls)
+  end
+
+  def escalation_callable?
+    return false if escalation_opted_out_at.present?
+    return false if phone.blank?
+
+    escalation_consent_at.present?
+  end
+
   # This person's own clock, or nil when tz does not resolve.
   #
   # Callers must handle the nil rather than formatting whatever comes back:
@@ -610,11 +634,15 @@ class User < ApplicationRecord
     # prevent, by the one door left open.
     return if phone_in_database.blank? &&
               call_consent_at_in_database.blank? &&
-              phone_verified_at_in_database.blank?
+              phone_verified_at_in_database.blank? &&
+              escalation_consent_at_in_database.blank?
 
     self.phone_verified_at = nil
     self.call_consent_at = nil
     self.call_reminders_enabled = false
+    # A caregiver's agreement to escalation calls belongs to the handset that
+    # pressed 1, exactly as a care receiver's does.
+    self.escalation_consent_at = nil
   end
 
   def phone_is_e164

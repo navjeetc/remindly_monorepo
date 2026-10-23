@@ -131,6 +131,10 @@ Rails.application.routes.draw do
   post "contact",            to: "dashboard#submit_contact"
   get  "profile",            to: "dashboard#profile", as: :profile
   patch "profile",           to: "dashboard#update_profile"
+  # A caregiver asking Remindly to ring their own number and confirm it may call
+  # there about missed important reminders. Only the call itself can record the
+  # agreement; this only places it.
+  post  "profile/confirm_phone", to: "dashboard#confirm_phone", as: :confirm_profile_phone
   patch "select_role",       to: "dashboard#select_role", as: :select_role
   get  "dashboard/pair",     to: "dashboard#pair", as: :pair_dashboard
   post "dashboard/pair",     to: "dashboard#process_pair"

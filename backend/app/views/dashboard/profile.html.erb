@@ -90,7 +90,22 @@
         <% if current_user.role_caregiver? %>
           <div class="border-t border-gray-200 pt-6">
             <h4 class="text-base font-medium text-gray-900 mb-4">Notification Preferences</h4>
-            
+
+            <%# The caregiver's own number, for escalation calls: when somebody they
+                look after misses an important reminder, Remindly can ring here.
+                Saving it rings nobody; the confirm call below asks first. %>
+            <% if current_user.escalation_phone_offered? %>
+            <div class="mb-6">
+              <%= f.label :phone, "Your phone number, for missed important reminders", class: "block text-sm font-medium text-gray-700" %>
+              <%= f.telephone_field :phone, value: formatted_phone_number(current_user.phone),
+                    autocomplete: "tel", placeholder: "(555) 123-4567", class: "field mt-1 block w-full" %>
+              <p class="mt-1 text-sm text-gray-500">
+                US or Canada. If someone you look after misses a reminder marked "being late matters",
+                Remindly can phone you here. Nothing rings until you confirm the number.
+              </p>
+            </div>
+            <% end %>
+
             <div class="space-y-4">
               <div class="relative flex items-start">
                 <div class="flex items-center h-5">
@@ -160,6 +175,35 @@
         <div class="flex justify-end space-x-3">
           <%= link_to "Cancel", dashboard_path, class: "button button-secondary" %>
           <%= f.submit "Save Changes", class: "button button-primary" %>
+        </div>
+      <% end %>
+
+      <%# The confirm call is its own form for the same reason as the role buttons
+          below: a button_to cannot sit inside the profile form. %>
+      <% if current_user.escalation_phone_offered? && current_user.phone.present? %>
+        <div id="escalation-phone" class="mt-8 border-t border-gray-200 pt-6">
+          <h4 class="text-base font-medium text-gray-900 mb-2">Calls about missed reminders</h4>
+          <% if current_user.escalation_callable? %>
+            <p class="text-sm text-gray-700">
+              Confirmed. Remindly may call <strong><%= formatted_phone_number(current_user.phone) %></strong>
+              when someone you look after misses an important reminder. Press 9 on any of those calls to stop them.
+            </p>
+          <% else %>
+            <p class="text-sm text-gray-700 mb-3">
+              <% if current_user.escalation_opted_out_at.present? %>
+                You asked us not to call about missed reminders. To turn the calls back on, confirm the number again.
+              <% else %>
+                Not confirmed yet. We will ring <strong><%= formatted_phone_number(current_user.phone) %></strong>
+                and ask you to press 1. It takes about half a minute.
+              <% end %>
+            </p>
+            <%= button_to "Call me to confirm", confirm_profile_phone_path, method: :post,
+                  class: "button button-primary",
+                  disabled: !current_user.within_calling_hours? %>
+            <% unless current_user.within_calling_hours? %>
+              <p class="mt-2 text-sm text-gray-500">We only call between <%= current_user.calling_hours_label %> your time.</p>
+            <% end %>
+          <% end %>
         </div>
       <% end %>
 

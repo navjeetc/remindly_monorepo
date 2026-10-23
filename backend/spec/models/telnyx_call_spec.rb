@@ -586,4 +586,34 @@ RSpec.describe TelnyxCall do
       end
     end
   end
+
+  describe "escalation-consent reservations" do
+    include ActiveSupport::Testing::TimeHelpers
+
+    around { |example| travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 10, 0)) { example.run } }
+
+    let(:caregiver) { create(:user, :caregiver, name: "Christy", phone: "+15715550142", tz: "America/New_York") }
+
+    it "reserves a call with that purpose and no occurrence" do
+      call = TelnyxCall.reserve_verification(caregiver, purpose: "escalation_consent")
+
+      expect(call.purpose).to eq("escalation_consent")
+      expect(call.occurrence_id).to be_nil
+    end
+
+    it "refuses a purpose that is not a consent call" do
+      expect { TelnyxCall.reserve_verification(caregiver, purpose: "reminder") }.to raise_error(ArgumentError)
+    end
+
+    # Each purpose has its own daily bound and its own unique index, so the
+    # same attempt number on the same day can exist once for each.
+    it "numbers its attempts apart from verifications to the same number" do
+      first = TelnyxCall.reserve_verification(caregiver, purpose: "verification")
+      first.update!(status: "completed", completed_at: Time.current)
+
+      second = TelnyxCall.reserve_verification(caregiver, purpose: "escalation_consent")
+
+      expect(second.attempt_number).to eq(1)
+    end
+  end
 end

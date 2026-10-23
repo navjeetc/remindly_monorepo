@@ -177,6 +177,49 @@ class DashboardController < WebController
     end
   end
 
+  # Rings the caregiver's own number to ask whether Remindly may call them there
+  # when somebody they look after misses an important reminder.
+  #
+  # The same guards as verify_phone, in the same order and for the same reasons:
+  # nothing rings outside the caregiver's own calling hours, never while another
+  # call to the number is live, and no more than the daily bound of attempts.
+  def confirm_phone
+    return head :forbidden unless current_user.escalation_phone_offered?
+
+    if current_user.phone.blank?
+      return redirect_to profile_path, alert: "Add your phone number first, then we can call to confirm it."
+    end
+
+    if current_user.escalation_callable?
+      return redirect_to profile_path, notice: "This number is already confirmed."
+    end
+
+    now = Time.current
+    unless current_user.within_calling_hours?(at: now)
+      return redirect_to profile_path,
+        alert: "We only place calls between #{current_user.calling_hours_label} your time. Try again then."
+    end
+
+    attempt = TelnyxCall.reserve_verification(current_user, requested_by: current_user, reconcile: false,
+                                              now: now, purpose: "escalation_consent")
+    if attempt.nil?
+      spent = TelnyxCall.verifications_in_window(current_user.phone, now, purpose: "escalation_consent").count
+      if spent >= TelnyxCall::MAX_VERIFICATIONS_PER_DAY
+        return redirect_to profile_path,
+          alert: "We have already called this number #{spent} times today. Try again tomorrow."
+      end
+
+      ReconcileStaleCallsJob.perform_later(current_user.id)
+      return redirect_to profile_path, alert: "There is already a call to this number in progress. Try again in a few minutes."
+    end
+
+    if TelnyxVoiceService.verify(attempt).present?
+      redirect_to profile_path, notice: "Calling #{helpers.formatted_phone_number(current_user.phone)} now. Press 1 to confirm."
+    else
+      redirect_to profile_path, alert: "We could not place the call just now. Please try again in a minute."
+    end
+  end
+
   # Self-serve onboarding: a user with no role yet picks whether they receive
   # reminders or set them up for someone, instead of waiting on an admin. The
   # model refuses admin here, and refuses a role that is already set.
@@ -1120,9 +1163,14 @@ class DashboardController < WebController
   end
 
   def profile_params
-    params.require(:user).permit(:name, :nickname, :tz, :text_size,
-                                 :notify_on_task_assigned_to_others,
-                                 :notify_on_coverage_gaps, notify_reminder_categories: [])
+    permitted = [ :name, :nickname, :tz, :text_size,
+                  :notify_on_task_assigned_to_others,
+                  :notify_on_coverage_gaps, { notify_reminder_categories: [] } ]
+    # A caregiver's own number, for escalation calls. Only a caregiver may set
+    # it here: a care receiver's number is a caregiver's to propose
+    # (update_phone) and the care receiver's to agree to, never a profile field.
+    permitted << :phone if current_user.escalation_phone_offered?
+    params.require(:user).permit(*permitted)
   end
 
   def parse_time_safely(time_string, timezone)
