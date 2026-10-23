@@ -637,12 +637,18 @@ class User < ApplicationRecord
               phone_verified_at_in_database.blank? &&
               escalation_consent_at_in_database.blank?
 
-    self.phone_verified_at = nil
-    self.call_consent_at = nil
-    self.call_reminders_enabled = false
-    # A caregiver's agreement to escalation calls belongs to the handset that
-    # pressed 1, exactly as a care receiver's does.
-    self.escalation_consent_at = nil
+    # Each one marked as changing before it is cleared. This instance may have
+    # been loaded before a consent call's 1 was written underneath it with
+    # update_all, so it can hold nil for a column the database now holds a time
+    # in -- and assigning nil to nil is no change, which a partial update leaves
+    # out. The new number would keep the old handset's agreement.
+    # escalation_consent_at is a caregiver's agreement to escalation calls, and
+    # belongs to the handset that pressed 1 exactly as a care receiver's does.
+    { phone_verified_at: nil, call_consent_at: nil, call_reminders_enabled: false,
+      escalation_consent_at: nil }.each do |column, cleared|
+      attribute_will_change!(column.to_s)
+      self[column] = cleared
+    end
   end
 
   def phone_is_e164

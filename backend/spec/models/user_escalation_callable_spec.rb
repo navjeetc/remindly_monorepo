@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # A caregiver's agreement to be rung about missed reminders. Read as facts, the
@@ -41,5 +43,18 @@ RSpec.describe User, "#escalation_callable?" do
     caregiver.update!(phone: "+15715550199")
 
     expect(caregiver.escalation_opted_out_at).to be_present
+  end
+
+  # Copilot on #210. The profile request loads the caregiver, the old handset's
+  # 1 lands underneath it through update_all, and the profile then saves a new
+  # number. The stale instance holds nil already, so clearing it must still be
+  # written, or the new number inherits the old handset's agreement.
+  it "forgets an agreement written underneath a stale copy" do
+    stale = User.find(caregiver.id)
+    User.where(id: caregiver.id).update_all(escalation_consent_at: Time.current)
+
+    stale.update!(phone: "+15715550199")
+
+    expect(caregiver.reload.escalation_consent_at).to be_nil
   end
 end

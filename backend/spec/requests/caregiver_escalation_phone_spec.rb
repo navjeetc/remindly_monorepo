@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 # A caregiver's own number, kept for escalation calls: when somebody they look
@@ -156,6 +158,43 @@ RSpec.describe "Caregiver escalation phone", type: :request do
 
       expect { post "/profile/confirm_phone" }.not_to change(TelnyxCall, :count)
       expect(flash[:alert]).to include("already a call")
+    end
+
+    # Copilot and Codex on #210: the per-number bounds cannot see a caregiver
+    # who rotates the profile field, so the per-caregiver allowance has to.
+    it "shares the caregiver's daily allowance for ringing anybody, whatever number is saved" do
+      10.times do |i|
+        caregiver.update!(phone: format("+1571555%04d", i))
+        post "/profile/confirm_phone"
+        TelnyxCall.last.update!(status: "completed", completed_at: Time.current)
+      end
+
+      caregiver.update!(phone: "+15715559999")
+      expect { post "/profile/confirm_phone" }.not_to change(TelnyxCall, :count)
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    # Copilot on #210: an earlier confirm call answered with 1 while this
+    # request was working must not be followed by a second call.
+    it "places nothing when the number was confirmed while the call was being arranged" do
+      allow(TelnyxCall).to receive(:reserve_verification).and_wrap_original do |original, *args, **kw|
+        original.call(*args, **kw).tap { caregiver.update_columns(escalation_consent_at: Time.current) }
+      end
+
+      expect { post "/profile/confirm_phone" }.not_to change(TelnyxCall, :count)
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+    end
+
+    # Copilot on #210: the window can close between deciding and dialling.
+    it "does not dial when calling hours end while the call is being arranged" do
+      travel_to(ActiveSupport::TimeZone["America/New_York"].local(2026, 6, 15, 20, 59, 59))
+      allow(TelnyxCall).to receive(:reserve_verification).and_wrap_original do |original, *args, **kw|
+        original.call(*args, **kw).tap { travel 2.seconds }
+      end
+
+      expect { post "/profile/confirm_phone" }.not_to change(TelnyxCall, :count)
+      expect(TelnyxVoiceService).not_to have_received(:verify)
+      expect(flash[:alert]).to include("only place calls")
     end
 
     it "asks for a number before there is one" do

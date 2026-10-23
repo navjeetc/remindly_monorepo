@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # A caregiver's agreement to be telephoned when somebody they look after misses
 # an important reminder.
 #
