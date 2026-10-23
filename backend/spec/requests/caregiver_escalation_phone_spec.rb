@@ -104,7 +104,8 @@ RSpec.describe "Caregiver escalation phone", type: :request do
     it "is offered once there is a number" do
       get "/profile"
 
-      expect(doc.at_css("form[action='/profile/confirm_phone'] button").text).to include("Call me to confirm")
+      expect(doc.at_css("form#confirm-phone-form")["action"]).to eq("/profile/confirm_phone")
+      expect(doc.at_css("button[form='confirm-phone-form']").text).to include("Call me to confirm")
     end
 
     it "rings the caregiver's number, as an escalation-consent call" do

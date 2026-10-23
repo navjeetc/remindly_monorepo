@@ -103,6 +103,34 @@
                 US or Canada. If someone you look after misses a reminder marked "being late matters",
                 Remindly can phone you here. Nothing rings until you confirm the number.
               </p>
+
+              <%# Status of the number as saved, not as typed: the confirm call
+                  rings what is on file. %>
+              <% saved = current_user.phone_in_database %>
+              <% if saved.present? %>
+                <div id="escalation-phone" class="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+                  <% if current_user.escalation_consent_at_in_database.present? && current_user.escalation_opted_out_at.blank? %>
+                    <strong>Confirmed.</strong> Remindly may call <%= formatted_phone_number(saved) %>
+                    when someone you look after misses an important reminder. Press 9 on any of those calls to stop them.
+                  <% else %>
+                    <p class="mb-3">
+                      <% if current_user.escalation_opted_out_at.present? %>
+                        You asked us not to call about missed reminders. To turn the calls back on, confirm the number again.
+                      <% else %>
+                        <strong>Not confirmed yet.</strong> We will ring <%= formatted_phone_number(saved) %>
+                        and ask you to press 1. It takes about half a minute.
+                      <% end %>
+                    </p>
+                    <button type="submit" form="confirm-phone-form" class="button button-primary"
+                            <%= "disabled" unless current_user.within_calling_hours? %>>Call me to confirm</button>
+                    <% unless current_user.within_calling_hours? %>
+                      <p class="mt-2 text-gray-500">We only call between <%= current_user.calling_hours_label %> your time.</p>
+                    <% end %>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="mt-1 text-sm text-gray-500">Save your number, then we can call to confirm it.</p>
+              <% end %>
             </div>
             <% end %>
 
@@ -178,33 +206,11 @@
         </div>
       <% end %>
 
-      <%# The confirm call is its own form for the same reason as the role buttons
-          below: a button_to cannot sit inside the profile form. %>
-      <% if current_user.escalation_phone_offered? && current_user.phone.present? %>
-        <div id="escalation-phone" class="mt-8 border-t border-gray-200 pt-6">
-          <h4 class="text-base font-medium text-gray-900 mb-2">Calls about missed reminders</h4>
-          <% if current_user.escalation_callable? %>
-            <p class="text-sm text-gray-700">
-              Confirmed. Remindly may call <strong><%= formatted_phone_number(current_user.phone) %></strong>
-              when someone you look after misses an important reminder. Press 9 on any of those calls to stop them.
-            </p>
-          <% else %>
-            <p class="text-sm text-gray-700 mb-3">
-              <% if current_user.escalation_opted_out_at.present? %>
-                You asked us not to call about missed reminders. To turn the calls back on, confirm the number again.
-              <% else %>
-                Not confirmed yet. We will ring <strong><%= formatted_phone_number(current_user.phone) %></strong>
-                and ask you to press 1. It takes about half a minute.
-              <% end %>
-            </p>
-            <%= button_to "Call me to confirm", confirm_profile_phone_path, method: :post,
-                  class: "button button-primary",
-                  disabled: !current_user.within_calling_hours? %>
-            <% unless current_user.within_calling_hours? %>
-              <p class="mt-2 text-sm text-gray-500">We only call between <%= current_user.calling_hours_label %> your time.</p>
-            <% end %>
-          <% end %>
-        </div>
+      <%# The confirm call's form. Empty and outside the profile form, because
+          forms cannot nest; its button sits under the phone field and names
+          this form through the HTML form attribute. %>
+      <% if current_user.escalation_phone_offered? && current_user.phone_in_database.present? %>
+        <%= form_tag confirm_profile_phone_path, method: :post, id: "confirm-phone-form" do %><% end %>
       <% end %>
 
       <%# Role change is its own form (button_to) so it isn't nested in the profile
