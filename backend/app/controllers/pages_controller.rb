@@ -19,6 +19,12 @@ class PagesController < WebController
   # how Remindly's contacts are told apart).
   SETUP_CALL_URL = "https://api.leadconnectorhq.com/widget/booking/WCGg8BFRpRbgaoHbxlOd".freeze
 
+  # Public paths that redirect rather than render. Not pages, so not in
+  # STATIC_PATHS or the sitemap, but public all the same: Ahoy::Store reads this
+  # so an anonymous click records no visit (no IP, no browser), exactly as on
+  # the pages that link to it. (Codex and Copilot on #216.)
+  PUBLIC_REDIRECT_PATHS = %w[ /setup-call ].freeze
+
   # Counted here and then sent on, so Admin -> Traffic shows how many people
   # pressed the offer: PublicPage counts only pages that render, and this one
   # redirects. Nothing about the visitor goes to GoHighLevel beyond the click

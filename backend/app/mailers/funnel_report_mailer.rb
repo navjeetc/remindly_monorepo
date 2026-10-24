@@ -8,12 +8,14 @@
 # Aggregates only, as on that page: nothing here names a visitor, and the
 # accounts are counted, never listed.
 class FunnelReportMailer < ApplicationMailer
-  DAYS = 7
-
-  def weekly(since: DAYS.days.ago.to_date)
-    @since = since
-    @until = Date.current
-    counts = PageCount.since(@since).humans
+  # Last week, Monday through Sunday, closed at both ends. Sent on Monday, so a
+  # "last seven days" count would include Monday morning and then count it
+  # again the following week. (Copilot on #216.)
+  def weekly(today: Date.current)
+    @since = today.beginning_of_week(:monday) - 7
+    before = @since + 7
+    @until = before - 1
+    counts = PageCount.where(day: @since...before).humans
 
     @human_views = counts.sum(:count)
     @referred_views = counts.referred.sum(:count)
@@ -21,7 +23,7 @@ class FunnelReportMailer < ApplicationMailer
     @by_referrer = top(counts.referred, :referrer_host)
     @by_source = top(counts.tagged, :source)
 
-    activation = Activation.new(since: @since)
+    activation = Activation.new(since: @since, before: before)
     @totals = activation.totals
     @by_activation_source = activation.by_source
 

@@ -40,6 +40,13 @@ RSpec.describe "Setup call offer", type: :request do
     expect(response.headers["Set-Cookie"].to_s).not_to include("_backend_session")
   end
 
+  # Codex and Copilot on #216: Ahoy::Store only skipped pages that render, so
+  # a click here wrote a visit row with the visitor's IP and browser.
+  it "records no analytics visit for an anonymous visitor" do
+    expect { get "/setup-call", headers: { "HTTP_USER_AGENT" => browser_ua } }
+      .not_to change(Ahoy::Visit, :count)
+  end
+
   it "is offered on the home page and the sign-in page" do
     get "/"
     expect(response.body).to include('href="/setup-call"')
