@@ -16,10 +16,11 @@ defaults:
 jobs:
   test:
     # Pinned, not ubuntu-latest: on 2026-10-24 ubuntu-latest became 26.04,
-    # where setup-ruby builds only the newest patch of each series, so the
-    # 3.3.5 in backend/.ruby-version (and the production Dockerfile) was a 404
-    # and every job failed before running anything. Move this when Ruby is
-    # upgraded, together with .ruby-version and the Dockerfile.
+    # where setup-ruby builds only the newest patch of each Ruby series. CI
+    # installs the exact version in backend/.ruby-version (what production
+    # runs), so on ubuntu-latest every new 3.3.x patch release would break CI
+    # until .ruby-version caught up -- that is what failed every job with
+    # 3.3.5. A pinned image keeps the older patches; move it deliberately.
     runs-on: ubuntu-24.04
 
     env:

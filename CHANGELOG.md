@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-10-24
+
 ### Changed
+- **Ruby 3.3.5 → 3.3.13** in `.ruby-version`, the production Dockerfile and
+  the image build argument. GitHub's `ubuntu-latest` moved to 26.04, which
+  only offers the newest patch of each Ruby series, so CI could no longer
+  install 3.3.5; CI stays pinned to `ubuntu-24.04` so a future patch release
+  cannot break it the same way.
 - **The public pages tell people about escalation calls**: a new FAQ entry
   ("Can Remindly phone me if my parent doesn't answer?"), and a sentence each
   on the home page, the How to page and the reminder-app landing page.
