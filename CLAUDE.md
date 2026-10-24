@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository Overview
 
 Remindly is a desktop-first, caregiver-aware reminder system for seniors. The monorepo contains:
-- **`backend/`** — Rails 8 API (Ruby 3.3.5, SQLite3, JWT magic-link auth, IceCube recurrence)
+- **`backend/`** — Rails 8 API (Ruby 3.3.13, SQLite3, JWT magic-link auth, IceCube recurrence)
 - **`clients/macos-swiftui/`** — SwiftUI macOS app (Xcode project)
 - **`shared/locales/`** — i18n translation files
 
