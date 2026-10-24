@@ -63,6 +63,8 @@ was not done — they may have done it without marking it.
 
 View <%= @senior.display_name %>'s dashboard: <%= @dashboard_url %>
 
+<%= render "reminder_activity_mailer/referral" %>
+
 --
 Remindly - Caregiver Coordination
 You're receiving this because you're a caregiver for <%= @senior.display_name %>.

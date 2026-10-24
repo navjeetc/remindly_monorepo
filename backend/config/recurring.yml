@@ -37,6 +37,13 @@ production:
   # caregivers ever span more timezones than they do now, the answer is to run
   # this hourly and mail each one at 8am in their own tz, which users already
   # carry on `tz`.
+  # Last week's views, setup-call clicks and sign-ups by ?from= tag, to the
+  # admin address, Mondays 8am Eastern (12:00 UTC; see the note above).
+  weekly_funnel_report:
+    class: WeeklyFunnelReportJob
+    queue: default
+    schedule: "0 12 * * 1"
+
   check_coverage_gaps:
     class: CheckCoverageGapsJob
     queue: default

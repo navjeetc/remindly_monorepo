@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, Helvetica, Arial, sans-serif; color: #222; line-height: 1.5;">
+    <h2 style="margin: 0 0 4px;">Remindly last week</h2>
+    <p style="margin: 0 0 16px; color: #666;"><%= @since.strftime("%b %-d") %> to <%= @until.strftime("%b %-d") %></p>
+
+    <table cellpadding="6" style="border-collapse: collapse;">
+      <tr><td>Page views (people, not bots)</td><td align="right"><strong><%= @human_views %></strong></td></tr>
+      <tr><td>From other sites</td><td align="right"><strong><%= @referred_views %></strong></td></tr>
+      <tr><td>Setup-call offer clicked</td><td align="right"><strong><%= @setup_call_clicks %></strong></td></tr>
+    </table>
+
+    <h3>Sign-ups and how far they got</h3>
+    <table cellpadding="6" style="border-collapse: collapse;">
+      <tr style="color: #666;"><th align="left">Tag</th><th>Created</th><th>Signed in</th><th>Added someone</th><th>Wrote a reminder</th><th>They agreed</th></tr>
+      <tr style="border-top: 1px solid #ddd;"><td><strong>All</strong></td><% Activation::STEPS.each_key do |step| %><td align="center"><strong><%= @totals[step] %></strong></td><% end %></tr>
+      <% @by_activation_source.each do |source, steps| %>
+        <tr style="border-top: 1px solid #eee;"><td><%= source %></td><% Activation::STEPS.each_key do |step| %><td align="center"><%= steps[step] %></td><% end %></tr>
+      <% end %>
+    </table>
+
+    <h3>Visits by tag (?from=)</h3>
+    <% if @by_source.empty? %><p style="color: #666;">None.</p><% else %>
+      <ul><% @by_source.each do |source, total| %><li><%= source %>: <%= total %></li><% end %></ul>
+    <% end %>
+
+    <h3>Visits by site</h3>
+    <% if @by_referrer.empty? %><p style="color: #666;">None.</p><% else %>
+      <ul><% @by_referrer.each do |host, total| %><li><%= host %>: <%= total %></li><% end %></ul>
+    <% end %>
+
+    <p><a href="<%= ApplicationHelper::CANONICAL_HOST %>/admin/traffic?days=7" style="color: #2563eb;">Open Admin → Traffic</a></p>
+  </body>
+</html>

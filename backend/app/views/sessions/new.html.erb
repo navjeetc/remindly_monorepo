@@ -83,6 +83,11 @@
             Want to see it first? <%= link_to "How Remindly works", how_to_path, class: "font-medium text-blue-700 hover:underline" %>
           </p>
 
+          <p class="text-center text-sm text-gray-600">
+            Rather do it together? <%= link_to "Book a free 15-minute setup call", setup_call_path, class: "font-medium text-blue-700 hover:underline" %>
+            and we'll set it up with you on the phone.
+          </p>
+
           <% if Rails.env.development? %>
             <div class="relative">
               <div class="absolute inset-0 flex items-center">

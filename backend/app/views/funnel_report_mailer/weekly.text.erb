@@ -1,0 +1,21 @@
+Remindly, <%= @since.strftime("%b %-d") %> to <%= @until.strftime("%b %-d") %>
+
+Page views (people, not bots): <%= @human_views %>
+From other sites: <%= @referred_views %>
+Setup-call offer clicked: <%= @setup_call_clicks %>
+
+Sign-ups and how far they got:
+  created <%= @totals[:created] %>, signed in <%= @totals[:signed_in] %>, added someone <%= @totals[:added] %>, wrote a reminder <%= @totals[:reminded] %>, they agreed <%= @totals[:agreed] %>
+<% @by_activation_source.each do |source, steps| %>
+  <%= source %>: created <%= steps[:created] %>, signed in <%= steps[:signed_in] %>, added <%= steps[:added] %>, reminded <%= steps[:reminded] %>, agreed <%= steps[:agreed] %>
+<% end %>
+
+Visits by tag (?from=):
+<% if @by_source.empty? %>  none
+<% else %><% @by_source.each do |source, total| %>  <%= source %>: <%= total %>
+<% end %><% end %>
+Visits by site:
+<% if @by_referrer.empty? %>  none
+<% else %><% @by_referrer.each do |host, total| %>  <%= host %>: <%= total %>
+<% end %><% end %>
+Full picture: <%= ApplicationHelper::CANONICAL_HOST %>/admin/traffic?days=7

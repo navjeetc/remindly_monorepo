@@ -74,6 +74,13 @@
   <a class="btn btn-secondary" href="<%= how_to_path %>">See how it works first</a>
 </div>
 
+<%# Outside .actions, as a sentence rather than a third button: the hero still
+    offers one decision, and this is for whoever would rather not make it alone. %>
+<p class="setup-offer">
+  Rather do it together? <a href="<%= setup_call_path %>">Book a free 15-minute call</a>
+  and we'll set it up with you on the phone.
+</p>
+
 <%#
   The three things a caregiver braces for on a free product. An earlier version
   led with "no limit on how many reminders", which is a worry nobody arrives
@@ -285,5 +292,9 @@
 <div class="actions-end">
   <a class="btn btn-primary" href="<%= start_setup_path %>">Set up reminders for my parent — free</a>
 </div>
+
+<p class="setup-offer">
+  Or <a href="<%= setup_call_path %>">book a free 15-minute call</a> and we'll set it up with you.
+</p>
 
 <%= render "shared/subscribe_form", source: "home" %>

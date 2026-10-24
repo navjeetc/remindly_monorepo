@@ -14,5 +14,6 @@
     </p>
 
     <p><a href="<%= @dashboard_url %>" style="color: #2563eb;">Open <%= @senior.display_name %>'s dashboard</a></p>
+    <%= render "reminder_activity_mailer/referral" %>
   </body>
 </html>
