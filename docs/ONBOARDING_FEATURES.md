@@ -15,7 +15,7 @@ notice once they are set up (the area code shown beside a saved number, say)
 does not belong unless it would help persuade someone to try Remindly. When a
 PR leaves the list alone on purpose, say so in the PR.
 
-Last checked: 2026-09-25, accurate for version 0.15.0.
+Last checked: 2026-10-23, accurate for version 0.24.0.
 
 ---
 
@@ -36,6 +36,11 @@ time.
 email when a reminder is marked done, and another if the time passes and
 nobody marks it. For reminders where being late matters, you're told as soon
 as the first call goes unanswered.
+
+**If they don't answer, we ring you.** For reminders where being late matters,
+if your parent doesn't pick up any of the calls, Remindly phones the family,
+one person at a time in the order you choose, until someone presses 1 to say
+they'll check. Everyone else gets an email saying who's on it.
 
 **Or a tablet that speaks.** If there's a tablet or computer in the house,
 Remindly can speak from its screen instead, with one big Done button. There's

@@ -27,7 +27,7 @@ env:
     RAILS_SERVE_STATIC_FILES: "true"
     RAILS_LOG_TO_STDOUT: "true"
     RAILS_ENV: "production"
-    APP_VERSION: "0.23.0"
+    APP_VERSION: "0.24.0"
     ENABLE_NATIVE_SCHEDULING: "true"
     # The outer of two locks on reminder phone calls, and the reason it lives
     # here rather than in a console: turning calls on is a reviewed change to the
@@ -47,6 +47,13 @@ env:
     # being made on her own behalf, and nobody who speaks the language has read
     # the rest.
     ENABLE_TRANSLATED_CALLS: "true"
+    # Caregivers rung in order when a care receiver misses every call for a
+    # time-critical reminder, and the caregiver's own number on the profile that
+    # makes it possible. On after a live test on two real handsets (2026-10-23):
+    # 2 passed to the next phone at once, and no answer waited two minutes before
+    # it. Nothing rings a caregiver who has not confirmed their own number on a
+    # call, so turning this on rings nobody by itself.
+    ENABLE_ESCALATION_CALLS: "true"
     # Run the Solid Queue supervisor (worker + dispatcher + recurring scheduler)
     # inside Puma. This single-server box has no separate job role, so without
     # this nothing drains the queue: recurring jobs (missed sweep, coverage-gap
