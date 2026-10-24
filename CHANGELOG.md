@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **The public pages tell people about escalation calls**: a new FAQ entry
+  ("Can Remindly phone me if my parent doesn't answer?"), and a sentence each
+  on the home page, the How to page and the reminder-app landing page.
+- **The privacy policy covers phone numbers and calls**, which it never had:
+  the care receiver's number, a caregiver's own number for escalation calls,
+  the consent and stop records, what is kept about each call (time, answered,
+  the key pressed, never what is said), and the telephone provider among the
+  services we share data with.
+
 ## [0.24.0] - 2026-10-23
 
 ### Added
