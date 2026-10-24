@@ -363,6 +363,21 @@ RSpec.describe "Escalation calls", type: :request do
       expect(second_link.reload.escalation_position).to eq(2)
     end
 
+    # Copilot on #215: a caregiver whose role changed is hidden from the list
+    # but kept their place, so giving that place to someone else failed.
+    it "can give a former caregiver's place to someone else" do
+      first.update_columns(role: User.roles[:senior])
+      second_link = CaregiverLink.find_by!(caregiver: second)
+      sign_in(second)
+
+      patch "/dashboard/senior/#{senior.id}/escalation_order",
+        params: { positions: { second_link.id => "1" } }
+
+      expect(response).to redirect_to(%r{/dashboard/senior/#{senior.id}})
+      expect(second_link.reload.escalation_position).to eq(1)
+      expect(CaregiverLink.find_by!(caregiver: first).escalation_position).to be_nil
+    end
+
     it "takes somebody off the list" do
       second_link = CaregiverLink.find_by!(caregiver: second)
       first_link = CaregiverLink.find_by!(caregiver: first)

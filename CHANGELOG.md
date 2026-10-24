@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The escalation order lists only caregivers.** A care receiver linked on
   the caregiver side (a role changed after the link was made) appeared with
   "hasn't confirmed a number", though they cannot confirm one; and someone
-  whose role changes from caregiver is no longer rung.
+  whose role changes from caregiver is no longer rung, and gives up their
+  place in the order the next time it is saved.
 - **"Not called" is no longer cut off** in the escalation order's drop-down,
   which had a fixed width.
 - **"← Back to Dashboard" lines up with the buttons** beside it on the care
