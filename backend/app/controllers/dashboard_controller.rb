@@ -394,7 +394,7 @@ class DashboardController < WebController
     return head :forbidden unless link.permission == "manage"
 
     senior = link.senior
-    links = senior.senior_links.where.not(caregiver_id: nil).includes(:caregiver).to_a
+    links = senior.senior_links.escalation_candidates.includes(:caregiver).to_a
     submitted = params.fetch(:positions, {}).permit(*links.map { |l| l.id.to_s })
     wanted = links.index_with { |l| submitted[l.id.to_s].presence&.to_i }
 

@@ -520,6 +520,9 @@ class User < ApplicationRecord
   end
 
   def escalation_callable?
+    # Only a caregiver is rung. A role changed after agreeing ends it, without
+    # waiting for anybody to clear the columns.
+    return false unless role_caregiver?
     return false if escalation_opted_out_at.present?
     return false if phone.blank?
 

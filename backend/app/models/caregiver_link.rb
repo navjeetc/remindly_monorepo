@@ -52,6 +52,14 @@ class CaregiverLink < ApplicationRecord
   # longer a live one, and the dashboard banner was still counting all of them —
   # so a care receiver was told to share a token generated eleven months earlier,
   # which the caregiver would then be refused.
+  # The links whose caregiver can be put in an escalation order: somebody
+  # whose role is caregiver. A care receiver can sit on the caregiver side of a
+  # link (a role changed after the link was made), and has no profile phone
+  # to confirm, so offering them in the order would only ever be skipped.
+  scope :escalation_candidates, -> {
+    joins(:caregiver).where(users: { role: User.roles[:caregiver] })
+  }
+
   scope :redeemable, -> {
     where(caregiver_id: nil)
       .where(created_at: PAIRING_TOKEN_TTL.ago..)
