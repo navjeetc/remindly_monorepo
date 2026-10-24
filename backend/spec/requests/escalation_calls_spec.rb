@@ -120,6 +120,14 @@ RSpec.describe "Escalation calls", type: :request do
       expect(TelnyxVoiceService).not_to have_received(:escalate)
     end
 
+    it "skips somebody who is no longer a caregiver" do
+      first.update_columns(role: User.roles[:senior])
+
+      expect { EscalationCallJob.perform_now(occurrence.id, 1) }
+        .to have_enqueued_job(EscalationCallJob).with(occurrence.id, 2)
+      expect(TelnyxVoiceService).not_to have_received(:escalate)
+    end
+
     it "skips somebody who has said no on a call" do
       first.update_columns(escalation_opted_out_at: 1.hour.ago)
 
@@ -319,6 +327,18 @@ RSpec.describe "Escalation calls", type: :request do
       expect(panel.text).to include("Has confirmed").and include("Hasn't confirmed a number yet")
     end
 
+    # A care receiver linked on the caregiver side (a role changed after the
+    # link was made) can never confirm a number, so is not offered.
+    it "lists only caregivers" do
+      other = create(:user, :senior, name: "Johnny", tz: "America/New_York")
+      CaregiverLink.create!(senior: senior, caregiver: other, permission: :manage)
+
+      get "/dashboard/senior/#{senior.id}"
+
+      panel = Nokogiri::HTML(response.body).at_css("#escalation-order")
+      expect(panel.text).not_to include("Johnny")
+    end
+
     it "swaps two caregivers" do
       first_link = CaregiverLink.find_by!(caregiver: first)
       second_link = CaregiverLink.find_by!(caregiver: second)
@@ -341,6 +361,21 @@ RSpec.describe "Escalation calls", type: :request do
 
       expect(first_link.reload.escalation_position).to eq(1)
       expect(second_link.reload.escalation_position).to eq(2)
+    end
+
+    # Copilot on #215: a caregiver whose role changed is hidden from the list
+    # but kept their place, so giving that place to someone else failed.
+    it "can give a former caregiver's place to someone else" do
+      first.update_columns(role: User.roles[:senior])
+      second_link = CaregiverLink.find_by!(caregiver: second)
+      sign_in(second)
+
+      patch "/dashboard/senior/#{senior.id}/escalation_order",
+        params: { positions: { second_link.id => "1" } }
+
+      expect(response).to redirect_to(%r{/dashboard/senior/#{senior.id}})
+      expect(second_link.reload.escalation_position).to eq(1)
+      expect(CaregiverLink.find_by!(caregiver: first).escalation_position).to be_nil
     end
 
     it "takes somebody off the list" do

@@ -394,7 +394,7 @@ class DashboardController < WebController
     return head :forbidden unless link.permission == "manage"
 
     senior = link.senior
-    links = senior.senior_links.where.not(caregiver_id: nil).includes(:caregiver).to_a
+    links = senior.senior_links.escalation_candidates.includes(:caregiver).to_a
     submitted = params.fetch(:positions, {}).permit(*links.map { |l| l.id.to_s })
     wanted = links.index_with { |l| submitted[l.id.to_s].presence&.to_i }
 
@@ -414,7 +414,11 @@ class DashboardController < WebController
     # saving an untouched order emptied it. (Codex and Copilot on #211.) The
     # range was checked above, which is all the model's validation adds.
     CaregiverLink.transaction do
-      CaregiverLink.where(id: links.map(&:id)).update_all(escalation_position: nil, updated_at: Time.current)
+      # Every link of this care receiver, not only the listed ones: a former
+      # caregiver is hidden from the list but would keep holding their place,
+      # and handing that place to someone else then broke the unique index.
+      # (Copilot on #215.)
+      senior.senior_links.update_all(escalation_position: nil, updated_at: Time.current)
       wanted.each do |l, position|
         CaregiverLink.where(id: l.id).update_all(escalation_position: position, updated_at: Time.current) if position
       end
