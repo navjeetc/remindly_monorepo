@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-10-24
+
 ### Fixed
 - **The escalation order lists only caregivers.** A care receiver linked on
   the caregiver side (a role changed after the link was made) appeared with
