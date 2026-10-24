@@ -48,7 +48,7 @@
             </div>
             <%= select_tag "positions[#{link.id}]",
                   options_for_select([ [ "Not called", "" ], [ "1st", "1" ], [ "2nd", "2" ], [ "3rd", "3" ] ], link.escalation_position.to_s),
-                  id: "positions_#{link.id}", class: "field w-32" %>
+                  id: "positions_#{link.id}", class: "field w-auto shrink-0" %>
           </div>
         <% end %>
 
