@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the click on Admin → Traffic and redirects to a GoHighLevel booking
   calendar (weekdays 10am–4pm Eastern); a GHL workflow tags each booking
   `remindly-setup-call`. The privacy policy says a booking is kept in our CRM.
+  The FAQ answers "Can someone help me set it up?", and the onboarding list
+  pitches the free setup call.
 - **A referral line in reminder emails.** Done, missed, no-answer and
   "is checking on" emails end with "Know someone caring for a parent?",
   linking to the site with `?from=referral`.
