@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-10-23
+
 ### Added
 - **A caregiver's own number, for calls about missed reminders** (behind
-  `ENABLE_ESCALATION_CALLS`, off in production until the call itself ships).
+  `ENABLE_ESCALATION_CALLS`, now on in production).
   A caregiver can add their number on the profile and press "Call me to
   confirm": a short call asks them to press 1 to agree to be rung when
   somebody they look after misses an important reminder, or 9 to say no.
