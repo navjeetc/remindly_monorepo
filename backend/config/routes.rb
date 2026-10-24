@@ -34,6 +34,7 @@ Rails.application.routes.draw do
   get  "routine_sheet",      to: "pages#routine_sheet", as: :routine_sheet
   get  "caregiver_checklist", to: "pages#caregiver_checklist", as: :caregiver_checklist
   get  "privacy",            to: "pages#privacy", as: :privacy
+  get  "setup-call",         to: "pages#setup_call", as: :setup_call
   get  "terms",              to: "pages#terms", as: :terms
 
   # Telnyx Call Control webhooks (public, token-secured)

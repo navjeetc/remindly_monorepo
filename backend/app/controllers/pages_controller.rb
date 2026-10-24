@@ -12,6 +12,28 @@ class PagesController < WebController
 
   def how_to; end
 
+  # The booking page for a free 15-minute call where we set Remindly up with a
+  # family on the phone. A GoHighLevel calendar, so the link lives here once
+  # rather than in every page that offers it, and bookings there are tagged
+  # remindly-setup-call by a GHL workflow (the sub-account is shared; tags are
+  # how Remindly's contacts are told apart).
+  SETUP_CALL_URL = "https://api.leadconnectorhq.com/widget/booking/WCGg8BFRpRbgaoHbxlOd".freeze
+
+  # Public paths that redirect rather than render. Not pages, so not in
+  # STATIC_PATHS or the sitemap, but public all the same: Ahoy::Store reads this
+  # so an anonymous click records no visit (no IP, no browser), exactly as on
+  # the pages that link to it. (Codex and Copilot on #216.)
+  PUBLIC_REDIRECT_PATHS = %w[ /setup-call ].freeze
+
+  # Counted here and then sent on, so Admin -> Traffic shows how many people
+  # pressed the offer: PublicPage counts only pages that render, and this one
+  # redirects. Nothing about the visitor goes to GoHighLevel beyond the click
+  # itself; whatever they type is typed on GHL's page.
+  def setup_call
+    count_setup_call_click
+    redirect_to SETUP_CALL_URL, allow_other_host: true
+  end
+
   # Legal pages, public to everyone (signed in or not).
   def privacy; end
 
@@ -68,5 +90,15 @@ class PagesController < WebController
     @paths = STATIC_PATHS + Post.all.map(&:path)
 
     render "sitemap", formats: :xml, layout: false
+  end
+
+  private
+
+  # As count_this_page_view, and never worth failing the redirect over.
+  def count_setup_call_click
+    PageCount.record!(path: request.path, referrer: request.referer,
+                      source: params[:from], user_agent: request.user_agent)
+  rescue StandardError => e
+    Rails.logger.warn("PageCount failed for #{request.path}: #{e.class}: #{e.message}")
   end
 end

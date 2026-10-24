@@ -60,6 +60,7 @@ class Ahoy::Store < Ahoy::DatabaseStore
     return false if path.blank?
 
     PagesController::STATIC_PATHS.include?(path) ||
+      PagesController::PUBLIC_REDIRECT_PATHS.include?(path) ||
       MACHINE_PATHS.include?(path) ||
       path.start_with?("/blog/") ||
       path == "/subscribers"

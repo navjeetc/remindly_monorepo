@@ -30,8 +30,11 @@ class Activation
   # The label for accounts that arrived without a tag.
   UNTAGGED = "(no tag)".freeze
 
-  def initialize(since:)
+  # `before` is an exclusive end date, for a closed period such as last week;
+  # without it the period runs to now, as Admin -> Traffic wants.
+  def initialize(since:, before: nil)
     @since = since
+    @before = before
   end
 
   # { created: 12, signed_in: 9, ... } for the whole cohort.
@@ -51,7 +54,8 @@ class Activation
   private
 
   def cohort
-    User.where(created_at: @since.beginning_of_day..)
+    created = @before ? (@since.beginning_of_day...@before.beginning_of_day) : (@since.beginning_of_day..)
+    User.where(created_at: created)
       .where.not(email: nil)
       .where("role IS NULL OR role != ?", User.roles.fetch("admin"))
   end

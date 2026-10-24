@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-24
+
+### Added
+- **A free 15-minute setup call.** The home page (under the hero and by the
+  closing button) and the sign-in page offer "Book a free 15-minute call and
+  we'll set it up with you". The link goes through `/setup-call`, which counts
+  the click on Admin → Traffic and redirects to a GoHighLevel booking
+  calendar (weekdays 10am–4pm Eastern); a GHL workflow tags each booking
+  `remindly-setup-call`. The privacy policy says a booking is kept in our CRM.
+  The FAQ answers "Can someone help me set it up?", and the onboarding list
+  pitches the free setup call.
+- **A referral line in reminder emails.** Done, missed, no-answer and
+  "is checking on" emails end with "Know someone caring for a parent?",
+  linking to the site with `?from=referral`.
+- **A Monday funnel email to the admin address**: last week's page views,
+  visits by site and by `?from=` tag, setup-call clicks, and the sign-up funnel
+  by tag (`WeeklyFunnelReportJob`, Mondays 12:00 UTC).
+
 ## [0.24.2] - 2026-10-24
 
 ### Fixed

@@ -51,6 +51,9 @@ or read them six numbers over the phone.
 computer: morning tablets, a glass of water, Thursday's appointment. They can
 repeat daily or weekly, and follow your parent's clock, not yours.
 
+**Help setting it up, free.** Book a 15-minute call and we'll set it up with
+you on the phone: your parent, their first reminder, and what they'll hear.
+
 **Share the load with family.** Several caregivers can be linked to one
 person, each choosing which reminders they hear about. A shared task list
 shows who's picking up the prescription and who's covering the delivery.

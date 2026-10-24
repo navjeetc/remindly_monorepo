@@ -3,3 +3,4 @@
 <%= @senior.display_name %> didn't answer our calls about it, so Remindly rang the people on the list. <%= @accepted_by.display_name %> answered and pressed 1 to say they would check, so we've stopped calling.
 
 <%= @dashboard_url %>
+<%= render "reminder_activity_mailer/referral" %>
