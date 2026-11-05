@@ -41,7 +41,7 @@ class CaregiverAvailabilitiesController < WebController
 
       redirect_to caregiver_availabilities_path, notice: "Availability added successfully"
     else
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 
@@ -85,7 +85,7 @@ class CaregiverAvailabilitiesController < WebController
     if @availability.update(availability_params)
       redirect_to caregiver_availabilities_path, notice: "Availability updated successfully"
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 

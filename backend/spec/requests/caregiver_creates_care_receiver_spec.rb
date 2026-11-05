@@ -905,7 +905,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
 
       post "/start", params: { code: code }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     # This is a button pressed during a telephone call. A double-submit, a
@@ -986,7 +986,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
 
       post "/start", params: { code: code }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "stops working after ten minutes" do
@@ -995,7 +995,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
 
       travel(11.minutes) { post "/start", params: { code: code } }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     # No enumeration signal: a wrong code, an expired one and a spent one are
@@ -1020,7 +1020,7 @@ RSpec.describe "A caregiver setting somebody up", type: :request do
 
       post "/start", params: { code: code }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 

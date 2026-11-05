@@ -80,7 +80,7 @@ class TasksController < WebController
       redirect_to senior_tasks_path(@senior), notice: "Task created successfully"
     else
       @caregivers = @senior.caregivers
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 
@@ -106,7 +106,7 @@ class TasksController < WebController
       redirect_to senior_task_path(@senior, @task), notice: "Task updated successfully"
     else
       @caregivers = @senior.caregivers
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 

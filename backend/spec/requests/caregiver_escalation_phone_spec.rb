@@ -68,7 +68,7 @@ RSpec.describe "Caregiver escalation phone", type: :request do
     it "refuses a number the calls could not dial" do
       patch "/profile", params: { user: { phone: "12" } }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(caregiver.reload.phone).to be_nil
     end
 

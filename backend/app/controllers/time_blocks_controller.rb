@@ -26,7 +26,7 @@ class TimeBlocksController < WebController
     if @time_block.save
       redirect_to senior_time_blocks_path(@senior), notice: "Time block created successfully"
     else
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 
@@ -39,7 +39,7 @@ class TimeBlocksController < WebController
     if @time_block.update(time_block_params)
       redirect_to senior_time_blocks_path(@senior), notice: "Time block updated successfully"
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 

@@ -30,7 +30,7 @@ class StartController < WebController
     # and tells whoever holds a stale code that it was once real.
     unless link
       flash.now[:alert] = "That code did not work. Ask them to read you a new one."
-      return render :show, status: :unprocessable_entity
+      return render :show, status: :unprocessable_content
     end
 
     remember_reminder_link(link)

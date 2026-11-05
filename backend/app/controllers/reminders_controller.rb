@@ -3,7 +3,7 @@ class RemindersController < ApplicationController
   before_action :set_reminder, only: %i[show update destroy]
 
   rescue_from ActiveRecord::RecordNotFound, with: :not_found
-  rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_entity
+  rescue_from ActiveRecord::RecordInvalid, with: :unprocessable_content
 
   def profile
     render json: {
@@ -112,10 +112,10 @@ class RemindersController < ApplicationController
     render json: { error: "Reminder not found" }, status: :not_found
   end
 
-  def unprocessable_entity(exception)
+  def unprocessable_content(exception)
     render json: {
       error: "Validation failed",
       details: exception.record.errors.full_messages
-    }, status: :unprocessable_entity
+    }, status: :unprocessable_content
   end
 end

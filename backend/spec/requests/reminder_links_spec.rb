@@ -714,7 +714,7 @@ RSpec.describe "A reminder link", type: :request do
 
         # Rails turns the forgery failure into a 422 here rather than raising,
         # because the test environment rescues it the way production does.
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       ensure
         ActionController::Base.allow_forgery_protection = original
       end

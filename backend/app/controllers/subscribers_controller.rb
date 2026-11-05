@@ -50,7 +50,7 @@ class SubscribersController < WebController
     subscriber.request_confirmation if subscriber.persisted?
 
     render :create, locals: { subscriber: subscriber },
-      status: subscriber.persisted? ? :ok : :unprocessable_entity
+      status: subscriber.persisted? ? :ok : :unprocessable_content
   end
 
   # The link in the confirmation email. GET only ever looks, for the reason
