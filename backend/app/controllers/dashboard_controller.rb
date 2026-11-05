@@ -177,7 +177,7 @@ class DashboardController < WebController
       # Redirect back to dashboard (which shows the role chooser if no role yet)
       redirect_to dashboard_path, notice: "Profile updated successfully"
     else
-      render :profile, status: :unprocessable_entity
+      render :profile, status: :unprocessable_content
     end
   end
 
@@ -470,7 +470,7 @@ class DashboardController < WebController
     if attrs[:name].blank?
       @senior = User.new(tz: attrs[:tz])
       flash.now[:alert] = "Give them a name — it is what Remindly will call them out loud."
-      return render :new_care_receiver, status: :unprocessable_entity
+      return render :new_care_receiver, status: :unprocessable_content
     end
 
     @senior = User.new(
@@ -500,7 +500,7 @@ class DashboardController < WebController
 
     unless saved
       flash.now[:alert] = @senior.errors.full_messages.to_sentence
-      return render :new_care_receiver, status: :unprocessable_entity
+      return render :new_care_receiver, status: :unprocessable_content
     end
 
     # Says what to do next with what actually exists. An earlier version told
@@ -537,7 +537,7 @@ class DashboardController < WebController
     else
       flash.now[:alert] = @senior.errors.full_messages.presence&.to_sentence ||
                           "Give them a name — it is what Remindly will call them out loud."
-      render :edit_care_receiver, status: :unprocessable_entity
+      render :edit_care_receiver, status: :unprocessable_content
     end
   end
 

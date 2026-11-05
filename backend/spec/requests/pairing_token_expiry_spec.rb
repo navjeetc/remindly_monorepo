@@ -54,7 +54,7 @@ RSpec.describe "A pairing token's week", type: :request do
         post "/caregiver_links/pair", params: { token: link.pairing_token }, headers: bearer(caregiver)
       }.not_to change { link.reload.caregiver }
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(link.permission).to eq("view")
     end
 
@@ -71,7 +71,7 @@ RSpec.describe "A pairing token's week", type: :request do
     it "still says nothing about a token that never existed" do
       post "/caregiver_links/pair", params: { token: "not-a-real-token" }, headers: bearer(caregiver)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body["error"]).to eq("Invalid or expired pairing token")
     end
 
@@ -145,7 +145,7 @@ RSpec.describe "A pairing token's week", type: :request do
 
       post "/caregiver_links/pair", params: { token: token }, headers: bearer(other)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(link.reload.caregiver).to eq(caregiver)
     end
 
@@ -157,7 +157,7 @@ RSpec.describe "A pairing token's week", type: :request do
 
       post "/caregiver_links/pair", params: { token: link.pairing_token }, headers: bearer(senior)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(link.reload.caregiver).to be_nil
     end
   end

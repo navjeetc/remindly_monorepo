@@ -16,7 +16,7 @@ class CaregiverLinksController < ApplicationController
     link = CaregiverLink.find_by(pairing_token: token)
 
     unless link
-      render json: { error: "Invalid or expired pairing token" }, status: :unprocessable_entity
+      render json: { error: "Invalid or expired pairing token" }, status: :unprocessable_content
       return
     end
 
@@ -36,9 +36,9 @@ class CaregiverLinksController < ApplicationController
       # already tell it was real, and "invalid" would send them looking for a
       # typo instead of asking for a new one.
       render json: { error: "This pairing token has expired. Ask them to generate a new one." },
-             status: :unprocessable_entity
+             status: :unprocessable_content
     else
-      render json: { error: "Invalid or expired pairing token" }, status: :unprocessable_entity
+      render json: { error: "Invalid or expired pairing token" }, status: :unprocessable_content
     end
   end
 

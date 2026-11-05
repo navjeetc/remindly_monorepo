@@ -35,7 +35,7 @@ class SchedulingIntegrationsController < WebController
       redirect_to senior_scheduling_integrations_path(@senior),
                   notice: "Integration connected successfully!"
     else
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 
@@ -54,7 +54,7 @@ class SchedulingIntegrationsController < WebController
       redirect_to scheduling_integration_path(@integration),
                   notice: "Integration updated successfully"
     else
-      render :edit, status: :unprocessable_entity
+      render :edit, status: :unprocessable_content
     end
   end
 
@@ -95,7 +95,7 @@ class SchedulingIntegrationsController < WebController
     end
   rescue => e
     respond_to do |format|
-      format.json { render json: { valid: false, error: e.message }, status: :unprocessable_entity }
+      format.json { render json: { valid: false, error: e.message }, status: :unprocessable_content }
     end
   end
 

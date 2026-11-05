@@ -107,7 +107,7 @@ RSpec.describe "Subscribers", type: :request do
           post "/subscribers", params: { email: "not-an-email" }
         }.not_to change(Subscriber, :count)
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         expect(response.body).to match(/didn't look right/i)
       end
 

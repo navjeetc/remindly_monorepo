@@ -93,7 +93,7 @@ RSpec.describe "Profile text size", type: :request do
       patch "/profile", params: { user: { name: "Ada", tz: user.tz, text_size: "giant" } }
     }.not_to change { user.reload.text_size }
 
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
   end
 
   it "leaves the size alone when the form is submitted without it" do

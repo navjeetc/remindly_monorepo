@@ -60,7 +60,7 @@ RSpec.describe "Adding availability for the day picked on the calendar", type: :
       caregiver_availability: { date: "2026-09-27", start_time: "17:00", end_time: "09:00" }
     }
 
-    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response).to have_http_status(:unprocessable_content)
     expect(date_field_value).to eq("2026-09-27")
   end
 end
