@@ -1,0 +1,61 @@
+<%#
+  One submit per press. Without this a double tap posts a form twice: on
+  2026-10-30 one tap on "Set them up" from an Android phone created two care
+  receivers called John 50ms apart. The dashboard loads no Turbo or rails-ujs,
+  which is what would normally stop that, so nothing did.
+
+  Handled once, on the document, so every form on every dashboard page is
+  covered, including ones added later. A script that submits a form must call
+  form.requestSubmit(), not form.submit(): submit() fires no submit event, so
+  it skips this guard (and any validation) entirely.
+
+  - Only forms that change something (method="post", which Rails also uses for
+    PATCH and DELETE). A search or filter sent twice does no harm.
+  - Not a form that opens elsewhere (target="_blank"): this page never goes
+    away, so it would stay locked.
+  - Skipped when another handler already cancelled the submit, such as a
+    confirm() the person said no to. Listening on the document means those
+    handlers have already run.
+  - The button is not disabled. A disabled button's name and value are left
+    out of the request, and some forms send which button was pressed.
+  - Unlocked when the page comes back from the browser's back/forward cache,
+    and after 15 seconds, so a request that never returns (no signal) does not
+    leave the form dead until a reload.
+%>
+<script>
+  (function () {
+    var UNLOCK_AFTER_MS = 15000;
+    var timers = new WeakMap();
+
+    document.addEventListener("submit", function (event) {
+      var form = event.target;
+      if (event.defaultPrevented) return;
+      if ((form.getAttribute("method") || "").toLowerCase() !== "post") return;
+      var target = (form.getAttribute("target") || "").toLowerCase();
+      if (target && target !== "_self") return;
+
+      if (form.dataset.submitting === "true") {
+        event.preventDefault();
+        return;
+      }
+
+      form.dataset.submitting = "true";
+      form.setAttribute("aria-busy", "true");
+      timers.set(form, setTimeout(function () { unlock(form); }, UNLOCK_AFTER_MS));
+    });
+
+    window.addEventListener("pageshow", function (event) {
+      if (!event.persisted) return;
+      document.querySelectorAll("form[data-submitting]").forEach(unlock);
+    });
+
+    // Each lock's own timer is cancelled when the lock goes, so a timer left
+    // over from before a back/forward restore cannot unlock a later submit.
+    function unlock(form) {
+      clearTimeout(timers.get(form));
+      timers.delete(form);
+      delete form.dataset.submitting;
+      form.removeAttribute("aria-busy");
+    }
+  })();
+</script>

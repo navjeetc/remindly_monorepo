@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.2] - 2026-11-05
+
+### Fixed
+- **A double tap no longer submits a dashboard form twice.** On Oct 30 one
+  tap on "Set them up" from an Android phone created two care receivers with
+  the same name 50ms apart: the dashboard loads no Turbo or rails-ujs, so
+  nothing stopped the second POST. A small script in the dashboard layout
+  (`shared/_submit_once`) now lets each form that changes something submit
+  once, unlocking when the page is restored from the back/forward cache or
+  after 15 seconds. Search and filter forms, forms that open a new tab, and
+  submits cancelled by a confirm() are left alone, and buttons are not
+  disabled, so the pressed button still reaches the server.
+- **Reassigning a task can no longer be sent twice.** The assignment
+  dropdowns on a task page sent their form with `submit()`, which skips the
+  guard above; they now use `requestSubmit()`, and a spec fails if any view
+  goes back to `submit()` (apart from a GET filter).
+
 ## [0.25.1] - 2026-11-05
 
 ### Fixed
