@@ -1,5 +1,5 @@
 require "rails_helper"
-# Required explicitly, per backend/AGENTS.md:96, because the around hook below
+# Required explicitly, per the Object#with rule in backend/AGENTS.md, because the around hook below
 # uses Object#with. It happens to be loaded already through some other path
 # today; depending on that means this file breaks whenever that path changes,
 # with an undefined method on a line that has nothing to do with the change.
