@@ -104,7 +104,7 @@ Kamal + Docker targeting a single DigitalOcean server (`161.35.104.56`). SQLite3
 
 ### CI (GitHub Actions)
 Three jobs on PRs and pushes to `main`, defined in `.github/workflows/ci.yml`:
-- **`test`** — runs the full RSpec suite, including the guard specs that enforce repo invariants (`web_client_sync_spec.rb` for client drift, `public_assets_spec.rb` for files served from `public/`)
+- **`test`** — runs the full RSpec suite, including the guard specs that enforce repo invariants across every file of a kind: `public_assets_spec.rb` (files served from `public/`), `requests/form_fields_look_like_fields_spec.rb` (the UI style guide's field and button rules), `stacked_header_actions_spec.rb` (header controls that wrap at the largest text size) and `requests/submit_once_spec.rb` (no view submits a form with `submit()`, which skips the double-submit guard)
 - **`scan_ruby`** — Brakeman security scan
 - **`lint`** — `bin/rubocop -f github`
 
