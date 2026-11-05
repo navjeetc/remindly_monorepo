@@ -64,6 +64,21 @@ RSpec.describe SubscriberMailer, type: :mailer do
       expect(mail.text_part.body.to_s).to include(home)
       expect(Nokogiri::HTML(mail.html_part.body.to_s).css("a").map { |a| a["href"] }).to include(home)
     end
+
+    # November 2026: escalation calls and the free setup call, each linked to
+    # its FAQ answer. The setup-call offer goes to the FAQ rather than
+    # /setup-call because a click from an email carries no referrer, and the
+    # weekly report counts only setup-call clicks from our own pages.
+    it "links the escalation and setup-call news to their FAQ answers, tagged, in both parts" do
+      faq_links = [
+        "https://www.remindly.care/faq?from=monthly-note#if-they-still-dont-answer",
+        "https://www.remindly.care/faq?from=monthly-note#setup-call"
+      ]
+
+      expect(mail.text_part.body.to_s).to include(*faq_links)
+      expect(Nokogiri::HTML(mail.html_part.body.to_s).css("a").map { |a| a["href"] }).to include(*faq_links)
+      expect(mail.text_part.body.to_s).not_to include("/setup-call")
+    end
   end
 
   describe "#welcome" do
