@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-11-05
+
+### Fixed
+- **The Monday funnel email counts only setup-call clicks from our own
+  pages.** The week of Oct 26 reported 36 clicks; 31 had no referrer and fell
+  on the days scrapers posing as browsers spiked the home page. A real click
+  on the offer comes from remindly.care (the marketing layout sends
+  `strict-origin`), so only those count now, and the line reads "Setup-call
+  offer clicked (from our pages)". A browser that strips referrers goes
+  uncounted.
+
 ## [0.25.0] - 2026-10-24
 
 ### Added

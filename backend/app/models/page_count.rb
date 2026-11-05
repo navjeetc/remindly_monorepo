@@ -102,6 +102,7 @@ class PageCount < ApplicationRecord
   scope :bots, -> { where(bot: true) }
   scope :since, ->(date) { where(day: date..) }
   scope :referred, -> { where.not(referrer_host: [ "" ] + INTERNAL_HOSTS) }
+  scope :from_our_pages, -> { where(referrer_host: INTERNAL_HOSTS) }
   scope :tagged, -> { where.not(source: "") }
 
   # Adds one to today's tally for this combination, creating the row if it is

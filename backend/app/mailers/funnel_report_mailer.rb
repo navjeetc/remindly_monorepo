@@ -19,7 +19,14 @@ class FunnelReportMailer < ApplicationMailer
 
     @human_views = counts.sum(:count)
     @referred_views = counts.referred.sum(:count)
-    @setup_call_clicks = counts.where(path: "/setup-call").sum(:count)
+    # Setup-call clicks count only when they came from one of our own pages. The
+    # offer exists nowhere else, and the marketing layout's strict-origin policy
+    # means a real click on it arrives with our host as the referrer. The week of
+    # Oct 26, 2026 counted 36 "human" clicks, 31 of them with no referrer at all,
+    # bunched on the two days scrapers posing as browsers tripled the home-page
+    # views. A privacy browser that strips the referrer goes uncounted too: an
+    # undercount by a few is the better error than one that is mostly scrapers.
+    @setup_call_clicks = counts.where(path: "/setup-call").from_our_pages.sum(:count)
     @by_referrer = top(counts.referred, :referrer_host)
     @by_source = top(counts.tagged, :source)
 

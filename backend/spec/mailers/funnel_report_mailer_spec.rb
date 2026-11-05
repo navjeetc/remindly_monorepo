@@ -16,7 +16,8 @@ RSpec.describe FunnelReportMailer, type: :mailer do
 
   before do
     PageCount.create!(day: Date.new(2026, 10, 14), path: "/", referrer_host: "google.com", source: "google-a", bot: false, count: 12)
-    PageCount.create!(day: Date.new(2026, 10, 14), path: "/setup-call", referrer_host: "", source: "", bot: false, count: 3)
+    PageCount.create!(day: Date.new(2026, 10, 14), path: "/setup-call", referrer_host: "remindly.care", source: "", bot: false, count: 2)
+    PageCount.create!(day: Date.new(2026, 10, 15), path: "/setup-call", referrer_host: "remindly.anakhsoft.com", source: "", bot: false, count: 1)
     PageCount.create!(day: Date.new(2026, 10, 14), path: "/", referrer_host: "", source: "", bot: true, count: 99)
     PageCount.create!(day: 20.days.ago.to_date, path: "/", referrer_host: "bing.com", source: "", bot: false, count: 50)
     create(:user, :caregiver, signup_source: "google-a", first_signed_in_at: Time.current,
@@ -37,9 +38,19 @@ RSpec.describe FunnelReportMailer, type: :mailer do
     body = readable(mail)
 
     expect(body).to include("Page views (people, not bots): 15")
-    expect(body).to include("Setup-call offer clicked: 3")
+    expect(body).to include("Setup-call offer clicked (from our pages): 3")
     expect(body).to include("google-a: 12")
     expect(body).not_to include("bing.com")
+  end
+
+  # Week of Oct 26, 2026: 31 of 36 "human" clicks had no referrer, bunched on
+  # the days scrapers posing as browsers spiked the home page. A real click on
+  # the offer comes from one of our pages and says so.
+  it "counts only setup-call clicks that came from our own pages" do
+    PageCount.create!(day: Date.new(2026, 10, 16), path: "/setup-call", referrer_host: "", source: "", bot: false, count: 13)
+    PageCount.create!(day: Date.new(2026, 10, 16), path: "/setup-call", referrer_host: "spam.example", source: "", bot: false, count: 4)
+
+    expect(readable(mail)).to include("Setup-call offer clicked (from our pages): 3")
   end
 
   it "shows the sign-up funnel by tag" do

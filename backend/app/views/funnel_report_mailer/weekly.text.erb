@@ -2,7 +2,7 @@ Remindly, <%= @since.strftime("%b %-d") %> to <%= @until.strftime("%b %-d") %>
 
 Page views (people, not bots): <%= @human_views %>
 From other sites: <%= @referred_views %>
-Setup-call offer clicked: <%= @setup_call_clicks %>
+Setup-call offer clicked (from our pages): <%= @setup_call_clicks %>
 
 Sign-ups and how far they got:
   created <%= @totals[:created] %>, signed in <%= @totals[:signed_in] %>, added someone <%= @totals[:added] %>, wrote a reminder <%= @totals[:reminded] %>, they agreed <%= @totals[:agreed] %>
