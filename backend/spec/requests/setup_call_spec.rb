@@ -55,6 +55,20 @@ RSpec.describe "Setup call offer", type: :request do
     expect(response.body).to include('href="/setup-call"')
   end
 
+  # The monthly note sends people to this FAQ answer (an email click has no
+  # referrer, so a direct /setup-call link would go uncounted). The answer
+  # has to be something they can act on. (Copilot on #220.)
+  it "is linked under its FAQ answer, outside the structured data" do
+    get "/faq"
+
+    doc = Nokogiri::HTML(response.body)
+    heading = doc.at_css("h2#setup-call")
+    expect(heading.xpath("following-sibling::p[position() <= 2]//a/@href").map(&:value)).to include("/setup-call")
+
+    graph = doc.css('script[type="application/ld+json"]').map(&:text).join
+    expect(graph).not_to include("/setup-call")
+  end
+
   # The hero offers one decision; a spec on .actions keeps it to one primary
   # button. The offer is a sentence beside it, never a second choice inside it.
   it "is not a button in the hero's actions" do
