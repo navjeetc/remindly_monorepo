@@ -5,7 +5,8 @@
   which is what would normally stop that, so nothing did.
 
   Handled once, on the document, so every form on every dashboard page is
-  covered, including ones added later. A script that submits a form must call
+  covered, including ones added later. Rendered by the dashboard layout, and
+  separately by the sign-in page, which has no layout. A script that submits a form must call
   form.requestSubmit(), not form.submit(): submit() fires no submit event, so
   it skips this guard (and any validation) entirely.
 

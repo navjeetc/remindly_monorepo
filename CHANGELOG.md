@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.5] - 2026-11-05
+
+### Fixed
+- **A double tap on the sign-in button sends one email.** The sign-in page
+  has no layout, so it did not get the dashboard's submit-once guard (0.25.2),
+  and a second tap sent a second sign-in email with its own working link. The
+  page waits for the email to be handed to Postmark before answering, which
+  is exactly the pause that invites the second tap. It now renders the same
+  guard.
+
 ## [0.25.4] - 2026-11-05
 
 ### Changed

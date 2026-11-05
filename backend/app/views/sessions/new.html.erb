@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style><%= render partial: "shared/ui_styles", formats: :css %></style>
     <script src="https://cdn.tailwindcss.com"></script>
+    <%# This page has no layout, so it does not get the dashboard's guard. A
+        double tap here sent two sign-in emails, each with a working link, and
+        the email is sent before the page answers, so the wait invites the
+        second tap. %>
+    <%= render "shared/submit_once" %>
   </head>
   <body class="bg-gray-50">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
