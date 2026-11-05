@@ -32,6 +32,22 @@ RSpec.describe "One submit per press on dashboard forms", type: :request do
     expect(guard_present?).to be(true)
   end
 
+  # The sign-in page has no layout, so it renders the guard itself. A double
+  # tap there sent two sign-in emails.
+  describe "on the sign-in page" do
+    it "is on the page, for a returning caregiver and for someone starting for a parent" do
+      reset! # signed out: a signed-in caregiver may be sent on from /login
+
+      [ "/login", "/login?for=parent" ].each do |path|
+        get path
+
+        expect(response).to have_http_status(:ok)
+        expect(guard_present?).to be(true), "no guard on #{path}"
+        expect(response.body.scan('document.addEventListener("submit"').size).to eq(1)
+      end
+    end
+  end
+
   it "is in the page only once" do
     get "/dashboard"
 
