@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.3] - 2026-11-05
+
+### Fixed
+- **Admin -> Users shows a care receiver's caregivers.** Every care receiver
+  read "0 caregiver(s)", because the page counted the people that user cares
+  for instead of the people caring for them. It now counts linked caregivers
+  (not unclaimed invitations), lists them under "Cared for by", and marks any
+  link the care receiver has not agreed to yet. A care receiver set up without
+  an email now shows their name instead of a blank heading.
+
 ## [0.25.2] - 2026-11-05
 
 ### Fixed

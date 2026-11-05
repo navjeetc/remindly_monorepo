@@ -6,8 +6,9 @@ class Admin::UsersController < WebController
   def index
     @role_filter = params[:role_filter]
 
-    # Eager load caregiver_links with seniors to avoid N+1 queries
-    @users = User.includes(caregiver_links: :senior).order(created_at: :desc)
+    # Both directions, so a caregiver's row can list who they care for and a
+    # care receiver's row who cares for them, without a query per row.
+    @users = User.includes(caregiver_links: :senior, senior_links: :caregiver).order(created_at: :desc)
 
     # Apply role filter if present
     if @role_filter.present?
