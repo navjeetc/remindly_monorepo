@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.4] - 2026-11-05
+
+### Changed
+- **The November 2026 subscriber note.** A Thanksgiving tip (check the pill
+  bottles against the medication list, ask the pharmacist about anything off,
+  and make sure they can hear the phone), then what is new since October:
+  escalation calls and the free setup call, each linked to its FAQ answer.
+
+### Fixed
+- **The FAQ's "Can someone help me set it up?" answer links to the booking
+  page.** It only said to book from the home or sign-in page. The link sits
+  under the answer, so the FAQPage structured data is unchanged, and a click
+  from the FAQ is counted in the weekly report.
+
 ## [0.25.3] - 2026-11-05
 
 ### Fixed

@@ -28,7 +28,7 @@
      ],
      [
        "Can someone help me set it up?",
-       "Yes. Book a free 15-minute call from the home page or the sign-in page, on a weekday between 10am and 4pm Eastern, and we will set Remindly up with you on the phone: adding your parent, writing their first reminder, and explaining what they will hear. You do not need to have signed up first.",
+       "Yes. Book a free 15-minute call, on a weekday between 10am and 4pm Eastern, and we will set Remindly up with you on the phone: adding your parent, writing their first reminder, and explaining what they will hear. You do not need to have signed up first.",
        "setup-call"
      ],
      [
@@ -104,6 +104,14 @@
 <% faqs.each do |question, answer, anchor| %>
   <%= tag.h2 question, id: anchor %>
   <p><%= answer %></p>
+  <%# The one answer that is an action. The link sits under the answer, not
+      in it, so the string stays plain for the FAQPage graph. The monthly note
+      links here rather than to /setup-call because a click from an email
+      carries no referrer; one from this page does, so the weekly report
+      counts it. %>
+  <% if anchor == "setup-call" %>
+    <p><%= link_to "Book a free 15-minute call", setup_call_path %></p>
+  <% end %>
 <% end %>
 
 <h2>Still deciding?</h2>
