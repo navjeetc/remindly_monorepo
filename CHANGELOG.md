@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after 15 seconds. Search and filter forms, forms that open a new tab, and
   submits cancelled by a confirm() are left alone, and buttons are not
   disabled, so the pressed button still reaches the server.
+- **Reassigning a task can no longer be sent twice.** The assignment
+  dropdowns on a task page sent their form with `submit()`, which skips the
+  guard above; they now use `requestSubmit()`, and a spec fails if any view
+  goes back to `submit()` (apart from a GET filter).
 
 ## [0.25.1] - 2026-11-05
 

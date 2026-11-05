@@ -76,7 +76,7 @@
                     options_for_select(@senior.caregivers.map { |c| [c.email, c.id] }, @task.assigned_to_id),
                     {},
                     class: "field inline-block text-sm py-1",
-                    onchange: "this.form.submit()" %>
+                    onchange: "this.form.requestSubmit()" %>
                 <% end %>
               <% end %>
             <% else %>
@@ -87,7 +87,7 @@
                     options_for_select([["Assign to...", ""]] + @senior.caregivers.map { |c| [c.email, c.id] }),
                     {},
                     class: "field inline-block text-sm py-1",
-                    onchange: "if(this.value) this.form.submit()" %>
+                    onchange: "if(this.value) this.form.requestSubmit()" %>
                 <% end %>
               <% end %>
             <% end %>
