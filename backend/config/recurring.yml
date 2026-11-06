@@ -60,6 +60,14 @@ production:
     queue: default
     schedule: "20 12 * * *"
 
+  # Care receivers who cannot sign in and have lost their last caregiver: calls
+  # off (a backstop; unlinking already does it), and deleted after 30 days.
+  # Daily, after the refusal sweep, which can also delete accounts.
+  sweep_uncared_for_care_receivers:
+    class: SweepUncaredForCareReceiversJob
+    queue: default
+    schedule: "30 12 * * *"
+
   # Hourly, and what matters is that it runs *before* the times it is creating.
   #
   # Recurrence.expand back-fills the most recent past slot of the day, and both

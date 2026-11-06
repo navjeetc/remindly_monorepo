@@ -368,6 +368,53 @@ class User < ApplicationRecord
       .where.not(id: CaregiverLink.where(state: :active).select(:senior_id))
   end
 
+  # A care receiver their caregiver set up has no email, so they cannot sign
+  # in: only a caregiver can change or stop their reminders. When the last
+  # caregiver goes, nobody can. On 2026-11-05 a caregiver unlinked the person
+  # she had set up and the daily reminder kept ringing their phone the next
+  # morning, with no one able to stop it.
+  #
+  # So losing the last caregiver stops the calls at once, and the account and
+  # everything in it are deleted after this grace period, the same end a
+  # refused setup comes to. A care receiver with their own email is never
+  # treated this way: they can sign in and look after themselves.
+  UNCARED_FOR_GRACE = 30.days
+
+  # An unclaimed invitation has no caregiver, so it does not count as one.
+  def self.without_a_caregiver
+    role_senior
+      .where(email: [ nil, "" ])
+      .where.not(id: CaregiverLink.where.not(caregiver_id: nil).select(:senior_id))
+  end
+
+  def without_a_caregiver?
+    role_senior? && email.blank? && !senior_links.where.not(caregiver_id: nil).exists?
+  end
+
+  # Brings left_without_caregiver_at in line with the links as they are now.
+  # Called after any link to this person changes, and by the nightly sweep as a
+  # backstop. Calls are switched off when the stamp is first set and not
+  # switched back on when a caregiver returns: that caregiver turns them on,
+  # having seen the reminders they would be answering for.
+  def settle_caregiver_state!
+    if without_a_caregiver?
+      return if left_without_caregiver_at
+
+      update_columns(left_without_caregiver_at: Time.current, call_reminders_enabled: false,
+                     updated_at: Time.current)
+    elsif left_without_caregiver_at
+      update_columns(left_without_caregiver_at: nil, updated_at: Time.current)
+    end
+  end
+
+  # Whether removing this one link would leave this person with no caregiver:
+  # what the Unlink button warns about before it is pressed.
+  def left_without_caregiver_by_removing?(link)
+    role_senior? && email.blank? &&
+      !senior_links.where.not(caregiver_id: nil).where.not(id: link.id).exists?
+  end
+
+
   def display_name
     nickname.presence || name.presence || email.presence || "Someone"
   end

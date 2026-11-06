@@ -204,7 +204,18 @@
                     <% if FeatureFlag.enabled?(:native_scheduling) %>
                       <%= link_to "Coverage", senior_coverage_path(link.senior), class: "button button-secondary px-3 leading-4" %>
                     <% end %>
-                    <%= button_to "Unlink", unlink_dashboard_path(link.id), method: :delete, onclick: "return confirm('#{j "Are you sure?"}')", class: "button button-danger px-3 leading-4" %>
+                    <%# When this caregiver is the last one for somebody who cannot
+                        sign in, unlinking stops their calls and deletes them in
+                        30 days (User::UNCARED_FOR_GRACE), so the question says
+                        so instead of "Are you sure?". %>
+                    <% unlink_question = if link.senior.left_without_caregiver_by_removing?(link)
+                         "#{link.senior.display_name} can't sign in and has no other caregiver. " \
+                           "Unlinking stops their reminder calls now, and deletes their account and " \
+                           "reminders in #{User::UNCARED_FOR_GRACE.in_days.to_i} days. Unlink?"
+                       else
+                         "Are you sure?"
+                       end %>
+                    <%= button_to "Unlink", unlink_dashboard_path(link.id), method: :delete, onclick: "return confirm('#{j unlink_question}')", class: "button button-danger px-3 leading-4" %>
                   </div>
                 </div>
               </div>
