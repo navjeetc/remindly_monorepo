@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-06
+
+### Fixed
+- **A care receiver left without a caregiver stops being called.** On Nov 5 a
+  caregiver unlinked the person she had set up. That person had no email, so
+  could not sign in, and with no caregiver nobody could change or stop their
+  reminders: the daily call rang three times the next morning. Now, when a care
+  receiver who cannot sign in loses their last caregiver (by unlinking, or the
+  caregiver deleting their account), their calls stop at once and the account
+  and its reminders are deleted 30 days later, the same end a refused setup
+  comes to. `SweepUncaredForCareReceiversJob` runs daily as the backstop and
+  does the deleting, re-checking each account first, so a caregiver who comes
+  back keeps it. Care receivers with their own email are never affected.
+- **The Unlink button says what it will do.** For the last caregiver of
+  someone who cannot sign in, the question is no longer "Are you sure?" but
+  that their calls stop now and their account is deleted in 30 days.
+- **Unlinking says who it unlinked.** The notice read "Unlinked from ." for a
+  care receiver with no email; it now uses their name and, where it applies,
+  that their calls have stopped and their account will be deleted in 30 days. Every unlink is now recorded on
+  Admin → Audit Logs ("Caregiver Unlinked").
+
+### Changed
+- **Privacy policy:** an account a caregiver set up is deleted 30 days after
+  it is left with no caregiver.
+
 ## [0.25.5] - 2026-11-05
 
 ### Fixed

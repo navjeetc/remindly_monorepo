@@ -81,6 +81,13 @@ class CaregiverLink < ApplicationRecord
   # second empty string.
   before_save :a_blank_token_is_no_token
 
+  # A care receiver who cannot sign in depends on their caregivers to manage
+  # their reminders; see User#settle_caregiver_state!. After the commit, so the
+  # check sees the links as they now are. When the care receiver themselves is
+  # being deleted, their links go with them and there is nobody left to settle.
+  after_commit :settle_care_receivers_caregiver_state
+
+
   # Generate a unique pairing token for linking
   def self.generate_pairing_token(senior:)
     # Generate token with collision detection and safety limit
@@ -179,6 +186,9 @@ class CaregiverLink < ApplicationRecord
     return false if claimed.zero?
 
     reload
+    # update_all skips the after_commit that keeps this in step, and a care
+    # receiver who has just gained a caregiver is no longer due for deletion.
+    senior.settle_caregiver_state!
     true
   end
 
@@ -221,6 +231,10 @@ class CaregiverLink < ApplicationRecord
   end
 
   private
+
+  def settle_care_receivers_caregiver_state
+    User.find_by(id: senior_id)&.settle_caregiver_state!
+  end
 
   def a_blank_token_is_no_token
     self.pairing_token = nil if pairing_token.blank?

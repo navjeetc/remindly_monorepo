@@ -939,14 +939,32 @@ class DashboardController < WebController
       return
     end
 
+    # Recorded so it shows on Admin -> Audit Logs. On 2026-11-05 a caregiver
+    # unlinked the person she had set up and it was found only in the request
+    # log.
+    ahoy.track "Caregiver Unlinked", {
+      link_id: link.id, senior_id: link.senior_id, caregiver_id: link.caregiver_id,
+      by: (link.senior_id == current_user.id ? "care_receiver" : "caregiver")
+    }
+
     if link.senior_id == current_user.id
       removed = link.caregiver&.email || "the caregiver"
       link.destroy!
       redirect_to dashboard_path, notice: "Removed #{removed}'s access."
     else
-      senior_email = link.senior.email
+      senior = link.senior
       link.destroy!
-      redirect_to dashboard_path, notice: "Unlinked from #{senior_email}."
+      senior.reload
+      # display_name, not email: a care receiver their caregiver set up has
+      # none, and the notice read "Unlinked from ."
+      notice = "Unlinked from #{senior.display_name}."
+      if senior.left_without_caregiver_at
+        # "In 30 days" rather than a date: the sweep runs on a UTC clock, and a
+        # date shown in either zone can be a day out for somebody.
+        notice += " #{senior.display_name}'s calls have stopped, and their account will be deleted " \
+                  "in #{User::UNCARED_FOR_GRACE.in_days.to_i} days."
+      end
+      redirect_to dashboard_path, notice: notice
     end
   end
 
