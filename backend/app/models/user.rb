@@ -396,15 +396,29 @@ class User < ApplicationRecord
   # backstop. Calls are switched off when the stamp is first set and not
   # switched back on when a caregiver returns: that caregiver turns them on,
   # having seen the reminders they would be answering for.
-  def settle_caregiver_state!
-    if without_a_caregiver?
-      return if left_without_caregiver_at
+  #
+  # Each write re-checks for a caregiver inside the UPDATE itself rather than
+  # acting on an earlier read. Checking first and writing second left a gap in
+  # which a caregiver could claim an invitation: the account was then stamped
+  # while it had a caregiver, and a stamp that stale could later let the sweep
+  # delete it after a day instead of a fresh 30. (Copilot on #225.)
+  HAS_A_CAREGIVER = <<~SQL.squish
+    EXISTS (SELECT 1 FROM caregiver_links
+            WHERE caregiver_links.senior_id = users.id
+              AND caregiver_links.caregiver_id IS NOT NULL)
+  SQL
 
-      update_columns(left_without_caregiver_at: Time.current, call_reminders_enabled: false,
-                     updated_at: Time.current)
-    elsif left_without_caregiver_at
-      update_columns(left_without_caregiver_at: nil, updated_at: Time.current)
-    end
+  def settle_caregiver_state!
+    return unless role_senior? && email.blank?
+
+    now = Time.current
+    mine = self.class.where(id: id)
+    stamped = mine.where(left_without_caregiver_at: nil).where.not(HAS_A_CAREGIVER)
+                  .update_all(left_without_caregiver_at: now, call_reminders_enabled: false, updated_at: now)
+    cleared = mine.where.not(left_without_caregiver_at: nil).where(HAS_A_CAREGIVER)
+                  .update_all(left_without_caregiver_at: nil, updated_at: now)
+
+    reload if (stamped + cleared).positive?
   end
 
   # Whether removing this one link would leave this person with no caregiver:
@@ -545,6 +559,11 @@ class User < ApplicationRecord
     return false if call_opted_out_at.present?
     return false if phone.blank?
     return false if call_consent_at.blank?
+    # Nobody can manage their reminders, so nobody is answerable for a call.
+    # Checked here and not only through call_reminders_enabled, because a "1"
+    # on a verification call still ringing when the last caregiver left sets
+    # that flag back to true. (Codex and Copilot on #225.)
+    return false if left_without_caregiver_at.present?
 
     call_reminders_enabled?
   end

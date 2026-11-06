@@ -73,6 +73,48 @@ RSpec.describe "A care receiver left without a caregiver", type: :model do
     end
   end
 
+  # Codex and Copilot on #225: a verification call still ringing when the last
+  # caregiver left, answered with "1", sets call_reminders_enabled back to true.
+  describe "a late consent after the last caregiver left" do
+    def consent_arrives_late
+      # What TelnyxWebhooksController#consent! writes, after the unlink.
+      User.where(id: rose.id).update_all(call_reminders_enabled: true, call_consent_at: Time.current)
+      rose.reload
+    end
+
+    it "does not make them callable again" do
+      link(daughter).destroy!
+      consent_arrives_late
+
+      expect(rose.call_reminders_enabled).to be(true)
+      expect(rose.callable_by_phone?).to be(false)
+    end
+
+    it "does not get a reminder call scheduled" do
+      allow(FeatureFlag).to receive(:enabled?).and_call_original
+      allow(FeatureFlag).to receive(:enabled?).with(:phone_call_reminders).and_return(true)
+      reminder = rose.reminders.create!(title: "Pills", rrule: "FREQ=DAILY", tz: rose.tz)
+      now = Time.current.change(sec: 0)
+      travel_to(now - 1.day) { Occurrence.create!(reminder: reminder, scheduled_at: now - 1.minute, status: :pending) }
+      link(daughter).destroy!
+      consent_arrives_late
+
+      expect { VoiceReminderSchedulerJob.new.perform(now: now) }.not_to have_enqueued_job(VoiceReminderJob)
+    end
+  end
+
+  # Copilot on #225: a caregiver claiming an invitation between the check for
+  # "no caregiver" and the write must not leave the account stamped.
+  it "lets the database decide, so a caregiver who arrived after a stale read is not stamped" do
+    link(daughter)
+    allow(rose).to receive(:without_a_caregiver?).and_return(true) # what an earlier read said
+
+    rose.settle_caregiver_state!
+
+    expect(rose.reload.left_without_caregiver_at).to be_nil
+    expect(rose.call_reminders_enabled).to be(true)
+  end
+
   it "clears the stamp when a caregiver claims an invitation to them" do
     link(daughter).destroy!
     invitation = CaregiverLink.generate_pairing_token(senior: rose)

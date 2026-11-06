@@ -163,7 +163,7 @@ class VoiceReminderSchedulerJob < ApplicationJob
   def for_seniors_taking_calls(relation)
     relation
       .joins(reminder: :user)
-      .where(users: { call_reminders_enabled: true, call_opted_out_at: nil })
+      .where(users: { call_reminders_enabled: true, call_opted_out_at: nil, left_without_caregiver_at: nil })
       .where.not(users: { phone: [ nil, "" ] })
       .where.not(users: { call_consent_at: nil })
   end
