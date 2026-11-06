@@ -47,30 +47,30 @@ RSpec.describe "Ending a caregiver link (dashboard#unlink)", type: :request do
   # email. The notice read "Unlinked from .", nothing was recorded, and the
   # reminder calls went on with nobody able to stop them.
   describe "the last caregiver of someone who cannot sign in" do
-    let(:abby) do
-      create(:user, :senior, :takes_calls, email: nil, name: "Abby", email_undeliverable_at: Time.current)
+    let(:rose) do
+      create(:user, :senior, :takes_calls, email: nil, name: "Rose", email_undeliverable_at: Time.current)
     end
-    let!(:abby_link) { CaregiverLink.create!(senior: abby, caregiver: caregiver, permission: :manage, state: :active) }
+    let!(:rose_link) { CaregiverLink.create!(senior: rose, caregiver: caregiver, permission: :manage, state: :active) }
 
     before { sign_in(caregiver) }
 
     it "warns before unlinking that the calls stop and the account is deleted" do
       get "/dashboard"
 
-      button = Nokogiri::HTML(response.body).css("form[action='/dashboard/unlink/#{abby_link.id}'] button").first
+      button = Nokogiri::HTML(response.body).css("form[action='/dashboard/unlink/#{rose_link.id}'] button").first
       expect(button["onclick"]).to eq(
-        "return confirm('Abby can\\'t sign in and has no other caregiver. Unlinking stops their " \
+        "return confirm('Rose can\\'t sign in and has no other caregiver. Unlinking stops their " \
         "reminder calls now, and deletes their account and reminders in 30 days. Unlink?')"
       )
     end
 
     it "says who was unlinked, that the calls stopped, and that the account goes in 30 days" do
-      delete "/dashboard/unlink/#{abby_link.id}"
+      delete "/dashboard/unlink/#{rose_link.id}"
 
       expect(flash[:notice]).to eq(
-        "Unlinked from Abby. Abby's calls have stopped, and their account will be deleted in 30 days."
+        "Unlinked from Rose. Rose's calls have stopped, and their account will be deleted in 30 days."
       )
-      expect(abby.reload.callable_by_phone?).to be(false)
+      expect(rose.reload.callable_by_phone?).to be(false)
     end
 
     it "records the unlink for the audit log" do
@@ -78,11 +78,11 @@ RSpec.describe "Ending a caregiver link (dashboard#unlink)", type: :request do
       browser = { "HTTP_USER_AGENT" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15" }
 
       expect {
-        delete "/dashboard/unlink/#{abby_link.id}", headers: browser
+        delete "/dashboard/unlink/#{rose_link.id}", headers: browser
       }.to change { Ahoy::Event.where(name: "Caregiver Unlinked").count }.by(1)
 
       expect(Ahoy::Event.where(name: "Caregiver Unlinked").last.properties).to include(
-        "senior_id" => abby.id, "caregiver_id" => caregiver.id, "by" => "caregiver"
+        "senior_id" => rose.id, "caregiver_id" => caregiver.id, "by" => "caregiver"
       )
     end
   end

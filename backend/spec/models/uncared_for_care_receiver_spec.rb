@@ -12,9 +12,9 @@ RSpec.describe "A care receiver left without a caregiver", type: :model do
 
   let(:daughter) { create(:user, :caregiver) }
   let(:son) { create(:user, :caregiver) }
-  let(:abby) { create(:user, :senior, :takes_calls, email: nil, name: "Abby", email_undeliverable_at: Time.current) }
+  let(:rose) { create(:user, :senior, :takes_calls, email: nil, name: "Rose", email_undeliverable_at: Time.current) }
 
-  def link(caregiver, senior = abby, state: :active)
+  def link(caregiver, senior = rose, state: :active)
     CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage, state: state)
   end
 
@@ -22,27 +22,27 @@ RSpec.describe "A care receiver left without a caregiver", type: :model do
     it "stops the calls and stamps when, for someone who cannot sign in" do
       link(daughter).destroy!
 
-      abby.reload
-      expect(abby.left_without_caregiver_at).to be_present
-      expect(abby.call_reminders_enabled).to be(false)
-      expect(abby.callable_by_phone?).to be(false)
+      rose.reload
+      expect(rose.left_without_caregiver_at).to be_present
+      expect(rose.call_reminders_enabled).to be(false)
+      expect(rose.callable_by_phone?).to be(false)
     end
 
     it "keeps their number, their consent and their reminders" do
-      reminder = abby.reminders.create!(title: "Pills", rrule: "FREQ=DAILY", tz: abby.tz)
+      reminder = rose.reminders.create!(title: "Pills", rrule: "FREQ=DAILY", tz: rose.tz)
       link(daughter).destroy!
 
-      abby.reload
-      expect(abby.phone_verified_at).to be_present
-      expect(abby.call_consent_at).to be_present
-      expect(abby.reminders).to eq([ reminder ])
+      rose.reload
+      expect(rose.phone_verified_at).to be_present
+      expect(rose.call_consent_at).to be_present
+      expect(rose.reminders).to eq([ reminder ])
     end
 
     it "does the same when the caregiver deletes their own account" do
       link(daughter)
       daughter.destroy!
 
-      expect(abby.reload.left_without_caregiver_at).to be_present
+      expect(rose.reload.left_without_caregiver_at).to be_present
     end
 
     it "leaves alone someone who still has another caregiver" do
@@ -50,9 +50,9 @@ RSpec.describe "A care receiver left without a caregiver", type: :model do
       link(son)
       first.destroy!
 
-      abby.reload
-      expect(abby.left_without_caregiver_at).to be_nil
-      expect(abby.call_reminders_enabled).to be(true)
+      rose.reload
+      expect(rose.left_without_caregiver_at).to be_nil
+      expect(rose.call_reminders_enabled).to be(true)
     end
 
     it "leaves alone a care receiver with their own email, who can sign in" do
@@ -66,61 +66,61 @@ RSpec.describe "A care receiver left without a caregiver", type: :model do
 
     it "does not count an unclaimed invitation as a caregiver" do
       only = link(daughter)
-      CaregiverLink.generate_pairing_token(senior: abby)
+      CaregiverLink.generate_pairing_token(senior: rose)
       only.destroy!
 
-      expect(abby.reload.left_without_caregiver_at).to be_present
+      expect(rose.reload.left_without_caregiver_at).to be_present
     end
   end
 
   it "clears the stamp when a caregiver claims an invitation to them" do
     link(daughter).destroy!
-    invitation = CaregiverLink.generate_pairing_token(senior: abby)
+    invitation = CaregiverLink.generate_pairing_token(senior: rose)
 
     expect(invitation.pair_with(caregiver: son)).to be(true)
-    expect(abby.reload.left_without_caregiver_at).to be_nil
+    expect(rose.reload.left_without_caregiver_at).to be_nil
   end
 
   it "does not fail when the care receiver themselves is deleted" do
     link(daughter)
 
-    expect { abby.destroy! }.not_to raise_error
+    expect { rose.destroy! }.not_to raise_error
   end
 
   describe "the Unlink warning" do
     it "applies to the last caregiver of someone who cannot sign in" do
       only = link(daughter)
 
-      expect(abby.left_without_caregiver_by_removing?(only)).to be(true)
+      expect(rose.left_without_caregiver_by_removing?(only)).to be(true)
     end
 
     it "does not apply when another caregiver stays" do
       first = link(daughter)
       link(son)
 
-      expect(abby.left_without_caregiver_by_removing?(first)).to be(false)
+      expect(rose.left_without_caregiver_by_removing?(first)).to be(false)
     end
   end
 
   describe SweepUncaredForCareReceiversJob do
     it "stamps someone already without a caregiver and stops their calls (the backstop)" do
-      abby # no link was ever destroyed, so no callback stamped her
+      rose # no link was ever destroyed, so no callback stamped her
 
       described_class.perform_now
 
-      abby.reload
-      expect(abby.left_without_caregiver_at).to be_present
-      expect(abby.call_reminders_enabled).to be(false)
+      rose.reload
+      expect(rose.left_without_caregiver_at).to be_present
+      expect(rose.call_reminders_enabled).to be(false)
     end
 
     it "deletes them once the grace period has passed, with their reminders" do
-      abby.reminders.create!(title: "Pills", rrule: "FREQ=DAILY", tz: abby.tz)
+      rose.reminders.create!(title: "Pills", rrule: "FREQ=DAILY", tz: rose.tz)
       link(daughter).destroy!
 
       travel_to(User::UNCARED_FOR_GRACE.from_now + 1.hour) { described_class.perform_now }
 
-      expect(User.exists?(abby.id)).to be(false)
-      expect(Reminder.where(user_id: abby.id)).to be_empty
+      expect(User.exists?(rose.id)).to be(false)
+      expect(Reminder.where(user_id: rose.id)).to be_empty
     end
 
     it "keeps them until then" do
@@ -128,21 +128,21 @@ RSpec.describe "A care receiver left without a caregiver", type: :model do
 
       travel_to(User::UNCARED_FOR_GRACE.from_now - 1.hour) { described_class.perform_now }
 
-      expect(User.exists?(abby.id)).to be(true)
+      expect(User.exists?(rose.id)).to be(true)
     end
 
     it "keeps them if a caregiver came back, even with the old stamp still on them" do
       link(daughter).destroy!
-      stale = abby.reload.left_without_caregiver_at
+      stale = rose.reload.left_without_caregiver_at
       # A link written without callbacks, so the stamp is not cleared on the way.
-      CaregiverLink.insert_all!([ { senior_id: abby.id, caregiver_id: son.id, permission: 1, state: 2,
+      CaregiverLink.insert_all!([ { senior_id: rose.id, caregiver_id: son.id, permission: 1, state: 2,
                                     created_at: Time.current, updated_at: Time.current } ])
-      expect(abby.reload.left_without_caregiver_at).to eq(stale)
+      expect(rose.reload.left_without_caregiver_at).to eq(stale)
 
       travel_to(User::UNCARED_FOR_GRACE.from_now + 1.hour) { described_class.perform_now }
 
-      expect(User.exists?(abby.id)).to be(true)
-      expect(abby.reload.left_without_caregiver_at).to be_nil
+      expect(User.exists?(rose.id)).to be(true)
+      expect(rose.reload.left_without_caregiver_at).to be_nil
     end
 
     it "never touches a care receiver with their own email" do
