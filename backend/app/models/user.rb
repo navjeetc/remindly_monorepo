@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  include PlanLimits
+
   enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
 
   # How large this person needs the interface. Stored per user rather than in

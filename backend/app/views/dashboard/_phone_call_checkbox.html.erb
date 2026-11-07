@@ -1,0 +1,25 @@
+<%# Whether this reminder rings the phone as well as showing on the screen.
+    Ticked by default, because every reminder rang before this existed. Unticked
+    is how a reminder stays on the tablet only, which is what the free plan's
+    fourth phone reminder of the day is offered instead of being refused.
+
+    Shown only where phone calls are switched on: without them nothing rings
+    either way, and an absent box leaves the reminder as it was. %>
+<% if FeatureFlag.enabled?(:phone_call_reminders) %>
+  <div class="rounded-md border border-gray-200 p-3 sm:col-span-2">
+    <div class="flex items-start">
+      <div class="flex items-center h-5">
+        <%= f.check_box :phone_call, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+      </div>
+      <div class="ml-3 text-sm">
+        <%= f.label :phone_call, class: "font-medium text-gray-700" do %>
+          Ring their phone
+        <% end %>
+        <p class="text-gray-500">
+          Remindly calls <%= care_receiver.display_name %> as well as showing it on the screen.
+          Untick it to show this one on the screen only; "Being late matters" needs the call.
+        </p>
+      </div>
+    </div>
+  </div>
+<% end %>

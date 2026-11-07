@@ -5,7 +5,27 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.27.0] - 2026-11-07
+
+### Added
+- **A reminder can show on the screen only.** A new "Ring their phone" box on
+  the reminder form, ticked by default, so every existing reminder still rings.
+  Untick it and the reminder shows on the tablet without a call; the care
+  receiver's page marks it "Screen only".
+- **Plans, ready but not switched on.** `Plan` defines the Free and Family
+  limits agreed in the pricing plan:
+  - Free: 1 parent, 3 phone reminders a day per parent, 2 caregivers, one
+    more try at an unanswered call, no escalation calls.
+  - Family: 3 parents, 5 caregivers, unlimited phone reminders (fair use) and
+    three tries.
+
+  Remindly is still in beta, and in beta everyone is on a Beta plan that
+  limits nothing, so this release changes nothing anyone can do.
+  Paid plans start by setting `Plan::LAUNCHED_ON`. Every limit is checked when
+  something is set up, never when a call is due: the fourth phone reminder of
+  a day is refused with the way to keep it on the screen, and a scheduled
+  call is never dropped. `users.family_until` records who has Family. Nothing
+  writes it yet; payments are next.
 
 ## [0.26.0] - 2026-11-06
 

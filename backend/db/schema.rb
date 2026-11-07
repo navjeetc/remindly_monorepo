@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_07_150000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -160,6 +160,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_190000) do
     t.datetime "created_at", null: false
     t.boolean "critical", default: false, null: false
     t.text "notes"
+    t.boolean "phone_call", default: true, null: false
     t.string "rrule", null: false
     t.datetime "start_time"
     t.string "title", null: false
@@ -321,6 +322,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_190000) do
     t.datetime "email_undeliverable_at"
     t.datetime "escalation_consent_at"
     t.datetime "escalation_opted_out_at"
+    t.datetime "family_until"
     t.datetime "first_signed_in_at"
     t.datetime "left_without_caregiver_at"
     t.string "name"

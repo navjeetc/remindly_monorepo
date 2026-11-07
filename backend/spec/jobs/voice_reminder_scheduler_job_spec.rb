@@ -236,4 +236,27 @@ RSpec.describe VoiceReminderSchedulerJob do
       expect(occurrence.reload.call_suppressed_at).to eq(at(10))
     end
   end
+
+  # A reminder can be set to show on the screen only, which is how the free
+  # plan's fourth phone reminder of a day is kept rather than refused.
+  it "does not ring for a reminder set to the screen only" do
+    reminder.update!(phone_call: false)
+    due_at(at(10))
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
+
+  # The query stops at MAX_ATTEMPTS. The free plan's two tries are checked in
+  # the loop, so a spent occurrence does not enqueue a job every minute.
+  it "stops offering an occurrence once the plan's tries are spent" do
+    stub_const("Plan::LAUNCHED_ON", Date.new(2026, 1, 1))
+    occ = due_at(at(10))
+    2.times do |i|
+      TelnyxCall.create!(occurrence: occ, user: senior, attempt_number: i + 1, call_day: at(10).to_date,
+                         daily_sequence: i + 1, status: "hangup", outcome: "no_response",
+                         created_at: at(10) - 20.minutes, completed_at: at(10) - 19.minutes)
+    end
+
+    expect { described_class.new.perform(now: at(10)) }.not_to have_enqueued_job(VoiceReminderJob)
+  end
 end

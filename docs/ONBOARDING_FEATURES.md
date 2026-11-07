@@ -26,6 +26,10 @@ phone, landline or mobile, at the right time and says the reminder out loud.
 They press 1 to hear it, then 1 when it's done or 2 to be reminded again
 shortly. There's nothing to install and nothing to read. Calls go to numbers in the US and Canada.
 
+**Phone or screen, reminder by reminder.** Each reminder rings their phone
+unless you untick "Ring their phone", which keeps it on the tablet only, for
+the ones that don't need a call.
+
 **No reminder calls until they agree.** The first call only asks permission,
 and says who set it up; reminders start once they press 1. Pressing 9 on any
 call stops the calls,

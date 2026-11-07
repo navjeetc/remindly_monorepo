@@ -128,7 +128,7 @@ class VoiceReminderJob < ApplicationJob
     if attempt.nil?
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} not attempted: " \
-        "cap of #{TelnyxCall::MAX_ATTEMPTS} reached, the last attempt is newer " \
+        "the plan's #{TelnyxCall.attempts_for(senior)} tries reached, the last attempt is newer " \
         "than #{TelnyxCall::RETRY_AFTER.inspect}, or another run claimed it"
       )
       return

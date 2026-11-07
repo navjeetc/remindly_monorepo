@@ -20,6 +20,11 @@ class CaregiverLinksController < ApplicationController
       return
     end
 
+    if link.redeemable? && (refusal = link.plan_refusal_for(current_user))
+      render json: { error: refusal }, status: :unprocessable_content
+      return
+    end
+
     # The claim decides, not redeemable? alone: a token two people hold is taken
     # by whichever request the database serves first, and the other is told
     # there was nothing to take.

@@ -192,6 +192,17 @@ class CaregiverLink < ApplicationRecord
     true
   end
 
+  # Why the plans refuse this caregiver redeeming this token, or nil. Asked
+  # before pair_with, by both places that redeem one. Redeeming makes them the
+  # first caregiver, and so the one the parent counts against, only when nobody
+  # else looks after this person yet.
+  def plan_refusal_for(caregiver)
+    return senior.caregiver_limit_message if senior.caregiver_limit_reached?
+
+    first = !senior.senior_links.where.not(caregiver_id: nil).exists?
+    caregiver.parent_limit_message if first && caregiver.parent_limit_reached?
+  end
+
   # Check if link is active (has both senior and caregiver)
   def active?
     senior.present? && caregiver.present?
