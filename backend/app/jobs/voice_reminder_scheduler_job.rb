@@ -98,6 +98,12 @@ class VoiceReminderSchedulerJob < ApplicationJob
         # row this query can reach has already been through it.
         next if occ.back_filled?
 
+        # The query above stops at MAX_ATTEMPTS, the most any plan allows. A plan
+        # that allows fewer is checked here, so an occurrence that has had its
+        # tries does not enqueue a job every minute only for reserve to refuse it.
+        attempts = TelnyxCall.attempts_for(occ.reminder.user, at: now)
+        next if attempts < TelnyxCall::MAX_ATTEMPTS && TelnyxCall.where(occurrence_id: occ.id).count >= attempts
+
         # Calling hours are per-person, in their own timezone, so this cannot be
         # a WHERE clause -- every senior's window lands on a different UTC hour.
         # Filtering here rather than letting the job drop it matters because a
@@ -163,6 +169,7 @@ class VoiceReminderSchedulerJob < ApplicationJob
   def for_seniors_taking_calls(relation)
     relation
       .joins(reminder: :user)
+      .where(reminders: { phone_call: true })
       .where(users: { call_reminders_enabled: true, call_opted_out_at: nil, left_without_caregiver_at: nil })
       .where.not(users: { phone: [ nil, "" ] })
       .where.not(users: { call_consent_at: nil })

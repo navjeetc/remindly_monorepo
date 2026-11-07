@@ -272,6 +272,10 @@ class DashboardController < WebController
     token = params[:token]
     link = CaregiverLink.find_by(pairing_token: token)
 
+    if link&.redeemable? && (refusal = link.plan_refusal_for(current_user))
+      return redirect_to pair_dashboard_path, alert: refusal
+    end
+
     # See CaregiverLink#pair_with: the claim is what decides, so a token two
     # people hold cannot pair both of them.
     if link&.redeemable? && link.pair_with(caregiver: current_user)
@@ -394,6 +398,11 @@ class DashboardController < WebController
     return head :forbidden unless link.permission == "manage"
 
     senior = link.senior
+    unless senior.care_plan.escalation
+      return redirect_to senior_dashboard_path(senior, anchor: "escalation-order"),
+        alert: "Calling caregivers when an important reminder is missed is part of the Family plan. #{Plan.upgrade_hint}"
+    end
+
     links = senior.senior_links.escalation_candidates.includes(:caregiver).to_a
     submitted = params.fetch(:positions, {}).permit(*links.map { |l| l.id.to_s })
     wanted = links.index_with { |l| submitted[l.id.to_s].presence&.to_i }
@@ -434,6 +443,10 @@ class DashboardController < WebController
   end
 
   def new_care_receiver
+    if current_user.parent_limit_reached?
+      return redirect_to dashboard_path, alert: current_user.parent_limit_message
+    end
+
     @senior = User.new(tz: current_user.tz)
   end
 
@@ -462,6 +475,10 @@ class DashboardController < WebController
   def create_care_receiver
     attrs = params.require(:user).permit(:name, :tz)
 
+    if current_user.parent_limit_reached?
+      return redirect_to dashboard_path, alert: current_user.parent_limit_message
+    end
+
     # Required here rather than by the model, which validates a name only on
     # update — because a user created by a magic link has no name until they
     # choose one. This person will never sign in to choose one, so if it is not
@@ -477,6 +494,8 @@ class DashboardController < WebController
       name: attrs[:name],
       tz: attrs[:tz].presence || current_user.tz,
       role: :senior,
+      # The parent counts against this caregiver on plans that limit parents.
+      set_up_by: current_user,
       # Structurally unmailable rather than merely unmailed: nothing should ever
       # try to reach this account by email, and a nil address would otherwise
       # reach a mailer as a nil recipient rather than being skipped.
@@ -495,6 +514,16 @@ class DashboardController < WebController
 
       CaregiverLink.create!(senior: @senior, caregiver: current_user,
                             permission: :manage, state: :provisional)
+
+      # Counted again inside the transaction, after the write. The check at the
+      # top lets two simultaneous requests both through; SQLite takes one
+      # writer at a time, so the second request's count here includes the
+      # first's committed parent and it rolls back. (Copilot on #226.)
+      if (limit = current_user.plan.parents) && current_user.parents_set_up_count > limit
+        saved = false
+        @senior.errors.add(:base, current_user.parent_limit_message)
+        raise ActiveRecord::Rollback
+      end
       @reminder_link = ReminderLink.mint(user: @senior)
     end
 
@@ -1016,6 +1045,9 @@ class DashboardController < WebController
       notes: permitted[:notes],
       category: permitted[:category] || :routine,
       critical: permitted[:critical] == "1",
+      # Absent only from a form older than the checkbox; every reminder rang
+      # before it existed, so absent means ring.
+      phone_call: !permitted.key?(:phone_call) || permitted[:phone_call] == "1",
       rrule: rrule,
       tz: @senior.tz,
       start_time: start_time
@@ -1067,6 +1099,7 @@ class DashboardController < WebController
       # with it, so this has to read the value rather than test for presence —
       # otherwise a critical reminder could be marked and never unmarked.
       critical: permitted[:critical] == "1",
+      phone_call: permitted.key?(:phone_call) ? permitted[:phone_call] == "1" : @reminder.phone_call,
       rrule: rrule,
       start_time: start_time
     )
@@ -1117,6 +1150,13 @@ class DashboardController < WebController
 
     # Find or create the caregiver user
     caregiver = User.find_by(email: caregiver_email)
+
+    # Before anyone is created: refusing after would leave an account behind
+    # for an address that was never invited. Someone new joins on the free
+    # plan, so only an existing account's plan can lift the limit.
+    if @senior.caregiver_limit_reached?(joining: caregiver)
+      return redirect_to senior_dashboard_path(@senior), alert: @senior.caregiver_limit_message(joining: caregiver)
+    end
 
     if caregiver.nil?
       # Create new user with caregiver role
@@ -1212,7 +1252,7 @@ class DashboardController < WebController
   end
 
   def reminder_params
-    params.require(:reminder).permit(:title, :notes, :category, :critical, :time, :frequency)
+    params.require(:reminder).permit(:title, :notes, :category, :critical, :phone_call, :time, :frequency)
   end
 
   # See the before_action above: an invitation grants manage, so letting a

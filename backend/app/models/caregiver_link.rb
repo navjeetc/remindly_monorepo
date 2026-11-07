@@ -186,10 +186,24 @@ class CaregiverLink < ApplicationRecord
     return false if claimed.zero?
 
     reload
+    # The first caregiver to redeem a care receiver's token is the one they
+    # count against on plans that limit parents. Guarded on nil in the same
+    # statement, so of two caregivers redeeming at once only the first is.
+    User.where(id: senior_id, set_up_by_id: nil).update_all(set_up_by_id: caregiver.id, updated_at: Time.current)
     # update_all skips the after_commit that keeps this in step, and a care
     # receiver who has just gained a caregiver is no longer due for deletion.
     senior.settle_caregiver_state!
     true
+  end
+
+  # Why the plans refuse this caregiver redeeming this token, or nil. Asked
+  # before pair_with, by both places that redeem one. Redeeming makes them the
+  # first caregiver, and so the one the parent counts against, only when nobody
+  # else looks after this person yet.
+  def plan_refusal_for(caregiver)
+    return senior.caregiver_limit_message(joining: caregiver) if senior.caregiver_limit_reached?(joining: caregiver)
+
+    caregiver.parent_limit_message if senior.set_up_by_id.nil? && caregiver.parent_limit_reached?
   end
 
   # Check if link is active (has both senior and caregiver)

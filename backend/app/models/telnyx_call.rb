@@ -260,10 +260,21 @@ class TelnyxCall < ApplicationRecord
     escalations.where(user_id: caregiver.id, created_at: (now - VERIFICATION_WINDOW)..now)
   end
 
+  # How many tries an unanswered reminder gets for this care receiver: the
+  # plan decides (the free plan tries once more, Family twice), and
+  # MAX_ATTEMPTS is the most any plan allows. Every place that asks "was that
+  # the last try?" asks this, so the early alert and escalation still fire on
+  # the last try when there are two rather than three.
+  def self.attempts_for(user, at: Time.current)
+    Plan.for_care_receiver(user, at: at).call_attempts
+  end
+
   def self.reserve(occurrence, user, now: Time.current)
     previous = where(occurrence_id: occurrence.id).order(:attempt_number).last
 
-    return nil if previous && previous.attempt_number >= MAX_ATTEMPTS
+    # The plan decides how many tries an unanswered reminder gets (the free plan
+    # tries once more, Family twice); MAX_ATTEMPTS is the most any plan allows.
+    return nil if previous && previous.attempt_number >= attempts_for(user, at: now)
     return nil if previous && previous.created_at > now - RETRY_AFTER
     day = local_day(user, now)
 

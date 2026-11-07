@@ -621,8 +621,11 @@ class TelnyxWebhooksController < ApplicationController
   # not a reason to ring somebody else.
   def escalate_if_last_attempt(call)
     return unless call.purpose == "reminder"
-    return unless call.attempt_number.to_i >= TelnyxCall::MAX_ATTEMPTS
+    return unless call.attempt_number.to_i >= TelnyxCall.attempts_for(call.user)
     return unless call.occurrence&.reminder&.critical?
+    # A Family feature. Checked here as well as where the order is set, so a
+    # family that moves to the free plan stops ringing the people in it.
+    return unless call.user.care_plan.escalation
 
     EscalationCallJob.perform_later(call.occurrence_id, 1)
   rescue => e
@@ -793,7 +796,7 @@ class TelnyxWebhooksController < ApplicationController
     occurrence = call.occurrence
     return unless occurrence&.reminder&.critical?
 
-    remaining = [ TelnyxCall::MAX_ATTEMPTS - call.attempt_number.to_i, 0 ].max
+    remaining = [ TelnyxCall.attempts_for(call.user) - call.attempt_number.to_i, 0 ].max
 
     ReminderNotificationService.notify_unanswered(occurrence, attempts_remaining: remaining)
   rescue => e

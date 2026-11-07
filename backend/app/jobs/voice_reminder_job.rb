@@ -36,6 +36,15 @@ class VoiceReminderJob < ApplicationJob
       return
     end
 
+    # A reminder set to the screen only never rings, however it was enqueued.
+    # The scheduler filters these out, but this job is reachable directly and
+    # can run after the box was unticked. Nothing is suppressed or recorded:
+    # there was never a call to miss. (Copilot on #226.)
+    unless occurrence.reminder.phone_call?
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} skipped: the reminder shows on the screen only"
+      return
+    end
+
     # Checked after the opt-in above, deliberately. Recording an undelivered
     # call for a senior who does not take phone calls would tell their caregiver
     # that Remindly failed to ring someone who never asked to be rung.
@@ -128,7 +137,7 @@ class VoiceReminderJob < ApplicationJob
     if attempt.nil?
       Rails.logger.info(
         "Voice reminder for occurrence #{occurrence.id} not attempted: " \
-        "cap of #{TelnyxCall::MAX_ATTEMPTS} reached, the last attempt is newer " \
+        "the plan's #{TelnyxCall.attempts_for(senior)} tries reached, the last attempt is newer " \
         "than #{TelnyxCall::RETRY_AFTER.inspect}, or another run claimed it"
       )
       return
@@ -147,6 +156,13 @@ class VoiceReminderJob < ApplicationJob
     unless senior.reload.callable_by_phone?
       attempt.release_slot!(status: "cancelled", outcome: "no_response")
       Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: consent withdrawn while the attempt was being claimed"
+      return
+    end
+
+    # And the box again, for the same reason: unticked while this was claimed.
+    unless occurrence.reminder.reload.phone_call?
+      attempt.release_slot!(status: "cancelled", outcome: "no_response")
+      Rails.logger.info "Voice reminder for occurrence #{occurrence.id} cancelled: set to the screen only while the attempt was being claimed"
       return
     end
 
