@@ -107,6 +107,21 @@ RSpec.describe Plan do
         expect(reminder).not_to be_valid
       end
 
+      it "counts an interval combined with a minute list in full" do
+        senior.reminders.destroy_all
+        expect(Reminder.times_a_day("FREQ=HOURLY;INTERVAL=12;BYMINUTE=0,10,20")).to eq(6)
+        expect(Reminder.times_a_day("FREQ=DAILY;BYHOUR=9;BYSECOND=0,30")).to eq(2)
+        expect(reminder(rrule: "FREQ=HOURLY;INTERVAL=12;BYMINUTE=0,10,20")).not_to be_valid
+      end
+
+      it "counts a weekly rule with no start time on every day" do
+        senior.reminders.destroy_all
+        monday = Time.zone.parse("2026-11-09 13:00")
+        3.times { reminder(rrule: "FREQ=WEEKLY", start_time: monday).save! }
+
+        expect(reminder(rrule: "FREQ=WEEKLY;BYHOUR=9", start_time: nil)).not_to be_valid
+      end
+
       it "rechecks a weekly reminder moved to a busier day" do
         senior.reminders.destroy_all
         monday = Time.zone.parse("2026-11-09 13:00")

@@ -514,6 +514,16 @@ class DashboardController < WebController
 
       CaregiverLink.create!(senior: @senior, caregiver: current_user,
                             permission: :manage, state: :provisional)
+
+      # Counted again inside the transaction, after the write. The check at the
+      # top lets two simultaneous requests both through; SQLite takes one
+      # writer at a time, so the second request's count here includes the
+      # first's committed parent and it rolls back. (Copilot on #226.)
+      if (limit = current_user.plan.parents) && current_user.parents_set_up_count > limit
+        saved = false
+        @senior.errors.add(:base, current_user.parent_limit_message)
+        raise ActiveRecord::Rollback
+      end
       @reminder_link = ReminderLink.mint(user: @senior)
     end
 

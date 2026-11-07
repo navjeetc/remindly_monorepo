@@ -66,14 +66,19 @@ class Reminder < ApplicationRecord
 
   def self.times_a_day(rule)
     interval = [ rule[/INTERVAL=(\d+)/, 1].to_i, 1 ].max
+    hours, minutes, seconds = %w[BYHOUR BYMINUTE BYSECOND].map do |part|
+      list = rule[/#{part}=([\d,]+)/, 1]
+      list ? list.split(",").size : 1
+    end
+
+    # Each list multiplies the slots of the period above it, so an interval
+    # combined with a minute list (HOURLY;INTERVAL=12;BYMINUTE=0,10,20 is six
+    # a day) is counted in full. (Copilot on #226.)
     case rule[/FREQ=([A-Z]+)/, 1]
     when "SECONDLY" then (86_400.0 / interval).ceil
-    when "MINUTELY" then (1_440.0 / interval).ceil
-    when "HOURLY"   then (24.0 / interval).ceil
-    else
-      [ rule[/BYHOUR=([\d,]+)/, 1], rule[/BYMINUTE=([\d,]+)/, 1] ]
-        .map { |list| list ? list.split(",").size : 1 }
-        .reduce(:*)
+    when "MINUTELY" then (1_440.0 / interval).ceil * seconds
+    when "HOURLY"   then (24.0 / interval).ceil * minutes * seconds
+    else hours * minutes * seconds
     end
   end
 
@@ -83,8 +88,12 @@ class Reminder < ApplicationRecord
     return (0..6).to_a unless rule.include?("FREQ=WEEKLY")
 
     # A weekly rule with no BYDAY rings on the weekday it starts, so moving
-    # start_time can move it to another day.
-    [ (start_time || Time.current).in_time_zone(tz.presence || "UTC").wday ]
+    # start_time can move it to another day. With no start_time at all,
+    # Recurrence.expand anchors it to whatever day it runs, so it can ring on
+    # any of them. (Copilot on #226.)
+    return (0..6).to_a if start_time.nil?
+
+    [ start_time.in_time_zone(tz.presence || "UTC").wday ]
   end
 
   def calls_by_day

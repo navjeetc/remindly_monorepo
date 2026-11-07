@@ -53,6 +53,18 @@ RSpec.describe "Plan limits on the dashboard", type: :request do
       expect(flash[:alert]).to include("Free plan", "1 parent")
     end
 
+    # Two requests at once both pass the check before either has written. The
+    # count inside the transaction is what holds; this plays the second one.
+    it "rolls back a second parent that got past the first check" do
+      allow_any_instance_of(User).to receive(:parent_limit_reached?).and_return(false)
+
+      expect {
+        post "/dashboard/care_receiver", params: { user: { name: "Second", tz: "America/New_York" } }
+      }.not_to change(User, :count)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("1 parent")
+    end
+
     it "offers the screen when a fourth phone reminder is refused" do
       3.times { create_reminder }
       expect { create_reminder }.not_to change(senior.reminders, :count)
