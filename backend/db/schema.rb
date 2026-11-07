@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_07_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_07_210000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -333,12 +333,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_150000) do
     t.string "phone"
     t.datetime "phone_verified_at"
     t.integer "role"
+    t.integer "set_up_by_id"
     t.string "signup_source"
     t.string "spoken_language", default: "en-US", null: false
     t.integer "text_size", default: 0, null: false
     t.string "tz", default: "America/New_York"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["set_up_by_id"], name: "index_users_on_set_up_by_id"
   end
 
   add_foreign_key "acknowledgements", "occurrences"
@@ -363,4 +365,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_150000) do
   add_foreign_key "telnyx_calls", "users"
   add_foreign_key "telnyx_calls", "users", column: "requested_by_id"
   add_foreign_key "time_blocks", "users"
+  add_foreign_key "users", "users", column: "set_up_by_id", on_delete: :nullify
 end

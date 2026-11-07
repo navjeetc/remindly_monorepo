@@ -10,7 +10,8 @@ RSpec.describe "Plan limits on the dashboard", type: :request do
 
   let(:caregiver) { User.create!(email: "cg@example.com", role: :caregiver, name: "Care", tz: "America/New_York") }
   let(:senior) do
-    User.create!(name: "Rose", role: :senior, tz: "America/New_York", email_undeliverable_at: Time.current)
+    User.create!(name: "Rose", role: :senior, tz: "America/New_York", email_undeliverable_at: Time.current,
+                 set_up_by: caregiver)
   end
 
   before do
@@ -29,6 +30,11 @@ RSpec.describe "Plan limits on the dashboard", type: :request do
       post "/dashboard/care_receiver", params: { user: { name: "Second", tz: "America/New_York" } }
     }.to change(User, :count).by(1)
     expect { 4.times { create_reminder } }.to change(senior.reminders, :count).by(4)
+  end
+
+  it "records who set up a care receiver they create" do
+    post "/dashboard/care_receiver", params: { user: { name: "Second", tz: "America/New_York" } }
+    expect(User.find_by!(name: "Second").set_up_by).to eq(caregiver)
   end
 
   it "saves a reminder that shows on the screen only" do
@@ -63,6 +69,7 @@ RSpec.describe "Plan limits on the dashboard", type: :request do
         post "/dashboard/senior/#{senior.id}/invite_caregiver", params: { caregiver_email: "three@example.com" }
       }.not_to change(CaregiverLink, :count)
       expect(flash[:alert]).to include("2 caregivers")
+      expect(User.exists?(email: "three@example.com")).to be(false)
     end
 
     it "refuses a pairing token that would be a second parent" do

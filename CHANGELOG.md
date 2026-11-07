@@ -24,8 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Paid plans start by setting `Plan::LAUNCHED_ON`. Every limit is checked when
   something is set up, never when a call is due: the fourth phone reminder of
   a day is refused with the way to keep it on the screen, and a scheduled
-  call is never dropped. `users.family_until` records who has Family. Nothing
-  writes it yet; payments are next.
+  call is never dropped. The phone allowance counts scheduled times, so an
+  hourly rule counts as 24. `users.family_until` records who has Family;
+  nothing writes it yet, and payments are next. `users.set_up_by_id` records
+  which caregiver a parent counts against: whoever created the account or
+  first redeemed its token.
 
 ## [0.26.0] - 2026-11-06
 

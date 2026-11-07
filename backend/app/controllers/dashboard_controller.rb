@@ -494,6 +494,8 @@ class DashboardController < WebController
       name: attrs[:name],
       tz: attrs[:tz].presence || current_user.tz,
       role: :senior,
+      # The parent counts against this caregiver on plans that limit parents.
+      set_up_by: current_user,
       # Structurally unmailable rather than merely unmailed: nothing should ever
       # try to reach this account by email, and a nil address would otherwise
       # reach a mailer as a nil recipient rather than being skipped.
@@ -1139,6 +1141,13 @@ class DashboardController < WebController
     # Find or create the caregiver user
     caregiver = User.find_by(email: caregiver_email)
 
+    # Before anyone is created: refusing after would leave an account behind
+    # for an address that was never invited. Someone new joins on the free
+    # plan, so only an existing account's plan can lift the limit.
+    if @senior.caregiver_limit_reached?(joining: caregiver)
+      return redirect_to senior_dashboard_path(@senior), alert: @senior.caregiver_limit_message(joining: caregiver)
+    end
+
     if caregiver.nil?
       # Create new user with caregiver role
       caregiver = User.create!(
@@ -1170,10 +1179,6 @@ class DashboardController < WebController
       flash[:alert] = "#{caregiver_email} is already linked to this care receiver"
       redirect_to senior_dashboard_path(@senior)
       return
-    end
-
-    if @senior.caregiver_limit_reached?
-      return redirect_to senior_dashboard_path(@senior), alert: @senior.caregiver_limit_message
     end
 
     # Manage, matching pairing. The product's position is that a caregiver is a

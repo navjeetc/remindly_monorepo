@@ -6,27 +6,26 @@
 module User::PlanLimits
   extend ActiveSupport::Concern
 
+  included do
+    # The caregiver this care receiver counts against on plans that limit how
+    # many parents a caregiver sets up. See parents_set_up_count.
+    belongs_to :set_up_by, class_name: "User", optional: true
+  end
+
   # The plan this person pays for, or would: theirs as a caregiver, or as a care
   # receiver who set themselves up.
   def plan = Plan.for(self)
 
   # The plan this person's reminders and caregivers are held to, as a care
   # receiver: the best in their circle.
-  def care_plan = Plan.for_care_receiver(self)
+  def care_plan(joining: nil) = Plan.for_care_receiver(self, joining: joining)
 
-  # Parents this caregiver set up: those they were the first caregiver for,
-  # whether by creating the account or by redeeming the care receiver's own
-  # token. Being invited to help with somebody else's parent does not count,
-  # because that parent is already the inviter's.
+  # Parents this caregiver set up and still looks after: those whose account
+  # they created, or whose token they were first to redeem (users.set_up_by_id,
+  # written when it happens). Being invited to help with somebody else's parent
+  # does not count, because that parent is already the inviter's.
   def parents_set_up_count
-    caregiver_links.where(<<~SQL.squish).count
-      NOT EXISTS (
-        SELECT 1 FROM caregiver_links earlier
-        WHERE earlier.senior_id = caregiver_links.senior_id
-          AND earlier.caregiver_id IS NOT NULL
-          AND earlier.id < caregiver_links.id
-      )
-    SQL
+    caregiver_links.joins(:senior).where(users: { set_up_by_id: id }).count
   end
 
   def parent_limit_reached?
@@ -38,8 +37,11 @@ module User::PlanLimits
     senior_links.where.not(caregiver_id: nil).count
   end
 
-  def caregiver_limit_reached?
-    limit = care_plan.caregivers
+  # joining: the caregiver about to be added. Their plan counts, so a Family
+  # caregiver can join a family that already has two caregivers on the free
+  # plan. (Copilot on #226.)
+  def caregiver_limit_reached?(joining: nil)
+    limit = care_plan(joining: joining).caregivers
     limit.present? && caregiver_count >= limit
   end
 
@@ -47,8 +49,9 @@ module User::PlanLimits
     "On the #{plan.name} plan you can set up #{plan.parents} #{"parent".pluralize(plan.parents)}. #{Plan.upgrade_hint}"
   end
 
-  def caregiver_limit_message
-    "#{display_name} already has #{care_plan.caregivers} caregivers, which is as many as the " \
-      "#{care_plan.name} plan allows. #{Plan.upgrade_hint}"
+  def caregiver_limit_message(joining: nil)
+    plan = care_plan(joining: joining)
+    "#{display_name} already has #{plan.caregivers} caregivers, which is as many as the " \
+      "#{plan.name} plan allows. #{Plan.upgrade_hint}"
   end
 end

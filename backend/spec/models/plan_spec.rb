@@ -11,7 +11,8 @@ RSpec.describe Plan do
 
   let(:caregiver) { User.create!(email: "cg@example.com", role: :caregiver, name: "Care", tz: "America/New_York") }
   let(:senior) do
-    User.create!(name: "Rose", role: :senior, tz: "America/New_York", email_undeliverable_at: Time.current)
+    User.create!(name: "Rose", role: :senior, tz: "America/New_York", email_undeliverable_at: Time.current,
+                 set_up_by: caregiver)
   end
 
   before { CaregiverLink.create!(senior: senior, caregiver: caregiver, permission: :manage, state: :active) }
@@ -95,6 +96,36 @@ RSpec.describe Plan do
         expect(reminder(rrule: "FREQ=DAILY")).not_to be_valid
       end
 
+      it "counts every time a rule rings in a day, not once per reminder" do
+        senior.reminders.destroy_all
+
+        expect(reminder(rrule: "FREQ=HOURLY")).not_to be_valid
+        expect(reminder(rrule: "FREQ=DAILY;BYHOUR=8,12,18,21")).not_to be_valid
+        reminder(rrule: "FREQ=DAILY;BYHOUR=8,12").save!
+        expect(reminder).to be_valid
+        reminder.save!
+        expect(reminder).not_to be_valid
+      end
+
+      it "rechecks a weekly reminder moved to a busier day" do
+        senior.reminders.destroy_all
+        monday = Time.zone.parse("2026-11-09 13:00")
+        tuesday = Time.zone.parse("2026-11-10 13:00")
+        3.times { reminder(rrule: "FREQ=WEEKLY", start_time: monday).save! }
+        moving = reminder(rrule: "FREQ=WEEKLY", start_time: tuesday).tap(&:save!)
+
+        expect(moving.update(start_time: monday)).to be(false)
+        expect(moving.update(start_time: tuesday + 2.hours)).to be(true)
+      end
+
+      it "lets a family over the limit move a time within the day it rings" do
+        Reminder.insert_all([ { user_id: senior.id, title: "Old", rrule: "FREQ=DAILY;BYHOUR=9", tz: senior.tz,
+                                phone_call: true, created_at: Time.current, updated_at: Time.current } ])
+        over = senior.reminders.find_by!(title: "Old")
+        expect(over.update(rrule: "FREQ=DAILY;BYHOUR=10")).to be(true)
+        expect(over.update(rrule: "FREQ=DAILY;BYHOUR=10,11")).to be(false)
+      end
+
       it "does not count on Family" do
         caregiver.update!(family_until: 1.month.from_now)
         expect(reminder).to be_valid
@@ -127,16 +158,33 @@ RSpec.describe Plan do
     end
 
     describe "parents a caregiver can set up" do
-      it "counts the parents they were first to look after, not those they were invited to" do
+      it "counts the parents they set up and still look after, not those they were invited to" do
         expect(caregiver.parents_set_up_count).to eq(1)
         expect(caregiver.parent_limit_reached?).to be(true)
 
-        other_family = User.create!(name: "Ann", role: :senior, email_undeliverable_at: Time.current)
         inviter = User.create!(email: "inviter@example.com", role: :caregiver, name: "Inviter")
+        other_family = User.create!(name: "Ann", role: :senior, email_undeliverable_at: Time.current, set_up_by: inviter)
         CaregiverLink.create!(senior: other_family, caregiver: inviter, permission: :manage)
         CaregiverLink.create!(senior: other_family, caregiver: caregiver, permission: :manage)
 
         expect(caregiver.parents_set_up_count).to eq(1)
+      end
+
+      # Link ids follow when a token was made, not when it was redeemed, so the
+      # first to redeem is written down at the moment it happens.
+      it "belongs to whoever redeems first, whichever token is older" do
+        self_signed = User.create!(email: "ann@example.com", role: :senior, name: "Ann")
+        older = CaregiverLink.generate_pairing_token(senior: self_signed)
+        newer = CaregiverLink.generate_pairing_token(senior: self_signed)
+        first = User.create!(email: "first@example.com", role: :caregiver, name: "First")
+        second = User.create!(email: "second@example.com", role: :caregiver, name: "Second")
+
+        newer.pair_with(caregiver: first)
+        older.pair_with(caregiver: second)
+
+        expect(self_signed.reload.set_up_by).to eq(first)
+        expect(first.parents_set_up_count).to eq(1)
+        expect(second.parents_set_up_count).to eq(0)
       end
     end
 
@@ -146,6 +194,14 @@ RSpec.describe Plan do
         second = User.create!(email: "second@example.com", role: :caregiver, name: "Second")
         CaregiverLink.create!(senior: senior, caregiver: second, permission: :manage)
         expect(senior.caregiver_limit_reached?).to be(true)
+      end
+
+      it "lets a Family caregiver join a full free circle, raising it to Family" do
+        CaregiverLink.create!(senior: senior, permission: :manage,
+                              caregiver: User.create!(email: "second@example.com", role: :caregiver, name: "Second"))
+        family = User.create!(email: "family@example.com", role: :caregiver, name: "Family", family_until: 1.month.from_now)
+
+        expect(senior.caregiver_limit_reached?(joining: family)).to be(false)
       end
     end
   end

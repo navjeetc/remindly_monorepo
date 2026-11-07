@@ -34,6 +34,18 @@ RSpec.describe VoiceReminderJob do
   end
 
 
+  # The scheduler leaves these out, but this job is reachable without it.
+  # (Copilot on #226.)
+  it "never rings for a reminder set to the screen only" do
+    reminder.update!(phone_call: false)
+
+    travel_to(at(10)) { described_class.new.perform(occurrence.id) }
+
+    expect(TelnyxVoiceService).not_to have_received(:dial)
+    expect(occurrence.telnyx_calls).to be_empty
+    expect(occurrence.reload.call_suppressed_at).to be_nil
+  end
+
   it "dials inside calling hours" do
     travel_to(at(10)) { described_class.new.perform(occurrence.id) }
 

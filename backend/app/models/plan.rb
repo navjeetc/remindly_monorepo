@@ -48,11 +48,15 @@ class Plan
   # of their own and that of anyone looking after them. A parent is on Family
   # if anyone in their circle pays for it, so a second caregiver on the free
   # plan never takes features away from a family somebody else is paying for.
-  def self.for_care_receiver(senior, at: Time.current)
+  #
+  # joining: a caregiver about to be linked, counted as though they already
+  # were, so the question "may they join?" is asked of the circle they would
+  # make.
+  def self.for_care_receiver(senior, at: Time.current, joining: nil)
     return BETA if beta?
 
-    people = [ senior, *senior.senior_links.where.not(caregiver_id: nil).includes(:caregiver).map(&:caregiver) ]
-    people.any? { |person| self.for(person, at: at) == FAMILY } ? FAMILY : FREE
+    people = [ senior, joining, *senior.senior_links.where.not(caregiver_id: nil).includes(:caregiver).map(&:caregiver) ]
+    people.compact.any? { |person| self.for(person, at: at) == FAMILY } ? FAMILY : FREE
   end
 
   # Said wherever a limit refuses something, so the next step is the same

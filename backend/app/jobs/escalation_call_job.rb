@@ -27,6 +27,14 @@ class EscalationCallJob < ApplicationJob
     return if occurrence.escalation_calls.exists?(attempt_number: position)
 
     senior = occurrence.reminder.user
+    # A Family feature, checked for every caregiver in the chain rather than only
+    # when the chain starts: a plan that ends while a call is queued, or between
+    # one caregiver and the next, stops it there. Not advanced: the next
+    # position would be refused for the same reason. (Copilot on #226.)
+    unless senior.care_plan.escalation
+      Rails.logger.info "Escalation for occurrence #{occurrence.id} stops at position #{position}: #{senior.care_plan.name} plan has no escalation calls"
+      return
+    end
     caregiver = CaregiverLink.find_by(senior_id: senior.id, escalation_position: position)&.caregiver
 
     reason = refusal(caregiver)

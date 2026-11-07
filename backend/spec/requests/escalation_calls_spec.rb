@@ -97,6 +97,19 @@ RSpec.describe "Escalation calls", type: :request do
   end
 
   describe "ringing a caregiver" do
+    # A Family feature. Checked at every position, so a plan that lapses
+    # while the chain is under way stops it there. (Copilot on #226.)
+    it "rings nobody once paid plans have started and nobody in the circle has Family" do
+      stub_const("Plan::LAUNCHED_ON", Date.new(2026, 1, 1))
+
+      expect { EscalationCallJob.perform_now(occurrence.id, 2) }.not_to have_enqueued_job(EscalationCallJob)
+      expect(TelnyxVoiceService).not_to have_received(:escalate)
+
+      first.update!(family_until: 1.month.from_now)
+      EscalationCallJob.perform_now(occurrence.id, 1)
+      expect(TelnyxVoiceService).to have_received(:escalate)
+    end
+
     it "rings the caregiver in that position" do
       EscalationCallJob.perform_now(occurrence.id, 1)
 
