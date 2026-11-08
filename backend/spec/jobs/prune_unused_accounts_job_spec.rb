@@ -15,6 +15,20 @@ RSpec.describe PruneUnusedAccountsJob do
     expect(User.exists?(junk.id)).to be(false)
   end
 
+  # Signed in after the batch was loaded and before this row was deleted:
+  # simulated by signing in at the moment the job takes the lock.
+  it "checks again just before deleting" do
+    late_starter = account("late@example.com")
+    allow_any_instance_of(User).to receive(:lock!).and_wrap_original do |original, *args|
+      User.where(id: late_starter.id).update_all(first_signed_in_at: Time.current)
+      original.call(*args)
+    end
+
+    described_class.perform_now
+
+    expect(User.exists?(late_starter.id)).to be(true)
+  end
+
   it "leaves a recent one, so the Monday funnel email still counts it" do
     recent = User.create!(email: "recent@example.com", created_at: 13.days.ago)
     described_class.perform_now

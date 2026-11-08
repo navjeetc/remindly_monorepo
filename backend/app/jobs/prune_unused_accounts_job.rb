@@ -22,6 +22,15 @@ class PruneUnusedAccountsJob < ApplicationJob
   GRACE = 14.days
 
   def perform(now: Time.current)
-    User.never_used.where(created_at: ...(now - GRACE)).find_each(&:destroy)
+    User.never_used.where(created_at: ...(now - GRACE)).find_each do |user|
+      # Asked again just before deleting, inside the transaction that deletes:
+      # somebody who signs in, or is linked to someone, between the batch
+      # loading and this row's turn has started using the account.
+      # (Codex and Copilot on #228.)
+      User.transaction do
+        user.lock!
+        user.destroy if User.never_used.exists?(user.id)
+      end
+    end
   end
 end
