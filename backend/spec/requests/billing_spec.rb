@@ -49,6 +49,13 @@ RSpec.describe "Plan & billing page", type: :request do
       expect(flash[:notice]).to include("already on the Family plan")
     end
 
+    it "says Family to somebody who has paid, even during the beta" do
+      caregiver.update!(stripe_customer_id: "cus_1", family_until: 1.month.from_now)
+      get "/billing"
+      expect(response.body).to include("Family", "Paid through")
+      expect(response.body).not_to include(">Beta<")
+    end
+
     it "sends a paying caregiver to the customer portal" do
       caregiver.update!(stripe_customer_id: "cus_1", family_until: 1.month.from_now)
       allow(Stripe::BillingPortal::Session).to receive(:create).and_return(Stripe::StripeObject.construct_from(url: "https://billing.stripe.com/p/session/test_1"))

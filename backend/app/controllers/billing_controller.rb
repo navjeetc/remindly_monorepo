@@ -13,6 +13,10 @@ class BillingController < WebController
 
   def show
     @plan = current_user.plan
+    # During the beta everyone is on Beta, but somebody who has paid for
+    # Family, or been given it, is told they have Family: "Beta" under
+    # "Paid through December 8" reads as though the payment did nothing.
+    @plan_name = family_in_hand? ? Plan::FAMILY.name : @plan.name
     flash.now[:notice] = checkout_notice if params[:checkout] == "done"
   end
 
@@ -41,6 +45,10 @@ class BillingController < WebController
   end
 
   private
+
+  def family_in_hand?
+    current_user.paying_for_family? || current_user.family_granted_until&.future?
+  end
 
   def billing_enabled!
     head :not_found unless Billing.enabled?
