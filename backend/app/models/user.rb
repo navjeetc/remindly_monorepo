@@ -501,6 +501,29 @@ class User < ApplicationRecord
     true
   end
 
+  # Accounts that are an email address and nothing else: never signed in, no
+  # role chosen, nobody linked either way, no reminders or tasks, never a
+  # Stripe customer. What asking for a sign-in link leaves behind when the
+  # link is never opened. See PruneUnusedAccountsJob.
+  #
+  # Tasks are checked as well because first_signed_in_at was backfilled only
+  # for named accounts, and the task screens need no role, so an older account
+  # can have tasks and look unused by every other measure. Time blocks and
+  # calendar connections likewise, being on screens that need no role either.
+  # (Copilot on #228.)
+  def self.never_used
+    where(role: nil, first_signed_in_at: nil, stripe_customer_id: nil)
+      .where.not(email: [ nil, "" ])
+      .where.not(id: CaregiverLink.where.not(caregiver_id: nil).select(:caregiver_id))
+      .where.not(id: CaregiverLink.select(:senior_id))
+      .where.not(id: Reminder.select(:user_id))
+      .where.not(id: Task.select(:senior_id))
+      .where.not(id: Task.select(:created_by_id))
+      .where.not(id: TimeBlock.select(:user_id))
+      .where.not(id: SchedulingIntegration.select(:user_id))
+      .where.not(id: SchedulingIntegration.where.not(senior_id: nil).select(:senior_id))
+  end
+
   # The first time this person opened an emailed sign-in link, for the
   # activation funnel (see Activation). Written once, in the WHERE for the same
   # reason as choose_role_once: two tabs opening the link at once must not leave

@@ -31,6 +31,11 @@ RSpec.describe "config/recurring.yml" do
       # Keeps the confirmation email's promise that an address nobody confirms
       # is deleted after a week.
       "prune_unconfirmed_subscribers",
+      # Admin → Users fills with accounts nobody ever used without it.
+      "prune_unused_accounts",
+      # Keeps the privacy policy's promise that a care receiver left without a
+      # caregiver is deleted after 30 days.
+      "sweep_uncared_for_care_receivers",
       "clear_solid_queue_finished_jobs",
       # The delivery chain for phone reminders, both halves of it. expand_reminders
       # materialises the occurrences and voice_reminder_scheduler telephones about

@@ -25,6 +25,13 @@ production:
     queue: default
     schedule: every day at 3:30am
 
+  # Accounts nobody ever used: a sign-in link asked for and never opened,
+  # 14 days on. See PruneUnusedAccountsJob for why 14.
+  prune_unused_accounts:
+    class: PruneUnusedAccountsJob
+    queue: default
+    schedule: every day at 3:45am
+
   # Every schedule in this file is UTC — config.time_zone is left at its default
   # in config/application.rb, so Time.zone is UTC in production. That is not
   # obvious when writing "8am", and it mattered here: this job emails a caregiver
