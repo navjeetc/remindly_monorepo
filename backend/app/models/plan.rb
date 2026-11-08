@@ -41,7 +41,9 @@ class Plan
   def self.for(user, at: Time.current)
     return BETA if beta?
 
-    user&.family_until.present? && user.family_until > at ? FAMILY : FREE
+    return FREE if user.nil?
+
+    [ user.family_until, user.family_granted_until ].compact.any? { |until_| until_ > at } ? FAMILY : FREE
   end
 
   # The plan a care receiver's reminders and caregivers are held to: the best
@@ -60,8 +62,8 @@ class Plan
   end
 
   # Said wherever a limit refuses something, so the next step is the same
-  # everywhere. There is no upgrade page yet; payments are the next PR.
+  # everywhere.
   def self.upgrade_hint
-    "The Family plan raises this limit."
+    "The Family plan raises this limit; see Plan at the top of the page."
   end
 end

@@ -90,6 +90,11 @@ Post bodies are rendered with `html_safe` — sound only because posts are repo 
 
 `docs/OUTREACH_TEMPLATES.md` holds the messages sent to prospective users and to people who can point families to Remindly (home care agencies first), plus a one-page explainer. Its product claims come from `docs/ONBOARDING_FEATURES.md`, so a PR that makes a feature entry wrong checks this file too. Outreach is sent personally, never through Postmark or GoHighLevel; the file says why.
 
+### Plans and billing
+`Plan` (`app/models/plan.rb`) defines Beta, Free and Family. While `Plan::LAUNCHED_ON` is nil every account is on Beta, which limits nothing. The limits live in `User::PlanLimits`, and are checked when something is set up, never when a call is due. A care receiver gets the best plan in their circle; a caregiver's own plan governs how many parents they set up (`users.set_up_by_id`).
+
+Family is sold through Stripe (`User::Billable`, `BillingController`, `StripeWebhooksController`). Checkout takes the card and Stripe's customer portal handles the rest, so Remindly stores only `stripe_customer_id` and `family_until`. **`family_until` is set only from Stripe**, by `refresh_family_from_stripe!` after a signed webhook, never from the browser returning from Checkout. Family given for free (the beta year) is `family_granted_until`, kept separate so a subscription event cannot overwrite it. Selling needs all three of `ENABLE_BILLING=true`, `stripe.secret_key` and `stripe.webhook_secret` in credentials, and both price ids in `config/stripe.yml` (`Billing.enabled?`). The Stripe account is Anakhsoft's: development uses its sandbox. Locally, forward webhooks with `stripe listen --forward-to localhost:5000/stripe/webhooks`.
+
 ### UI conventions
 **Read `docs/UI_STYLE_GUIDE.md` before adding or changing any field, button or form on a web page.** Fields use the `field` class, buttons use `button` plus `button-primary`, `button-secondary` or `button-danger` (filled, never a white outlined box), new-record forms autofocus the first field a person types into, and labels carry no emoji. The styles live in `backend/app/views/shared/_ui_styles.css.erb`; `spec/requests/form_fields_look_like_fields_spec.rb` enforces the rules across every view, so a page that skips them fails CI.
 

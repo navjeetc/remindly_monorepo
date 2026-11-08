@@ -64,6 +64,15 @@ class FeatureFlag
       default: false,
       env_var: "ENABLE_ESCALATION_CALLS"
     },
+    # Selling the Family plan: the Plan & billing page, Checkout and the
+    # customer portal. Also needs Stripe credentials and the prices in
+    # config/stripe.yml for this environment; see Billing.enabled?.
+    billing: {
+      name: "Billing",
+      description: "Let caregivers subscribe to the Family plan through Stripe",
+      default: false,
+      env_var: "ENABLE_BILLING"
+    },
     translated_calls: {
       name: "Translated Calls",
       description: "Offer call languages other than English (each needs a native speaker's review first)",

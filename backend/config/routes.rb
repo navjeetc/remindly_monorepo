@@ -39,6 +39,10 @@ Rails.application.routes.draw do
 
   # Telnyx Call Control webhooks (public, token-secured)
   post "telnyx/webhooks",    to: "telnyx_webhooks#receive"
+  post "stripe/webhooks",    to: "stripe_webhooks#create"
+  get  "billing",            to: "billing#show", as: :billing
+  post "billing/checkout",   to: "billing#checkout", as: :billing_checkout
+  post "billing/portal",     to: "billing#portal", as: :billing_portal
 
   # GoHighLevel reporting a mailing-list unsubscribe (secret-secured)
   resources :crm_unsubscribes, only: :create, path: "crm/unsubscribes"

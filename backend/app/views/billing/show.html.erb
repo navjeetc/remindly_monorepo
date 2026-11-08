@@ -1,0 +1,55 @@
+<%# The plan page. Everything about the subscription itself (card, invoices,
+    switching monthly and yearly, cancelling) is on Stripe's customer portal,
+    so this page only says where the account stands and sends people there. %>
+<div class="max-w-2xl mx-auto">
+  <div class="mb-6">
+    <%= link_to "← Back to Dashboard", dashboard_path, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <div class="bg-white shadow sm:rounded-lg">
+    <div class="px-4 py-5 sm:p-6 space-y-6">
+      <h1 class="text-lg leading-6 font-medium text-gray-900">Plan &amp; billing</h1>
+
+      <div>
+        <p class="text-sm text-gray-500">Your plan</p>
+        <p class="text-2xl font-semibold text-gray-900"><%= @plan.name %></p>
+        <% if current_user.paying_for_family? %>
+          <p class="mt-1 text-sm text-gray-600">
+            Paid through <%= current_user.family_until.in_time_zone(current_user.tz.presence || "UTC").strftime("%B %-d, %Y") %>.
+            It renews automatically unless you cancel.
+          </p>
+        <% elsif current_user.family_granted_until&.future? %>
+          <p class="mt-1 text-sm text-gray-600">
+            Free until <%= current_user.family_granted_until.in_time_zone(current_user.tz.presence || "UTC").strftime("%B %-d, %Y") %>, as thanks for joining during the beta.
+          </p>
+        <% elsif @plan == Plan::BETA %>
+          <p class="mt-1 text-sm text-gray-600">Remindly is in beta, and everything is included.</p>
+        <% end %>
+      </div>
+
+      <% if current_user.paying_for_family? || current_user.stripe_customer_id.present? %>
+        <div>
+          <%= button_to "Manage billing", billing_portal_path, class: "button button-secondary" %>
+          <p class="mt-2 text-sm text-gray-500">Change between monthly and yearly, update your card, see invoices, or cancel.</p>
+        </div>
+      <% end %>
+
+      <% unless current_user.paying_for_family? %>
+        <div class="border-t border-gray-200 pt-6">
+          <h2 class="text-base font-medium text-gray-900">Family</h2>
+          <p class="mt-1 text-sm text-gray-600">
+            Up to 3 parents and 5 caregivers, phone reminders without a daily limit, three tries at an
+            unanswered call, and a call to the family when an important reminder is missed.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-3">
+            <% Billing::INTERVALS.each do |interval| %>
+              <%= button_to "Family, #{Billing::PRICE_LABELS.fetch(interval)}", billing_checkout_path,
+                            params: { interval: interval }, class: "button button-primary" %>
+            <% end %>
+          </div>
+          <p class="mt-2 text-sm text-gray-500">Paid securely through Stripe. Cancel any time.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
