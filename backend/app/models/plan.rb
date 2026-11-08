@@ -64,6 +64,8 @@ class Plan
   # Said wherever a limit refuses something, so the next step is the same
   # everywhere.
   def self.upgrade_hint
-    "The Family plan raises this limit; see Plan at the top of the page."
+    # Neutral about where to go: care receivers and the API see this too, and
+    # neither can reach the Plan page. (Copilot on #227.)
+    "The Family plan raises this limit."
   end
 end

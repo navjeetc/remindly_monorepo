@@ -30,6 +30,8 @@ class BillingController < WebController
       success_url: billing_url(checkout: "done"),
       cancel_url: billing_url
     )
+    return redirect_to(billing_path, notice: "You're already on the Family plan.") if session.nil?
+
     redirect_to session.url, allow_other_host: true, status: :see_other
   rescue Stripe::StripeError => e
     stripe_failed(e)

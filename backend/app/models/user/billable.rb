@@ -37,11 +37,29 @@ module User::Billable
     reload.stripe_customer_id
   end
 
-  # A Stripe Checkout page for the Family plan, monthly or yearly.
+  # A Stripe Checkout page for the Family plan, monthly or yearly, or nil when
+  # Stripe says this customer already pays for it.
+  #
+  # Two guards against one account ending up with two recurring charges
+  # (Codex and Copilot on #227). family_until is only written once the webhook
+  # has run, so it cannot be the only check: Stripe is asked directly. And any
+  # Checkout page this customer still has open is expired before a new one is
+  # made, so a second tab or a page left open yesterday cannot be paid as well.
   def family_checkout_session(interval:, success_url:, cancel_url:)
+    customer = stripe_customer_id!
+
+    if Stripe::Subscription.list(customer: customer, status: "all", limit: 100).data
+         .any? { |sub| PAYING_STATUSES.include?(sub["status"]) }
+      refresh_family_from_stripe!
+      return nil
+    end
+
+    Stripe::Checkout::Session.list(customer: customer, status: "open", limit: 100).data
+      .each { |open_session| Stripe::Checkout::Session.expire(open_session["id"]) }
+
     Stripe::Checkout::Session.create(
       mode: "subscription",
-      customer: stripe_customer_id!,
+      customer: customer,
       client_reference_id: id.to_s,
       line_items: [ { price: Billing.price(interval), quantity: 1 } ],
       subscription_data: { metadata: { remindly_user_id: id } },

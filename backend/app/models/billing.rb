@@ -10,10 +10,14 @@ module Billing
   # Shown on the plan page; Stripe's prices are what is charged.
   PRICE_LABELS = { "monthly" => "$9 a month", "yearly" => "$79 a year" }.freeze
 
-  # All three, so a half-configured environment sells nothing: the switch, a
-  # key, and both prices. Production has no prices until launch.
+  # All of them, so a half-configured environment sells nothing: the switch,
+  # a key, both prices, and the webhook secret. Without the secret every
+  # webhook is refused, and a payment could never become Family, since only
+  # the webhook sets it. (Codex and Copilot on #227.) Production has no prices
+  # until launch.
   def self.enabled?
-    FeatureFlag.enabled?(:billing) && Stripe.api_key.present? && INTERVALS.all? { |interval| price(interval).present? }
+    FeatureFlag.enabled?(:billing) && Stripe.api_key.present? && webhook_secret.present? &&
+      INTERVALS.all? { |interval| price(interval).present? }
   end
 
   def self.price(interval)

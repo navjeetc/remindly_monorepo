@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "rails_helper"
 
 RSpec.describe "Plan & billing page", type: :request do
@@ -23,7 +25,16 @@ RSpec.describe "Plan & billing page", type: :request do
       expect(response.body).not_to include("Manage billing")
     end
 
+    def stripe_lists(subscriptions: [], open_sessions: [])
+      allow(Stripe::Subscription).to receive(:list)
+        .and_return(Stripe::ListObject.construct_from(object: "list", data: subscriptions))
+      allow(Stripe::Checkout::Session).to receive(:list)
+        .and_return(Stripe::ListObject.construct_from(object: "list", data: open_sessions))
+      allow(Stripe::Checkout::Session).to receive(:expire)
+    end
+
     it "sends a caregiver to Stripe Checkout for the price they chose, as their own customer" do
+      stripe_lists
       allow(Stripe::Customer).to receive(:create).and_return(Stripe::StripeObject.construct_from(id: "cus_new"))
       allow(Stripe::Checkout::Session).to receive(:create).and_return(Stripe::StripeObject.construct_from(url: "https://checkout.stripe.com/c/pay/cs_test_1"))
 
@@ -35,6 +46,32 @@ RSpec.describe "Plan & billing page", type: :request do
         mode: "subscription", customer: "cus_new", client_reference_id: caregiver.id.to_s,
         line_items: [ { price: "price_test_family_yearly", quantity: 1 } ]
       ))
+    end
+
+    # Two tabs, or a Checkout left open: only the newest page can be paid.
+    it "expires a Checkout page the caregiver still has open before opening another" do
+      caregiver.update!(stripe_customer_id: "cus_1")
+      stripe_lists(open_sessions: [ { id: "cs_old", object: "checkout.session" } ])
+      allow(Stripe::Checkout::Session).to receive(:create).and_return(Stripe::StripeObject.construct_from(url: "https://checkout.stripe.com/c/pay/cs_new"))
+
+      post "/billing/checkout", params: { interval: "monthly" }
+
+      expect(Stripe::Checkout::Session).to have_received(:expire).with("cs_old")
+      expect(response).to redirect_to("https://checkout.stripe.com/c/pay/cs_new")
+    end
+
+    # Paid a moment ago, before the webhook has written family_until.
+    it "asks Stripe, not only family_until, before selling Family again" do
+      caregiver.update!(stripe_customer_id: "cus_1")
+      period_end = 1.month.from_now.to_i
+      stripe_lists(subscriptions: [ { id: "sub_1", object: "subscription", status: "active",
+                                      items: { object: "list", data: [ { current_period_end: period_end } ] } } ])
+      expect(Stripe::Checkout::Session).not_to receive(:create)
+
+      post "/billing/checkout", params: { interval: "yearly" }
+
+      expect(flash[:notice]).to include("already on the Family plan")
+      expect(caregiver.reload.family_until.to_i).to eq(period_end)
     end
 
     it "refuses an interval that is not on offer" do

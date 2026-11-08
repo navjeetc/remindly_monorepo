@@ -1,18 +1,16 @@
+# frozen_string_literal: true
+
 require "rails_helper"
+require "active_support/core_ext/object/with"
 
 RSpec.describe Billing do
   before do
     allow(FeatureFlag).to receive(:enabled?).and_call_original
     allow(FeatureFlag).to receive(:enabled?).with(:billing).and_return(true)
+    allow(described_class).to receive(:webhook_secret).and_return("whsec_x")
   end
 
-  around do |example|
-    key = Stripe.api_key
-    Stripe.api_key = "sk_test_x"
-    example.run
-  ensure
-    Stripe.api_key = key
-  end
+  around { |example| Stripe.with(api_key: "sk_test_x") { example.run } }
 
   it "sells only with the switch, a key and both prices" do
     expect(described_class.enabled?).to be(true)
@@ -22,7 +20,13 @@ RSpec.describe Billing do
   end
 
   it "sells nothing without a key" do
-    Stripe.api_key = nil
+    Stripe.with(api_key: nil) { expect(described_class.enabled?).to be(false) }
+  end
+
+  # Only the webhook turns a payment into Family, so taking one without it
+  # would charge somebody for nothing.
+  it "sells nothing without the webhook secret" do
+    allow(described_class).to receive(:webhook_secret).and_return(nil)
     expect(described_class.enabled?).to be(false)
   end
 
