@@ -46,10 +46,13 @@ RSpec.describe PruneUnusedAccountsJob do
     CaregiverLink.generate_pairing_token(senior: self_signed)
     reminded = account("reminded@example.com")
     Reminder.create!(user: reminded, title: "x", rrule: "FREQ=DAILY", tz: "America/New_York")
+    # An account from before sign-in tracking, with tasks of its own.
+    with_tasks = account("tasks@example.com")
+    Task.create!(senior: with_tasks, created_by: with_tasks, title: "Dentist")
 
     described_class.perform_now
 
-    [ signed_in, with_role, paying, invited, senior, self_signed, reminded ].each do |user|
+    [ signed_in, with_role, paying, invited, senior, self_signed, reminded, with_tasks ].each do |user|
       expect(User.exists?(user.id)).to be(true), "#{user.email || user.name} was deleted"
     end
   end
