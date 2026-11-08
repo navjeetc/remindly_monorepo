@@ -40,6 +40,26 @@ RSpec.describe Plan do
     end
   end
 
+  describe "the beta year" do
+    include ActiveSupport::Testing::TimeHelpers
+
+    before { stub_const("Plan::LAUNCHED_ON", Date.new(2026, 11, 8)) }
+
+    def sign_up_at(time)
+      travel_to(time) { User.create!(email: "new#{time.to_i}@example.com", role: :caregiver, name: "New") }
+    end
+
+    it "is given to somebody who signs up later on launch day" do
+      user = sign_up_at(ActiveSupport::TimeZone["America/New_York"].local(2026, 11, 8, 23))
+      expect(user.family_granted_until).to eq(Time.utc(2027, 11, 8, 5))
+    end
+
+    it "is not given to somebody who signs up the day after" do
+      user = sign_up_at(ActiveSupport::TimeZone["America/New_York"].local(2026, 11, 9, 0, 30))
+      expect(user.family_granted_until).to be_nil
+    end
+  end
+
   describe "once paid plans have started" do
     before { after_launch }
 

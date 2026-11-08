@@ -37,6 +37,17 @@ class Plan
     LAUNCHED_ON.nil? || Date.current < LAUNCHED_ON
   end
 
+  # The beta thank-you: every account created by the end of launch day, New
+  # York time, has Family free for a year from that day. Through the end of the
+  # day, not its start, because the release went out during it.
+  def self.beta_year_cutoff
+    LAUNCHED_ON&.in_time_zone("America/New_York")&.end_of_day
+  end
+
+  def self.beta_year_until
+    LAUNCHED_ON && LAUNCHED_ON.in_time_zone("America/New_York") + 12.months
+  end
+
   # The plan an account is on as the one paying: a caregiver's, or a care
   # receiver's who set themselves up.
   def self.for(user, at: Time.current)

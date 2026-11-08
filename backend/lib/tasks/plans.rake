@@ -2,17 +2,16 @@
 
 namespace :plans do
   desc "The beta thank-you: Family free for 12 months from Plan::LAUNCHED_ON for every account " \
-       "created by the end of that day. Run once, at launch. A dry run unless CONFIRM=yes. Safe to repeat: it " \
+       "created by the end of that day. Done at deploy by a migration; this repeats it. A dry run unless CONFIRM=yes. Safe to repeat: it " \
        "only ever sets the same date, and never shortens a later one."
   task grant_beta_family: :environment do
     launched_on = Plan::LAUNCHED_ON
     abort "Plan::LAUNCHED_ON is not set; paid plans have not launched." if launched_on.nil?
 
-    launch_day = launched_on.in_time_zone("America/New_York")
-    granted_until = launch_day.beginning_of_day + 12.months
-    # Through the end of launch day, not its start: the release goes out during
-    # the day, and somebody who signed up that morning joined during the beta.
-    beta_users = User.where(created_at: ..launch_day.end_of_day)
+    # The deploy's migration (GrantTheBetaYear) did this already; this task is
+    # the repair if it ever needs doing again.
+    granted_until = Plan.beta_year_until
+    beta_users = User.where(created_at: ..Plan.beta_year_cutoff)
     due = beta_users.where(family_granted_until: nil).or(beta_users.where(family_granted_until: ...granted_until))
 
     unless ENV["CONFIRM"] == "yes"

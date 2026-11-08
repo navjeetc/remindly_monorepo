@@ -23,7 +23,10 @@ class BillingController < WebController
   def checkout
     interval = params[:interval].to_s
     return redirect_to(billing_path, alert: "Choose monthly or yearly.") unless Billing::INTERVALS.include?(interval)
-    return redirect_to(billing_path, notice: "You're already on the Family plan.") if current_user.paying_for_family?
+    # family_in_hand?, not paying_for_family?: a Plan page opened before the
+    # beta year was granted still has the buttons, and pressing one must not
+    # charge for months that were promised free. (Copilot on #229.)
+    return redirect_to(billing_path, notice: "You're already on the Family plan.") if family_in_hand?
 
     session = current_user.family_checkout_session(
       interval: interval,

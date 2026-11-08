@@ -49,6 +49,16 @@ RSpec.describe "Plan & billing page", type: :request do
       allow(Stripe::Checkout::Session).to receive(:expire)
     end
 
+    it "does not start a checkout for somebody who has the beta year, from a page opened before it" do
+      caregiver.update!(family_granted_until: 6.months.from_now)
+      allow(Stripe::Checkout::Session).to receive(:create)
+
+      post "/billing/checkout", params: { interval: "monthly" }
+
+      expect(response).to redirect_to("/billing")
+      expect(Stripe::Checkout::Session).not_to have_received(:create)
+    end
+
     it "sends a caregiver to Stripe Checkout for the price they chose, as their own customer" do
       stripe_lists
       allow(Stripe::Customer).to receive(:create).and_return(Stripe::StripeObject.construct_from(id: "cus_new"))
