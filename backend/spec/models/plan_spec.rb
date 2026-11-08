@@ -6,7 +6,7 @@ RSpec.describe Plan do
   # Paid plans have started. Every example that is about a limit runs here,
   # because during the beta nothing is limited at all.
   def after_launch
-    stub_const("Plan::LAUNCHED_ON", Date.current - 1)
+    stub_const("Plan::LAUNCHED_ON", Date.current - 2)
   end
 
   let(:caregiver) { User.create!(email: "cg@example.com", role: :caregiver, name: "Care", tz: "America/New_York") }

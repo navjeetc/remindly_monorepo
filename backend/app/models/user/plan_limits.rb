@@ -13,7 +13,13 @@ module User::PlanLimits
 
     # Somebody who signs up on launch day, after the migration that granted
     # everyone else the beta year, joined during it too. (Copilot on #229.)
-    before_create :grant_the_beta_year, if: -> { Plan.beta_year_cutoff&.future? && family_granted_until.nil? }
+    before_create :grant_the_beta_year, if: :joined_during_the_beta?
+  end
+
+  # By when the account was made, or now if it is being made now.
+  def joined_during_the_beta?
+    cutoff = Plan.beta_year_cutoff
+    cutoff.present? && family_granted_until.nil? && (created_at || Time.current) <= cutoff
   end
 
   def grant_the_beta_year

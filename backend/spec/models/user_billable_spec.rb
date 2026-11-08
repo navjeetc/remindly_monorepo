@@ -55,7 +55,7 @@ RSpec.describe User::Billable do
   end
 
   describe "the beta thank-you" do
-    before { stub_const("Plan::LAUNCHED_ON", Date.current - 1) }
+    before { stub_const("Plan::LAUNCHED_ON", Date.current - 2) }
 
     it "is Family while the grant runs, separately from any subscription" do
       user.update!(family_granted_until: 6.months.from_now)

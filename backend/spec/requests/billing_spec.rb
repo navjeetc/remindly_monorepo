@@ -26,7 +26,7 @@ RSpec.describe "Plan & billing page", type: :request do
     end
 
     describe "once paid plans have started" do
-      before { stub_const("Plan::LAUNCHED_ON", Date.current - 1) }
+      before { stub_const("Plan::LAUNCHED_ON", Date.current - 2) }
 
       it "shows a caregiver on the Free plan what it includes, and Family's prices" do
         get "/billing"
