@@ -3,8 +3,7 @@
 # webhook signing secret live in credentials.
 #
 # development: the "Test mode · Anakhsoft" sandbox.
-# production: empty until paid plans launch. Billing.enabled? is false while
-# they are, whatever ENABLE_BILLING says, so nothing can be sold by accident.
+# production: Anakhsoft's live account, product prod_VaiHjk9wXzgJkR.
 development:
   family_monthly_price: price_1UZWy9CuVDy0mdsqXcypN3Ai
   family_yearly_price: price_1UZWz2CuVDy0mdsqL4kbGeNk
@@ -14,5 +13,5 @@ test:
   family_yearly_price: price_test_family_yearly
 
 production:
-  family_monthly_price:
-  family_yearly_price:
+  family_monthly_price: price_1UZWqlCuVDy0mdsqbwTV6B3O
+  family_yearly_price: price_1UZWrhCuVDy0mdsqwQMJAbLU

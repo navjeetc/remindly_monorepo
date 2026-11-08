@@ -5,6 +5,33 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-11-08
+
+### Added
+- **Paid plans are live.** Remindly now has a Free plan (one parent, up to 3
+  phone reminders a day for them, unlimited screen reminders, 2 caregivers, a
+  second try at an unanswered call) and Family ($9 a month or $79 a year: up to
+  3 parents and 5 caregivers, phone reminders without a daily limit, three
+  tries, escalation calls). `Plan::LAUNCHED_ON` is 2026-11-08, `ENABLE_BILLING`
+  is on, and production sells through Anakhsoft's live Stripe account.
+- **The beta year.** Every account that existed by the end of launch day gets
+  Family free until 2027-11-08 (`plans:grant_beta_family`), and their caregivers
+  are told by email (`plans:send_launch_notice`, new `PlanMailer`). The Plan page
+  says so and does not ask them to pay for it.
+- **The Plan page describes the Free plan** for caregivers on it.
+- **Terms: "Plans and payment".** Renewal, cancelling at the end of the period,
+  switching monthly to yearly, failed payments, 30 days' notice of a price
+  change, and the beta year.
+- **Privacy policy names Stripe** as the payment processor and says what it
+  receives, and that unused accounts are deleted after 14 days.
+
+### Changed
+- "Free while in beta" is now "Free for one parent" on the badge, the home page,
+  the reminder-app page, the FAQ, the welcome email, and the onboarding and
+  outreach docs. "No trial that quietly ends" still holds: the Free plan does not
+  expire.
+- The beta grant covers accounts created during launch day, not only before it.
+
 ## [0.28.1] - 2026-11-08
 
 ### Added

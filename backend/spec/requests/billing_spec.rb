@@ -25,6 +25,22 @@ RSpec.describe "Plan & billing page", type: :request do
       expect(response.body).not_to include("Manage billing")
     end
 
+    describe "once paid plans have started" do
+      before { stub_const("Plan::LAUNCHED_ON", Date.current - 1) }
+
+      it "shows a caregiver on the Free plan what it includes, and Family's prices" do
+        get "/billing"
+        expect(response.body).to include("Free", "One parent, up to 3 phone reminders a day", "$9 a month", "$79 a year")
+      end
+
+      it "does not ask somebody given the beta year to pay for it" do
+        caregiver.update!(family_granted_until: 6.months.from_now)
+        get "/billing"
+        expect(response.body).to include("Family", "as thanks for joining during the beta")
+        expect(response.body).not_to include("Family, $9 a month")
+      end
+    end
+
     def stripe_lists(subscriptions: [], open_sessions: [])
       allow(Stripe::Subscription).to receive(:list)
         .and_return(Stripe::ListObject.construct_from(object: "list", data: subscriptions))

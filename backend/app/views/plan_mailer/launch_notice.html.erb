@@ -1,0 +1,41 @@
+<p>Hi <%= @user.name.presence || "there" %>,</p>
+
+<p>Thank you for using Remindly while it was in beta.</p>
+
+<p>From today Remindly has two plans:</p>
+
+<p>
+  <strong>Free:</strong> one parent, up to 3 phone reminders a day for them, as
+  many reminders on their screen as you like, 2 caregivers, a second try when a
+  call goes unanswered, and every email. It needs no card and does not expire.
+</p>
+
+<p>
+  <strong>Family, $9 a month or $79 a year:</strong> up to 3 parents and 5
+  caregivers, phone reminders without a daily limit, three tries at an
+  unanswered call, and a call to the family when an important reminder is
+  missed.
+</p>
+
+<p>
+  As thanks for joining early, <strong>your account has Family free until
+  <%= @user.family_granted_until.in_time_zone(@user.tz.presence || "America/New_York").strftime("%B %-d, %Y") %></strong>.
+  There is nothing to do: no card, nothing charged, and nothing you have set up
+  changes.
+</p>
+
+<p>
+  When the year is up you can subscribe to keep Family, or carry on with the
+  Free plan. I will write before then, so it never arrives as a surprise.
+</p>
+
+<p>
+  Your plan is on the
+  <a href="<%= ApplicationHelper::CANONICAL_HOST %>/billing">Plan page</a>.
+  Questions about any of it? Just reply to this email.
+</p>
+
+<p>
+  Navjeet<br>
+  <a href="<%= ApplicationHelper::CANONICAL_HOST %>">Remindly</a>
+</p>

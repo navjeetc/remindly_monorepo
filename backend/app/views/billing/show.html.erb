@@ -21,9 +21,16 @@
         <% elsif current_user.family_granted_until&.future? %>
           <p class="mt-1 text-sm text-gray-600">
             Free until <%= current_user.family_granted_until.in_time_zone(current_user.tz.presence || "UTC").strftime("%B %-d, %Y") %>, as thanks for joining during the beta.
+            Nothing is charged. When it ends you can keep Family for $9 a month or $79 a year,
+            or carry on with the Free plan.
           </p>
         <% elsif @plan == Plan::BETA %>
           <p class="mt-1 text-sm text-gray-600">Remindly is in beta, and everything is included.</p>
+        <% elsif @plan == Plan::FREE %>
+          <p class="mt-1 text-sm text-gray-600">
+            One parent, up to 3 phone reminders a day for them, 2 caregivers, a second try at an
+            unanswered call, and as many reminders on their screen as you like.
+          </p>
         <% end %>
       </div>
 
@@ -34,7 +41,9 @@
         </div>
       <% end %>
 
-      <% unless current_user.paying_for_family? %>
+      <%# Not offered to somebody given the beta year: they already have Family,
+          and paying now would charge them for months they were promised free. %>
+      <% unless current_user.paying_for_family? || current_user.family_granted_until&.future? %>
         <div class="border-t border-gray-200 pt-6">
           <h2 class="text-base font-medium text-gray-900">Family</h2>
           <p class="mt-1 text-sm text-gray-600">
