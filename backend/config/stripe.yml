@@ -1,0 +1,18 @@
+# The Stripe prices the Family plan is sold at, per environment. Not secret
+# (they appear in every Checkout page), so they live here; the API key and the
+# webhook signing secret live in credentials.
+#
+# development: the "Test mode · Anakhsoft" sandbox.
+# production: empty until paid plans launch. Billing.enabled? is false while
+# they are, whatever ENABLE_BILLING says, so nothing can be sold by accident.
+development:
+  family_monthly_price: price_1UZWy9CuVDy0mdsqXcypN3Ai
+  family_yearly_price: price_1UZWz2CuVDy0mdsqL4kbGeNk
+
+test:
+  family_monthly_price: price_test_family_monthly
+  family_yearly_price: price_test_family_yearly
+
+production:
+  family_monthly_price:
+  family_yearly_price:

@@ -5,6 +5,27 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-11-08
+
+### Added
+- **Paying for Family, built but switched off.** Caregivers can subscribe to
+  Family through Stripe Checkout ($9 a month or $79 a year) and manage it in
+  Stripe's customer portal (switch monthly and yearly, update the card, see
+  invoices, cancel at the end of the period). A new Plan page shows where an
+  account stands. Remindly never sees card details. The Stripe customer id is
+  stored on the account (`users.stripe_customer_id`), and `users.family_until`
+  follows the subscription: `POST /stripe/webhooks` is signature-checked, and
+  the account is refreshed by asking Stripe rather than trusting the event.
+- **The beta thank-you, ready to run at launch.** `users.family_granted_until`
+  holds Family given rather than bought. `bin/rails plans:grant_beta_family
+  CONFIRM=yes` gives every account created before `Plan::LAUNCHED_ON` a year of
+  it.
+
+Nothing is sold in production yet. Billing needs `ENABLE_BILLING=true`, Stripe
+credentials and the live price ids in `config/stripe.yml`, and production has
+none of them. They arrive with the launch release, along with the notice email,
+pricing copy, a billing section in the terms, and Stripe in the privacy policy.
+
 ## [0.27.0] - 2026-11-07
 
 ### Added

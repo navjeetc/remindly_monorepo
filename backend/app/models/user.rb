@@ -1,5 +1,6 @@
 class User < ApplicationRecord
   include PlanLimits
+  include Billable
 
   enum :role, { senior: 0, caregiver: 1, admin: 2 }, prefix: true
 

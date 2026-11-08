@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_07_210000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_08_150000) do
   create_table "acknowledgements", force: :cascade do |t|
     t.datetime "at", null: false
     t.datetime "created_at", null: false
@@ -322,6 +322,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_210000) do
     t.datetime "email_undeliverable_at"
     t.datetime "escalation_consent_at"
     t.datetime "escalation_opted_out_at"
+    t.datetime "family_granted_until"
     t.datetime "family_until"
     t.datetime "first_signed_in_at"
     t.datetime "left_without_caregiver_at"
@@ -336,11 +337,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_210000) do
     t.integer "set_up_by_id"
     t.string "signup_source"
     t.string "spoken_language", default: "en-US", null: false
+    t.string "stripe_customer_id"
     t.integer "text_size", default: 0, null: false
     t.string "tz", default: "America/New_York"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["set_up_by_id"], name: "index_users_on_set_up_by_id"
+    t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
   end
 
   add_foreign_key "acknowledgements", "occurrences"

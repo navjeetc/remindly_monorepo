@@ -96,6 +96,9 @@
               <% end %>
               
               <span class="text-sm text-gray-700"><%= current_user.display_name %></span>
+              <% if Billing.enabled? && current_user.role_caregiver? %>
+                <%= link_to "Plan", billing_path, class: "text-sm text-gray-700 hover:text-gray-900" %>
+              <% end %>
               <%= link_to "Profile", profile_path, class: "text-sm text-gray-700 hover:text-gray-900" %>
               <%= button_to "Sign Out", logout_path, method: :delete, class: "button button-secondary px-3 leading-4" %>
             <% else %>
