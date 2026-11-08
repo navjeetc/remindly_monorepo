@@ -13,8 +13,7 @@ module Billing
   # All of them, so a half-configured environment sells nothing: the switch,
   # a key, both prices, and the webhook secret. Without the secret every
   # webhook is refused, and a payment could never become Family, since only
-  # the webhook sets it. (Codex and Copilot on #227.) Production has no prices
-  # until launch.
+  # the webhook sets it. (Codex and Copilot on #227.)
   def self.enabled?
     FeatureFlag.enabled?(:billing) && Stripe.api_key.present? && webhook_secret.present? &&
       INTERVALS.all? { |interval| price(interval).present? }

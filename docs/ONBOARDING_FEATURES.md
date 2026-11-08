@@ -62,8 +62,11 @@ you on the phone: your parent, their first reminder, and what they'll hear.
 person, each choosing which reminders they hear about. A shared task list
 shows who's picking up the prescription and who's covering the delivery.
 
-**Free while in beta.** No card, no ads and no trial that quietly ends. If
-charging is ever needed, you'll be told well in advance.
+**Free for one parent.** The Free plan covers one parent with up to three
+phone reminders a day, unlimited reminders on their screen and two
+caregivers. No card, no ads and no trial that quietly ends. Family, at $9 a
+month or $79 a year, covers up to three parents, phone reminders without a
+daily limit and a call to the family when an important reminder is missed.
 
 ---
 
@@ -76,7 +79,7 @@ what they get out of it, and what it costs.
 1. Reminder phone calls, not another app
 2. No reminder calls until they agree
 3. You hear what happened, without ringing to ask
-4. Free while in beta
+4. Free for one parent; Family is $9 a month
 
 ## Worth adding to the email
 

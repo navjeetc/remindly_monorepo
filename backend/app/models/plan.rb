@@ -5,11 +5,11 @@
 # escalation calls are offered. A plain object, not a table, because the plans
 # are a product decision that changes with a release, not data anyone edits.
 #
-# Remindly is in beta, and while it is every account is on BETA, which limits
-# nothing: the site promises that nobody loses what they use today, and the
-# free plan's limits are smaller than "everything". Paid plans start by setting
-# LAUNCHED_ON, in the same release that sends the 60 days' notice and stamps
-# every beta account with a year of Family (see the pricing plan doc).
+# Before LAUNCHED_ON every account was on BETA, which limits nothing. Paid
+# plans launched on November 8, 2026: every account that existed by the end of
+# that day was given a year of Family (plans:grant_beta_family) and told so
+# (plans:send_launch_notice), which keeps the beta's promise that nobody loses
+# what they were using.
 #
 # Every limit is checked when something is set up, never when a call is due.
 # A medication call already on the schedule is never dropped because a count
@@ -17,8 +17,9 @@
 # only decides how many times an unanswered call is tried again, never whether
 # the first call is made.
 class Plan
-  # Nil while in beta. A date here ends the beta for everyone at once.
-  LAUNCHED_ON = nil
+  # The day the beta ended for everyone at once. Nil would put every account
+  # back on BETA.
+  LAUNCHED_ON = Date.new(2026, 11, 8)
 
   # nil means no limit.
   Limits = Data.define(:key, :name, :parents, :phone_reminders_a_day, :caregivers, :call_attempts, :escalation)
@@ -34,6 +35,17 @@ class Plan
 
   def self.beta?
     LAUNCHED_ON.nil? || Date.current < LAUNCHED_ON
+  end
+
+  # The beta thank-you: every account created by the end of launch day, New
+  # York time, has Family free for a year from that day. Through the end of the
+  # day, not its start, because the release went out during it.
+  def self.beta_year_cutoff
+    LAUNCHED_ON&.in_time_zone("America/New_York")&.end_of_day
+  end
+
+  def self.beta_year_until
+    LAUNCHED_ON && LAUNCHED_ON.in_time_zone("America/New_York") + 12.months
   end
 
   # The plan an account is on as the one paying: a caregiver's, or a care

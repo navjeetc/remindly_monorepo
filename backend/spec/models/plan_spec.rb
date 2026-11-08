@@ -6,7 +6,7 @@ RSpec.describe Plan do
   # Paid plans have started. Every example that is about a limit runs here,
   # because during the beta nothing is limited at all.
   def after_launch
-    stub_const("Plan::LAUNCHED_ON", Date.current - 1)
+    stub_const("Plan::LAUNCHED_ON", Date.current - 2)
   end
 
   let(:caregiver) { User.create!(email: "cg@example.com", role: :caregiver, name: "Care", tz: "America/New_York") }
@@ -37,6 +37,26 @@ RSpec.describe Plan do
 
     it "keeps three tries at an unanswered call" do
       expect(TelnyxCall.attempts_for(senior)).to eq(TelnyxCall::MAX_ATTEMPTS)
+    end
+  end
+
+  describe "the beta year" do
+    include ActiveSupport::Testing::TimeHelpers
+
+    before { stub_const("Plan::LAUNCHED_ON", Date.new(2026, 11, 8)) }
+
+    def sign_up_at(time)
+      travel_to(time) { User.create!(email: "new#{time.to_i}@example.com", role: :caregiver, name: "New") }
+    end
+
+    it "is given to somebody who signs up later on launch day" do
+      user = sign_up_at(ActiveSupport::TimeZone["America/New_York"].local(2026, 11, 8, 23))
+      expect(user.family_granted_until).to eq(Time.utc(2027, 11, 8, 5))
+    end
+
+    it "is not given to somebody who signs up the day after" do
+      user = sign_up_at(ActiveSupport::TimeZone["America/New_York"].local(2026, 11, 9, 0, 30))
+      expect(user.family_granted_until).to be_nil
     end
   end
 

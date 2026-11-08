@@ -10,6 +10,20 @@ module User::PlanLimits
     # The caregiver this care receiver counts against on plans that limit how
     # many parents a caregiver sets up. See parents_set_up_count.
     belongs_to :set_up_by, class_name: "User", optional: true
+
+    # Somebody who signs up on launch day, after the migration that granted
+    # everyone else the beta year, joined during it too. (Copilot on #229.)
+    before_create :grant_the_beta_year, if: :joined_during_the_beta?
+  end
+
+  # By when the account was made, or now if it is being made now.
+  def joined_during_the_beta?
+    cutoff = Plan.beta_year_cutoff
+    cutoff.present? && family_granted_until.nil? && (created_at || Time.current) <= cutoff
+  end
+
+  def grant_the_beta_year
+    self.family_granted_until = Plan.beta_year_until
   end
 
   # The plan this person pays for, or would: theirs as a caregiver, or as a care

@@ -78,7 +78,7 @@ question about your clients between shifts"
 > The first call only asks the client's permission and says who set it up;
 > no reminder calls come until they agree.
 >
-> It's free while in beta, with no app for the client to learn.
+> It's free for one parent, with no app for the client to learn.
 >
 > I'm not trying to sell you anything. I'd like to set it up, free and myself,
 > for one or two of your clients whose families worry about the gaps between
@@ -166,7 +166,8 @@ Fits on one printed page.
 > **Several family members can share it**, each choosing which reminders they
 > hear about.
 >
-> **Free while in beta.** No card, no ads, and no trial that quietly ends.
+> **Free for one parent.** No card, no ads, and no trial that quietly ends.
+> Family, for up to three parents, is $9 a month.
 >
 > **See it work:** an 11-minute walk-through at
 > www.remindly.care/how_to?from=agency#videos

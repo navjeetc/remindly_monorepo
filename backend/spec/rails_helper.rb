@@ -58,6 +58,16 @@ RSpec.configure do |config|
   # example happened to run second.
   config.before { Rails.cache.clear }
 
+  # Specs run in the beta, where no plan limits anything, unless they say
+  # otherwise. Paid plans launched on Plan::LAUNCHED_ON, and the Free plan's
+  # limits (one parent, three phone reminders a day, two caregivers) would
+  # otherwise refuse the setup of every spec that needs a second reminder or
+  # caregiver for reasons that have nothing to do with plans. The specs about
+  # plans stub a launch date of their own, which overrides this: two days ago,
+  # not one, so the launch day's New York end (the beta-year cutoff) has passed
+  # whatever the UTC hour. (Copilot on #229.)
+  config.before { stub_const("Plan::LAUNCHED_ON", nil) }
+
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_paths = [
     Rails.root.join('spec/fixtures')

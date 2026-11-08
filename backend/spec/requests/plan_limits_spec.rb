@@ -43,7 +43,7 @@ RSpec.describe "Plan limits on the dashboard", type: :request do
   end
 
   describe "once paid plans have started" do
-    before { stub_const("Plan::LAUNCHED_ON", Date.current - 1) }
+    before { stub_const("Plan::LAUNCHED_ON", Date.current - 2) }
 
     it "refuses a second parent on the free plan" do
       expect {
