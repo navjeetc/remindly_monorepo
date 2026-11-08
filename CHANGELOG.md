@@ -5,6 +5,17 @@ All notable changes to the Remindly project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.1] - 2026-11-08
+
+### Added
+- **Accounts nobody used are deleted after 14 days.** Asking for a sign-in link
+  creates an account before the link is opened, so every address typed into the
+  form (bots, typos, throwaway inboxes) left a "No Role" account on Admin →
+  Users. `PruneUnusedAccountsJob` runs daily and deletes accounts that never
+  signed in, never chose a role, have nobody linked either way, no reminders and
+  no Stripe customer, once they are 14 days old. Fourteen rather than seven so
+  the Monday funnel email has counted each one in its week before it goes.
+
 ## [0.28.0] - 2026-11-08
 
 ### Added
