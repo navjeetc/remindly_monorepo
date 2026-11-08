@@ -49,10 +49,14 @@ RSpec.describe PruneUnusedAccountsJob do
     # An account from before sign-in tracking, with tasks of its own.
     with_tasks = account("tasks@example.com")
     Task.create!(senior: with_tasks, created_by: with_tasks, title: "Dentist")
+    with_block = account("blocks@example.com")
+    create(:time_block, user: with_block)
+    with_calendar = account("calendar@example.com")
+    create(:scheduling_integration, user: with_calendar, senior: nil)
 
     described_class.perform_now
 
-    [ signed_in, with_role, paying, invited, senior, self_signed, reminded, with_tasks ].each do |user|
+    [ signed_in, with_role, paying, invited, senior, self_signed, reminded, with_tasks, with_block, with_calendar ].each do |user|
       expect(User.exists?(user.id)).to be(true), "#{user.email || user.name} was deleted"
     end
   end

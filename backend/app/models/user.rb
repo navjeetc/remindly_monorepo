@@ -508,7 +508,9 @@ class User < ApplicationRecord
   #
   # Tasks are checked as well because first_signed_in_at was backfilled only
   # for named accounts, and the task screens need no role, so an older account
-  # can have tasks and look unused by every other measure. (Copilot on #228.)
+  # can have tasks and look unused by every other measure. Time blocks and
+  # calendar connections likewise, being on screens that need no role either.
+  # (Copilot on #228.)
   def self.never_used
     where(role: nil, first_signed_in_at: nil, stripe_customer_id: nil)
       .where.not(email: [ nil, "" ])
@@ -517,6 +519,9 @@ class User < ApplicationRecord
       .where.not(id: Reminder.select(:user_id))
       .where.not(id: Task.select(:senior_id))
       .where.not(id: Task.select(:created_by_id))
+      .where.not(id: TimeBlock.select(:user_id))
+      .where.not(id: SchedulingIntegration.select(:user_id))
+      .where.not(id: SchedulingIntegration.where.not(senior_id: nil).select(:senior_id))
   end
 
   # The first time this person opened an emailed sign-in link, for the
